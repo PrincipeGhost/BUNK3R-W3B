@@ -268,9 +268,21 @@ def validate_user():
     avatar_url = None
     if db_manager:
         try:
+            logger.info(f"Creating/updating user {user_id} in database")
+            created_user = db_manager.get_or_create_user(
+                user_id=str(user_id),
+                username=user.get('username'),
+                first_name=user.get('first_name'),
+                last_name=user.get('last_name'),
+                telegram_id=user_id
+            )
+            logger.info(f"User created/updated: {created_user}")
+            
             user_profile = db_manager.get_user_profile(str(user_id), str(user_id))
+            logger.info(f"User profile retrieved: {user_profile}")
             if user_profile:
                 avatar_url = user_profile.get('avatar_url')
+                logger.info(f"Avatar URL from profile: {avatar_url}")
         except Exception as e:
             logger.error(f"Error getting user profile for avatar: {e}")
     
