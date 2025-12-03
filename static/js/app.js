@@ -70,6 +70,20 @@ const App = {
         
         this.showMainApp();
         this.setupEventListeners();
+        
+        try {
+            const profileResponse = await this.apiRequest('/api/users/me');
+            if (profileResponse.success && profileResponse.profile) {
+                if (profileResponse.profile.avatarUrl) {
+                    this.userAvatarUrl = profileResponse.profile.avatarUrl;
+                    this.updateAllAvatars();
+                    this.updateProfilePage();
+                }
+            }
+        } catch (error) {
+            console.log('No se pudo cargar el perfil guardado:', error);
+        }
+        
         await this.loadInitialData();
     },
     

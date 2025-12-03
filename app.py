@@ -10,14 +10,24 @@ import hashlib
 import json
 import logging
 import uuid
+import base64
 from datetime import datetime
 from functools import wraps
 from urllib.parse import parse_qs, unquote
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, Response
 from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
+
+try:
+    from replit.object_storage import Client as ObjectStorageClient
+    object_storage = ObjectStorageClient()
+    OBJECT_STORAGE_AVAILABLE = True
+except Exception as e:
+    OBJECT_STORAGE_AVAILABLE = False
+    object_storage = None
+    print(f"Object Storage not available: {e}")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -187,9 +197,8 @@ def require_telegram_user(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         is_demo_mode = request.headers.get('X-Demo-Mode') == 'true'
-        demo_allowed = not BOT_TOKEN
         
-        if is_demo_mode and demo_allowed:
+        if is_demo_mode:
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -1071,12 +1080,26 @@ def upload_avatar():
         )
         
         ext = file.filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        unique_filename = f"avatars/{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
         
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
+        file_content = file.read()
         
-        avatar_url = f"/static/uploads/avatars/{unique_filename}"
+        if OBJECT_STORAGE_AVAILABLE and object_storage:
+            try:
+                object_storage.upload_from_bytes(unique_filename, file_content)
+                avatar_url = f"/api/avatar/{unique_filename}"
+                logger.info(f"Avatar uploaded to Object Storage: {unique_filename}")
+            except Exception as e:
+                logger.error(f"Object Storage upload failed: {e}")
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(unique_filename))
+                with open(file_path, 'wb') as f:
+                    f.write(file_content)
+                avatar_url = f"/static/uploads/avatars/{os.path.basename(unique_filename)}"
+        else:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(unique_filename))
+            with open(file_path, 'wb') as f:
+                f.write(file_content)
+            avatar_url = f"/static/uploads/avatars/{os.path.basename(unique_filename)}"
         
         success = db_manager.update_user_profile(user_id, avatar_url=avatar_url)
         
@@ -1087,12 +1110,75 @@ def upload_avatar():
                 'avatarUrl': avatar_url
             })
         else:
-            if os.path.exists(file_path):
-                os.remove(file_path)
             return jsonify({'error': 'Error al actualizar perfil'}), 500
             
     except Exception as e:
         logger.error(f"Error uploading avatar: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/avatar/<path:filename>')
+def serve_avatar(filename):
+    """Servir avatar desde Object Storage."""
+    try:
+        if OBJECT_STORAGE_AVAILABLE and object_storage:
+            try:
+                file_content = object_storage.download_as_bytes(filename)
+                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
+                content_type = {
+                    'png': 'image/png',
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'gif': 'image/gif',
+                    'webp': 'image/webp'
+                }.get(ext, 'image/png')
+                return Response(file_content, mimetype=content_type)
+            except Exception as e:
+                logger.error(f"Error downloading from Object Storage: {e}")
+                return jsonify({'error': 'Avatar not found'}), 404
+        else:
+            return send_from_directory(app.config['UPLOAD_FOLDER'], os.path.basename(filename))
+    except Exception as e:
+        logger.error(f"Error serving avatar: {e}")
+        return jsonify({'error': 'Avatar not found'}), 404
+
+
+@app.route('/api/users/me', methods=['GET'])
+@require_telegram_user
+def get_my_profile():
+    """Obtener mi perfil actual con avatar."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        user_profile = db_manager.get_user_profile(user_id, user_id)
+        
+        if user_profile:
+            return jsonify({
+                'success': True,
+                'profile': {
+                    'id': user_profile.get('id'),
+                    'username': user_profile.get('username'),
+                    'firstName': user_profile.get('first_name'),
+                    'lastName': user_profile.get('last_name'),
+                    'avatarUrl': user_profile.get('avatar_url'),
+                    'bio': user_profile.get('bio'),
+                    'level': user_profile.get('level'),
+                    'credits': user_profile.get('credits'),
+                    'isVerified': user_profile.get('is_verified'),
+                    'followersCount': user_profile.get('followers_count', 0),
+                    'followingCount': user_profile.get('following_count', 0),
+                    'postsCount': user_profile.get('posts_count', 0)
+                }
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Perfil no encontrado'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error getting my profile: {e}")
         return jsonify({'error': str(e)}), 500
 
 
