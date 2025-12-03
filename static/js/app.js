@@ -98,15 +98,15 @@ const App = {
             homeUserName.textContent = userName;
         }
         
-        const profileName = document.getElementById('profile-name');
-        if (profileName) {
-            profileName.textContent = userName;
+        const sidebarName = document.getElementById('sidebar-name');
+        if (sidebarName) {
+            sidebarName.textContent = userName;
         }
         
-        const profileAvatar = document.getElementById('profile-avatar');
-        if (profileAvatar) {
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        if (sidebarAvatar) {
             const initials = userName.charAt(0).toUpperCase();
-            profileAvatar.textContent = initials;
+            sidebarAvatar.textContent = initials;
         }
     },
     
