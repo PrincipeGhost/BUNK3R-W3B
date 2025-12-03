@@ -14,3 +14,31 @@ OWNER_TELEGRAM_ID = "7729022720"
 CHANNEL_ID = "-1002889052376"
 ADMIN_TOKEN = "110917"
 RESEND_API_KEY = "re_h4v6TkUk_NUoP1XUtvPknzphaU95vdX4N"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Flask Web App"
+
+[[workflows.workflow]]
+name = "Flask Web App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python run.py"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
