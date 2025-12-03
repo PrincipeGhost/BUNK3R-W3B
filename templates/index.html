@@ -388,7 +388,7 @@
                         <button class="profile-page-btn secondary">Compartir perfil</button>
                     </div>
                     <div class="profile-page-tabs">
-                        <button class="profile-page-tab active">
+                        <button class="profile-page-tab active" data-tab="posts">
                             <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
                                 <rect x="3" y="3" width="7" height="7"></rect>
                                 <rect x="14" y="3" width="7" height="7"></rect>
@@ -396,13 +396,13 @@
                                 <rect x="14" y="14" width="7" height="7"></rect>
                             </svg>
                         </button>
-                        <button class="profile-page-tab">
+                        <button class="profile-page-tab" data-tab="marketplace">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
-                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
                             </svg>
                         </button>
-                        <button class="profile-page-tab">
+                        <button class="profile-page-tab" data-tab="shared">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                                 <path d="M17 2.1l4 4-4 4"></path>
                                 <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8"></path>
@@ -410,31 +410,117 @@
                                 <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"></path>
                             </svg>
                         </button>
-                        <button class="profile-page-tab">
+                        <button class="profile-page-tab" data-tab="account">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
                             </svg>
                         </button>
                     </div>
-                    <div class="profile-page-gallery">
-                        <div class="profile-page-gallery-item">
-                            <div class="gallery-placeholder"></div>
+                    
+                    <!-- Vista Publicaciones -->
+                    <div class="profile-tab-content active" id="tab-posts">
+                        <div class="profile-page-gallery">
+                            <div class="profile-page-gallery-item">
+                                <div class="gallery-placeholder"></div>
+                            </div>
+                            <div class="profile-page-gallery-item">
+                                <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
+                            </div>
+                            <div class="profile-page-gallery-item">
+                                <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
+                            </div>
+                            <div class="profile-page-gallery-item">
+                                <div class="gallery-placeholder" style="background: #2a2a2a;"></div>
+                            </div>
+                            <div class="profile-page-gallery-item">
+                                <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
+                            </div>
+                            <div class="profile-page-gallery-item">
+                                <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
+                            </div>
                         </div>
-                        <div class="profile-page-gallery-item">
-                            <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
+                    </div>
+                    
+                    <!-- Vista Marketplace -->
+                    <div class="profile-tab-content" id="tab-marketplace">
+                        <div class="profile-empty-state">
+                            <div class="empty-icon">🏪</div>
+                            <h3>Marketplace</h3>
+                            <p>Aun no tienes productos en el marketplace</p>
+                            <button class="profile-action-btn">Unirse al Marketplace</button>
                         </div>
-                        <div class="profile-page-gallery-item">
-                            <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
+                        <div class="marketplace-section">
+                            <h4 class="section-title">Productos destacados</h4>
+                            <div class="marketplace-grid">
+                                <div class="marketplace-item">
+                                    <div class="marketplace-img"></div>
+                                    <span class="marketplace-price">$25</span>
+                                </div>
+                                <div class="marketplace-item">
+                                    <div class="marketplace-img" style="background: #3a3a3a;"></div>
+                                    <span class="marketplace-price">$45</span>
+                                </div>
+                                <div class="marketplace-item">
+                                    <div class="marketplace-img" style="background: #4a4a4a;"></div>
+                                    <span class="marketplace-price">$18</span>
+                                </div>
+                                <div class="marketplace-item">
+                                    <div class="marketplace-img" style="background: #2a2a2a;"></div>
+                                    <span class="marketplace-price">$32</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="profile-page-gallery-item">
-                            <div class="gallery-placeholder" style="background: #2a2a2a;"></div>
+                    </div>
+                    
+                    <!-- Vista Compartidos -->
+                    <div class="profile-tab-content" id="tab-shared">
+                        <div class="profile-empty-state">
+                            <div class="empty-icon">🔄</div>
+                            <h3>Compartidos</h3>
+                            <p>No has compartido publicaciones aun</p>
+                            <span class="empty-hint">Las publicaciones que compartas de otros usuarios apareceran aqui</span>
                         </div>
-                        <div class="profile-page-gallery-item">
-                            <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
-                        </div>
-                        <div class="profile-page-gallery-item">
-                            <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
+                    </div>
+                    
+                    <!-- Vista Cuenta -->
+                    <div class="profile-tab-content" id="tab-account">
+                        <div class="account-info-list">
+                            <div class="account-info-item">
+                                <span class="account-icon">📅</span>
+                                <div class="account-info-text">
+                                    <span class="account-label">Miembro desde</span>
+                                    <span class="account-value">Diciembre 2024</span>
+                                </div>
+                            </div>
+                            <div class="account-info-item">
+                                <span class="account-icon">🤖</span>
+                                <div class="account-info-text">
+                                    <span class="account-label">Bots activos</span>
+                                    <span class="account-value">0</span>
+                                </div>
+                            </div>
+                            <div class="account-info-item">
+                                <span class="account-icon">🏆</span>
+                                <div class="account-info-text">
+                                    <span class="account-label">Logros</span>
+                                    <span class="account-value">Nuevo usuario</span>
+                                </div>
+                            </div>
+                            <div class="account-info-item">
+                                <span class="account-icon">⭐</span>
+                                <div class="account-info-text">
+                                    <span class="account-label">Nivel</span>
+                                    <span class="account-value">1</span>
+                                </div>
+                            </div>
+                            <div class="account-info-item">
+                                <span class="account-icon">📦</span>
+                                <div class="account-info-text">
+                                    <span class="account-label">Envios rastreados</span>
+                                    <span class="account-value">0</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
