@@ -1,0 +1,31 @@
+2025-12-03T23:49:13.341732468Z ==> Downloading cache...
+2025-12-03T23:49:13.380748217Z ==> It looks like we don't have access to your repo, but we'll try to clone it anyway.
+2025-12-03T23:49:13.380765807Z ==> Cloning from https://github.com/PrincipeGhost/BUNK3R-W3B
+2025-12-03T23:49:13.940509346Z ==> Checking out commit 55d752d89fdfc1b2dbde810c50d3f1c9f9f00f01 in branch main
+2025-12-03T23:49:17.311676495Z ==> Downloaded 70MB in 2s. Extraction took 2s.
+2025-12-03T23:49:25.266319127Z ==> Installing Python version 3.13.4...
+2025-12-03T23:49:34.694748733Z ==> Using Python version 3.13.4 (default)
+2025-12-03T23:49:34.719274427Z ==> Docs on specifying a Python version: https://render.com/docs/python-version
+2025-12-03T23:49:37.969609208Z ==> Using Poetry version 2.1.3 (default)
+2025-12-03T23:49:38.02623637Z ==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version
+2025-12-03T23:49:38.120500995Z ==> Running build command 'pip install -r requirements.txt'...
+2025-12-03T23:49:38.757527627Z Collecting flask==3.0.0 (from -r requirements.txt (line 1))
+2025-12-03T23:49:38.759009865Z   Using cached flask-3.0.0-py3-none-any.whl.metadata (3.6 kB)
+2025-12-03T23:49:38.8823688Z Collecting gunicorn==21.2.0 (from -r requirements.txt (line 2))
+2025-12-03T23:49:38.883896729Z   Using cached gunicorn-21.2.0-py3-none-any.whl.metadata (4.1 kB)
+2025-12-03T23:49:39.032908861Z Collecting psycopg2-binary (from -r requirements.txt (line 3))
+2025-12-03T23:49:39.034342928Z   Using cached psycopg2_binary-2.9.11-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+2025-12-03T23:49:39.133890493Z Collecting requests (from -r requirements.txt (line 4))
+2025-12-03T23:49:39.135542584Z   Using cached requests-2.32.5-py3-none-any.whl.metadata (4.9 kB)
+2025-12-03T23:49:39.253195101Z Collecting python-dotenv (from -r requirements.txt (line 5))
+2025-12-03T23:49:39.254627019Z   Using cached python_dotenv-1.2.1-py3-none-any.whl.metadata (25 kB)
+2025-12-03T23:49:39.430736903Z Collecting pytz (from -r requirements.txt (line 6))
+2025-12-03T23:49:39.432191861Z   Using cached pytz-2025.2-py2.py3-none-any.whl.metadata (22 kB)
+2025-12-03T23:49:39.558543873Z ERROR: Ignored the following versions that require a different python version: 0.0.1 Requires-Python >=3.8.0,<3.13; 0.0.2 Requires-Python >=3.8.0,<3.13; 0.0.3 Requires-Python <3.13,>=3.8.0; 1.0.0 Requires-Python <3.13,>=3.8.0; 1.0.1 Requires-Python <3.13,>=3.8.0; 1.0.2 Requires-Python <3.13,>=3.8.0
+2025-12-03T23:49:39.558787887Z ERROR: Could not find a version that satisfies the requirement replit-object-storage (from versions: none)
+2025-12-03T23:49:39.565627697Z 
+2025-12-03T23:49:39.565640827Z [notice] A new release of pip is available: 25.1.1 -> 25.3
+2025-12-03T23:49:39.565644367Z [notice] To update, run: pip install --upgrade pip
+2025-12-03T23:49:39.565899952Z ERROR: No matching distribution found for replit-object-storage
+2025-12-03T23:49:39.656000678Z ==> Build failed 😞
+2025-12-03T23:49:39.656019779Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

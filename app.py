@@ -20,15 +20,6 @@ from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
 
-try:
-    from replit.object_storage import Client as ObjectStorageClient
-    object_storage = ObjectStorageClient()
-    OBJECT_STORAGE_AVAILABLE = True
-except Exception as e:
-    OBJECT_STORAGE_AVAILABLE = False
-    object_storage = None
-    print(f"Object Storage not available: {e}")
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tracking.database import DatabaseManager
@@ -1079,31 +1070,25 @@ def upload_avatar():
             telegram_id=user.get('id')
         )
         
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"avatars/{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
-        
         file_content = file.read()
+        ext = file.filename.rsplit('.', 1)[1].lower()
         
-        if OBJECT_STORAGE_AVAILABLE and object_storage:
-            try:
-                object_storage.upload_from_bytes(unique_filename, file_content)
-                avatar_url = f"/api/avatar/{unique_filename}"
-                logger.info(f"Avatar uploaded to Object Storage: {unique_filename}")
-            except Exception as e:
-                logger.error(f"Object Storage upload failed: {e}")
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(unique_filename))
-                with open(file_path, 'wb') as f:
-                    f.write(file_content)
-                avatar_url = f"/static/uploads/avatars/{os.path.basename(unique_filename)}"
-        else:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(unique_filename))
-            with open(file_path, 'wb') as f:
-                f.write(file_content)
-            avatar_url = f"/static/uploads/avatars/{os.path.basename(unique_filename)}"
+        content_type = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'webp': 'image/webp'
+        }.get(ext, 'image/png')
         
-        success = db_manager.update_user_profile(user_id, avatar_url=avatar_url)
+        avatar_data = f"data:{content_type};base64,{base64.b64encode(file_content).decode('utf-8')}"
+        
+        success = db_manager.update_user_avatar_data(user_id, avatar_data)
+        
+        avatar_url = f"/api/avatar/{user_id}"
         
         if success:
+            db_manager.update_user_profile(user_id, avatar_url=avatar_url)
             return jsonify({
                 'success': True,
                 'message': 'Foto de perfil actualizada',
@@ -1117,27 +1102,26 @@ def upload_avatar():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/avatar/<path:filename>')
-def serve_avatar(filename):
-    """Servir avatar desde Object Storage."""
+@app.route('/api/avatar/<user_id>')
+def serve_avatar(user_id):
+    """Servir avatar desde la base de datos."""
     try:
-        if OBJECT_STORAGE_AVAILABLE and object_storage:
-            try:
-                file_content = object_storage.download_as_bytes(filename)
-                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
-                content_type = {
-                    'png': 'image/png',
-                    'jpg': 'image/jpeg',
-                    'jpeg': 'image/jpeg',
-                    'gif': 'image/gif',
-                    'webp': 'image/webp'
-                }.get(ext, 'image/png')
-                return Response(file_content, mimetype=content_type)
-            except Exception as e:
-                logger.error(f"Error downloading from Object Storage: {e}")
-                return jsonify({'error': 'Avatar not found'}), 404
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        avatar_data = db_manager.get_user_avatar_data(user_id)
+        
+        if not avatar_data:
+            return jsonify({'error': 'Avatar not found'}), 404
+        
+        if avatar_data.startswith('data:'):
+            header, encoded = avatar_data.split(',', 1)
+            content_type = header.split(':')[1].split(';')[0]
+            image_data = base64.b64decode(encoded)
+            return Response(image_data, mimetype=content_type)
         else:
-            return send_from_directory(app.config['UPLOAD_FOLDER'], os.path.basename(filename))
+            return jsonify({'error': 'Invalid avatar format'}), 500
+            
     except Exception as e:
         logger.error(f"Error serving avatar: {e}")
         return jsonify({'error': 'Avatar not found'}), 404

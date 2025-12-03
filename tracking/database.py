@@ -1035,6 +1035,37 @@ class DatabaseManager:
             logger.error(f"Error updating user profile {user_id}: {e}")
             return False
 
+    def update_user_avatar_data(self, user_id: str, avatar_data: str) -> bool:
+        """Guardar imagen de avatar como base64 en la base de datos"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE users SET avatar_data = %s, updated_at = CURRENT_TIMESTAMP 
+                           WHERE id = %s""",
+                        (avatar_data, user_id)
+                    )
+                    conn.commit()
+                    logger.info(f"Updated avatar data for user {user_id}")
+                    return True
+        except Exception as e:
+            logger.error(f"Error updating avatar data for user {user_id}: {e}")
+            return False
+    
+    def get_user_avatar_data(self, user_id: str) -> Optional[str]:
+        """Obtener imagen de avatar base64 de la base de datos"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT avatar_data FROM users WHERE id = %s", (user_id,))
+                    result = cur.fetchone()
+                    if result and result[0]:
+                        return result[0]
+                    return None
+        except Exception as e:
+            logger.error(f"Error getting avatar data for user {user_id}: {e}")
+            return None
+
 
 # Global database manager instance
 db_manager = DatabaseManager()
