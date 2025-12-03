@@ -81,9 +81,16 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-03: Added new pages for Marketplace, Bots, and Wallet
+  - Redesigned bottom navigation: Home, Marketplace, Bots, Billetera (Wallet), Perfil (Profile)
+  - Created Marketplace page with product categories and item grid (prices in credits)
+  - Created Bots page with active user bots and available bots for purchase
+  - Created Wallet page with credit balance, transaction history, and top-up options
+  - Fixed Telegram back button handler for all new pages
+  - Updated navigation system with showPage() function
+
 - 2024-12-03: Added bottom navigation bar and profile modal
-  - Added fixed bottom navigation with 5 icons (Home, Videos, Messages, Search, Profile)
-  - Created profile modal popup with user stats and info (similar to Instagram style)
+  - Instagram-style profile modal with avatar, stats, bio, and photo gallery
   - Moved user profile from top bar to sidebar menu
   - Added slide-up animation for profile modal
   
