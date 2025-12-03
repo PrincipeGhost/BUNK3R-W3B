@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Denegado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 400px;
+        }
+        
+        .icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            color: #e74c3c;
+        }
+        
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #a0a0a0;
+            margin-bottom: 24px;
+        }
+        
+        .telegram-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #0088cc;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .telegram-link:hover {
+            background: #0077b5;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🚫</div>
+        <h1>Acceso Denegado</h1>
+        <p>Esta aplicación solo puede ser accedida desde Telegram. Por favor, abre la aplicación desde el bot de Telegram.</p>
+        <a href="https://telegram.org" class="telegram-link">
+            <span>📱</span>
+            <span>Abrir Telegram</span>
+        </a>
+        <div class="footer">
+            <p>Sistema de Tracking de Paquetes</p>
+        </div>
+    </div>
+</body>
+</html>

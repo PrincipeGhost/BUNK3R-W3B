@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BUNK3R</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div id="app">
+        <div id="loading-screen" class="loading-screen">
+            <div class="loader"></div>
+            <p>Verificando acceso...</p>
+        </div>
+
+        <div id="access-denied" class="access-denied hidden">
+            <div class="denied-icon">🚫</div>
+            <h2>Acceso Denegado</h2>
+            <p id="denied-message">No tienes permiso para acceder a esta aplicación.</p>
+        </div>
+
+        <div id="main-app" class="hidden">
+            <!-- BARRA SUPERIOR -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="hamburger-menu" id="hamburger-menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <span class="top-bar-title">BUNK<span class="highlight-red">3</span>R</span>
+                </div>
+                <div class="top-bar-profile" id="top-bar-profile">
+                    <span class="profile-name" id="profile-name"></span>
+                    <div class="profile-avatar" id="profile-avatar"></div>
+                </div>
+            </div>
+
+            <!-- MENU LATERAL -->
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-title">BUNK<span class="highlight-red">3</span>R</span>
+                    <button class="sidebar-close" id="sidebar-close">&times;</button>
+                </div>
+                <nav class="sidebar-nav">
+                    <a href="#" class="sidebar-item" data-section="numeros">
+                        <span class="sidebar-icon">📱</span>
+                        <span>Numeros Virtuales</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-section="cuentas">
+                        <span class="sidebar-icon">👤</span>
+                        <span>Cuentas</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-section="metodos">
+                        <span class="sidebar-icon">💳</span>
+                        <span>Metodos</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-section="bots">
+                        <span class="sidebar-icon">🤖</span>
+                        <span>Bots</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-section="planes">
+                        <span class="sidebar-icon">💎</span>
+                        <span>Planes y Precios</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-section="exchange">
+                        <span class="sidebar-icon">🔄</span>
+                        <span>Exchange</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-section="foro">
+                        <span class="sidebar-icon">💬</span>
+                        <span>Foro</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- PAGINA PRINCIPAL / HOME -->
+            <div id="home-screen" class="home-screen">
+                <header class="home-header">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BUNK3R Logo" class="home-logo-img">
+                    <h1 class="home-title">BUNK<span class="highlight">3</span>R</h1>
+                    <p class="home-subtitle">Panel de Control</p>
+                    <div class="home-user">
+                        Bienvenido, <span id="home-user-name"></span>
+                    </div>
+                </header>
+                
+                <div class="home-menu">
+                    <div class="menu-card" data-module="tracking">
+                        <div class="menu-card-icon">📦</div>
+                        <div class="menu-card-content">
+                            <h3>Tracking Manager</h3>
+                            <p>Gestiona tus envios y paquetes</p>
+                        </div>
+                        <div class="menu-card-arrow">→</div>
+                    </div>
+                    
+                    <div class="menu-card disabled" data-module="coming-soon">
+                        <div class="menu-card-icon">📊</div>
+                        <div class="menu-card-content">
+                            <h3>Estadisticas</h3>
+                            <p>Proximamente...</p>
+                        </div>
+                        <div class="menu-card-badge">Pronto</div>
+                    </div>
+                    
+                    <div class="menu-card disabled" data-module="coming-soon">
+                        <div class="menu-card-icon">⚙️</div>
+                        <div class="menu-card-content">
+                            <h3>Configuracion</h3>
+                            <p>Proximamente...</p>
+                        </div>
+                        <div class="menu-card-badge">Pronto</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCION TRACKING MANAGER -->
+            <div id="tracking-module" class="module-screen hidden">
+                <header class="header">
+                    <div class="header-content">
+                        <button type="button" class="btn-home" id="btn-go-home">
+                            <span>←</span>
+                        </button>
+                        <h1 class="app-title">📦 Tracking Manager</h1>
+                        <div class="user-info">
+                            <span id="user-name"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-section="dashboard">
+                        <span class="tab-icon">📊</span>
+                        <span class="tab-text">Panel</span>
+                    </button>
+                    <button class="nav-tab" data-section="trackings">
+                        <span class="tab-icon">📦</span>
+                        <span class="tab-text">Trackings</span>
+                    </button>
+                    <button class="nav-tab" data-section="create">
+                        <span class="tab-icon">➕</span>
+                        <span class="tab-text">Crear</span>
+                    </button>
+                    <button class="nav-tab" data-section="search">
+                        <span class="tab-icon">🔍</span>
+                        <span class="tab-text">Buscar</span>
+                    </button>
+                </nav>
+
+            <main class="main-content">
+                <section id="section-dashboard" class="section active">
+                    <div class="stats-grid">
+                        <div class="stat-card" data-status="RETENIDO">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-value" id="stat-retenido">0</div>
+                            <div class="stat-label">Retenidos</div>
+                        </div>
+                        <div class="stat-card" data-status="EN_TRANSITO">
+                            <div class="stat-icon">🚚</div>
+                            <div class="stat-value" id="stat-transito">0</div>
+                            <div class="stat-label">En Camino</div>
+                        </div>
+                        <div class="stat-card" data-status="ENTREGADO">
+                            <div class="stat-icon">✅</div>
+                            <div class="stat-value" id="stat-entregado">0</div>
+                            <div class="stat-label">Entregados</div>
+                        </div>
+                        <div class="stat-card" data-status="CONFIRMAR_PAGO">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-value" id="stat-pago">0</div>
+                            <div class="stat-label">Confirmar Pago</div>
+                        </div>
+                    </div>
+                    <div class="total-stat">
+                        <span class="total-label">Total de Trackings:</span>
+                        <span class="total-value" id="stat-total">0</span>
+                    </div>
+                </section>
+
+                <section id="section-trackings" class="section hidden">
+                    <div class="filter-bar">
+                        <select id="status-filter" class="filter-select">
+                            <option value="">Todos los estados</option>
+                            <option value="RETENIDO">📦 Retenidos</option>
+                            <option value="EN_TRANSITO">🚚 En Camino</option>
+                            <option value="ENTREGADO">✅ Entregados</option>
+                            <option value="CONFIRMAR_PAGO">💰 Confirmar Pago</option>
+                        </select>
+                    </div>
+                    <div id="trackings-list" class="trackings-list">
+                    </div>
+                </section>
+
+                <section id="section-create" class="section hidden">
+                    <form id="create-form" class="tracking-form">
+                        <h2 class="form-title">Crear Nuevo Tracking</h2>
+                        
+                        <div class="form-group">
+                            <label for="tracking-id">ID de Tracking *</label>
+                            <input type="text" id="tracking-id" name="trackingId" required placeholder="Ej: ES123456789">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="recipient-name">Nombre del Destinatario *</label>
+                            <input type="text" id="recipient-name" name="recipientName" required placeholder="Nombre completo">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="product-name">Nombre del Producto *</label>
+                            <input type="text" id="product-name" name="productName" required placeholder="Descripción del producto">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="product-price">Precio del Producto</label>
+                            <input type="text" id="product-price" name="productPrice" placeholder="Ej: 99.99">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="delivery-address">Dirección de Entrega</label>
+                            <textarea id="delivery-address" name="deliveryAddress" placeholder="Calle, número, ciudad..."></textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="recipient-postal">Código Postal</label>
+                                <input type="text" id="recipient-postal" name="recipientPostalCode" placeholder="28001">
+                            </div>
+                            <div class="form-group half">
+                                <label for="recipient-province">Provincia</label>
+                                <input type="text" id="recipient-province" name="recipientProvince" placeholder="Madrid">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="recipient-country">País Destino</label>
+                            <input type="text" id="recipient-country" name="recipientCountry" placeholder="España" value="España">
+                        </div>
+                        
+                        <div class="form-divider">
+                            <span>Datos del Remitente</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="sender-address">Dirección del Remitente</label>
+                            <textarea id="sender-address" name="senderAddress" placeholder="Dirección de origen"></textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="sender-postal">Código Postal</label>
+                                <input type="text" id="sender-postal" name="senderPostalCode" placeholder="08001">
+                            </div>
+                            <div class="form-group half">
+                                <label for="sender-province">Provincia</label>
+                                <input type="text" id="sender-province" name="senderProvince" placeholder="Barcelona">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="sender-country">País Origen</label>
+                            <input type="text" id="sender-country" name="senderCountry" placeholder="España" value="España">
+                        </div>
+                        
+                        <div class="form-divider">
+                            <span>Detalles Adicionales</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="package-weight">Peso del Paquete</label>
+                            <input type="text" id="package-weight" name="packageWeight" placeholder="Ej: 1.5 kg" value="0.5 kg">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="initial-status">Estado Inicial</label>
+                            <select id="initial-status" name="status">
+                                <option value="RETENIDO">📦 Retenido</option>
+                                <option value="EN_TRANSITO">🚚 En Camino</option>
+                                <option value="CONFIRMAR_PAGO">💰 Confirmar Pago</option>
+                                <option value="ENTREGADO">✅ Entregado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="estimated-delivery">Fecha Estimada de Entrega</label>
+                            <input type="date" id="estimated-delivery" name="estimatedDelivery">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <span>➕</span> Crear Tracking
+                        </button>
+                    </form>
+                </section>
+
+                <section id="section-search" class="section hidden">
+                    <div class="search-container">
+                        <div class="search-box">
+                            <input type="text" id="search-input" placeholder="Buscar por ID, cliente o producto..." autocomplete="off">
+                            <button type="button" id="search-btn" class="btn btn-primary">
+                                <span>🔍</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="search-results" class="trackings-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <p>Escribe para buscar trackings</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-detail" class="section hidden">
+                    <div class="detail-header">
+                        <button type="button" class="btn-back" id="btn-back">
+                            <span>←</span> Volver
+                        </button>
+                    </div>
+                    <div id="tracking-detail" class="tracking-detail">
+                    </div>
+                </section>
+            </main>
+            </div>
+            <!-- FIN TRACKING MODULE -->
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div id="modal-content" class="modal-content">
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
