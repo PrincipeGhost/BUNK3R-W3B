@@ -121,8 +121,9 @@ def require_telegram_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         is_demo_mode = request.headers.get('X-Demo-Mode') == 'true'
+        demo_allowed = not BOT_TOKEN
         
-        if is_demo_mode:
+        if is_demo_mode and demo_allowed:
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -163,6 +164,45 @@ def require_owner(f):
     def decorated_function(*args, **kwargs):
         if not getattr(request, 'is_owner', False):
             return jsonify({'error': 'Función solo disponible para el owner'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_telegram_user(f):
+    """Decorador para funciones que cualquier usuario autenticado de Telegram puede usar."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        is_demo_mode = request.headers.get('X-Demo-Mode') == 'true'
+        demo_allowed = not BOT_TOKEN
+        
+        if is_demo_mode and demo_allowed:
+            request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
+            request.telegram_data = {}
+            request.is_owner = True
+            request.is_demo = True
+            return f(*args, **kwargs)
+        
+        init_data = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')
+        
+        if not init_data:
+            return jsonify({'error': 'Acceso no autorizado', 'code': 'NO_INIT_DATA'}), 401
+        
+        validated_data = validate_telegram_webapp_data(init_data)
+        
+        if not validated_data:
+            return jsonify({'error': 'Datos de Telegram inválidos', 'code': 'INVALID_DATA'}), 401
+        
+        user = validated_data.get('user', {})
+        user_id = user.get('id')
+        
+        if not user_id:
+            return jsonify({'error': 'Usuario no identificado', 'code': 'NO_USER'}), 401
+        
+        request.telegram_user = user
+        request.telegram_data = validated_data
+        request.is_owner = is_owner(user_id)
+        request.is_demo = False
+        
         return f(*args, **kwargs)
     return decorated_function
 
@@ -651,6 +691,494 @@ def get_statuses():
         'success': True,
         'statuses': statuses
     })
+
+
+# ============================================================
+# ENDPOINTS DE RED SOCIAL - POSTS
+# ============================================================
+
+@app.route('/api/posts', methods=['POST'])
+@require_telegram_user
+def create_post():
+    """Crear una nueva publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        data = request.get_json()
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        content_type = data.get('contentType', 'text')
+        if content_type not in ['text', 'image', 'video']:
+            return jsonify({'error': 'Tipo de contenido inválido'}), 400
+        
+        content_url = data.get('contentUrl')
+        caption = data.get('caption', '')
+        
+        if content_type == 'text' and not caption:
+            return jsonify({'error': 'El texto es requerido para posts de tipo texto'}), 400
+        
+        if content_type in ['image', 'video'] and not content_url:
+            return jsonify({'error': 'La URL del contenido es requerida'}), 400
+        
+        db_manager.get_or_create_user(
+            user_id=user_id,
+            username=user.get('username'),
+            first_name=user.get('first_name'),
+            last_name=user.get('last_name'),
+            telegram_id=user.get('id')
+        )
+        
+        post_id = db_manager.create_post(
+            user_id=user_id,
+            content_type=content_type,
+            content_url=content_url,
+            caption=caption
+        )
+        
+        if post_id:
+            return jsonify({
+                'success': True,
+                'message': 'Publicación creada correctamente',
+                'postId': post_id
+            })
+        else:
+            return jsonify({'error': 'Error al crear la publicación'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating post: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/posts', methods=['GET'])
+@require_telegram_user
+def get_posts_feed():
+    """Obtener feed de publicaciones."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        limit = min(limit, 50)
+        
+        posts = db_manager.get_posts_feed(user_id=user_id, limit=limit, offset=offset)
+        
+        result = []
+        for post in posts:
+            result.append({
+                'id': post.get('id'),
+                'userId': post.get('user_id'),
+                'username': post.get('username'),
+                'firstName': post.get('first_name'),
+                'avatarUrl': post.get('avatar_url'),
+                'contentType': post.get('content_type'),
+                'contentUrl': post.get('content_url'),
+                'caption': post.get('caption'),
+                'likesCount': post.get('likes_count', 0),
+                'commentsCount': post.get('comments_count', 0),
+                'sharesCount': post.get('shares_count', 0),
+                'userLiked': post.get('user_liked', False),
+                'createdAt': post.get('created_at').isoformat() if post.get('created_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'posts': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting posts feed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/posts/<int:post_id>', methods=['GET'])
+@require_telegram_user
+def get_post_detail(post_id):
+    """Obtener detalles de una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        post = db_manager.get_post(post_id)
+        
+        if not post:
+            return jsonify({'error': 'Publicación no encontrada'}), 404
+        
+        return jsonify({
+            'success': True,
+            'post': {
+                'id': post.get('id'),
+                'userId': post.get('user_id'),
+                'username': post.get('username'),
+                'firstName': post.get('first_name'),
+                'avatarUrl': post.get('avatar_url'),
+                'contentType': post.get('content_type'),
+                'contentUrl': post.get('content_url'),
+                'caption': post.get('caption'),
+                'likesCount': post.get('likes_count', 0),
+                'commentsCount': post.get('comments_count', 0),
+                'sharesCount': post.get('shares_count', 0),
+                'createdAt': post.get('created_at').isoformat() if post.get('created_at') else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting post {post_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+@require_telegram_user
+def delete_post(post_id):
+    """Eliminar una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        success = db_manager.delete_post(post_id, user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Publicación eliminada correctamente'
+            })
+        else:
+            return jsonify({'error': 'No se pudo eliminar la publicación'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error deleting post {post_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/posts/<int:post_id>/like', methods=['POST'])
+@require_telegram_user
+def like_post(post_id):
+    """Dar like a una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        result = db_manager.like_post(post_id, user_id)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Like agregado' if result.get('message') == 'liked' else 'Ya habías dado like'
+            })
+        elif result.get('error') == 'post_not_found':
+            return jsonify({'error': 'Publicación no encontrada'}), 404
+        else:
+            return jsonify({'error': 'Error al agregar like'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error liking post {post_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/posts/<int:post_id>/like', methods=['DELETE'])
+@require_telegram_user
+def unlike_post(post_id):
+    """Quitar like de una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        result = db_manager.unlike_post(post_id, user_id)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Like removido' if result.get('message') == 'unliked' else 'No habías dado like'
+            })
+        elif result.get('error') == 'post_not_found':
+            return jsonify({'error': 'Publicación no encontrada'}), 404
+        else:
+            return jsonify({'error': 'Error al quitar like'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error unliking post {post_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS DE RED SOCIAL - USUARIOS Y SEGUIDORES
+# ============================================================
+
+@app.route('/api/users/<user_id>/profile', methods=['GET'])
+@require_telegram_user
+def get_user_profile(user_id):
+    """Obtener perfil de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        viewer = request.telegram_user
+        viewer_id = str(viewer.get('id'))
+        
+        profile = db_manager.get_user_profile(user_id, viewer_id)
+        
+        if not profile:
+            return jsonify({'error': 'Usuario no encontrado'}), 404
+        
+        return jsonify({
+            'success': True,
+            'profile': {
+                'id': profile.get('id'),
+                'username': profile.get('username'),
+                'firstName': profile.get('first_name'),
+                'lastName': profile.get('last_name'),
+                'avatarUrl': profile.get('avatar_url'),
+                'bio': profile.get('bio'),
+                'level': profile.get('level', 1),
+                'credits': profile.get('credits', 0),
+                'isVerified': profile.get('is_verified', False),
+                'followersCount': profile.get('followers_count', 0),
+                'followingCount': profile.get('following_count', 0),
+                'postsCount': profile.get('posts_count', 0),
+                'isFollowing': profile.get('is_following', False),
+                'createdAt': profile.get('created_at').isoformat() if profile.get('created_at') else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user profile {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/<user_id>/posts', methods=['GET'])
+@require_telegram_user
+def get_user_posts(user_id):
+    """Obtener publicaciones de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        limit = min(limit, 50)
+        
+        posts = db_manager.get_user_posts(user_id, limit=limit, offset=offset)
+        
+        result = []
+        for post in posts:
+            result.append({
+                'id': post.get('id'),
+                'userId': post.get('user_id'),
+                'username': post.get('username'),
+                'firstName': post.get('first_name'),
+                'avatarUrl': post.get('avatar_url'),
+                'contentType': post.get('content_type'),
+                'contentUrl': post.get('content_url'),
+                'caption': post.get('caption'),
+                'likesCount': post.get('likes_count', 0),
+                'commentsCount': post.get('comments_count', 0),
+                'sharesCount': post.get('shares_count', 0),
+                'createdAt': post.get('created_at').isoformat() if post.get('created_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'posts': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user posts {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/me/profile', methods=['PUT'])
+@require_telegram_user
+def update_my_profile():
+    """Actualizar mi perfil."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        data = request.get_json()
+        
+        bio = data.get('bio')
+        avatar_url = data.get('avatarUrl')
+        
+        success = db_manager.update_user_profile(user_id, bio=bio, avatar_url=avatar_url)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Perfil actualizado correctamente'
+            })
+        else:
+            return jsonify({'error': 'Error al actualizar perfil'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/<user_id>/follow', methods=['POST'])
+@require_telegram_user
+def follow_user(user_id):
+    """Seguir a un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        follower = request.telegram_user
+        follower_id = str(follower.get('id'))
+        
+        if follower_id == user_id:
+            return jsonify({'error': 'No puedes seguirte a ti mismo'}), 400
+        
+        db_manager.get_or_create_user(
+            user_id=follower_id,
+            username=follower.get('username'),
+            first_name=follower.get('first_name'),
+            last_name=follower.get('last_name'),
+            telegram_id=follower.get('id')
+        )
+        
+        success = db_manager.follow_user(follower_id, user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Ahora sigues a este usuario'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'Ya sigues a este usuario'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error following user {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/<user_id>/follow', methods=['DELETE'])
+@require_telegram_user
+def unfollow_user(user_id):
+    """Dejar de seguir a un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        follower = request.telegram_user
+        follower_id = str(follower.get('id'))
+        
+        success = db_manager.unfollow_user(follower_id, user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Has dejado de seguir a este usuario'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'No seguías a este usuario'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error unfollowing user {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/<user_id>/followers', methods=['GET'])
+@require_telegram_user
+def get_user_followers(user_id):
+    """Obtener lista de seguidores de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        limit = min(limit, 100)
+        
+        followers = db_manager.get_followers(user_id, limit=limit, offset=offset)
+        
+        result = []
+        for follower in followers:
+            result.append({
+                'id': follower.get('id'),
+                'username': follower.get('username'),
+                'firstName': follower.get('first_name'),
+                'lastName': follower.get('last_name'),
+                'avatarUrl': follower.get('avatar_url'),
+                'bio': follower.get('bio'),
+                'isVerified': follower.get('is_verified', False),
+                'followedAt': follower.get('followed_at').isoformat() if follower.get('followed_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'followers': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting followers for {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/<user_id>/following', methods=['GET'])
+@require_telegram_user
+def get_user_following(user_id):
+    """Obtener lista de usuarios que sigue."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        limit = min(limit, 100)
+        
+        following = db_manager.get_following(user_id, limit=limit, offset=offset)
+        
+        result = []
+        for user in following:
+            result.append({
+                'id': user.get('id'),
+                'username': user.get('username'),
+                'firstName': user.get('first_name'),
+                'lastName': user.get('last_name'),
+                'avatarUrl': user.get('avatar_url'),
+                'bio': user.get('bio'),
+                'isVerified': user.get('is_verified', False),
+                'followedAt': user.get('followed_at').isoformat() if user.get('followed_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'following': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting following for {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

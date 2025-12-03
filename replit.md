@@ -95,6 +95,14 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-03: Implemented social features - Posts and Followers system
+  - Added POST/GET/DELETE endpoints for posts (/api/posts)
+  - Added like/unlike functionality for posts
+  - Added follow/unfollow endpoints (/api/users/<id>/follow)
+  - Added followers/following list endpoints
+  - Added user profile endpoints with stats
+  - Database functions for social features in tracking/database.py
+
 - 2024-12-03: Converted profile from modal to integrated page
   - Profile is now a page-screen like other sections (Marketplace, Bots, Wallet)
   - Both top and bottom navigation bars remain visible when viewing profile

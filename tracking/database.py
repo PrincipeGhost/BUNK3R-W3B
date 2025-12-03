@@ -635,5 +635,406 @@ class DatabaseManager:
             logger.error(f"Error getting all trackings: {e}")
             return []
 
+    # ============================================================
+    # FUNCIONES PARA POSTS (Red Social)
+    # ============================================================
+    
+    def create_post(self, user_id: str, content_type: str, content_url: str = None, caption: str = None) -> Optional[int]:
+        """Crear una nueva publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO posts (user_id, content_type, content_url, caption) 
+                           VALUES (%s, %s, %s, %s) RETURNING id""",
+                        (user_id, content_type, content_url, caption)
+                    )
+                    result = cur.fetchone()
+                    conn.commit()
+                    post_id = result[0] if result else None
+                    logger.info(f"Post {post_id} created by user {user_id}")
+                    return post_id
+        except Exception as e:
+            logger.error(f"Error creating post: {e}")
+            return None
+    
+    def get_post(self, post_id: int) -> Optional[dict]:
+        """Obtener una publicación por ID"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url
+                           FROM posts p
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE p.id = %s AND p.is_active = TRUE""",
+                        (post_id,)
+                    )
+                    row = cur.fetchone()
+                    return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Error getting post {post_id}: {e}")
+            return None
+    
+    def get_posts_feed(self, user_id: str = None, limit: int = 20, offset: int = 0) -> List[dict]:
+        """Obtener feed de publicaciones (propias y de seguidos)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    if user_id:
+                        cur.execute(
+                            """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                                      EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = %s) as user_liked
+                               FROM posts p
+                               LEFT JOIN users u ON p.user_id = u.id
+                               WHERE p.is_active = TRUE 
+                               AND (p.user_id = %s OR p.user_id IN (SELECT following_id FROM follows WHERE follower_id = %s))
+                               ORDER BY p.created_at DESC
+                               LIMIT %s OFFSET %s""",
+                            (user_id, user_id, user_id, limit, offset)
+                        )
+                    else:
+                        cur.execute(
+                            """SELECT p.*, u.username, u.first_name, u.avatar_url, FALSE as user_liked
+                               FROM posts p
+                               LEFT JOIN users u ON p.user_id = u.id
+                               WHERE p.is_active = TRUE
+                               ORDER BY p.created_at DESC
+                               LIMIT %s OFFSET %s""",
+                            (limit, offset)
+                        )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting posts feed: {e}")
+            return []
+    
+    def get_user_posts(self, user_id: str, limit: int = 20, offset: int = 0) -> List[dict]:
+        """Obtener publicaciones de un usuario específico"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url
+                           FROM posts p
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE p.user_id = %s AND p.is_active = TRUE
+                           ORDER BY p.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (user_id, limit, offset)
+                    )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting user posts for {user_id}: {e}")
+            return []
+    
+    def delete_post(self, post_id: int, user_id: str) -> bool:
+        """Eliminar una publicación (solo el autor puede eliminar)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE posts SET is_active = FALSE WHERE id = %s AND user_id = %s",
+                        (post_id, user_id)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"Post {post_id} deleted by user {user_id}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error deleting post {post_id}: {e}")
+            return False
+    
+    def like_post(self, post_id: int, user_id: str) -> dict:
+        """Dar like a una publicación. Returns dict with success status and message."""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM posts WHERE id = %s AND is_active = TRUE", (post_id,))
+                    if not cur.fetchone():
+                        return {'success': False, 'error': 'post_not_found'}
+                    
+                    cur.execute(
+                        """INSERT INTO post_likes (post_id, user_id) 
+                           VALUES (%s, %s) ON CONFLICT (user_id, post_id) DO NOTHING""",
+                        (post_id, user_id)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute(
+                            "UPDATE posts SET likes_count = likes_count + 1 WHERE id = %s",
+                            (post_id,)
+                        )
+                        conn.commit()
+                        logger.info(f"User {user_id} liked post {post_id}")
+                        return {'success': True, 'message': 'liked'}
+                    else:
+                        conn.commit()
+                        return {'success': True, 'message': 'already_liked'}
+        except Exception as e:
+            logger.error(f"Error liking post {post_id}: {e}")
+            return {'success': False, 'error': 'database_error'}
+    
+    def unlike_post(self, post_id: int, user_id: str) -> dict:
+        """Quitar like de una publicación. Returns dict with success status and message."""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM posts WHERE id = %s AND is_active = TRUE", (post_id,))
+                    if not cur.fetchone():
+                        return {'success': False, 'error': 'post_not_found'}
+                    
+                    cur.execute(
+                        "DELETE FROM post_likes WHERE post_id = %s AND user_id = %s",
+                        (post_id, user_id)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute(
+                            "UPDATE posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = %s",
+                            (post_id,)
+                        )
+                        conn.commit()
+                        logger.info(f"User {user_id} unliked post {post_id}")
+                        return {'success': True, 'message': 'unliked'}
+                    else:
+                        conn.commit()
+                        return {'success': True, 'message': 'not_liked'}
+        except Exception as e:
+            logger.error(f"Error unliking post {post_id}: {e}")
+            return {'success': False, 'error': 'database_error'}
+    
+    # ============================================================
+    # FUNCIONES PARA SEGUIDORES (Red Social)
+    # ============================================================
+    
+    def follow_user(self, follower_id: str, following_id: str) -> bool:
+        """Seguir a un usuario"""
+        if follower_id == following_id:
+            logger.warning(f"User {follower_id} tried to follow themselves")
+            return False
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO follows (follower_id, following_id) 
+                           VALUES (%s, %s) ON CONFLICT (follower_id, following_id) DO NOTHING""",
+                        (follower_id, following_id)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"User {follower_id} now follows {following_id}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error following user: {e}")
+            return False
+    
+    def unfollow_user(self, follower_id: str, following_id: str) -> bool:
+        """Dejar de seguir a un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM follows WHERE follower_id = %s AND following_id = %s",
+                        (follower_id, following_id)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"User {follower_id} unfollowed {following_id}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error unfollowing user: {e}")
+            return False
+    
+    def get_followers(self, user_id: str, limit: int = 50, offset: int = 0) -> List[dict]:
+        """Obtener lista de seguidores de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT u.id, u.username, u.first_name, u.last_name, u.avatar_url, u.bio, u.is_verified,
+                                  f.created_at as followed_at
+                           FROM follows f
+                           JOIN users u ON f.follower_id = u.id
+                           WHERE f.following_id = %s
+                           ORDER BY f.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (user_id, limit, offset)
+                    )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting followers for {user_id}: {e}")
+            return []
+    
+    def get_following(self, user_id: str, limit: int = 50, offset: int = 0) -> List[dict]:
+        """Obtener lista de usuarios que sigue"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT u.id, u.username, u.first_name, u.last_name, u.avatar_url, u.bio, u.is_verified,
+                                  f.created_at as followed_at
+                           FROM follows f
+                           JOIN users u ON f.following_id = u.id
+                           WHERE f.follower_id = %s
+                           ORDER BY f.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (user_id, limit, offset)
+                    )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting following for {user_id}: {e}")
+            return []
+    
+    def get_follow_counts(self, user_id: str) -> dict:
+        """Obtener conteo de seguidores y seguidos"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) FROM follows WHERE following_id = %s", (user_id,))
+                    followers_count = cur.fetchone()[0]
+                    
+                    cur.execute("SELECT COUNT(*) FROM follows WHERE follower_id = %s", (user_id,))
+                    following_count = cur.fetchone()[0]
+                    
+                    return {
+                        'followers': followers_count,
+                        'following': following_count
+                    }
+        except Exception as e:
+            logger.error(f"Error getting follow counts for {user_id}: {e}")
+            return {'followers': 0, 'following': 0}
+    
+    def is_following(self, follower_id: str, following_id: str) -> bool:
+        """Verificar si un usuario sigue a otro"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT 1 FROM follows WHERE follower_id = %s AND following_id = %s",
+                        (follower_id, following_id)
+                    )
+                    return cur.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking follow status: {e}")
+            return False
+    
+    # ============================================================
+    # FUNCIONES PARA USUARIOS (Red Social)
+    # ============================================================
+    
+    def get_or_create_user(self, user_id: str, username: str = None, first_name: str = None, 
+                           last_name: str = None, telegram_id: int = None) -> Optional[dict]:
+        """Obtener o crear un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+                    user = cur.fetchone()
+                    
+                    if user:
+                        if username or first_name:
+                            cur.execute(
+                                """UPDATE users SET username = COALESCE(%s, username), 
+                                   first_name = COALESCE(%s, first_name),
+                                   last_name = COALESCE(%s, last_name),
+                                   telegram_id = COALESCE(%s, telegram_id),
+                                   last_seen = CURRENT_TIMESTAMP,
+                                   updated_at = CURRENT_TIMESTAMP
+                                   WHERE id = %s""",
+                                (username, first_name, last_name, telegram_id, user_id)
+                            )
+                            conn.commit()
+                        return dict(user)
+                    else:
+                        cur.execute(
+                            """INSERT INTO users (id, username, first_name, last_name, telegram_id) 
+                               VALUES (%s, %s, %s, %s, %s)
+                               ON CONFLICT (id) DO UPDATE SET 
+                                   username = COALESCE(EXCLUDED.username, users.username),
+                                   last_seen = CURRENT_TIMESTAMP
+                               RETURNING *""",
+                            (user_id, username, first_name, last_name, telegram_id)
+                        )
+                        new_user = cur.fetchone()
+                        conn.commit()
+                        logger.info(f"Created new user {user_id}")
+                        return dict(new_user) if new_user else None
+        except Exception as e:
+            logger.error(f"Error getting/creating user {user_id}: {e}")
+            return None
+    
+    def get_user_profile(self, user_id: str, viewer_id: str = None) -> Optional[dict]:
+        """Obtener perfil completo de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT id, username, first_name, last_name, avatar_url, bio, 
+                                  level, credits, is_verified, created_at
+                           FROM users WHERE id = %s""",
+                        (user_id,)
+                    )
+                    user = cur.fetchone()
+                    
+                    if not user:
+                        return None
+                    
+                    profile = dict(user)
+                    
+                    follow_counts = self.get_follow_counts(user_id)
+                    profile['followers_count'] = follow_counts['followers']
+                    profile['following_count'] = follow_counts['following']
+                    
+                    cur.execute("SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_active = TRUE", (user_id,))
+                    profile['posts_count'] = cur.fetchone()[0]
+                    
+                    if viewer_id and viewer_id != user_id:
+                        profile['is_following'] = self.is_following(viewer_id, user_id)
+                    else:
+                        profile['is_following'] = False
+                    
+                    return profile
+        except Exception as e:
+            logger.error(f"Error getting user profile {user_id}: {e}")
+            return None
+    
+    def update_user_profile(self, user_id: str, bio: str = None, avatar_url: str = None) -> bool:
+        """Actualizar perfil de usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    updates = []
+                    values = []
+                    
+                    if bio is not None:
+                        updates.append("bio = %s")
+                        values.append(bio)
+                    if avatar_url is not None:
+                        updates.append("avatar_url = %s")
+                        values.append(avatar_url)
+                    
+                    if not updates:
+                        return True
+                    
+                    updates.append("updated_at = CURRENT_TIMESTAMP")
+                    values.append(user_id)
+                    
+                    cur.execute(
+                        f"UPDATE users SET {', '.join(updates)} WHERE id = %s",
+                        values
+                    )
+                    conn.commit()
+                    logger.info(f"Updated profile for user {user_id}")
+                    return True
+        except Exception as e:
+            logger.error(f"Error updating user profile {user_id}: {e}")
+            return False
+
+
 # Global database manager instance
 db_manager = DatabaseManager()
