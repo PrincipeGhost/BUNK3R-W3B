@@ -342,19 +342,11 @@ const App = {
     switchProfileTab(tabName) {
         document.querySelectorAll('.profile-page-tab').forEach(tab => {
             tab.classList.remove('active');
-            const svg = tab.querySelector('svg');
-            if (svg) {
-                svg.setAttribute('fill', 'none');
-            }
         });
         
         const activeTab = document.querySelector(`.profile-page-tab[data-tab="${tabName}"]`);
         if (activeTab) {
             activeTab.classList.add('active');
-            const svg = activeTab.querySelector('svg');
-            if (svg && tabName === 'posts') {
-                svg.setAttribute('fill', 'currentColor');
-            }
         }
         
         document.querySelectorAll('.profile-tab-content').forEach(content => {
