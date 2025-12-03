@@ -91,6 +91,9 @@ const App = {
         document.getElementById('main-app').classList.remove('hidden');
         
         const userName = this.user.firstName || this.user.username || 'Usuario';
+        const userUsername = this.user.username || 'usuario';
+        const initials = userName.charAt(0).toUpperCase();
+        
         document.getElementById('user-name').textContent = userName;
         
         const homeUserName = document.getElementById('home-user-name');
@@ -105,8 +108,27 @@ const App = {
         
         const sidebarAvatar = document.getElementById('sidebar-avatar');
         if (sidebarAvatar) {
-            const initials = userName.charAt(0).toUpperCase();
             sidebarAvatar.textContent = initials;
+        }
+        
+        const bottomNavAvatar = document.getElementById('bottom-nav-avatar');
+        if (bottomNavAvatar) {
+            bottomNavAvatar.textContent = initials;
+        }
+        
+        const profileModalAvatar = document.getElementById('profile-modal-avatar');
+        if (profileModalAvatar) {
+            profileModalAvatar.textContent = initials;
+        }
+        
+        const profileModalName = document.getElementById('profile-modal-name');
+        if (profileModalName) {
+            profileModalName.textContent = userName;
+        }
+        
+        const profileModalUsername = document.getElementById('profile-modal-username');
+        if (profileModalUsername) {
+            profileModalUsername.textContent = '@' + userUsername;
         }
     },
     
@@ -198,36 +220,54 @@ const App = {
             });
         });
         
-        document.getElementById('status-filter').addEventListener('change', (e) => {
-            this.filterTrackings(e.target.value);
-        });
+        const statusFilter = document.getElementById('status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filterTrackings(e.target.value);
+            });
+        }
         
-        document.getElementById('create-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.createTracking();
-        });
+        const createForm = document.getElementById('create-form');
+        if (createForm) {
+            createForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.createTracking();
+            });
+        }
         
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            clearTimeout(this.searchTimeout);
-            this.searchTimeout = setTimeout(() => {
-                this.searchTrackings(e.target.value);
-            }, 300);
-        });
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.searchTrackings(e.target.value);
+                }, 300);
+            });
+        }
         
-        document.getElementById('search-btn').addEventListener('click', () => {
-            const query = document.getElementById('search-input').value;
-            this.searchTrackings(query);
-        });
+        const searchBtn = document.getElementById('search-btn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                const query = document.getElementById('search-input').value;
+                this.searchTrackings(query);
+            });
+        }
         
-        document.getElementById('btn-back').addEventListener('click', () => {
-            this.goBack();
-        });
+        const btnBack = document.getElementById('btn-back');
+        if (btnBack) {
+            btnBack.addEventListener('click', () => {
+                this.goBack();
+            });
+        }
         
-        document.getElementById('modal-overlay').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('modal-overlay')) {
-                this.closeModal();
-            }
-        });
+        const modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    this.closeModal();
+                }
+            });
+        }
         
         if (this.tg) {
             this.tg.onEvent('backButtonClicked', () => {
@@ -240,6 +280,92 @@ const App = {
                     }
                 }
             });
+        }
+        
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const navType = item.dataset.nav;
+                this.handleBottomNav(navType);
+            });
+        });
+        
+        const profileModalOverlay = document.getElementById('profile-modal-overlay');
+        const profileModalClose = document.getElementById('profile-modal-close');
+        
+        if (profileModalClose) {
+            profileModalClose.addEventListener('click', () => {
+                this.closeProfileModal();
+            });
+        }
+        
+        if (profileModalOverlay) {
+            profileModalOverlay.addEventListener('click', (e) => {
+                if (e.target === profileModalOverlay) {
+                    this.closeProfileModal();
+                }
+            });
+        }
+    },
+    
+    handleBottomNav(navType) {
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const activeItem = document.querySelector(`.bottom-nav-item[data-nav="${navType}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
+        
+        switch(navType) {
+            case 'home':
+                this.goToHome();
+                break;
+            case 'videos':
+                this.showToast('Videos - Proximamente', 'info');
+                break;
+            case 'messages':
+                this.showToast('Mensajes - Proximamente', 'info');
+                break;
+            case 'search':
+                this.openModule('tracking');
+                setTimeout(() => {
+                    this.switchSection('search');
+                }, 100);
+                break;
+            case 'profile':
+                this.openProfileModal();
+                break;
+        }
+    },
+    
+    openProfileModal() {
+        const overlay = document.getElementById('profile-modal-overlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            this.updateProfileStats();
+        }
+    },
+    
+    closeProfileModal() {
+        const overlay = document.getElementById('profile-modal-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+    },
+    
+    async updateProfileStats() {
+        try {
+            const response = await this.apiRequest('/api/stats');
+            if (response.success) {
+                const stats = response.stats;
+                document.getElementById('profile-stat-trackings').textContent = stats.total || 0;
+                document.getElementById('profile-stat-delivered').textContent = stats.entregado || 0;
+                document.getElementById('profile-stat-pending').textContent = (stats.retenido || 0) + (stats.enTransito || 0);
+                document.getElementById('profile-panel-views').textContent = `${stats.total || 0} operaciones este mes`;
+            }
+        } catch (error) {
+            console.error('Error updating profile stats:', error);
         }
     },
     
