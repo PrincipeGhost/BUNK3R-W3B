@@ -349,6 +349,109 @@
                 </div>
             </div>
 
+            <!-- PAGINA PERFIL -->
+            <div id="profile-screen" class="page-screen hidden">
+                <div class="profile-page-header">
+                    <span class="profile-page-username" id="profile-page-username">@demo_user</span>
+                    <span class="profile-verified-dot">●</span>
+                    <button class="profile-page-menu-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="profile-page-content">
+                    <div class="profile-page-top">
+                        <div class="profile-page-avatar-wrap">
+                            <div class="profile-page-avatar" id="profile-page-avatar"></div>
+                            <div class="profile-page-add-btn">+</div>
+                        </div>
+                        <div class="profile-page-stats">
+                            <div class="profile-page-stat">
+                                <span class="profile-page-stat-num" id="profile-page-posts">0</span>
+                                <span class="profile-page-stat-label">publicaciones</span>
+                            </div>
+                            <div class="profile-page-stat">
+                                <span class="profile-page-stat-num" id="profile-page-followers">658</span>
+                                <span class="profile-page-stat-label">seguidores</span>
+                            </div>
+                            <div class="profile-page-stat">
+                                <span class="profile-page-stat-num" id="profile-page-following">51</span>
+                                <span class="profile-page-stat-label">seguidos</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="profile-page-bio">
+                        <span class="profile-page-name" id="profile-page-name">Demo</span>
+                        <span class="profile-page-category">Artista</span>
+                        <span class="profile-page-bio-text">NMR<br>🔰 357 🔰</span>
+                    </div>
+                    <div class="profile-page-panel">
+                        <div class="profile-page-panel-info">
+                            <span class="profile-page-panel-title">Panel profesional</span>
+                            <span class="profile-page-panel-sub">151 visualizaciones en los ultimos 30 dias.</span>
+                        </div>
+                        <span class="profile-page-panel-arrow">›</span>
+                    </div>
+                    <div class="profile-page-buttons">
+                        <button class="profile-page-btn primary">Editar perfil</button>
+                        <button class="profile-page-btn secondary">Compartir perfil</button>
+                    </div>
+                    <div class="profile-page-tabs">
+                        <button class="profile-page-tab active">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </button>
+                        <button class="profile-page-tab">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                            </svg>
+                        </button>
+                        <button class="profile-page-tab">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                                <path d="M17 2.1l4 4-4 4"></path>
+                                <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8"></path>
+                                <path d="M7 21.9l-4-4 4-4"></path>
+                                <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"></path>
+                            </svg>
+                        </button>
+                        <button class="profile-page-tab">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="profile-page-gallery">
+                        <div class="profile-page-gallery-item">
+                            <div class="gallery-placeholder"></div>
+                        </div>
+                        <div class="profile-page-gallery-item">
+                            <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
+                        </div>
+                        <div class="profile-page-gallery-item">
+                            <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
+                        </div>
+                        <div class="profile-page-gallery-item">
+                            <div class="gallery-placeholder" style="background: #2a2a2a;"></div>
+                        </div>
+                        <div class="profile-page-gallery-item">
+                            <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
+                        </div>
+                        <div class="profile-page-gallery-item">
+                            <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SECCION TRACKING MANAGER -->
             <div id="tracking-module" class="module-screen hidden">
                 <header class="header">
@@ -599,125 +702,6 @@
             <div class="bottom-nav-avatar" id="bottom-nav-avatar"></div>
         </button>
     </nav>
-
-    <!-- MODAL DE PERFIL ESTILO INSTAGRAM -->
-    <div class="profile-modal-overlay hidden" id="profile-modal-overlay">
-        <div class="profile-modal" id="profile-modal">
-            <div class="profile-modal-header">
-                <button class="profile-modal-close" id="profile-modal-close">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-                <div class="profile-header-center">
-                    <span class="profile-modal-title" id="profile-modal-username">principe.wav</span>
-                    <span class="profile-verified-badge">●</span>
-                </div>
-                <button class="profile-modal-menu">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="profile-modal-content">
-                <div class="profile-ig-top">
-                    <div class="profile-ig-avatar-container">
-                        <div class="profile-modal-avatar" id="profile-modal-avatar"></div>
-                        <div class="profile-add-story">+</div>
-                    </div>
-                    <div class="profile-ig-stats">
-                        <div class="profile-stat">
-                            <span class="profile-stat-value" id="profile-stat-trackings">5</span>
-                            <span class="profile-stat-label">publicaciones</span>
-                        </div>
-                        <div class="profile-stat">
-                            <span class="profile-stat-value" id="profile-stat-followers">658</span>
-                            <span class="profile-stat-label">seguidores</span>
-                        </div>
-                        <div class="profile-stat">
-                            <span class="profile-stat-value" id="profile-stat-following">51</span>
-                            <span class="profile-stat-label">seguidos</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="profile-ig-bio">
-                    <span class="profile-modal-name" id="profile-modal-name">Principe</span>
-                    <span class="profile-category">Artista</span>
-                    <span class="profile-bio-text">NMR<br>🔰 357 🔰</span>
-                </div>
-                <div class="profile-modal-panel">
-                    <div class="profile-panel-content">
-                        <span class="profile-panel-title">Panel profesional</span>
-                        <span class="profile-panel-subtitle" id="profile-panel-views">151 visualizaciones en los ultimos 30 dias.</span>
-                    </div>
-                    <span class="profile-panel-arrow">›</span>
-                </div>
-                <div class="profile-modal-actions">
-                    <button class="profile-action-btn primary">Editar perfil</button>
-                    <button class="profile-action-btn secondary">Compartir perfil</button>
-                </div>
-                <div class="profile-ig-tabs">
-                    <button class="profile-tab active">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                        </svg>
-                    </button>
-                    <button class="profile-tab">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <polygon points="10 8 16 12 10 16 10 8"></polygon>
-                        </svg>
-                    </button>
-                    <button class="profile-tab">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 2.1l4 4-4 4"></path>
-                            <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8"></path>
-                            <path d="M7 21.9l-4-4 4-4"></path>
-                            <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"></path>
-                        </svg>
-                    </button>
-                    <button class="profile-tab">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                    </button>
-                </div>
-                <div class="profile-ig-gallery" id="profile-gallery">
-                    <div class="profile-gallery-item">
-                        <div class="gallery-placeholder"></div>
-                        <span class="gallery-views"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> 110</span>
-                    </div>
-                    <div class="profile-gallery-item">
-                        <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
-                        <span class="gallery-views"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> 192</span>
-                    </div>
-                    <div class="profile-gallery-item">
-                        <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
-                        <span class="gallery-views"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> 147</span>
-                    </div>
-                    <div class="profile-gallery-item">
-                        <div class="gallery-placeholder" style="background: #2a2a2a;"></div>
-                        <span class="gallery-views"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> 185</span>
-                    </div>
-                    <div class="profile-gallery-item">
-                        <div class="gallery-placeholder" style="background: #3a3a3a;"></div>
-                        <span class="gallery-views"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> 225</span>
-                    </div>
-                    <div class="profile-gallery-item">
-                        <div class="gallery-placeholder" style="background: #4a4a4a;"></div>
-                        <span class="gallery-views"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> 207</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

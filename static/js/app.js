@@ -149,6 +149,7 @@ const App = {
         document.getElementById('marketplace-screen').classList.add('hidden');
         document.getElementById('bots-screen').classList.add('hidden');
         document.getElementById('wallet-screen').classList.add('hidden');
+        document.getElementById('profile-screen').classList.add('hidden');
         document.getElementById('home-screen').classList.remove('hidden');
         
         document.querySelectorAll('.bottom-nav-item').forEach(item => {
@@ -286,12 +287,15 @@ const App = {
                 const marketplaceScreen = document.getElementById('marketplace-screen');
                 const botsScreen = document.getElementById('bots-screen');
                 const walletScreen = document.getElementById('wallet-screen');
+                const profileScreen = document.getElementById('profile-screen');
                 
                 if (marketplaceScreen && !marketplaceScreen.classList.contains('hidden')) {
                     this.goToHome();
                 } else if (botsScreen && !botsScreen.classList.contains('hidden')) {
                     this.goToHome();
                 } else if (walletScreen && !walletScreen.classList.contains('hidden')) {
+                    this.goToHome();
+                } else if (profileScreen && !profileScreen.classList.contains('hidden')) {
                     this.goToHome();
                 } else if (trackingModule && !trackingModule.classList.contains('hidden')) {
                     if (this.currentSection === 'detail') {
@@ -352,7 +356,8 @@ const App = {
                 this.showPage('wallet');
                 break;
             case 'profile':
-                this.openProfileModal();
+                this.showPage('profile');
+                this.updateProfilePage();
                 break;
         }
     },
@@ -363,6 +368,7 @@ const App = {
         document.getElementById('marketplace-screen').classList.add('hidden');
         document.getElementById('bots-screen').classList.add('hidden');
         document.getElementById('wallet-screen').classList.add('hidden');
+        document.getElementById('profile-screen').classList.add('hidden');
         
         const pageScreen = document.getElementById(`${pageName}-screen`);
         if (pageScreen) {
@@ -374,33 +380,19 @@ const App = {
         }
     },
     
-    openProfileModal() {
-        const overlay = document.getElementById('profile-modal-overlay');
-        if (overlay) {
-            overlay.classList.remove('hidden');
-            this.updateProfileStats();
+    updateProfilePage() {
+        const avatar = document.getElementById('profile-page-avatar');
+        const username = document.getElementById('profile-page-username');
+        const name = document.getElementById('profile-page-name');
+        
+        if (avatar && this.user) {
+            avatar.textContent = this.user.first_name ? this.user.first_name.charAt(0).toUpperCase() : 'U';
         }
-    },
-    
-    closeProfileModal() {
-        const overlay = document.getElementById('profile-modal-overlay');
-        if (overlay) {
-            overlay.classList.add('hidden');
+        if (username && this.user) {
+            username.textContent = this.user.username ? `@${this.user.username}` : '@demo_user';
         }
-    },
-    
-    async updateProfileStats() {
-        try {
-            const response = await this.apiRequest('/api/stats');
-            if (response.success) {
-                const stats = response.stats;
-                document.getElementById('profile-stat-trackings').textContent = stats.total || 0;
-                document.getElementById('profile-stat-delivered').textContent = stats.entregado || 0;
-                document.getElementById('profile-stat-pending').textContent = (stats.retenido || 0) + (stats.enTransito || 0);
-                document.getElementById('profile-panel-views').textContent = `${stats.total || 0} operaciones este mes`;
-            }
-        } catch (error) {
-            console.error('Error updating profile stats:', error);
+        if (name && this.user) {
+            name.textContent = this.user.first_name || 'Demo';
         }
     },
     

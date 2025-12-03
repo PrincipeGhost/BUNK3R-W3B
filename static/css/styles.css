@@ -1417,57 +1417,37 @@ body {
     display: block;
 }
 
-/* ==================== PROFILE MODAL ESTILO INSTAGRAM ==================== */
-.profile-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #000;
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    animation: fadeIn 0.2s ease;
-    overflow-y: auto;
+/* ==================== PROFILE PAGE (INTEGRADA) ==================== */
+#profile-screen {
+    padding-bottom: 70px;
 }
 
-.profile-modal-overlay.hidden {
-    display: none !important;
-    pointer-events: none;
-}
-
-.profile-modal {
-    width: 100%;
-    min-height: 100vh;
-    background: #000;
-    overflow: hidden;
-}
-
-.profile-modal-header {
+.profile-page-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     padding: 12px 16px;
-    background: #000;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.profile-header-center {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.profile-page-username {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
-.profile-verified-badge {
+.profile-verified-dot {
     color: #ff0050;
     font-size: 8px;
+    margin-left: 6px;
 }
 
-.profile-modal-close,
-.profile-modal-menu {
+.profile-page-menu-btn {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 36px;
     height: 36px;
     display: flex;
@@ -1480,101 +1460,91 @@ body {
     transition: var(--transition);
 }
 
-.profile-modal-close:hover,
-.profile-modal-menu:hover {
+.profile-page-menu-btn:hover {
     background: rgba(255, 255, 255, 0.1);
 }
 
-.profile-modal-close svg,
-.profile-modal-menu svg {
-    width: 24px;
-    height: 24px;
+.profile-page-menu-btn svg {
     color: var(--text-primary);
 }
 
-.profile-modal-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
+.profile-page-content {
+    padding: 16px;
 }
 
-.profile-modal-content {
-    padding: 0 16px 16px;
-}
-
-.profile-ig-top {
+.profile-page-top {
     display: flex;
     align-items: center;
     gap: 24px;
     margin-bottom: 16px;
 }
 
-.profile-ig-avatar-container {
+.profile-page-avatar-wrap {
     position: relative;
+    flex-shrink: 0;
 }
 
-.profile-modal-avatar {
-    width: 86px;
-    height: 86px;
+.profile-page-avatar {
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     background: linear-gradient(135deg, #333, #555);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 600;
     color: white;
     text-transform: uppercase;
-    flex-shrink: 0;
     border: 3px solid #333;
 }
 
-.profile-add-story {
+.profile-page-add-btn {
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     background: #0095f6;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: white;
-    border: 2px solid #000;
+    border: 2px solid var(--bg-primary);
 }
 
-.profile-ig-stats {
+.profile-page-stats {
     flex: 1;
     display: flex;
     justify-content: space-around;
 }
 
-.profile-stat {
+.profile-page-stat {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
 }
 
-.profile-stat-value {
-    font-size: 18px;
+.profile-page-stat-num {
+    font-size: 17px;
     font-weight: 700;
     color: var(--text-primary);
 }
 
-.profile-stat-label {
+.profile-page-stat-label {
     font-size: 13px;
     color: var(--text-secondary);
 }
 
-.profile-ig-bio {
+.profile-page-bio {
     margin-bottom: 16px;
 }
 
-.profile-modal-name {
+.profile-page-name {
     display: block;
     font-size: 14px;
     font-weight: 600;
@@ -1582,59 +1552,59 @@ body {
     margin-bottom: 2px;
 }
 
-.profile-category {
+.profile-page-category {
     display: block;
     font-size: 14px;
     color: var(--text-secondary);
     margin-bottom: 4px;
 }
 
-.profile-bio-text {
+.profile-page-bio-text {
     display: block;
     font-size: 14px;
     color: var(--text-primary);
     line-height: 1.4;
 }
 
-.profile-modal-panel {
+.profile-page-panel {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: #1a1a1a;
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 10px;
     margin-bottom: 16px;
 }
 
-.profile-panel-content {
+.profile-page-panel-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
-.profile-panel-title {
+.profile-page-panel-title {
     font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
 }
 
-.profile-panel-subtitle {
+.profile-page-panel-sub {
     font-size: 13px;
     color: var(--text-secondary);
 }
 
-.profile-panel-arrow {
+.profile-page-panel-arrow {
     font-size: 20px;
     color: var(--text-secondary);
 }
 
-.profile-modal-actions {
+.profile-page-buttons {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
 }
 
-.profile-action-btn {
+.profile-page-btn {
     flex: 1;
     padding: 8px 16px;
     border-radius: 8px;
@@ -1645,32 +1615,32 @@ body {
     border: none;
 }
 
-.profile-action-btn.primary {
-    background: #363636;
+.profile-page-btn.primary {
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
 }
 
-.profile-action-btn.primary:hover {
-    background: #454545;
+.profile-page-btn.primary:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
-.profile-action-btn.secondary {
-    background: #363636;
+.profile-page-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
 }
 
-.profile-action-btn.secondary:hover {
-    background: #454545;
+.profile-page-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
-.profile-ig-tabs {
+.profile-page-tabs {
     display: flex;
-    border-top: 1px solid #262626;
-    border-bottom: 1px solid #262626;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     margin: 0 -16px;
 }
 
-.profile-tab {
+.profile-page-tab {
     flex: 1;
     display: flex;
     align-items: center;
@@ -1684,21 +1654,19 @@ body {
     transition: var(--transition);
 }
 
-.profile-tab svg {
-    width: 24px;
-    height: 24px;
+.profile-page-tab svg {
     color: var(--text-muted);
 }
 
-.profile-tab.active {
+.profile-page-tab.active {
     border-bottom-color: var(--text-primary);
 }
 
-.profile-tab.active svg {
+.profile-page-tab.active svg {
     color: var(--text-primary);
 }
 
-.profile-ig-gallery {
+.profile-page-gallery {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 2px;
@@ -1706,7 +1674,7 @@ body {
     margin-top: 2px;
 }
 
-.profile-gallery-item {
+.profile-page-gallery-item {
     position: relative;
     aspect-ratio: 1;
     background: #1a1a1a;
@@ -1717,24 +1685,6 @@ body {
     width: 100%;
     height: 100%;
     background: #2a2a2a;
-}
-
-.gallery-views {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.gallery-views svg {
-    width: 14px;
-    height: 14px;
 }
 
 /* ==================== NUEVAS PAGINAS (Marketplace, Bots, Wallet) ==================== */

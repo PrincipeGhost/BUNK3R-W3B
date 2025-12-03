@@ -81,6 +81,12 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-03: Converted profile from modal to integrated page
+  - Profile is now a page-screen like other sections (Marketplace, Bots, Wallet)
+  - Both top and bottom navigation bars remain visible when viewing profile
+  - Instagram-style layout maintained: avatar, stats, bio, professional panel, gallery grid
+  - Telegram back button properly handles profile screen navigation
+
 - 2024-12-03: Added new pages for Marketplace, Bots, and Wallet
   - Redesigned bottom navigation: Home, Marketplace, Bots, Billetera (Wallet), Perfil (Profile)
   - Created Marketplace page with product categories and item grid (prices in credits)
