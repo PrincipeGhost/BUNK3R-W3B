@@ -81,13 +81,25 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-03: Added bottom navigation bar and profile modal
+  - Added fixed bottom navigation with 5 icons (Home, Videos, Messages, Search, Profile)
+  - Created profile modal popup with user stats and info (similar to Instagram style)
+  - Moved user profile from top bar to sidebar menu
+  - Added slide-up animation for profile modal
+  
 - 2024-12-03: Initial Replit setup and configuration
   - Installed Python 3.11 and dependencies
   - Created PostgreSQL database
   - Configured workflows and deployment
   - Added cache control headers for Replit iframe
 
+## UI Components
+- **Bottom Navigation**: Fixed navigation bar at the bottom with SVG icons
+- **Profile Modal**: Instagram-style slide-up modal showing user stats and profile info
+- **Sidebar Menu**: Hamburger menu with navigation options and user profile at bottom
+
 ## User Preferences
 - Language: Spanish (es)
 - Framework: Flask + Vanilla JS
 - Database: PostgreSQL
+- UI Style: Dark theme, Instagram-inspired design
