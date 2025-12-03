@@ -4,3 +4,9 @@ psycopg2-binary
 requests
 python-dotenv
 pytz
+flask
+gunicorn
+psycopg2-binary
+python-dotenv
+pytz
+requests
