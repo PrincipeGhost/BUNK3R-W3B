@@ -9,11 +9,13 @@ import hmac
 import hashlib
 import json
 import logging
+import uuid
 from datetime import datetime
 from functools import wraps
 from urllib.parse import parse_qs, unquote
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory
+from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
 
@@ -28,6 +30,18 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('ADMIN_TOKEN', 'dev-secret-key')
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'avatars')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_CONTENT_LENGTH = 5 * 1024 * 1024
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
 CHANNEL_ID = os.environ.get('CHANNEL_ID', '')
@@ -251,6 +265,15 @@ def validate_user():
             'isOwner': False
         }), 403
     
+    avatar_url = None
+    if db_manager:
+        try:
+            user_profile = db_manager.get_user_profile(str(user_id), str(user_id))
+            if user_profile:
+                avatar_url = user_profile.get('avatar_url')
+        except Exception as e:
+            logger.error(f"Error getting user profile for avatar: {e}")
+    
     return jsonify({
         'valid': True,
         'user': {
@@ -258,7 +281,8 @@ def validate_user():
             'firstName': user.get('first_name', ''),
             'lastName': user.get('last_name', ''),
             'username': user.get('username', ''),
-            'languageCode': user.get('language_code', 'es')
+            'languageCode': user.get('language_code', 'es'),
+            'avatarUrl': avatar_url
         },
         'isOwner': True
     })
@@ -1001,6 +1025,62 @@ def get_user_posts(user_id):
         
     except Exception as e:
         logger.error(f"Error getting user posts {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/users/me/avatar', methods=['POST'])
+@require_telegram_user
+def upload_avatar():
+    """Subir foto de perfil."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        if 'avatar' not in request.files:
+            return jsonify({'error': 'No se envio ninguna imagen'}), 400
+        
+        file = request.files['avatar']
+        
+        if file.filename == '':
+            return jsonify({'error': 'No se selecciono ninguna imagen'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Tipo de archivo no permitido. Usa PNG, JPG, JPEG, GIF o WEBP'}), 400
+        
+        db_manager.get_or_create_user(
+            user_id=user_id,
+            username=user.get('username'),
+            first_name=user.get('first_name'),
+            last_name=user.get('last_name'),
+            telegram_id=user.get('id')
+        )
+        
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        file.save(file_path)
+        
+        avatar_url = f"/static/uploads/avatars/{unique_filename}"
+        
+        success = db_manager.update_user_profile(user_id, avatar_url=avatar_url)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Foto de perfil actualizada',
+                'avatarUrl': avatar_url
+            })
+        else:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            return jsonify({'error': 'Error al actualizar perfil'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error uploading avatar: {e}")
         return jsonify({'error': str(e)}), 500
 
 

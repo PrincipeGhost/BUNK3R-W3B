@@ -21,7 +21,9 @@ This is a Telegram Web App for managing package tracking and shipments. Built wi
 └── static/              # Static assets
     ├── css/styles.css   # Application styles
     ├── js/app.js        # Frontend JavaScript
-    └── images/          # Logo and images
+    ├── images/          # Logo and images
+    └── uploads/         # User uploaded files
+        └── avatars/     # Profile photos
 ```
 
 ## Features
@@ -95,6 +97,14 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-03: Added profile avatar upload functionality
+  - Users can now upload their own profile photo by clicking on the avatar area
+  - Backend endpoint `/api/users/me/avatar` handles file uploads (PNG, JPG, JPEG, GIF, WEBP)
+  - Images are stored in `static/uploads/avatars/` with unique filenames
+  - Avatar persists across page reloads via database storage
+  - Maximum file size: 5MB
+  - Avatar automatically updates in profile page, sidebar, and bottom navigation
+
 - 2024-12-03: Security hardening for social features
   - Demo mode only allowed when BOT_TOKEN is not configured (development only)
   - Production environments require valid Telegram authentication

@@ -9,6 +9,7 @@ const App = {
     trackings: [],
     delayReasons: [],
     statuses: [],
+    userAvatarUrl: null,
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -41,8 +42,13 @@ const App = {
             this.user = response.user;
             this.isOwner = response.isOwner;
             
+            if (response.user.avatarUrl) {
+                this.userAvatarUrl = response.user.avatarUrl;
+            }
+            
             this.showMainApp();
             this.setupEventListeners();
+            this.updateAllAvatars();
             await this.loadInitialData();
             
         } catch (error) {
@@ -337,6 +343,8 @@ const App = {
                 this.switchProfileTab(tabName);
             });
         });
+        
+        this.setupAvatarUpload();
     },
     
     switchProfileTab(tabName) {
@@ -409,6 +417,7 @@ const App = {
     
     updateProfilePage() {
         const avatar = document.getElementById('profile-page-avatar');
+        const avatarImg = document.getElementById('profile-page-avatar-img');
         const username = document.getElementById('profile-page-username');
         const name = document.getElementById('profile-page-name');
         
@@ -420,6 +429,107 @@ const App = {
         }
         if (name && this.user) {
             name.textContent = this.user.first_name || 'Demo';
+        }
+        
+        if (this.userAvatarUrl && avatarImg) {
+            avatarImg.src = this.userAvatarUrl;
+            avatarImg.classList.remove('hidden');
+            if (avatar) avatar.classList.add('hidden');
+        } else if (avatarImg) {
+            avatarImg.classList.add('hidden');
+            if (avatar) avatar.classList.remove('hidden');
+        }
+    },
+    
+    setupAvatarUpload() {
+        const avatarWrap = document.getElementById('avatar-upload-wrap');
+        const avatarInput = document.getElementById('avatar-input');
+        const avatarAddBtn = document.getElementById('avatar-add-btn');
+        
+        if (avatarWrap && avatarInput) {
+            avatarWrap.addEventListener('click', () => {
+                avatarInput.click();
+            });
+            
+            avatarInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.uploadAvatar(e.target.files[0]);
+                }
+            });
+        }
+    },
+    
+    async uploadAvatar(file) {
+        const avatarLoading = document.getElementById('avatar-loading');
+        const avatarInput = document.getElementById('avatar-input');
+        
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.showToast('La imagen es muy grande. Maximo 5MB', 'error');
+            return;
+        }
+        
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            this.showToast('Tipo de archivo no permitido', 'error');
+            return;
+        }
+        
+        if (avatarLoading) avatarLoading.classList.remove('hidden');
+        
+        try {
+            const formData = new FormData();
+            formData.append('avatar', file);
+            
+            const headers = {};
+            if (this.isDemoMode) {
+                headers['X-Demo-Mode'] = 'true';
+            } else if (this.initData) {
+                headers['X-Telegram-Init-Data'] = this.initData;
+            }
+            
+            const response = await fetch('/api/users/me/avatar', {
+                method: 'POST',
+                headers: headers,
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.userAvatarUrl = data.avatarUrl;
+                this.updateProfilePage();
+                this.updateAllAvatars();
+                this.showToast('Foto de perfil actualizada', 'success');
+            } else {
+                this.showToast(data.error || 'Error al subir imagen', 'error');
+            }
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            this.showToast('Error al subir imagen', 'error');
+        } finally {
+            if (avatarLoading) avatarLoading.classList.add('hidden');
+            if (avatarInput) avatarInput.value = '';
+        }
+    },
+    
+    updateAllAvatars() {
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        const bottomNavAvatar = document.getElementById('bottom-nav-avatar');
+        
+        if (this.userAvatarUrl) {
+            if (sidebarAvatar) {
+                sidebarAvatar.style.backgroundImage = `url(${this.userAvatarUrl})`;
+                sidebarAvatar.style.backgroundSize = 'cover';
+                sidebarAvatar.style.backgroundPosition = 'center';
+                sidebarAvatar.textContent = '';
+            }
+            if (bottomNavAvatar) {
+                bottomNavAvatar.style.backgroundImage = `url(${this.userAvatarUrl})`;
+                bottomNavAvatar.style.backgroundSize = 'cover';
+                bottomNavAvatar.style.backgroundPosition = 'center';
+                bottomNavAvatar.textContent = '';
+            }
         }
     },
     
