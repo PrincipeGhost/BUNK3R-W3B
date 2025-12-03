@@ -52,10 +52,24 @@ This is a Telegram Web App for managing package tracking and shipments. Built wi
 - `RESEND_API_KEY` - API key for email service
 
 ## Database
-The application uses PostgreSQL with three main tables:
+The application uses PostgreSQL with the following tables:
+
+### Tracking Tables
 - `trackings` - Main tracking records
 - `shipping_routes` - Predefined routes and delivery estimates
 - `status_history` - Tracking status change history
+
+### Social/Marketplace Tables
+- `users` - User profiles (extended with social fields: level, credits, bio, etc.)
+- `posts` - User publications (images, videos, text)
+- `follows` - Follower/following relationships
+- `products` - Marketplace listings
+- `user_bots` - User's active bots
+- `achievements` - User badges and achievements
+- `achievement_types` - Available achievement definitions
+- `wallet_transactions` - Credit transactions history
+- `shared_posts` - Reposted/shared content
+- `post_likes` - Like tracking for posts
 
 Database is initialized automatically on first run via `init_db.py`.
 
