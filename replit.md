@@ -95,12 +95,18 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-03: Security hardening for social features
+  - Demo mode only allowed when BOT_TOKEN is not configured (development only)
+  - Production environments require valid Telegram authentication
+  - Separate `require_telegram_user` decorator for social features (allows any authenticated user)
+  - Original `require_telegram_auth` decorator requires owner-level access
+
 - 2024-12-03: Implemented social features - Posts and Followers system
   - Added POST/GET/DELETE endpoints for posts (/api/posts)
-  - Added like/unlike functionality for posts
+  - Added like/unlike functionality for posts (/api/posts/<id>/like)
   - Added follow/unfollow endpoints (/api/users/<id>/follow)
   - Added followers/following list endpoints
-  - Added user profile endpoints with stats
+  - Added user profile endpoints with stats (/api/users/<id>)
   - Database functions for social features in tracking/database.py
 
 - 2024-12-03: Converted profile from modal to integrated page
