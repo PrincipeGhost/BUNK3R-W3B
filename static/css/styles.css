@@ -1737,6 +1737,498 @@ body {
     height: 14px;
 }
 
+/* ==================== NUEVAS PAGINAS (Marketplace, Bots, Wallet) ==================== */
+.page-screen {
+    min-height: 100vh;
+    padding: 70px 16px 100px;
+    background: var(--bg-primary);
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.section-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+/* ==================== MARKETPLACE ==================== */
+.marketplace-categories {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    scrollbar-width: none;
+}
+
+.marketplace-categories::-webkit-scrollbar {
+    display: none;
+}
+
+.category-chip {
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.category-chip:hover,
+.category-chip.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+.marketplace-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.marketplace-item {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.marketplace-item:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+}
+
+.marketplace-item-image {
+    height: 100px;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.marketplace-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--accent-success);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.marketplace-item-info {
+    padding: 12px;
+}
+
+.marketplace-item-info h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.marketplace-item-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.marketplace-item-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.marketplace-price {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-warning);
+}
+
+.marketplace-buy-btn {
+    padding: 6px 12px;
+    background: var(--accent-primary);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.marketplace-buy-btn:hover {
+    background: #3182ce;
+}
+
+/* ==================== BOTS ==================== */
+.bots-section {
+    margin-bottom: 24px;
+}
+
+.bots-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bot-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.bot-card:hover {
+    border-color: var(--accent-primary);
+}
+
+.bot-avatar {
+    width: 48px;
+    height: 48px;
+    background: var(--bg-input);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.bot-info {
+    flex: 1;
+}
+
+.bot-info h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.bot-status {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.bot-status.online {
+    color: var(--accent-success);
+}
+
+.bot-status.offline {
+    color: var(--text-muted);
+}
+
+.bot-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.bot-price {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-warning);
+}
+
+.bot-action-btn {
+    padding: 8px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.bot-action-btn:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.bot-buy-btn {
+    padding: 8px 16px;
+    background: var(--accent-primary);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.bot-buy-btn:hover {
+    background: #3182ce;
+}
+
+/* ==================== WALLET ==================== */
+.wallet-balance-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #2d3748 100%);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.wallet-balance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.wallet-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.wallet-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    background: rgba(66, 153, 225, 0.2);
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.wallet-balance-amount {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 24px;
+}
+
+.wallet-currency {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 4px;
+}
+
+.wallet-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.wallet-actions-row {
+    display: flex;
+    gap: 12px;
+}
+
+.wallet-action-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.wallet-action-btn.primary {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.wallet-action-btn.secondary {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.wallet-action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.wallet-action-icon {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.wallet-section {
+    margin-bottom: 24px;
+}
+
+.wallet-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.see-all-btn {
+    font-size: 13px;
+    color: var(--accent-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.transaction-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.transaction-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.transaction-icon.income {
+    background: rgba(72, 187, 120, 0.2);
+    color: var(--accent-success);
+}
+
+.transaction-icon.expense {
+    background: rgba(252, 129, 129, 0.2);
+    color: var(--accent-danger);
+}
+
+.transaction-info {
+    flex: 1;
+}
+
+.transaction-info h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.transaction-info p {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.transaction-amount {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.transaction-amount.positive {
+    color: var(--accent-success);
+}
+
+.transaction-amount.negative {
+    color: var(--accent-danger);
+}
+
+.recharge-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.recharge-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+}
+
+.recharge-option:hover {
+    border-color: var(--accent-primary);
+}
+
+.recharge-option.popular {
+    border-color: var(--accent-warning);
+}
+
+.recharge-badge {
+    position: absolute;
+    top: -8px;
+    background: var(--accent-warning);
+    color: #000;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 10px;
+}
+
+.recharge-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.recharge-price {
+    font-size: 13px;
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
 /* Adjust main content padding for bottom nav */
 .home-screen {
     padding-bottom: 80px;

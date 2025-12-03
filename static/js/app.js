@@ -146,7 +146,18 @@ const App = {
     
     goToHome() {
         document.getElementById('tracking-module').classList.add('hidden');
+        document.getElementById('marketplace-screen').classList.add('hidden');
+        document.getElementById('bots-screen').classList.add('hidden');
+        document.getElementById('wallet-screen').classList.add('hidden');
         document.getElementById('home-screen').classList.remove('hidden');
+        
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        const homeBtn = document.querySelector('.bottom-nav-item[data-nav="home"]');
+        if (homeBtn) {
+            homeBtn.classList.add('active');
+        }
         
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.hide();
@@ -272,7 +283,17 @@ const App = {
         if (this.tg) {
             this.tg.onEvent('backButtonClicked', () => {
                 const trackingModule = document.getElementById('tracking-module');
-                if (trackingModule && !trackingModule.classList.contains('hidden')) {
+                const marketplaceScreen = document.getElementById('marketplace-screen');
+                const botsScreen = document.getElementById('bots-screen');
+                const walletScreen = document.getElementById('wallet-screen');
+                
+                if (marketplaceScreen && !marketplaceScreen.classList.contains('hidden')) {
+                    this.goToHome();
+                } else if (botsScreen && !botsScreen.classList.contains('hidden')) {
+                    this.goToHome();
+                } else if (walletScreen && !walletScreen.classList.contains('hidden')) {
+                    this.goToHome();
+                } else if (trackingModule && !trackingModule.classList.contains('hidden')) {
                     if (this.currentSection === 'detail') {
                         this.goBack();
                     } else {
@@ -321,21 +342,35 @@ const App = {
             case 'home':
                 this.goToHome();
                 break;
-            case 'videos':
-                this.showToast('Videos - Proximamente', 'info');
+            case 'marketplace':
+                this.showPage('marketplace');
                 break;
-            case 'messages':
-                this.showToast('Mensajes - Proximamente', 'info');
+            case 'bots':
+                this.showPage('bots');
                 break;
-            case 'search':
-                this.openModule('tracking');
-                setTimeout(() => {
-                    this.switchSection('search');
-                }, 100);
+            case 'wallet':
+                this.showPage('wallet');
                 break;
             case 'profile':
                 this.openProfileModal();
                 break;
+        }
+    },
+    
+    showPage(pageName) {
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('tracking-module').classList.add('hidden');
+        document.getElementById('marketplace-screen').classList.add('hidden');
+        document.getElementById('bots-screen').classList.add('hidden');
+        document.getElementById('wallet-screen').classList.add('hidden');
+        
+        const pageScreen = document.getElementById(`${pageName}-screen`);
+        if (pageScreen) {
+            pageScreen.classList.remove('hidden');
+        }
+        
+        if (this.tg && this.tg.BackButton) {
+            this.tg.BackButton.show();
         }
     },
     
