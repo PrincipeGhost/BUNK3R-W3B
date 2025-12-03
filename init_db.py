@@ -1,12 +1,12 @@
 """
 Database initialization script
-Creates all required tables for the tracking system
+Creates all required tables for the tracking system and social features
 """
 
 import os
 import sys
 import logging
-from tracking.models import CREATE_TABLES_SQL
+from tracking.models import CREATE_TABLES_SQL, CREATE_SOCIAL_TABLES_SQL
 from tracking.database import DatabaseManager
 
 logging.basicConfig(level=logging.INFO)
@@ -18,17 +18,21 @@ def init_database():
         logger.info("Initializing database connection...")
         db_manager = DatabaseManager()
         
-        logger.info("Creating tables...")
+        logger.info("Creating tracking tables...")
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
-                # Execute the table creation SQL
                 cur.execute(CREATE_TABLES_SQL)
                 conn.commit()
         
-        logger.info("Database initialized successfully!")
-        logger.info("All tables created and default data inserted.")
+        logger.info("Creating social/marketplace tables...")
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(CREATE_SOCIAL_TABLES_SQL)
+                conn.commit()
         
-        # Verify tables exist
+        logger.info("Database initialized successfully!")
+        logger.info("All tables created (tracking + social features).")
+        
         db_manager.initialize_database()
         
         return True
