@@ -253,16 +253,17 @@ const PublicationsManager = {
         const mediaHtml = this.renderPostMedia(post);
         const captionHtml = this.renderCaption(post.caption);
         const timeAgo = this.formatTimeAgo(post.created_at);
-        const avatarUrl = post.avatar_url || this.DEFAULT_AVATAR;
-        const likesText = post.reactions_count === 1 ? '1 me gusta' : `${post.reactions_count || 0} me gusta`;
+        const safeAvatarUrl = escapeAttribute(post.avatar_url || this.DEFAULT_AVATAR);
+        const likesText = post.reactions_count === 1 ? '1 me gusta' : `${parseInt(post.reactions_count) || 0} me gusta`;
         const displayName = escapeHtml(post.first_name || post.username || 'Usuario');
         const username = escapeHtml(post.username || '');
+        const safeUserId = sanitizeForJs(post.user_id);
         
         return `
             <article class="publication-card" data-post-id="${parseInt(post.id)}">
                 <div class="publication-header">
                     <div class="publication-author">
-                        <img src="${avatarUrl}" 
+                        <img src="${safeAvatarUrl}" 
                              alt="${username}" class="publication-author-avatar"
                              onerror="this.src='${this.DEFAULT_AVATAR}'">
                         <div class="publication-author-info">
@@ -270,7 +271,7 @@ const PublicationsManager = {
                             <span class="publication-time">${timeAgo}</span>
                         </div>
                     </div>
-                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${escapeAttribute(post.user_id)}')" data-post-menu="${parseInt(post.id)}">
+                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${safeUserId}')" data-post-menu="${parseInt(post.id)}">
                         ⋯
                     </button>
                 </div>
@@ -337,16 +338,17 @@ const PublicationsManager = {
         
         if (media.length === 1) {
             const item = media[0];
+            const safeUrl = escapeAttribute(item.media_url || '');
             if (item.media_type === 'video') {
                 return `
                     <div class="publication-media">
-                        <video src="${item.media_url}" controls playsinline></video>
+                        <video src="${safeUrl}" controls playsinline></video>
                     </div>
                 `;
             }
             return `
                 <div class="publication-media">
-                    <img src="${item.media_url}" alt="Publication media" loading="lazy">
+                    <img src="${safeUrl}" alt="Publication media" loading="lazy">
                 </div>
             `;
         }
@@ -355,14 +357,16 @@ const PublicationsManager = {
             <div class="publication-media">
                 <div class="media-carousel" data-carousel="${parseInt(post.id)}">
                     <div class="carousel-track">
-                        ${media.map((item, index) => `
+                        ${media.map((item, index) => {
+                            const safeUrl = escapeAttribute(item.media_url || '');
+                            return `
                             <div class="carousel-slide">
                                 ${item.media_type === 'video' 
-                                    ? `<video src="${item.media_url}" controls playsinline></video>`
-                                    : `<img src="${item.media_url}" alt="Media ${parseInt(index) + 1}" loading="lazy">`
+                                    ? `<video src="${safeUrl}" controls playsinline></video>`
+                                    : `<img src="${safeUrl}" alt="Media ${parseInt(index) + 1}" loading="lazy">`
                                 }
                             </div>
-                        `).join('')}
+                        `;}).join('')}
                     </div>
                     <button class="carousel-nav prev" onclick="PublicationsManager.prevSlide(${parseInt(post.id)})">‹</button>
                     <button class="carousel-nav next" onclick="PublicationsManager.nextSlide(${parseInt(post.id)})">›</button>
@@ -405,16 +409,20 @@ const PublicationsManager = {
             </div>
         `;
         
-        const storiesHtml = stories.map(story => `
-            <div class="story-item" onclick="PublicationsManager.viewStories('${escapeAttribute(story.user_id)}')">
+        const storiesHtml = stories.map(story => {
+            const safeAvatarUrl = escapeAttribute(story.avatar_url || this.DEFAULT_AVATAR);
+            const safeUserId = sanitizeForJs(story.user_id);
+            const safeUsername = escapeHtml(story.username || story.first_name || 'Usuario');
+            return `
+            <div class="story-item" onclick="PublicationsManager.viewStories('${safeUserId}')">
                 <div class="story-avatar-wrapper ${story.has_viewed ? 'viewed' : ''}">
-                    <img src="${story.avatar_url || this.DEFAULT_AVATAR}" 
-                         class="story-avatar" alt="${escapeHtml(story.username || '')}"
+                    <img src="${safeAvatarUrl}" 
+                         class="story-avatar" alt="${safeUsername}"
                          onerror="this.src='${this.DEFAULT_AVATAR}'">
                 </div>
-                <span class="story-username">${escapeHtml(story.username || story.first_name || 'Usuario')}</span>
+                <span class="story-username">${safeUsername}</span>
             </div>
-        `).join('');
+        `;}).join('');
         
         container.innerHTML = addStoryHtml + storiesHtml;
     },
@@ -696,12 +704,13 @@ const PublicationsManager = {
         const modal = document.createElement('div');
         modal.className = 'post-detail-modal';
         modal.id = 'post-detail-modal';
+        const safeUserId = sanitizeForJs(post.user_id);
         
         modal.innerHTML = `
             <div class="post-detail-header">
                 <button class="back-btn" onclick="PublicationsManager.closePostDetail()">←</button>
                 <span>Publicación</span>
-                <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${escapeAttribute(post.user_id)}')">⋯</button>
+                <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${safeUserId}')">⋯</button>
             </div>
             <div class="post-detail-content">
                 ${this.renderPost(post)}
@@ -726,13 +735,16 @@ const PublicationsManager = {
             return '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Sin comentarios aún</p>';
         }
         
-        return comments.map(comment => `
+        return comments.map(comment => {
+            const safeAvatarUrl = escapeAttribute(comment.avatar_url || '/static/images/default-avatar.png');
+            const safeUsername = escapeHtml(comment.username || 'Usuario');
+            return `
             <div class="comment-item" data-comment-id="${parseInt(comment.id)}">
-                <img src="${comment.avatar_url || '/static/images/default-avatar.png'}" 
-                     class="comment-avatar" alt="${escapeHtml(comment.username || '')}">
+                <img src="${safeAvatarUrl}" 
+                     class="comment-avatar" alt="${safeUsername}">
                 <div class="comment-content">
                     <div class="comment-header">
-                        <span class="comment-username">${escapeHtml(comment.username || 'Usuario')}</span>
+                        <span class="comment-username">${safeUsername}</span>
                         <span class="comment-time">${this.formatTimeAgo(comment.created_at)}</span>
                     </div>
                     <div class="comment-text">${escapeHtml(comment.content || '')}</div>
@@ -751,7 +763,7 @@ const PublicationsManager = {
                     ` : ''}
                 </div>
             </div>
-        `).join('');
+        `;}).join('');
     },
     
     closePostDetail() {
@@ -812,13 +824,14 @@ const PublicationsManager = {
         }
         
         return comments.map(comment => {
-            const avatarUrl = comment.avatar_url || this.DEFAULT_AVATAR;
+            const safeAvatarUrl = escapeAttribute(comment.avatar_url || this.DEFAULT_AVATAR);
             const username = escapeHtml(comment.first_name || comment.username || 'Usuario');
+            const safeUsernameForJs = sanitizeForJs(comment.first_name || comment.username || 'Usuario');
             const timeAgo = this.formatTimeAgo(comment.created_at);
             
             return `
                 <div class="inline-comment" data-comment-id="${parseInt(comment.id)}">
-                    <img src="${avatarUrl}" class="inline-comment-avatar" alt="${username}" onerror="this.src='${this.DEFAULT_AVATAR}'">
+                    <img src="${safeAvatarUrl}" class="inline-comment-avatar" alt="${username}" onerror="this.src='${this.DEFAULT_AVATAR}'">
                     <div class="inline-comment-body">
                         <div class="inline-comment-bubble">
                             <span class="inline-comment-name">${username}</span>
@@ -829,18 +842,18 @@ const PublicationsManager = {
                             <button class="inline-comment-like" onclick="PublicationsManager.likeComment(${parseInt(comment.id)})">
                                 Me gusta ${parseInt(comment.likes_count) > 0 ? '(' + parseInt(comment.likes_count) + ')' : ''}
                             </button>
-                            <button class="inline-comment-reply" onclick="PublicationsManager.focusReply(${parseInt(postId)}, '${escapeAttribute(comment.first_name || comment.username || 'Usuario')}')">
+                            <button class="inline-comment-reply" onclick="PublicationsManager.focusReply(${parseInt(postId)}, '${safeUsernameForJs}')">
                                 Responder
                             </button>
                         </div>
                         ${comment.replies && comment.replies.length > 0 ? `
                             <div class="inline-comment-replies">
                                 ${comment.replies.map(reply => {
-                                    const replyAvatar = reply.avatar_url || this.DEFAULT_AVATAR;
+                                    const safeReplyAvatar = escapeAttribute(reply.avatar_url || this.DEFAULT_AVATAR);
                                     const replyName = escapeHtml(reply.first_name || reply.username || 'Usuario');
                                     return `
                                         <div class="inline-comment inline-reply">
-                                            <img src="${replyAvatar}" class="inline-comment-avatar small" alt="${replyName}" onerror="this.src='${this.DEFAULT_AVATAR}'">
+                                            <img src="${safeReplyAvatar}" class="inline-comment-avatar small" alt="${replyName}" onerror="this.src='${this.DEFAULT_AVATAR}'">
                                             <div class="inline-comment-body">
                                                 <div class="inline-comment-bubble">
                                                     <span class="inline-comment-name">${replyName}</span>
@@ -1197,6 +1210,9 @@ const PublicationsManager = {
         viewer.id = 'story-viewer';
         
         const story = stories[index];
+        const safeAvatarUrl = escapeAttribute(story.avatar_url || '/static/images/default-avatar.png');
+        const safeMediaUrl = escapeAttribute(story.media_url || '');
+        const safeUsername = escapeHtml(story.username || 'Usuario');
         
         viewer.innerHTML = `
             <div class="story-progress-container">
@@ -1208,10 +1224,10 @@ const PublicationsManager = {
             </div>
             <div class="story-viewer-header">
                 <div class="story-user-info">
-                    <img src="${story.avatar_url || '/static/images/default-avatar.png'}" 
+                    <img src="${safeAvatarUrl}" 
                          class="story-viewer-avatar" alt="">
                     <div>
-                        <div class="story-viewer-username">${story.username || 'Usuario'}</div>
+                        <div class="story-viewer-username">${safeUsername}</div>
                         <div class="story-viewer-time">${this.formatTimeAgo(story.created_at)}</div>
                     </div>
                 </div>
@@ -1219,8 +1235,8 @@ const PublicationsManager = {
             </div>
             <div class="story-content">
                 ${story.media_type === 'video' 
-                    ? `<video src="${story.media_url}" autoplay playsinline></video>`
-                    : `<img src="${story.media_url}" alt="Story">`
+                    ? `<video src="${safeMediaUrl}" autoplay playsinline></video>`
+                    : `<img src="${safeMediaUrl}" alt="Story">`
                 }
             </div>
             <div class="story-nav-area prev" onclick="PublicationsManager.prevStory()"></div>

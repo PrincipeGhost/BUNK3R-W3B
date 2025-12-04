@@ -1027,15 +1027,17 @@ const App = {
             if (!listEl) return;
             
             if (response.success && response.devices && response.devices.length > 0) {
-                listEl.innerHTML = response.devices.map(device => `
+                listEl.innerHTML = response.devices.map(device => {
+                    const safeDeviceId = this.sanitizeForJs(device.device_id);
+                    return `
                     <div class="settings-device-item">
                         <span class="device-icon">${this.getDeviceIcon(device.device_type)}</span>
                         <div class="device-info">
-                            <span class="device-name">${device.device_name || 'Dispositivo'}</span>
-                            <span class="device-details">${device.device_type || 'Desconocido'}</span>
+                            <span class="device-name">${this.escapeHtml(device.device_name || 'Dispositivo')}</span>
+                            <span class="device-details">${this.escapeHtml(device.device_type || 'Desconocido')}</span>
                         </div>
                         ${device.is_current ? '<span class="device-current">Actual</span>' : `
-                            <button class="device-remove-btn" onclick="App.removeDevice('${device.device_id}')">
+                            <button class="device-remove-btn" onclick="App.removeDevice('${safeDeviceId}')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1043,7 +1045,7 @@ const App = {
                             </button>
                         `}
                     </div>
-                `).join('');
+                `;}).join('');
             } else {
                 listEl.innerHTML = '<div class="devices-empty">No hay dispositivos de confianza</div>';
             }
@@ -1766,20 +1768,20 @@ const App = {
             <div class="modal-body">
                 <div class="form-group">
                     <label>Nombre Destinatario</label>
-                    <input type="text" id="edit-recipient" value="${tracking?.recipientName || ''}" class="email-input">
+                    <input type="text" id="edit-recipient" value="${this.escapeAttribute(tracking?.recipientName || '')}" class="email-input">
                 </div>
                 <div class="form-group">
                     <label>Producto</label>
-                    <input type="text" id="edit-product" value="${tracking?.productName || ''}" class="email-input">
+                    <input type="text" id="edit-product" value="${this.escapeAttribute(tracking?.productName || '')}" class="email-input">
                 </div>
                 <div class="form-group">
                     <label>Precio</label>
-                    <input type="text" id="edit-price" value="${tracking?.productPrice || ''}" class="email-input">
+                    <input type="text" id="edit-price" value="${this.escapeAttribute(tracking?.productPrice || '')}" class="email-input">
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="App.closeModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="App.saveEdit('${trackingId}')">Guardar</button>
+                <button class="btn btn-primary" onclick="App.saveEdit('${this.sanitizeForJs(trackingId)}')">Guardar</button>
             </div>
         `;
         
@@ -2252,6 +2254,26 @@ const App = {
         div.textContent = text;
         return div.innerHTML;
     },
+
+    escapeAttribute(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    sanitizeForJs(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r');
+    },
     
     // ========== EXCHANGE FUNCTIONS ==========
     exchangeData: {
@@ -2353,12 +2375,12 @@ const App = {
         }
         
         list.innerHTML = currencies.slice(0, 100).map(c => `
-            <div class="currency-item" onclick="App.selectCurrency('${c.ticker}', '${this.escapeHtml(c.name)}', '${c.image || ''}')">
+            <div class="currency-item" onclick="App.selectCurrency('${this.sanitizeForJs(c.ticker)}', '${this.sanitizeForJs(c.name)}', '${this.sanitizeForJs(c.image || '')}')">
                 <div class="currency-item-icon">
-                    ${c.image ? `<img src="${c.image}" alt="${c.ticker}" onerror="this.style.display='none'">` : c.ticker.substring(0, 2).toUpperCase()}
+                    ${c.image ? `<img src="${this.escapeAttribute(c.image)}" alt="${this.escapeAttribute(c.ticker)}" onerror="this.style.display='none'">` : this.escapeHtml(c.ticker.substring(0, 2).toUpperCase())}
                 </div>
                 <div class="currency-item-info">
-                    <div class="currency-item-ticker">${c.ticker.toUpperCase()}</div>
+                    <div class="currency-item-ticker">${this.escapeHtml(c.ticker.toUpperCase())}</div>
                     <div class="currency-item-name">${this.escapeHtml(c.name)}</div>
                 </div>
             </div>
@@ -4457,14 +4479,14 @@ const App = {
         }
         
         listEl.innerHTML = users.map(user => `
-            <div class="admin-user-card" onclick="App.showUserDetail('${user.id}')">
-                <div class="admin-user-avatar">${(user.first_name || user.username || 'U')[0].toUpperCase()}</div>
+            <div class="admin-user-card" onclick="App.showUserDetail('${this.sanitizeForJs(user.id)}')">
+                <div class="admin-user-avatar">${this.escapeHtml((user.first_name || user.username || 'U')[0].toUpperCase())}</div>
                 <div class="admin-user-info">
-                    <div class="admin-user-name">${user.first_name || 'Usuario'} ${user.last_name || ''}</div>
-                    <div class="admin-user-username">@${user.username || 'sin_username'}</div>
+                    <div class="admin-user-name">${this.escapeHtml(user.first_name || 'Usuario')} ${this.escapeHtml(user.last_name || '')}</div>
+                    <div class="admin-user-username">@${this.escapeHtml(user.username || 'sin_username')}</div>
                     <div class="admin-user-meta">
                         <span class="admin-user-badge ${user.is_active ? 'active' : ''}">${user.is_active ? 'Activo' : 'Inactivo'}</span>
-                        <span class="admin-user-badge credits">${user.credits || 0} creditos</span>
+                        <span class="admin-user-badge credits">${parseInt(user.credits) || 0} creditos</span>
                     </div>
                 </div>
             </div>
@@ -4496,29 +4518,30 @@ const App = {
             
             if (response.success && response.user) {
                 const user = response.user;
+                const safeUserId = this.sanitizeForJs(userId);
                 content.innerHTML = `
                     <div class="admin-user-detail-header">
-                        <div class="admin-user-detail-avatar">${(user.first_name || user.username || 'U')[0].toUpperCase()}</div>
-                        <div class="admin-user-detail-name">${user.first_name || 'Usuario'} ${user.last_name || ''}</div>
-                        <div class="admin-user-detail-username">@${user.username || 'sin_username'}</div>
+                        <div class="admin-user-detail-avatar">${this.escapeHtml((user.first_name || user.username || 'U')[0].toUpperCase())}</div>
+                        <div class="admin-user-detail-name">${this.escapeHtml(user.first_name || 'Usuario')} ${this.escapeHtml(user.last_name || '')}</div>
+                        <div class="admin-user-detail-username">@${this.escapeHtml(user.username || 'sin_username')}</div>
                         <div class="admin-user-detail-stats">
                             <div class="admin-user-stat">
-                                <div class="admin-user-stat-value">${user.credits || 0}</div>
+                                <div class="admin-user-stat-value">${parseInt(user.credits) || 0}</div>
                                 <div class="admin-user-stat-label">Creditos</div>
                             </div>
                             <div class="admin-user-stat">
-                                <div class="admin-user-stat-value">${user.level || 1}</div>
+                                <div class="admin-user-stat-value">${parseInt(user.level) || 1}</div>
                                 <div class="admin-user-stat-label">Nivel</div>
                             </div>
                             <div class="admin-user-stat">
-                                <div class="admin-user-stat-value">${user.total_transactions || 0}</div>
+                                <div class="admin-user-stat-value">${parseInt(user.total_transactions) || 0}</div>
                                 <div class="admin-user-stat-label">Transacciones</div>
                             </div>
                         </div>
                     </div>
                     <div class="admin-user-actions">
-                        <button class="admin-user-action-btn primary" onclick="App.addCreditsToUser('${userId}')">Agregar Creditos</button>
-                        <button class="admin-user-action-btn danger" onclick="App.blockUser('${userId}')">${user.is_active ? 'Bloquear' : 'Desbloquear'}</button>
+                        <button class="admin-user-action-btn primary" onclick="App.addCreditsToUser('${safeUserId}')">Agregar Creditos</button>
+                        <button class="admin-user-action-btn danger" onclick="App.blockUser('${safeUserId}')">${user.is_active ? 'Bloquear' : 'Desbloquear'}</button>
                     </div>
                     <div class="admin-user-section">
                         <div class="admin-user-section-title">Informacion</div>
@@ -4526,13 +4549,13 @@ const App = {
                             <div class="setting-info">
                                 <span class="setting-label">Telegram ID</span>
                             </div>
-                            <span style="color: var(--text-muted);">${user.telegram_id || 'N/A'}</span>
+                            <span style="color: var(--text-muted);">${this.escapeHtml(user.telegram_id || 'N/A')}</span>
                         </div>
                         <div class="admin-setting-item">
                             <div class="setting-info">
                                 <span class="setting-label">Wallet</span>
                             </div>
-                            <span style="color: var(--text-muted); font-size: 11px;">${user.wallet_address ? user.wallet_address.substring(0, 20) + '...' : 'No conectada'}</span>
+                            <span style="color: var(--text-muted); font-size: 11px;">${user.wallet_address ? this.escapeHtml(user.wallet_address.substring(0, 20)) + '...' : 'No conectada'}</span>
                         </div>
                         <div class="admin-setting-item">
                             <div class="setting-info">
@@ -4602,19 +4625,19 @@ const App = {
                 
                 listEl.innerHTML = response.bots.map(bot => `
                     <div class="admin-bot-card">
-                        <div class="admin-bot-icon">${bot.icon || '🤖'}</div>
+                        <div class="admin-bot-icon">${this.escapeHtml(bot.icon || '🤖')}</div>
                         <div class="admin-bot-info">
-                            <div class="admin-bot-name">${bot.bot_name}</div>
-                            <div class="admin-bot-type">${bot.bot_type}</div>
-                            <div class="admin-bot-desc">${bot.description || 'Sin descripcion'}</div>
+                            <div class="admin-bot-name">${this.escapeHtml(bot.bot_name)}</div>
+                            <div class="admin-bot-type">${this.escapeHtml(bot.bot_type)}</div>
+                            <div class="admin-bot-desc">${this.escapeHtml(bot.description || 'Sin descripcion')}</div>
                         </div>
                         <div class="admin-bot-stats">
-                            <div class="admin-bot-price">${bot.price || 0} creditos</div>
-                            <div class="admin-bot-users">${bot.users_count || 0} usuarios</div>
+                            <div class="admin-bot-price">${parseInt(bot.price) || 0} creditos</div>
+                            <div class="admin-bot-users">${parseInt(bot.users_count) || 0} usuarios</div>
                         </div>
                         <div class="admin-bot-actions">
-                            <button class="edit-btn" onclick="App.editBot(${bot.id})">Editar</button>
-                            <button class="delete-btn" onclick="App.deleteBot(${bot.id})">Eliminar</button>
+                            <button class="edit-btn" onclick="App.editBot(${parseInt(bot.id)})">Editar</button>
+                            <button class="delete-btn" onclick="App.deleteBot(${parseInt(bot.id)})">Eliminar</button>
                         </div>
                     </div>
                 `).join('');
@@ -4723,12 +4746,12 @@ const App = {
                 
                 listEl.innerHTML = response.products.map(product => `
                     <div class="admin-product-card">
-                        <div class="admin-product-image">${product.icon || '📦'}</div>
+                        <div class="admin-product-image">${this.escapeHtml(product.icon || '📦')}</div>
                         <div class="admin-product-info">
-                            <div class="admin-product-name">${product.name}</div>
-                            <div class="admin-product-category">${product.category || 'Sin categoria'}</div>
-                            <div class="admin-product-price">${product.price} creditos</div>
-                            <div class="admin-product-stock">Stock: ${product.stock || 'Ilimitado'}</div>
+                            <div class="admin-product-name">${this.escapeHtml(product.name)}</div>
+                            <div class="admin-product-category">${this.escapeHtml(product.category || 'Sin categoria')}</div>
+                            <div class="admin-product-price">${parseInt(product.price) || 0} creditos</div>
+                            <div class="admin-product-stock">Stock: ${this.escapeHtml(product.stock || 'Ilimitado')}</div>
                         </div>
                     </div>
                 `).join('');
@@ -4764,13 +4787,13 @@ const App = {
                 
                 listEl.innerHTML = response.transactions.map(tx => `
                     <div class="admin-tx-card">
-                        <div class="admin-tx-icon ${tx.type}">${this.getTxIcon(tx.type)}</div>
+                        <div class="admin-tx-icon ${this.escapeAttribute(tx.type)}">${this.getTxIcon(tx.type)}</div>
                         <div class="admin-tx-info">
                             <div class="admin-tx-type">${this.getTxTypeName(tx.type)}</div>
-                            <div class="admin-tx-user">@${tx.username || 'usuario'}</div>
+                            <div class="admin-tx-user">@${this.escapeHtml(tx.username || 'usuario')}</div>
                         </div>
                         <div class="admin-tx-amount">
-                            <div class="amount ${tx.type === 'deposit' ? 'positive' : 'negative'}">${tx.type === 'deposit' ? '+' : '-'}${tx.amount} TON</div>
+                            <div class="amount ${tx.type === 'deposit' ? 'positive' : 'negative'}">${tx.type === 'deposit' ? '+' : '-'}${parseFloat(tx.amount) || 0} TON</div>
                             <div class="time">${this.formatDate(tx.created_at)}</div>
                         </div>
                     </div>
@@ -4809,14 +4832,14 @@ const App = {
                 listEl.innerHTML = response.alerts.map(alert => `
                     <div class="admin-alert-card ${alert.resolved ? 'resolved' : ''}">
                         <div class="admin-alert-header">
-                            <span class="admin-alert-type">${alert.alert_type || 'Alerta'}</span>
+                            <span class="admin-alert-type">${this.escapeHtml(alert.alert_type || 'Alerta')}</span>
                             <span class="admin-alert-time">${this.formatDate(alert.created_at)}</span>
                         </div>
-                        <div class="admin-alert-desc">${alert.description || 'Sin descripcion'}</div>
+                        <div class="admin-alert-desc">${this.escapeHtml(alert.description || 'Sin descripcion')}</div>
                         ${!alert.resolved ? `
                             <div class="admin-alert-actions">
-                                <button class="admin-alert-btn resolve" onclick="App.resolveAlert(${alert.id})">Resolver</button>
-                                <button class="admin-alert-btn view" onclick="App.viewAlertDetails(${alert.id})">Ver mas</button>
+                                <button class="admin-alert-btn resolve" onclick="App.resolveAlert(${parseInt(alert.id)})">Resolver</button>
+                                <button class="admin-alert-btn view" onclick="App.viewAlertDetails(${parseInt(alert.id)})">Ver mas</button>
                             </div>
                         ` : '<span style="font-size: 11px; color: var(--accent-success);">Resuelta</span>'}
                     </div>
@@ -4844,7 +4867,7 @@ const App = {
     },
 
     viewAlertDetails(alertId) {
-        this.showToast('Detalles de alerta ' + alertId, 'info');
+        this.showToast('Detalles de alerta ' + this.escapeHtml(String(alertId)), 'info');
     },
 
     async loadAdminActivity() {
@@ -4864,9 +4887,9 @@ const App = {
                     <div class="admin-activity-item">
                         <div class="admin-activity-icon">${this.getActivityIcon(activity.type)}</div>
                         <div class="admin-activity-content">
-                            <div class="admin-activity-text">${activity.description}</div>
+                            <div class="admin-activity-text">${this.escapeHtml(activity.description)}</div>
                             <div class="admin-activity-meta">
-                                ${activity.username ? `@${activity.username} · ` : ''}${this.formatDate(activity.created_at)}
+                                ${activity.username ? `@${this.escapeHtml(activity.username)} · ` : ''}${this.formatDate(activity.created_at)}
                             </div>
                         </div>
                     </div>
@@ -4900,11 +4923,11 @@ const App = {
                 listEl.innerHTML = response.lockouts.map(lockout => `
                     <div class="admin-lockout-card">
                         <div class="admin-lockout-info">
-                            <div class="admin-lockout-user">@${lockout.username || 'usuario'}</div>
-                            <div class="admin-lockout-reason">${lockout.reason || 'Sin razon'}</div>
+                            <div class="admin-lockout-user">@${this.escapeHtml(lockout.username || 'usuario')}</div>
+                            <div class="admin-lockout-reason">${this.escapeHtml(lockout.reason || 'Sin razon')}</div>
                             <div class="admin-lockout-time">Bloqueado: ${this.formatDate(lockout.locked_until)}</div>
                         </div>
-                        <button class="admin-unlock-btn" onclick="App.unlockUser('${lockout.user_id}')">Desbloquear</button>
+                        <button class="admin-unlock-btn" onclick="App.unlockUser('${this.sanitizeForJs(lockout.user_id)}')">Desbloquear</button>
                     </div>
                 `).join('');
             }
@@ -4996,9 +5019,9 @@ const App = {
                 
                 listEl.innerHTML = response.logs.map(log => `
                     <div class="admin-log-entry">
-                        <span class="log-time">${log.time || ''}</span>
-                        <span class="log-level ${log.level}">${(log.level || 'INFO').toUpperCase()}</span>
-                        <span class="log-message">${log.message}</span>
+                        <span class="log-time">${this.escapeHtml(log.time || '')}</span>
+                        <span class="log-level ${this.escapeAttribute(log.level || 'info')}">${this.escapeHtml((log.level || 'INFO').toUpperCase())}</span>
+                        <span class="log-message">${this.escapeHtml(log.message || '')}</span>
                     </div>
                 `).join('');
             }
@@ -5008,7 +5031,7 @@ const App = {
     },
 
     editBot(botId) {
-        this.showToast('Editar bot ' + botId, 'info');
+        this.showToast('Editar bot ' + this.escapeHtml(String(botId)), 'info');
     }
 };
 
