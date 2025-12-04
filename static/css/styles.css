@@ -6830,6 +6830,30 @@ body {
     cursor: pointer;
 }
 
+/* Publication Stats */
+.publication-stats {
+    padding: 4px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.likes-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.comments-count-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+}
+
 /* Comments Preview */
 .publication-comments-preview {
     padding: 0 16px 12px;

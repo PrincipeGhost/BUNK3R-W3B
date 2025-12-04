@@ -4187,6 +4187,18 @@ def share_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/publications/<int:post_id>/share-count', methods=['POST'])
+@require_telegram_auth
+def increment_share_count(post_id):
+    """Increment share count for external shares (copy link, Telegram share)"""
+    try:
+        db_manager.increment_share_count(post_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error incrementing share count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # STORIES SYSTEM
 # ============================================================

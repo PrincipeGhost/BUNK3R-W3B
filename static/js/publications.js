@@ -251,9 +251,10 @@ const PublicationsManager = {
     
     renderPost(post) {
         const mediaHtml = this.renderPostMedia(post);
-        const captionHtml = this.renderCaption(post.caption, post.username);
+        const captionHtml = this.renderCaption(post.caption);
         const timeAgo = this.formatTimeAgo(post.created_at);
         const avatarUrl = post.avatar_url || this.DEFAULT_AVATAR;
+        const likesText = post.reactions_count === 1 ? '1 me gusta' : `${post.reactions_count || 0} me gusta`;
         
         return `
             <article class="publication-card" data-post-id="${post.id}">
@@ -267,7 +268,7 @@ const PublicationsManager = {
                             <span class="publication-time">${timeAgo}</span>
                         </div>
                     </div>
-                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${post.id})">
+                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${post.id}, '${post.user_id}')" data-post-menu="${post.id}">
                         ⋯
                     </button>
                 </div>
@@ -297,23 +298,18 @@ const PublicationsManager = {
                     </button>
                 </div>
                 
-                <div class="publication-reactions">
-                    <span class="reactions-count" data-reactions-count="${post.id}">
-                        ${post.reactions_count || 0} reacciones
-                    </span>
+                <div class="publication-stats">
+                    <span class="likes-count" data-reactions-count="${post.id}">${likesText}</span>
+                    ${post.comments_count > 0 ? `
+                        <button class="comments-count-btn" onclick="PublicationsManager.showComments(${post.id})">
+                            Ver ${post.comments_count} comentario${post.comments_count > 1 ? 's' : ''}
+                        </button>
+                    ` : ''}
                 </div>
                 
                 ${captionHtml}
                 
-                ${post.comments_count > 0 ? `
-                    <div class="publication-comments-preview">
-                        <button class="view-comments-btn" onclick="PublicationsManager.showComments(${post.id})">
-                            Ver los ${post.comments_count} comentarios
-                        </button>
-                    </div>
-                ` : ''}
-                
-                ${post.is_encrypted ? '<span class="encryption-badge">Encriptado</span>' : ''}
+                ${post.is_encrypted ? '<span class="encryption-badge">🔒</span>' : ''}
             </article>
         `;
     },
@@ -363,7 +359,7 @@ const PublicationsManager = {
         `;
     },
     
-    renderCaption(caption, username) {
+    renderCaption(caption) {
         if (!caption) return '';
         
         let processedCaption = caption
@@ -372,7 +368,6 @@ const PublicationsManager = {
         
         return `
             <div class="publication-caption">
-                <span class="username">${username}</span>
                 ${processedCaption}
             </div>
         `;
@@ -600,7 +595,12 @@ const PublicationsManager = {
         }
     },
     
+    pendingReactions: {},
+    
     async toggleReaction(postId) {
+        if (this.pendingReactions[postId]) return;
+        this.pendingReactions[postId] = true;
+        
         const btn = document.querySelector(`[data-reaction-btn="${postId}"]`);
         const countEl = document.querySelector(`[data-reactions-count="${postId}"]`);
         const isLiked = btn?.classList.contains('liked');
@@ -621,14 +621,20 @@ const PublicationsManager = {
                 
                 const post = this.feedPosts.find(p => p.id === postId);
                 if (post) {
-                    post.reactions_count = (post.reactions_count || 0) + (isLiked ? -1 : 1);
+                    const newCount = response.reactions_count !== undefined 
+                        ? response.reactions_count 
+                        : (post.reactions_count || 0) + (isLiked ? -1 : 1);
+                    post.reactions_count = newCount;
+                    post.user_reaction = isLiked ? null : 'like';
                     if (countEl) {
-                        countEl.textContent = `${post.reactions_count} reacciones`;
+                        countEl.textContent = newCount === 1 ? '1 me gusta' : `${newCount} me gusta`;
                     }
                 }
             }
         } catch (error) {
             console.error('Reaction error:', error);
+        } finally {
+            this.pendingReactions[postId] = false;
         }
     },
     
@@ -677,7 +683,7 @@ const PublicationsManager = {
             <div class="post-detail-header">
                 <button class="back-btn" onclick="PublicationsManager.closePostDetail()">←</button>
                 <span>Publicación</span>
-                <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${post.id})">⋯</button>
+                <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${post.id}, '${post.user_id}')">⋯</button>
             </div>
             <div class="post-detail-content">
                 ${this.renderPost(post)}
@@ -773,28 +779,72 @@ const PublicationsManager = {
         }
     },
     
-    async sharePost(postId) {
-        try {
-            const response = await this.apiRequest(`/api/publications/${postId}/share`, {
-                method: 'POST',
-                body: JSON.stringify({ type: 'repost' })
-            });
-            
-            if (response.success) {
-                this.showToast('Publicación compartida', 'success');
+    sharePost(postId) {
+        const shareUrl = `${window.location.origin}/post/${postId}`;
+        
+        const options = [
+            { 
+                label: 'Compartir en Telegram', 
+                action: async () => {
+                    if (window.Telegram?.WebApp) {
+                        window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('Mira esta publicación en BUNK3R')}`);
+                    } else {
+                        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('Mira esta publicación en BUNK3R')}`, '_blank');
+                    }
+                    await this.incrementShareCount(postId);
+                }
+            },
+            { 
+                label: 'Copiar enlace', 
+                action: async () => {
+                    try {
+                        await navigator.clipboard.writeText(shareUrl);
+                        this.showToast('Enlace copiado', 'success');
+                        await this.incrementShareCount(postId);
+                    } catch (e) {
+                        this.showToast('No se pudo copiar', 'error');
+                    }
+                }
+            },
+            {
+                label: 'Repostear en mi perfil',
+                action: async () => {
+                    try {
+                        const response = await this.apiRequest(`/api/publications/${postId}/share`, {
+                            method: 'POST',
+                            body: JSON.stringify({ type: 'repost' })
+                        });
+                        if (response.success) {
+                            this.showToast('Publicación reposteada', 'success');
+                            this.loadFeed();
+                        }
+                    } catch (error) {
+                        console.error('Repost error:', error);
+                    }
+                }
             }
-        } catch (error) {
-            console.error('Share error:', error);
+        ];
+        
+        this.showActionSheet(options);
+    },
+    
+    async incrementShareCount(postId) {
+        try {
+            await this.apiRequest(`/api/publications/${postId}/share-count`, {
+                method: 'POST'
+            });
+        } catch (e) {
+            console.error('Share count error:', e);
         }
     },
     
-    showPostMenu(postId) {
+    showPostMenu(postId, postUserId) {
         const post = this.feedPosts.find(p => p.id === postId);
-        const isOwner = post && post.user_id === String(this.currentUser?.id || 0);
+        const userId = postUserId || post?.user_id;
+        const isOwner = post && userId === String(this.currentUser?.id || 0);
         
         const options = [
-            { label: 'Copiar enlace', action: () => this.copyPostLink(postId) },
-            { label: 'Reportar', action: () => this.reportContent('post', postId) }
+            { label: 'Copiar enlace', action: () => this.copyPostLink(postId) }
         ];
         
         if (isOwner) {
@@ -802,9 +852,34 @@ const PublicationsManager = {
                 { label: 'Editar', action: () => this.editPost(postId) },
                 { label: 'Eliminar', action: () => this.deletePost(postId), danger: true }
             );
+        } else {
+            options.push(
+                { label: 'Reportar publicacion', action: () => this.reportContent('post', postId) },
+                { label: 'Bloquear usuario', action: () => this.blockUser(userId), danger: true }
+            );
         }
         
         this.showActionSheet(options);
+    },
+    
+    async blockUser(userId) {
+        if (!confirm('¿Bloquear a este usuario? Ya no veras sus publicaciones.')) return;
+        
+        try {
+            const response = await this.apiRequest(`/api/users/${userId}/block`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Usuario bloqueado', 'success');
+                this.loadFeed();
+            } else {
+                this.showToast(response.error || 'Error al bloquear', 'error');
+            }
+        } catch (error) {
+            console.error('Block user error:', error);
+            this.showToast('Error al bloquear usuario', 'error');
+        }
     },
     
     showActionSheet(options) {

@@ -2471,6 +2471,21 @@ class DatabaseManager:
             logger.error(f"Error sharing post: {e}")
             return None
     
+    def increment_share_count(self, post_id: int) -> bool:
+        """Incrementar contador de shares para enlaces externos"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE posts SET shares_count = COALESCE(shares_count, 0) + 1 WHERE id = %s",
+                        (post_id,)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error incrementing share count: {e}")
+            return False
+    
     def delete_post(self, post_id: int, user_id: str) -> bool:
         """Eliminar publicación (solo el dueño)"""
         try:
