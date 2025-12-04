@@ -1831,6 +1831,29 @@ class DatabaseManager:
             logger.error(f"Error getting user gallery: {e}")
             return []
     
+    def count_new_posts(self, user_id: str, since_id: int) -> int:
+        """Count new posts in feed since a given post ID"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT p.id)
+                        FROM posts p
+                        WHERE p.id > %s
+                        AND (
+                            p.user_id = %s
+                            OR p.user_id IN (
+                                SELECT following_id FROM follows 
+                                WHERE follower_id = %s
+                            )
+                        )
+                    """, (since_id, user_id, user_id))
+                    result = cur.fetchone()
+                    return result[0] if result else 0
+        except Exception as e:
+            logger.error(f"Error counting new posts: {e}")
+            return 0
+
     def add_reaction(self, user_id: str, post_id: int, reaction_type: str) -> bool:
         """Agregar o cambiar reacción a una publicación"""
         try:
@@ -1902,6 +1925,16 @@ class DatabaseManager:
                                VALUES (%s, 'comment', %s, 'post', %s, %s)""",
                             (post_owner[0], user_id, post_id, "comentó en tu publicación")
                         )
+                    
+                    if parent_comment_id:
+                        cur.execute("SELECT user_id FROM post_comments WHERE id = %s", (parent_comment_id,))
+                        parent_author = cur.fetchone()
+                        if parent_author and parent_author[0] != user_id and (not post_owner or parent_author[0] != post_owner[0]):
+                            cur.execute(
+                                """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                                   VALUES (%s, 'comment_reply', %s, 'comment', %s, %s)""",
+                                (parent_author[0], user_id, comment_id, "respondió a tu comentario")
+                            )
                     
                     conn.commit()
                     return comment_id
@@ -2327,6 +2360,45 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error getting story viewers: {e}")
             return []
+
+    def delete_story(self, story_id: int, user_id: str) -> bool:
+        """Eliminar una historia (solo el dueño)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM stories WHERE id = %s AND user_id = %s",
+                        (story_id, user_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error deleting story: {e}")
+            return False
+
+    def react_to_story(self, story_id: int, user_id: str, reaction: str) -> bool:
+        """Reaccionar a una historia"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT user_id FROM stories WHERE id = %s", (story_id,))
+                    story = cur.fetchone()
+                    if not story:
+                        return False
+                    
+                    story_owner_id = story[0]
+                    if story_owner_id != user_id:
+                        cur.execute(
+                            """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                               VALUES (%s, 'story_reaction', %s, 'story', %s, %s)""",
+                            (story_owner_id, user_id, story_id, f"reaccionó {reaction} a tu historia")
+                        )
+                    
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error reacting to story: {e}")
+            return False
     
     def block_user(self, blocker_id: str, blocked_id: str) -> bool:
         """Bloquear a un usuario"""
@@ -2454,13 +2526,15 @@ class DatabaseManager:
                     if filter_type == 'transactions':
                         query += " AND n.type IN ('transaction', 'transaction_credit', 'transaction_debit')"
                     elif filter_type == 'likes':
-                        query += " AND n.type = 'like'"
+                        query += " AND n.type IN ('like', 'reaction')"
                     elif filter_type == 'comments':
-                        query += " AND n.type = 'comment'"
+                        query += " AND n.type IN ('comment', 'comment_reply')"
                     elif filter_type == 'follows':
-                        query += " AND n.type = 'follow'"
+                        query += " AND n.type IN ('follow', 'new_follower')"
                     elif filter_type == 'mentions':
                         query += " AND n.type = 'mention'"
+                    elif filter_type == 'stories':
+                        query += " AND n.type IN ('story_reply', 'story_reaction', 'story_view')"
                     
                     query += " ORDER BY n.created_at DESC LIMIT %s OFFSET %s"
                     params.extend([limit, offset])
@@ -2554,6 +2628,77 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error creating transaction notification: {e}")
             return None
+    
+    def get_notification_preferences(self, user_id: str) -> dict:
+        """Obtener preferencias de notificaciones del usuario"""
+        defaults = {
+            'likes': True,
+            'comments': True,
+            'follows': True,
+            'mentions': True,
+            'transactions': True,
+            'stories': True,
+            'push_enabled': True
+        }
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT notification_preferences FROM users WHERE id = %s",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    if result and result.get('notification_preferences'):
+                        prefs = result['notification_preferences']
+                        if isinstance(prefs, str):
+                            import json
+                            prefs = json.loads(prefs)
+                        return {**defaults, **prefs}
+                    return defaults
+        except Exception as e:
+            logger.error(f"Error getting notification preferences: {e}")
+            return defaults
+    
+    def update_notification_preferences(self, user_id: str, preferences: dict) -> bool:
+        """Actualizar preferencias de notificaciones del usuario"""
+        try:
+            import json
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET notification_preferences = %s WHERE id = %s",
+                        (json.dumps(preferences), user_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error updating notification preferences: {e}")
+            return False
+    
+    def should_notify_user(self, user_id: str, notif_type: str) -> bool:
+        """Verificar si el usuario quiere recibir este tipo de notificación"""
+        try:
+            prefs = self.get_notification_preferences(user_id)
+            type_map = {
+                'like': 'likes',
+                'reaction': 'likes',
+                'comment': 'comments',
+                'comment_reply': 'comments',
+                'follow': 'follows',
+                'new_follower': 'follows',
+                'mention': 'mentions',
+                'transaction': 'transactions',
+                'transaction_credit': 'transactions',
+                'transaction_debit': 'transactions',
+                'story_reply': 'stories',
+                'story_reaction': 'stories',
+                'story_view': 'stories'
+            }
+            pref_key = type_map.get(notif_type, notif_type)
+            return prefs.get(pref_key, True)
+        except Exception as e:
+            logger.error(f"Error checking notification preference: {e}")
+            return True
     
     def share_post(self, user_id: str, post_id: int, share_type: str = 'repost', 
                    quote_text: str = None, recipient_id: str = None) -> Optional[int]:

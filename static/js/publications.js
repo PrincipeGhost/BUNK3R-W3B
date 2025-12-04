@@ -120,6 +120,12 @@ const PublicationsManager = {
     isLoadingFeed: false,
     feedObserver: null,
     
+    feedPollingInterval: null,
+    lastFeedCheck: null,
+    newPostsCount: 0,
+    POLLING_INTERVAL: 60000,
+    POLLING_ACTIVE: false,
+    
     REACTION_EMOJIS: ['❤️', '😂', '😮', '😢', '😡', '👏', '🔥', '💯'],
     
     DEFAULT_AVATAR: 'data:image/svg+xml;base64,' + btoa(`
@@ -135,6 +141,15 @@ const PublicationsManager = {
         this.loadFeed();
         this.loadStories();
         this.setupInfiniteScroll();
+        this.startFeedPolling();
+    },
+
+    cleanup() {
+        this.stopFeedPolling();
+        if (this.feedObserver) {
+            this.feedObserver.disconnect();
+            this.feedObserver = null;
+        }
     },
     
     setupInfiniteScroll() {
@@ -331,6 +346,101 @@ const PublicationsManager = {
                 ErrorHandler.handle(error, 'Load stories', false);
             }
         }
+    },
+
+    startFeedPolling() {
+        if (this.feedPollingInterval) {
+            clearInterval(this.feedPollingInterval);
+        }
+        
+        this.POLLING_ACTIVE = true;
+        this.lastFeedCheck = Date.now();
+        
+        this.feedPollingInterval = setInterval(() => {
+            if (this.POLLING_ACTIVE && document.visibilityState === 'visible') {
+                this.checkForNewPosts();
+            }
+        }, this.POLLING_INTERVAL);
+        
+        document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+        
+        Logger?.info('Feed polling started');
+    },
+
+    stopFeedPolling() {
+        if (this.feedPollingInterval) {
+            clearInterval(this.feedPollingInterval);
+            this.feedPollingInterval = null;
+        }
+        this.POLLING_ACTIVE = false;
+        Logger?.info('Feed polling stopped');
+    },
+
+    handleVisibilityChange() {
+        if (document.visibilityState === 'visible' && this.POLLING_ACTIVE) {
+            const timeSinceLastCheck = Date.now() - (this.lastFeedCheck || 0);
+            if (timeSinceLastCheck > this.POLLING_INTERVAL) {
+                this.checkForNewPosts();
+            }
+        }
+    },
+
+    async checkForNewPosts() {
+        if (this.isLoadingFeed) return;
+        
+        try {
+            const latestPostId = this.feedPosts[0]?.id;
+            if (!latestPostId) return;
+            
+            const response = await this.apiRequest(`/api/publications/check-new?since_id=${latestPostId}`);
+            
+            if (response.success && response.new_count > 0) {
+                this.newPostsCount = response.new_count;
+                this.showNewPostsBanner(response.new_count);
+            }
+            
+            this.lastFeedCheck = Date.now();
+        } catch (error) {
+            Logger?.warn('Error checking for new posts:', error);
+        }
+    },
+
+    showNewPostsBanner(count) {
+        let banner = document.getElementById('new-posts-banner');
+        
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'new-posts-banner';
+            banner.className = 'new-posts-banner';
+            banner.onclick = () => this.loadNewPosts();
+            
+            const feedContainer = document.getElementById('publications-feed');
+            if (feedContainer && feedContainer.parentNode) {
+                feedContainer.parentNode.insertBefore(banner, feedContainer);
+            }
+        }
+        
+        banner.innerHTML = `<span>↑</span> ${count} ${count === 1 ? 'nueva publicacion' : 'nuevas publicaciones'}`;
+        banner.classList.add('visible');
+    },
+
+    hideNewPostsBanner() {
+        const banner = document.getElementById('new-posts-banner');
+        if (banner) {
+            banner.classList.remove('visible');
+        }
+        this.newPostsCount = 0;
+    },
+
+    async loadNewPosts() {
+        this.hideNewPostsBanner();
+        await this.loadFeed(true);
+        
+        const feedContainer = document.getElementById('publications-feed');
+        if (feedContainer) {
+            feedContainer.scrollTop = 0;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     
     renderFeed() {
@@ -1418,6 +1528,9 @@ const PublicationsManager = {
         const safeAvatarUrl = escapeAttribute(story.avatar_url || '/static/images/default-avatar.png');
         const safeMediaUrl = escapeAttribute(story.media_url || '');
         const safeUsername = escapeHtml(story.username || 'Usuario');
+        const isOwnStory = story.user_id == (App?.user?.id || App?.user?.telegram_id);
+        const timeRemaining = this.getStoryTimeRemaining(story.created_at);
+        const viewsCount = story.views_count || 0;
         
         viewer.innerHTML = `
             <div class="story-progress-container">
@@ -1433,10 +1546,23 @@ const PublicationsManager = {
                          class="story-viewer-avatar" alt="">
                     <div>
                         <div class="story-viewer-username">${safeUsername}</div>
-                        <div class="story-viewer-time">${this.formatTimeAgo(story.created_at)}</div>
+                        <div class="story-viewer-time">
+                            ${this.formatTimeAgo(story.created_at)}
+                            ${timeRemaining ? ` • ${timeRemaining}` : ''}
+                        </div>
                     </div>
                 </div>
-                <button class="story-close-btn" onclick="PublicationsManager.closeStoryViewer()">×</button>
+                <div class="story-header-actions">
+                    ${isOwnStory ? `
+                        <button class="story-action-btn story-viewers-btn" onclick="PublicationsManager.showStoryViewers(${story.id})" title="Visto por">
+                            👁 ${viewsCount}
+                        </button>
+                        <button class="story-action-btn story-delete-btn" onclick="PublicationsManager.deleteStory(${story.id})" title="Eliminar">
+                            🗑
+                        </button>
+                    ` : ''}
+                    <button class="story-close-btn" onclick="PublicationsManager.closeStoryViewer()">×</button>
+                </div>
             </div>
             <div class="story-content">
                 ${story.media_type === 'video' 
@@ -1446,6 +1572,13 @@ const PublicationsManager = {
             </div>
             <div class="story-nav-area prev" onclick="PublicationsManager.prevStory()"></div>
             <div class="story-nav-area next" onclick="PublicationsManager.nextStory()"></div>
+            ${!isOwnStory ? `
+                <div class="story-reactions-bar">
+                    ${['❤️', '🔥', '😂', '😮', '😢', '👏'].map(emoji => 
+                        `<button class="story-react-btn" onclick="PublicationsManager.reactToStory(${story.id}, '${emoji}')">${emoji}</button>`
+                    ).join('')}
+                </div>
+            ` : ''}
         `;
         
         document.body.appendChild(viewer);
@@ -1455,6 +1588,97 @@ const PublicationsManager = {
         
         this.markStoryViewed(story.id);
         this.startStoryProgress(stories[index]);
+    },
+
+    getStoryTimeRemaining(createdAt) {
+        if (!createdAt) return '';
+        const created = new Date(createdAt);
+        const expiresAt = new Date(created.getTime() + 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const remaining = expiresAt - now;
+        
+        if (remaining <= 0) return '';
+        
+        const hours = Math.floor(remaining / (60 * 60 * 1000));
+        const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+        
+        if (hours > 0) {
+            return `${hours}h restantes`;
+        }
+        return `${minutes}m restantes`;
+    },
+
+    async deleteStory(storyId) {
+        if (!confirm('¿Eliminar esta historia?')) return;
+        
+        try {
+            const response = await this.apiRequest(`/api/stories/${storyId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Historia eliminada', 'success');
+                this.closeStoryViewer();
+                this.loadStories();
+            } else {
+                this.showToast(response.error || 'Error al eliminar', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting story:', error);
+            this.showToast('Error al eliminar historia', 'error');
+        }
+    },
+
+    async showStoryViewers(storyId) {
+        if (this._storyTimeout) clearTimeout(this._storyTimeout);
+        
+        try {
+            const response = await this.apiRequest(`/api/stories/${storyId}/viewers`);
+            
+            if (response.success) {
+                const viewers = response.viewers || [];
+                const viewersList = viewers.length > 0 
+                    ? viewers.map(v => `
+                        <div class="story-viewer-item">
+                            <img src="${escapeAttribute(v.avatar_url || this.DEFAULT_AVATAR)}" class="story-viewer-item-avatar">
+                            <span>${escapeHtml(v.username || v.first_name || 'Usuario')}</span>
+                        </div>
+                    `).join('')
+                    : '<p class="story-viewers-empty">Nadie ha visto esta historia aun</p>';
+                
+                const modal = document.createElement('div');
+                modal.className = 'story-viewers-modal';
+                modal.innerHTML = `
+                    <div class="story-viewers-content">
+                        <div class="story-viewers-header">
+                            <h3>Visto por ${viewers.length}</h3>
+                            <button onclick="this.closest('.story-viewers-modal').remove(); PublicationsManager.startStoryProgress(PublicationsManager._currentStories[PublicationsManager._currentStoryIndex])">×</button>
+                        </div>
+                        <div class="story-viewers-list">
+                            ${viewersList}
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+        } catch (error) {
+            console.error('Error loading story viewers:', error);
+        }
+    },
+
+    async reactToStory(storyId, emoji) {
+        try {
+            const response = await this.apiRequest(`/api/stories/${storyId}/react`, {
+                method: 'POST',
+                body: JSON.stringify({ reaction: emoji })
+            });
+            
+            if (response.success) {
+                this.showToast('Reaccion enviada', 'success');
+            }
+        } catch (error) {
+            console.error('Error reacting to story:', error);
+        }
     },
     
     async markStoryViewed(storyId) {

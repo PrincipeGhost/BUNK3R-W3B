@@ -4273,6 +4273,29 @@ def get_feed():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/publications/check-new', methods=['GET'])
+@require_telegram_auth
+def check_new_posts():
+    """Check for new posts since a given post ID"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        since_id = request.args.get('since_id', type=int)
+        
+        if not since_id:
+            return jsonify({'success': True, 'new_count': 0})
+        
+        new_count = db_manager.count_new_posts(user_id, since_id)
+        
+        return jsonify({
+            'success': True,
+            'new_count': new_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking new posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/publications/<int:post_id>', methods=['GET'])
 @require_telegram_auth
 def get_publication(post_id):
@@ -4719,6 +4742,43 @@ def get_story_viewers(story_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/stories/<int:story_id>', methods=['DELETE'])
+@require_telegram_auth
+def delete_story(story_id):
+    """Delete a story (owner only)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.delete_story(story_id, user_id)
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar la historia'}), 400
+        
+        return jsonify({'success': True, 'message': 'Historia eliminada'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stories/<int:story_id>/react', methods=['POST'])
+@require_telegram_auth
+def react_to_story(story_id):
+    """React to a story with an emoji"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        reaction = data.get('reaction', '❤️')
+        
+        success = db_manager.react_to_story(story_id, user_id, reaction)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error reacting to story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # EXPLORE & SEARCH
 # ============================================================
@@ -4959,6 +5019,38 @@ def mark_single_notification_read(notification_id):
         return jsonify({'success': success})
     except Exception as e:
         logger.error(f"Error marking notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/preferences', methods=['GET'])
+@require_telegram_auth
+def get_notification_preferences():
+    """Get user notification preferences"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        preferences = db_manager.get_notification_preferences(user_id)
+        return jsonify({'success': True, 'preferences': preferences})
+    except Exception as e:
+        logger.error(f"Error getting notification preferences: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/preferences', methods=['POST'])
+@require_telegram_auth
+def update_notification_preferences():
+    """Update user notification preferences"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        preferences = data.get('preferences', {})
+        
+        valid_keys = ['likes', 'comments', 'follows', 'mentions', 'transactions', 'stories', 'push_enabled']
+        clean_prefs = {k: bool(v) for k, v in preferences.items() if k in valid_keys}
+        
+        success = db_manager.update_notification_preferences(user_id, clean_prefs)
+        return jsonify({'success': success})
+    except Exception as e:
+        logger.error(f"Error updating notification preferences: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

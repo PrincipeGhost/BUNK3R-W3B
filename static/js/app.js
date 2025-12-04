@@ -3227,7 +3227,7 @@ const App = {
         });
         
         if (response.success) {
-            await this.loadWalletBalance();
+            await this.loadWalletBalance(true);
             return true;
         } else if (response.error === 'insufficient_balance') {
             this.showToast('Saldo insuficiente. Recarga tu wallet.', 'error');
@@ -3548,25 +3548,63 @@ const App = {
 
             if (response.success) {
                 this.showToast(`+${credits} BUNK3RCO1N agregados!`, 'success');
-                this.loadWalletBalance();
+                this.loadWalletBalance(true);
             }
         } catch (error) {
             console.error('Error recording payment:', error);
         }
     },
 
-    async loadWalletBalance() {
+    async loadWalletBalance(animate = false) {
         try {
             const response = await this.apiRequest('/api/wallet/balance', { method: 'GET' });
             if (response.success) {
                 const balanceEl = document.getElementById('wallet-balance');
                 if (balanceEl) {
-                    balanceEl.textContent = response.balance.toLocaleString();
+                    const oldBalance = parseInt(balanceEl.textContent.replace(/,/g, '')) || 0;
+                    const newBalance = response.balance;
+                    
+                    if (animate && oldBalance !== newBalance) {
+                        this.animateBalanceChange(balanceEl, oldBalance, newBalance);
+                    } else {
+                        balanceEl.textContent = newBalance.toLocaleString();
+                    }
+                    
+                    if (typeof StateManager !== 'undefined') {
+                        StateManager.set('wallet.balance', newBalance, { silent: true });
+                    }
                 }
             }
         } catch (error) {
             console.error('Error loading wallet balance:', error);
         }
+    },
+
+    animateBalanceChange(element, from, to) {
+        const duration = 1000;
+        const start = performance.now();
+        const diff = to - from;
+        
+        element.classList.add('balance-updating');
+        
+        const animate = (currentTime) => {
+            const elapsed = currentTime - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            const current = Math.round(from + diff * easeOut);
+            
+            element.textContent = current.toLocaleString();
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                element.classList.remove('balance-updating');
+                element.classList.add('balance-changed');
+                setTimeout(() => element.classList.remove('balance-changed'), 500);
+            }
+        };
+        
+        requestAnimationFrame(animate);
     },
 
     async initiateTONPayment(credits, tonAmount) {
@@ -3663,7 +3701,22 @@ const App = {
         });
     },
 
+    paymentVerificationAttempts: {},
+    
     async verifyPayment(paymentId) {
+        if (!this.paymentVerificationAttempts[paymentId]) {
+            this.paymentVerificationAttempts[paymentId] = { count: 0, maxRetries: 3 };
+        }
+        
+        const attemptData = this.paymentVerificationAttempts[paymentId];
+        
+        if (attemptData.count >= attemptData.maxRetries) {
+            this.showToast('Limite de verificaciones alcanzado. Espera unos minutos.', 'error');
+            return;
+        }
+        
+        attemptData.count++;
+        
         const statusEl = document.getElementById('payment-status');
         const verifyBtn = document.querySelector('.btn-verify');
         
@@ -3686,9 +3739,10 @@ const App = {
                 });
                 
                 if (response.status === 'confirmed') {
+                    delete this.paymentVerificationAttempts[paymentId];
                     this.closeModal();
                     this.showRechargeSuccess(response.creditsAdded);
-                    this.loadWalletBalance();
+                    this.loadWalletBalance(true);
                     this.loadTransactionHistory(0, false);
                     return true;
                 }
@@ -3700,12 +3754,13 @@ const App = {
                     }
                     setTimeout(checkPayment, 5000);
                 } else {
+                    const remaining = attemptData.maxRetries - attemptData.count;
                     if (statusEl) {
-                        statusEl.innerHTML = '<span class="error">No se encontro la transaccion. Verifica que hayas enviado el pago con el comentario correcto.</span>';
+                        statusEl.innerHTML = `<span class="error">No se encontro la transaccion. Verifica el pago y comentario.${remaining > 0 ? ` (${remaining} intentos restantes)` : ''}</span>`;
                     }
                     if (verifyBtn) {
-                        verifyBtn.disabled = false;
-                        verifyBtn.textContent = 'Reintentar verificacion';
+                        verifyBtn.disabled = remaining === 0;
+                        verifyBtn.textContent = remaining > 0 ? 'Reintentar verificacion' : 'Sin intentos';
                     }
                 }
                 
@@ -5223,15 +5278,19 @@ const App = {
     renderNotificationItem(notif) {
         const typeIcons = {
             'like': { icon: '❤️', class: 'like' },
+            'reaction': { icon: '❤️', class: 'like' },
             'comment': { icon: '💬', class: 'comment' },
+            'comment_reply': { icon: '↩️', class: 'comment' },
             'follow': { icon: '👤', class: 'follow' },
+            'new_follower': { icon: '👤', class: 'follow' },
             'mention': { icon: '@', class: 'mention' },
             'share': { icon: '🔄', class: 'share' },
             'transaction_credit': { icon: '💰', class: 'transaction credit' },
             'transaction_debit': { icon: '💸', class: 'transaction debit' },
             'transaction': { icon: '🪙', class: 'transaction' },
             'story_reply': { icon: '💬', class: 'story' },
-            'story_reaction': { icon: '😍', class: 'story' }
+            'story_reaction': { icon: '😍', class: 'story' },
+            'story_view': { icon: '👁️', class: 'story' }
         };
         
         const typeInfo = typeIcons[notif.type] || { icon: '🔔', class: '' };
@@ -5278,15 +5337,19 @@ const App = {
     getNotificationMessage(type) {
         const messages = {
             'like': 'le gusto tu publicacion',
+            'reaction': 'reacciono a tu publicacion',
             'comment': 'comento en tu publicacion',
+            'comment_reply': 'respondio a tu comentario',
             'follow': 'empezo a seguirte',
+            'new_follower': 'empezo a seguirte',
             'mention': 'te menciono',
             'share': 'compartio tu publicacion',
             'transaction_credit': '',
             'transaction_debit': '',
             'transaction': '',
             'story_reply': 'respondio a tu historia',
-            'story_reaction': 'reacciono a tu historia'
+            'story_reaction': 'reacciono a tu historia',
+            'story_view': 'vio tu historia'
         };
         return messages[type] || 'interactuo contigo';
     },
@@ -5322,8 +5385,10 @@ const App = {
             this.showScreen('wallet-screen');
         } else if ((type === 'follow' || type === 'new_follower') && referenceId) {
             this.showUserProfile(referenceId);
-        } else if (['like', 'comment', 'share', 'mention', 'comment_reply', 'post_like'].includes(type) && referenceId) {
-            Publications.showPostDetail(referenceId);
+        } else if (['like', 'reaction', 'comment', 'share', 'mention', 'comment_reply', 'post_like'].includes(type) && referenceId) {
+            if (typeof PublicationsManager !== 'undefined') {
+                PublicationsManager.showPostDetail(referenceId);
+            }
         } else if ((type === 'story_reply' || type === 'story_reaction' || type === 'story_view') && referenceId) {
             this.viewStory({ userId: referenceId });
         }
@@ -5398,6 +5463,63 @@ const App = {
         const markAllBtn = document.getElementById('mark-all-read-btn');
         if (markAllBtn) {
             markAllBtn.addEventListener('click', () => this.markAllNotificationsAsRead());
+        }
+    },
+
+    async showNotificationSettings() {
+        const modal = document.getElementById('notification-settings-modal');
+        if (!modal) return;
+        
+        modal.classList.remove('hidden');
+        
+        try {
+            const response = await this.apiRequest('/api/notifications/preferences');
+            if (response.success && response.preferences) {
+                const prefs = response.preferences;
+                document.getElementById('notif-pref-likes').checked = prefs.likes !== false;
+                document.getElementById('notif-pref-comments').checked = prefs.comments !== false;
+                document.getElementById('notif-pref-follows').checked = prefs.follows !== false;
+                document.getElementById('notif-pref-mentions').checked = prefs.mentions !== false;
+                document.getElementById('notif-pref-transactions').checked = prefs.transactions !== false;
+                document.getElementById('notif-pref-stories').checked = prefs.stories !== false;
+            }
+        } catch (error) {
+            console.error('Error loading notification preferences:', error);
+        }
+    },
+
+    hideNotificationSettings() {
+        const modal = document.getElementById('notification-settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    async saveNotificationSettings() {
+        const preferences = {
+            likes: document.getElementById('notif-pref-likes').checked,
+            comments: document.getElementById('notif-pref-comments').checked,
+            follows: document.getElementById('notif-pref-follows').checked,
+            mentions: document.getElementById('notif-pref-mentions').checked,
+            transactions: document.getElementById('notif-pref-transactions').checked,
+            stories: document.getElementById('notif-pref-stories').checked
+        };
+        
+        try {
+            const response = await this.apiRequest('/api/notifications/preferences', {
+                method: 'POST',
+                body: JSON.stringify({ preferences })
+            });
+            
+            if (response.success) {
+                this.showToast('Preferencias guardadas', 'success');
+                this.hideNotificationSettings();
+            } else {
+                this.showToast('Error al guardar preferencias', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving notification preferences:', error);
+            this.showToast('Error al guardar', 'error');
         }
     }
 };

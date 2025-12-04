@@ -848,12 +848,20 @@
                         </svg>
                     </button>
                     <h1 class="notifications-title">Notificaciones</h1>
-                    <button class="mark-all-read-btn" id="mark-all-read-btn" aria-label="Marcar todas como leidas">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true">
-                            <polyline points="9 11 12 14 22 4"></polyline>
-                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                        </svg>
-                    </button>
+                    <div class="notifications-header-actions">
+                        <button class="notif-settings-btn" id="notif-settings-btn" onclick="App.showNotificationSettings()" aria-label="Configuracion de notificaciones">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </button>
+                        <button class="mark-all-read-btn" id="mark-all-read-btn" aria-label="Marcar todas como leidas">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true">
+                                <polyline points="9 11 12 14 22 4"></polyline>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="notifications-filter">
                     <button class="notif-filter-btn active" data-filter="all">Todas</button>
@@ -2185,6 +2193,103 @@
                         <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%"></div>
                     </div>
                     <span class="progress-text" id="progress-text">Encriptando y subiendo...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuracion de Notificaciones -->
+    <div id="notification-settings-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="notif-settings-title">
+        <div class="pub-modal notif-settings-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="App.hideNotificationSettings()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2 id="notif-settings-title">Configuracion de notificaciones</h2>
+                <button class="pub-modal-action" id="save-notif-settings-btn" onclick="App.saveNotificationSettings()">Guardar</button>
+            </div>
+            <div class="notif-settings-content">
+                <p class="notif-settings-desc">Elige que notificaciones quieres recibir</p>
+                <div class="notif-setting-item">
+                    <div class="notif-setting-info">
+                        <span class="notif-setting-icon">❤️</span>
+                        <div>
+                            <span class="notif-setting-label">Reacciones</span>
+                            <span class="notif-setting-hint">Cuando alguien reacciona a tus publicaciones</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notif-pref-likes" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="notif-setting-item">
+                    <div class="notif-setting-info">
+                        <span class="notif-setting-icon">💬</span>
+                        <div>
+                            <span class="notif-setting-label">Comentarios</span>
+                            <span class="notif-setting-hint">Comentarios y respuestas</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notif-pref-comments" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="notif-setting-item">
+                    <div class="notif-setting-info">
+                        <span class="notif-setting-icon">👤</span>
+                        <div>
+                            <span class="notif-setting-label">Nuevos seguidores</span>
+                            <span class="notif-setting-hint">Cuando alguien te sigue</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notif-pref-follows" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="notif-setting-item">
+                    <div class="notif-setting-info">
+                        <span class="notif-setting-icon">@</span>
+                        <div>
+                            <span class="notif-setting-label">Menciones</span>
+                            <span class="notif-setting-hint">Cuando te mencionan en publicaciones</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notif-pref-mentions" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="notif-setting-item">
+                    <div class="notif-setting-info">
+                        <span class="notif-setting-icon">💰</span>
+                        <div>
+                            <span class="notif-setting-label">Transacciones</span>
+                            <span class="notif-setting-hint">Recargas y pagos de BUNK3RCO1N</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notif-pref-transactions" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="notif-setting-item">
+                    <div class="notif-setting-info">
+                        <span class="notif-setting-icon">📖</span>
+                        <div>
+                            <span class="notif-setting-label">Historias</span>
+                            <span class="notif-setting-hint">Respuestas y reacciones a tus historias</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notif-pref-stories" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
                 </div>
             </div>
         </div>
