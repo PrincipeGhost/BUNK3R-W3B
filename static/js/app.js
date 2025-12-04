@@ -2575,9 +2575,15 @@ const App = {
     },
 
     async initiateUSDTPayment(credits, usdtAmount) {
+        if (!this.isDeviceTrusted && this.walletSyncedFromServer) {
+            this.showToast('Agrega este dispositivo como confianza para realizar transacciones', 'info');
+            this.showAddDeviceModal();
+            return;
+        }
+        
         if (!this.connectedWallet) {
-            if (this.walletSyncedFromServer && this.syncedWalletAddress) {
-                this.showToast('Tu wallet esta sincronizada pero necesitas conectarla en este dispositivo para firmar transacciones', 'info');
+            if (this.isDeviceTrusted && this.walletSyncedFromServer) {
+                this.showToast('Conecta tu wallet para firmar la transaccion', 'info');
                 await this.connectWallet();
             } else {
                 this.showToast('Primero conecta tu wallet', 'error');
