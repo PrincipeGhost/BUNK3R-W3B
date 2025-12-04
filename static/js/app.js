@@ -18,6 +18,9 @@ const App = {
     connectedWallet: null,
     walletSyncedFromServer: false,
     syncedWalletAddress: null,
+    deviceId: null,
+    isDeviceTrusted: false,
+    trustedDeviceName: null,
     USDT_MASTER_ADDRESS: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
     MERCHANT_WALLET: 'UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck',
     
@@ -2045,6 +2048,9 @@ const App = {
                 if (!this.tonConnectUI.wallet) {
                     await this.loadSavedWallet();
                 }
+                
+                await this.initDeviceTrust();
+                this.updateDeviceTrustUI();
             } catch (error) {
                 console.error('Error initializing TON Connect:', error);
             }
@@ -2298,6 +2304,273 @@ const App = {
             }
         } catch (error) {
             console.error('Error guardando wallet:', error);
+        }
+    },
+
+    generateDeviceId() {
+        let deviceId = localStorage.getItem('bunk3r_device_id');
+        if (!deviceId) {
+            const nav = window.navigator;
+            const screen = window.screen;
+            const fingerprint = [
+                nav.userAgent,
+                screen.width + 'x' + screen.height,
+                screen.colorDepth,
+                new Date().getTimezoneOffset(),
+                nav.language,
+                nav.platform
+            ].join('|');
+            
+            let hash = 0;
+            for (let i = 0; i < fingerprint.length; i++) {
+                const char = fingerprint.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            
+            deviceId = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+            localStorage.setItem('bunk3r_device_id', deviceId);
+        }
+        return deviceId;
+    },
+
+    getDeviceType() {
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes('telegram')) {
+            if (ua.includes('android')) return 'telegram_android';
+            if (ua.includes('iphone') || ua.includes('ipad')) return 'telegram_ios';
+            return 'telegram_desktop';
+        }
+        if (ua.includes('android')) return 'mobile_android';
+        if (ua.includes('iphone') || ua.includes('ipad')) return 'mobile_ios';
+        if (ua.includes('mac')) return 'desktop_mac';
+        if (ua.includes('win')) return 'desktop_windows';
+        if (ua.includes('linux')) return 'desktop_linux';
+        return 'unknown';
+    },
+
+    getDeviceName() {
+        const type = this.getDeviceType();
+        const names = {
+            'telegram_android': 'Telegram Android',
+            'telegram_ios': 'Telegram iOS',
+            'telegram_desktop': 'Telegram Desktop',
+            'mobile_android': 'Navegador Android',
+            'mobile_ios': 'Navegador iOS',
+            'desktop_mac': 'Mac',
+            'desktop_windows': 'Windows',
+            'desktop_linux': 'Linux',
+            'unknown': 'Dispositivo'
+        };
+        return names[type] || 'Dispositivo';
+    },
+
+    async initDeviceTrust() {
+        this.deviceId = this.generateDeviceId();
+        console.log('Device ID:', this.deviceId);
+        
+        try {
+            const response = await fetch('/api/devices/trusted/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeaders()
+                },
+                body: JSON.stringify({ deviceId: this.deviceId })
+            });
+            const data = await response.json();
+            
+            if (data.success && data.isTrusted) {
+                this.isDeviceTrusted = true;
+                this.trustedDeviceName = data.deviceName;
+                console.log('Dispositivo de confianza:', data.deviceName);
+            } else {
+                this.isDeviceTrusted = false;
+                console.log('Dispositivo no es de confianza');
+            }
+        } catch (error) {
+            console.error('Error verificando dispositivo:', error);
+            this.isDeviceTrusted = false;
+        }
+    },
+
+    async addCurrentDeviceAsTrusted() {
+        try {
+            const deviceName = this.getDeviceName();
+            const deviceType = this.getDeviceType();
+            
+            const response = await fetch('/api/devices/trusted/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeaders()
+                },
+                body: JSON.stringify({
+                    deviceId: this.deviceId,
+                    deviceName: deviceName,
+                    deviceType: deviceType
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.isDeviceTrusted = true;
+                this.trustedDeviceName = deviceName;
+                this.showToast('Dispositivo agregado como confianza', 'success');
+                this.closeAddDeviceModal();
+                return true;
+            } else {
+                this.showToast(data.error || 'Error al agregar dispositivo', 'error');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error agregando dispositivo:', error);
+            this.showToast('Error al agregar dispositivo', 'error');
+            return false;
+        }
+    },
+
+    showAddDeviceModal() {
+        const existingModal = document.getElementById('add-device-modal');
+        if (existingModal) existingModal.remove();
+        
+        const deviceName = this.getDeviceName();
+        const walletPreview = this.syncedWalletAddress ? 
+            this.syncedWalletAddress.slice(0, 6) + '...' + this.syncedWalletAddress.slice(-4) : 
+            'No disponible';
+        
+        const modalHtml = `
+            <div id="add-device-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAddDeviceModal()">
+                <div class="modal-content device-modal">
+                    <div class="modal-header">
+                        <h3>Agregar Dispositivo de Confianza</h3>
+                        <button class="modal-close" onclick="App.closeAddDeviceModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="device-info-card">
+                            <div class="device-icon">
+                                ${this.getDeviceIcon()}
+                            </div>
+                            <div class="device-details">
+                                <h4>${deviceName}</h4>
+                                <p class="device-id-preview">ID: ${this.deviceId.slice(0, 12)}...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="wallet-sync-info">
+                            <div class="info-row">
+                                <span class="info-label">Wallet sincronizada:</span>
+                                <span class="info-value">${walletPreview}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="device-benefits">
+                            <h4>Al agregar este dispositivo podras:</h4>
+                            <ul>
+                                <li>Ver tu saldo de creditos</li>
+                                <li>Realizar recargas con tu wallet</li>
+                                <li>Acceder a todas las funciones de la app</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="device-warning">
+                            Solo agrega dispositivos que sean tuyos y de tu confianza.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="App.closeAddDeviceModal()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="App.confirmAddDevice()">Agregar Dispositivo</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    getDeviceIcon() {
+        const type = this.getDeviceType();
+        if (type.includes('telegram')) {
+            return '<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.94z"/></svg>';
+        }
+        if (type.includes('mobile')) {
+            return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>';
+        }
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+    },
+
+    closeAddDeviceModal() {
+        const modal = document.getElementById('add-device-modal');
+        if (modal) modal.remove();
+    },
+
+    async confirmAddDevice() {
+        const btn = document.querySelector('#add-device-modal .btn-primary');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Agregando...';
+        }
+        
+        const success = await this.addCurrentDeviceAsTrusted();
+        
+        if (success && this.walletSyncedFromServer) {
+            this.updateDeviceTrustUI();
+        }
+        
+        if (btn && !success) {
+            btn.disabled = false;
+            btn.textContent = 'Agregar Dispositivo';
+        }
+    },
+
+    updateDeviceTrustUI() {
+        const walletSection = document.querySelector('.wallet-section');
+        if (!walletSection) return;
+        
+        const existingBanner = document.getElementById('device-trust-banner');
+        if (existingBanner) existingBanner.remove();
+        
+        if (this.walletSyncedFromServer && !this.connectedWallet && !this.isDeviceTrusted) {
+            const bannerHtml = `
+                <div id="device-trust-banner" class="device-trust-banner">
+                    <div class="banner-content">
+                        <div class="banner-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                        </div>
+                        <div class="banner-text">
+                            <strong>Wallet sincronizada</strong>
+                            <p>Agrega este dispositivo como confianza para usar todas las funciones</p>
+                        </div>
+                    </div>
+                    <button class="btn btn-small btn-primary" onclick="App.showAddDeviceModal()">
+                        Agregar Dispositivo
+                    </button>
+                </div>
+            `;
+            walletSection.insertAdjacentHTML('afterbegin', bannerHtml);
+        } else if (this.isDeviceTrusted && !this.connectedWallet) {
+            const trustedBannerHtml = `
+                <div id="device-trust-banner" class="device-trust-banner trusted">
+                    <div class="banner-content">
+                        <div class="banner-icon trusted">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <div class="banner-text">
+                            <strong>Dispositivo de confianza</strong>
+                            <p>Conecta tu wallet para realizar transacciones</p>
+                        </div>
+                    </div>
+                    <button class="btn btn-small btn-secondary" onclick="App.connectWallet()">
+                        Conectar Wallet
+                    </button>
+                </div>
+            `;
+            walletSection.insertAdjacentHTML('afterbegin', trustedBannerHtml);
         }
     },
 

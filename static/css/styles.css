@@ -3567,3 +3567,197 @@ body {
     color: var(--accent-danger);
     text-align: center;
 }
+
+/* Device Trust System Styles */
+.device-trust-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, rgba(66, 153, 225, 0.1), rgba(159, 122, 234, 0.1));
+    border: 1px solid rgba(66, 153, 225, 0.3);
+    border-radius: var(--radius);
+}
+
+.device-trust-banner.trusted {
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(66, 153, 225, 0.1));
+    border-color: rgba(72, 187, 120, 0.3);
+}
+
+.device-trust-banner .banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.device-trust-banner .banner-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(66, 153, 225, 0.2);
+    border-radius: 50%;
+    color: var(--accent-primary);
+    flex-shrink: 0;
+}
+
+.device-trust-banner .banner-icon.trusted {
+    background: rgba(72, 187, 120, 0.2);
+    color: var(--accent-success);
+}
+
+.device-trust-banner .banner-text {
+    flex: 1;
+}
+
+.device-trust-banner .banner-text strong {
+    display: block;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.device-trust-banner .banner-text p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.device-trust-banner .btn-small {
+    padding: 8px 16px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Device Modal Styles */
+.device-modal {
+    max-width: 400px;
+}
+
+.device-info-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+
+.device-info-card .device-icon {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple));
+    border-radius: 16px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.device-info-card .device-details h4 {
+    font-size: 18px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.device-info-card .device-id-preview {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.wallet-sync-info {
+    padding: 16px;
+    background: rgba(72, 187, 120, 0.1);
+    border: 1px solid rgba(72, 187, 120, 0.2);
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+}
+
+.wallet-sync-info .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wallet-sync-info .info-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.wallet-sync-info .info-value {
+    font-size: 13px;
+    color: var(--accent-success);
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.device-benefits {
+    margin-bottom: 20px;
+}
+
+.device-benefits h4 {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.device-benefits ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.device-benefits li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.device-benefits li::before {
+    content: '✓';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: rgba(72, 187, 120, 0.2);
+    color: var(--accent-success);
+    border-radius: 50%;
+    font-size: 12px;
+}
+
+.device-warning {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 12px;
+    background: rgba(246, 173, 85, 0.1);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .device-trust-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .device-trust-banner .banner-content {
+        flex-direction: column;
+    }
+    
+    .device-trust-banner .btn-small {
+        width: 100%;
+    }
+}
