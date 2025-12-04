@@ -22,7 +22,7 @@ const App = {
     isDeviceTrusted: false,
     trustedDeviceName: null,
     USDT_MASTER_ADDRESS: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
-    MERCHANT_WALLET: 'UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck',
+    MERCHANT_WALLET: null,
     _initialDataLoaded: false,
     _securityDataLoaded: false,
     
@@ -423,11 +423,24 @@ const App = {
             this.startSessionActivityMonitor();
             this.initTonConnect();
             this.loadWalletBalance();
+            await this.loadMerchantWallet();
             
             await this.initSecuritySystem();
         } catch (error) {
             console.error('Error in completeLogin():', error);
             this.showMainApp();
+        }
+    },
+    
+    async loadMerchantWallet() {
+        try {
+            const response = await this.apiRequest('/api/wallet/merchant');
+            if (response.success && response.merchantWallet) {
+                this.MERCHANT_WALLET = response.merchantWallet;
+                console.log('Merchant wallet loaded:', this.MERCHANT_WALLET);
+            }
+        } catch (error) {
+            console.error('Error loading merchant wallet:', error);
         }
     },
     
@@ -3260,6 +3273,14 @@ const App = {
                 await this.connectWallet();
             }
             return;
+        }
+        
+        if (!this.MERCHANT_WALLET) {
+            await this.loadMerchantWallet();
+            if (!this.MERCHANT_WALLET) {
+                this.showToast('Error de configuracion del sistema de pagos', 'error');
+                return;
+            }
         }
 
         try {

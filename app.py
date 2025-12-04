@@ -2302,6 +2302,16 @@ def get_ton_wallet_info():
     })
 
 
+@app.route('/api/wallet/merchant', methods=['GET'])
+@require_telegram_user
+def get_merchant_wallet():
+    """Obtener la wallet del comerciante para pagos."""
+    return jsonify({
+        'success': True,
+        'merchantWallet': MERCHANT_TON_WALLET
+    })
+
+
 @app.route('/api/wallet/balance', methods=['GET'])
 @require_telegram_user
 def get_wallet_balance():

@@ -95,35 +95,65 @@ class SMSPoolService:
         return result
     
     def get_services(self, country_id: Optional[str] = None) -> Dict:
-        """Get list of available services/apps"""
-        params = {}
-        if country_id:
-            params['country'] = country_id
+        """Get list of available services/apps with prices for a country"""
+        if not country_id:
+            result = self._make_request('service/retrieve_all')
+            if result['success']:
+                services = []
+                data = result['data']
+                if isinstance(data, list):
+                    for service in data:
+                        services.append({
+                            'id': service.get('ID') or service.get('id'),
+                            'name': service.get('name', ''),
+                            'short_name': service.get('short_name', ''),
+                            'price': 0.0,
+                            'icon': self._get_service_icon(service.get('name', ''))
+                        })
+                return {'success': True, 'services': services}
+            return result
         
-        result = self._make_request('service/retrieve_all', params)
+        result = self._make_request('request/pricing', {'country': country_id})
         if result['success']:
             services = []
             data = result['data']
             
-            if isinstance(data, list):
-                for service in data:
-                    services.append({
-                        'id': service.get('ID') or service.get('id'),
-                        'name': service.get('name', ''),
-                        'short_name': service.get('short_name', ''),
-                        'price': float(service.get('price', 0)),
-                        'icon': self._get_service_icon(service.get('name', ''))
-                    })
-            elif isinstance(data, dict):
-                for key, service in data.items():
-                    if isinstance(service, dict):
+            if isinstance(data, dict):
+                for service_id, service_data in data.items():
+                    if isinstance(service_data, dict):
+                        price = float(service_data.get('price', service_data.get('low_price', 0)))
+                        name = service_data.get('name', service_data.get('short_name', service_id))
                         services.append({
-                            'id': service.get('ID') or service.get('id') or key,
-                            'name': service.get('name', key),
-                            'short_name': service.get('short_name', ''),
-                            'price': float(service.get('price', 0)),
-                            'icon': self._get_service_icon(service.get('name', key))
+                            'id': service_id,
+                            'name': name,
+                            'short_name': service_data.get('short_name', ''),
+                            'price': price,
+                            'icon': self._get_service_icon(name)
                         })
+                    elif isinstance(service_data, (int, float)):
+                        services.append({
+                            'id': service_id,
+                            'name': service_id,
+                            'short_name': '',
+                            'price': float(service_data),
+                            'icon': self._get_service_icon(service_id)
+                        })
+            elif isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        service_id = item.get('ID') or item.get('id') or item.get('service')
+                        price = float(item.get('price', item.get('low_price', 0)))
+                        name = item.get('name', item.get('short_name', str(service_id)))
+                        services.append({
+                            'id': service_id,
+                            'name': name,
+                            'short_name': item.get('short_name', ''),
+                            'price': price,
+                            'icon': self._get_service_icon(name)
+                        })
+            
+            services = [s for s in services if s['price'] > 0]
+            services.sort(key=lambda x: x['name'].lower())
             
             return {'success': True, 'services': services}
         return result
