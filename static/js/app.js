@@ -868,12 +868,16 @@ const App = {
     handleBottomNav(navType) {
         document.querySelectorAll('.bottom-nav-item').forEach(item => {
             item.classList.remove('active');
+            item.removeAttribute('aria-current');
         });
         
         const activeItem = document.querySelector(`.bottom-nav-item[data-nav="${navType}"]`);
         if (activeItem) {
             activeItem.classList.add('active');
+            activeItem.setAttribute('aria-current', 'page');
         }
+        
+        A11y.announce(this._getNavLabel(navType));
         
         switch(navType) {
             case 'home':
@@ -893,6 +897,17 @@ const App = {
                 this.updateProfilePage();
                 break;
         }
+    },
+    
+    _getNavLabel(navType) {
+        const labels = {
+            'home': 'Inicio',
+            'marketplace': 'Tienda',
+            'bots': 'Bots',
+            'wallet': 'Billetera',
+            'profile': 'Mi perfil'
+        };
+        return labels[navType] || navType;
     },
     
     showPage(pageName) {
@@ -2006,25 +2021,17 @@ const App = {
     },
     
     showToast(message, type = 'info') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'polite');
-        toast.setAttribute('aria-atomic', 'true');
-        container.appendChild(toast);
-        
-        if (this.tg) {
-            this.tg.HapticFeedback.notificationOccurred(
-                type === 'error' ? 'error' : type === 'success' ? 'success' : 'warning'
-            );
+        if (this.tg && this.tg.HapticFeedback) {
+            try {
+                this.tg.HapticFeedback.notificationOccurred(
+                    type === 'error' ? 'error' : type === 'success' ? 'success' : 'warning'
+                );
+            } catch (e) {
+                Logger?.debug('Haptic feedback not available');
+            }
         }
         
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        return Toast.show(message, type, 3000);
     },
     
     getAuthHeaders() {

@@ -272,7 +272,7 @@
                 <div class="security-shield-icon">
                     <div class="shield-outer">
                         <div class="shield-inner">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32" aria-hidden="true">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
@@ -526,7 +526,7 @@
                         <span class="sidebar-profile-role" id="sidebar-role">Usuario</span>
                     </div>
                     <div class="sidebar-admin-arrow hidden" id="sidebar-admin-arrow">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
                     </div>
@@ -839,8 +839,8 @@
                 <div class="profile-page-header">
                     <span class="profile-page-username" id="profile-page-username">@demo_user</span>
                     <span class="profile-verified-dot">●</span>
-                    <button class="profile-page-menu-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                    <button class="profile-page-menu-btn" aria-label="Menu de perfil">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
                             <line x1="3" y1="6" x2="21" y2="6"></line>
                             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -875,22 +875,22 @@
                         <button class="profile-page-btn secondary" id="share-profile-btn">Compartir perfil</button>
                     </div>
                     <div class="profile-page-tabs">
-                        <button class="profile-page-tab active" data-tab="posts">
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+                        <button class="profile-page-tab active" data-tab="posts" aria-label="Publicaciones">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
                                 <rect x="3" y="3" width="7" height="7"></rect>
                                 <rect x="14" y="3" width="7" height="7"></rect>
                                 <rect x="3" y="14" width="7" height="7"></rect>
                                 <rect x="14" y="14" width="7" height="7"></rect>
                             </svg>
                         </button>
-                        <button class="profile-page-tab" data-tab="marketplace">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                        <button class="profile-page-tab" data-tab="marketplace" aria-label="Marketplace">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" aria-hidden="true">
                                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
                             </svg>
                         </button>
-                        <button class="profile-page-tab" data-tab="shared">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                        <button class="profile-page-tab" data-tab="shared" aria-label="Compartidos">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" aria-hidden="true">
                                 <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
                                 <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
                                 <path d="M4 22h16"></path>
@@ -899,8 +899,8 @@
                                 <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
                             </svg>
                         </button>
-                        <button class="profile-page-tab" data-tab="account">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                        <button class="profile-page-tab" data-tab="account" aria-label="Cuenta">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" aria-hidden="true">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
                             </svg>
@@ -1075,10 +1075,10 @@
             </div>
 
             <!-- PAGINA CONFIGURACION -->
-            <div id="settings-screen" class="page-screen hidden">
+            <div id="settings-screen" class="page-screen hidden" role="region" aria-label="Configuracion">
                 <div class="page-header settings-header">
-                    <button class="back-btn" id="settings-back-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                    <button class="back-btn" id="settings-back-btn" aria-label="Volver al inicio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
@@ -1226,10 +1226,10 @@
             </div>
 
             <!-- PAGINA ADMINISTRACION (Solo Owner) -->
-            <div id="admin-screen" class="page-screen hidden">
+            <div id="admin-screen" class="page-screen hidden" role="region" aria-label="Panel de Administracion">
                 <div class="page-header admin-header">
-                    <button class="back-btn" id="admin-back-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                    <button class="back-btn" id="admin-back-btn" aria-label="Volver al inicio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
@@ -1568,15 +1568,15 @@
     <!-- MODALES DE ADMINISTRACION -->
     
     <!-- Modal Gestion de Usuarios -->
-    <div id="admin-users-modal" class="admin-modal-overlay hidden">
+    <div id="admin-users-modal" class="admin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admin-users-title">
         <div class="admin-modal">
             <div class="admin-modal-header">
-                <button class="admin-modal-back" onclick="App.closeAdminModal('users')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('users')" aria-label="Volver">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h2>Gestion de Usuarios</h2>
+                <h2 id="admin-users-title">Gestion de Usuarios</h2>
                 <span class="admin-modal-count" id="admin-users-count">0</span>
             </div>
             <div class="admin-modal-search">
@@ -1589,15 +1589,15 @@
     </div>
 
     <!-- Modal Gestion de Bots -->
-    <div id="admin-bots-modal" class="admin-modal-overlay hidden">
+    <div id="admin-bots-modal" class="admin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admin-bots-title">
         <div class="admin-modal">
             <div class="admin-modal-header">
-                <button class="admin-modal-back" onclick="App.closeAdminModal('bots')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('bots')" aria-label="Volver">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h2>Gestion de Bots</h2>
+                <h2 id="admin-bots-title">Gestion de Bots</h2>
                 <button class="admin-add-btn" onclick="App.showAddBotForm()">+ Nuevo</button>
             </div>
             <div class="admin-modal-content" id="admin-bots-list">
@@ -1607,15 +1607,15 @@
     </div>
 
     <!-- Modal Productos -->
-    <div id="admin-products-modal" class="admin-modal-overlay hidden">
+    <div id="admin-products-modal" class="admin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admin-products-title">
         <div class="admin-modal">
             <div class="admin-modal-header">
-                <button class="admin-modal-back" onclick="App.closeAdminModal('products')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('products')" aria-label="Volver">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h2>Productos</h2>
+                <h2 id="admin-products-title">Productos</h2>
                 <button class="admin-add-btn" onclick="App.showAddProductForm()">+ Nuevo</button>
             </div>
             <div class="admin-modal-tabs">
@@ -1630,15 +1630,15 @@
     </div>
 
     <!-- Modal Transacciones -->
-    <div id="admin-transactions-modal" class="admin-modal-overlay hidden">
+    <div id="admin-transactions-modal" class="admin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admin-transactions-title">
         <div class="admin-modal">
             <div class="admin-modal-header">
-                <button class="admin-modal-back" onclick="App.closeAdminModal('transactions')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('transactions')" aria-label="Volver">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h2>Transacciones</h2>
+                <h2 id="admin-transactions-title">Transacciones</h2>
                 <span class="admin-modal-count" id="admin-transactions-count">0</span>
             </div>
             <div class="admin-modal-filters">
@@ -1672,15 +1672,15 @@
     </div>
 
     <!-- Modal Alertas de Seguridad -->
-    <div id="admin-alerts-modal" class="admin-modal-overlay hidden">
+    <div id="admin-alerts-modal" class="admin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admin-alerts-title">
         <div class="admin-modal">
             <div class="admin-modal-header">
-                <button class="admin-modal-back" onclick="App.closeAdminModal('alerts')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('alerts')" aria-label="Volver">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h2>Alertas de Seguridad</h2>
+                <h2 id="admin-alerts-title">Alertas de Seguridad</h2>
                 <span class="admin-alert-count" id="admin-alerts-count">0</span>
             </div>
             <div class="admin-modal-tabs">
@@ -1928,11 +1928,12 @@
     </div>
 
     <!-- Modal Ver Publicacion -->
-    <div id="view-post-modal" class="pub-modal-overlay hidden">
+    <div id="view-post-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="view-post-title">
         <div class="pub-modal view-post-modal">
+            <h2 id="view-post-title" class="sr-only">Ver publicacion</h2>
             <div class="pub-modal-header mobile-header">
-                <button class="pub-modal-close" onclick="Publications.closeViewModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="pub-modal-close" onclick="Publications.closeViewModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
@@ -1973,13 +1974,13 @@
     </div>
 
     <!-- Modal Historias -->
-    <div id="story-viewer-modal" class="story-viewer-overlay hidden">
+    <div id="story-viewer-modal" class="story-viewer-overlay hidden" role="dialog" aria-modal="true" aria-label="Visor de historias">
         <div class="story-viewer">
-            <div class="story-progress-bar" id="story-progress-bar"></div>
+            <div class="story-progress-bar" id="story-progress-bar" role="progressbar" aria-label="Progreso de la historia"></div>
             <div class="story-header">
                 <div class="story-author" id="story-author"></div>
-                <button class="story-close" onclick="Publications.closeStoryViewer()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="story-close" onclick="Publications.closeStoryViewer()" aria-label="Cerrar visor de historias">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
@@ -2005,16 +2006,16 @@
     </div>
 
     <!-- Modal Crear Historia -->
-    <div id="create-story-modal" class="pub-modal-overlay hidden">
+    <div id="create-story-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="create-story-title">
         <div class="pub-modal create-story-modal">
             <div class="pub-modal-header">
-                <button class="pub-modal-close" onclick="Publications.closeStoryModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="pub-modal-close" onclick="Publications.closeStoryModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-                <h2>Crear historia</h2>
+                <h2 id="create-story-title">Crear historia</h2>
                 <button class="pub-modal-action" onclick="Publications.submitStory()">Compartir</button>
             </div>
             <div class="story-preview-area">
@@ -2030,48 +2031,48 @@
     </div>
 
     <!-- Modal Opciones de Publicacion -->
-    <div id="post-options-modal" class="pub-modal-overlay hidden">
+    <div id="post-options-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Opciones de publicacion">
         <div class="pub-modal options-modal">
-            <div class="options-list">
-                <button class="option-item danger" onclick="Publications.reportPost()">Reportar</button>
-                <button class="option-item" onclick="Publications.sharePost()">Compartir</button>
-                <button class="option-item" onclick="Publications.copyLink()">Copiar enlace</button>
-                <button class="option-item edit-option hidden" onclick="Publications.editPost()">Editar</button>
-                <button class="option-item danger delete-option hidden" onclick="Publications.deletePost()">Eliminar</button>
-                <button class="option-item cancel" onclick="Publications.closeOptionsModal()">Cancelar</button>
+            <div class="options-list" role="menu">
+                <button class="option-item danger" onclick="Publications.reportPost()" role="menuitem">Reportar</button>
+                <button class="option-item" onclick="Publications.sharePost()" role="menuitem">Compartir</button>
+                <button class="option-item" onclick="Publications.copyLink()" role="menuitem">Copiar enlace</button>
+                <button class="option-item edit-option hidden" onclick="Publications.editPost()" role="menuitem">Editar</button>
+                <button class="option-item danger delete-option hidden" onclick="Publications.deletePost()" role="menuitem">Eliminar</button>
+                <button class="option-item cancel" onclick="Publications.closeOptionsModal()" role="menuitem">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Likes -->
-    <div id="likes-modal" class="pub-modal-overlay hidden">
+    <div id="likes-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="likes-modal-title">
         <div class="pub-modal likes-modal">
             <div class="pub-modal-header">
-                <button class="pub-modal-close" onclick="Publications.closeLikesModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="pub-modal-close" onclick="Publications.closeLikesModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-                <h2>Me gusta</h2>
+                <h2 id="likes-modal-title">Me gusta</h2>
             </div>
-            <div class="likes-list" id="likes-list">
+            <div class="likes-list" id="likes-list" role="list" aria-label="Lista de usuarios que les gusta">
                 <!-- Lista de usuarios que dieron like -->
             </div>
         </div>
     </div>
 
     <!-- Modal Reportar -->
-    <div id="report-modal" class="pub-modal-overlay hidden">
+    <div id="report-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
         <div class="pub-modal report-modal">
             <div class="pub-modal-header">
-                <button class="pub-modal-close" onclick="Publications.closeReportModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="pub-modal-close" onclick="Publications.closeReportModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-                <h2>Reportar publicacion</h2>
+                <h2 id="report-modal-title">Reportar publicacion</h2>
             </div>
             <div class="report-reasons">
                 <button class="report-reason" data-reason="spam">Es spam</button>
@@ -2087,16 +2088,16 @@
     </div>
 
     <!-- Modal Crear Publicacion -->
-    <div id="create-publication-modal" class="pub-modal-overlay hidden">
+    <div id="create-publication-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="create-publication-title">
         <div class="pub-modal create-post-modal">
             <div class="pub-modal-header">
-                <button class="pub-modal-close" onclick="PublicationsManager.hideCreateModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <button class="pub-modal-close" onclick="PublicationsManager.hideCreateModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-                <h2>Nueva publicacion</h2>
+                <h2 id="create-publication-title">Nueva publicacion</h2>
                 <button class="pub-modal-action" id="publish-btn">Publicar</button>
             </div>
             <div class="create-post-content">
@@ -2147,8 +2148,8 @@
     </div>
 
     <!-- Boton flotante crear publicacion -->
-    <button class="fab-create-post" id="floating-create-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
+    <button class="fab-create-post" id="floating-create-btn" aria-label="Crear nueva publicacion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
@@ -2170,37 +2171,42 @@
     </div>
 
     <!-- BARRA DE NAVEGACION INFERIOR -->
-    <nav class="bottom-nav hidden" id="bottom-nav">
-        <button class="bottom-nav-item active" data-nav="home">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <nav class="bottom-nav hidden" id="bottom-nav" role="navigation" aria-label="Navegacion principal">
+        <button class="bottom-nav-item active" data-nav="home" aria-label="Inicio" aria-current="page">
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
+            <span class="sr-only">Inicio</span>
         </button>
-        <button class="bottom-nav-item" data-nav="marketplace">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="bottom-nav-item" data-nav="marketplace" aria-label="Tienda">
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <path d="M16 10a4 4 0 0 1-8 0"></path>
             </svg>
+            <span class="sr-only">Tienda</span>
         </button>
-        <button class="bottom-nav-item" data-nav="bots">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="bottom-nav-item" data-nav="bots" aria-label="Bots">
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <rect x="3" y="11" width="18" height="10" rx="2"></rect>
                 <circle cx="12" cy="5" r="2"></circle>
                 <path d="M12 7v4"></path>
                 <line x1="8" y1="16" x2="8" y2="16"></line>
                 <line x1="16" y1="16" x2="16" y2="16"></line>
             </svg>
+            <span class="sr-only">Bots</span>
         </button>
-        <button class="bottom-nav-item" data-nav="wallet">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="bottom-nav-item" data-nav="wallet" aria-label="Billetera">
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                 <line x1="1" y1="10" x2="23" y2="10"></line>
             </svg>
+            <span class="sr-only">Billetera</span>
         </button>
-        <button class="bottom-nav-item" data-nav="profile" id="nav-profile-btn">
-            <div class="bottom-nav-avatar" id="bottom-nav-avatar"></div>
+        <button class="bottom-nav-item" data-nav="profile" id="nav-profile-btn" aria-label="Mi perfil">
+            <div class="bottom-nav-avatar" id="bottom-nav-avatar" aria-hidden="true"></div>
+            <span class="sr-only">Mi perfil</span>
         </button>
     </nav>
 

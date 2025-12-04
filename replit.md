@@ -105,3 +105,36 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - Updated `/api/tracking` endpoint with input sanitization
 - Updated `/api/posts` endpoint with caption and URL validation
 - All text fields now have maximum length limits defined
+
+### Section 18 - Accessibility (A11Y) Improvements
+- Created centralized `A11y` module in `utils.js` with:
+  - `trapFocus()`: Focus trap for modals preventing tab-out
+  - `releaseFocus()`: Properly releases focus trap and restores previous focus
+  - `openModal()`: Opens modals with proper ARIA attributes and focus management
+  - `closeModal()`: Closes modals and restores scroll/focus
+  - `announce()`: Screen reader announcements via live region
+  - `makeInteractive()`: Adds keyboard navigation to custom interactive elements
+- Created centralized `Toast` module with accessibility support:
+  - All toasts use `role="alert"` for screen reader announcements
+  - Error toasts use `aria-live="assertive"` for immediate reading
+  - Close buttons are keyboard accessible (Enter/Space)
+  - Toasts auto-announce via A11y.announce()
+- Added ARIA attributes to HTML:
+  - Bottom navigation: `role="navigation"`, `aria-label`, `aria-current="page"`
+  - All SVG icons: `aria-hidden="true"` to hide from screen readers
+  - Screen reader only labels: `<span class="sr-only">` for icon-only buttons
+  - All modals: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+  - Modal close buttons: `aria-label="Cerrar"`
+  - Stories viewer: Progress bar with `role="progressbar"`
+  - Options menu: `role="menu"` and `role="menuitem"`
+  - Lists: `role="list"` with `aria-label`
+  - Page regions: `role="region"` with `aria-label`
+  - Back buttons: `aria-label="Volver al inicio"`
+- CSS improvements:
+  - Added `.sr-only` class for screen-reader-only content
+  - Added `.sr-only-focusable` for focusable skip links
+  - Focus indicators already present with `:focus-visible`
+  - `prefers-reduced-motion` already supported
+  - `user-scalable=yes` already set in viewport
+- Updated `App.handleBottomNav()` to manage `aria-current` attribute
+- Updated `App.showToast()` to use centralized Toast module with haptic feedback

@@ -189,7 +189,272 @@ const FallbackUI = {
     }
 };
 
+const A11y = {
+    _focusTrapStack: [],
+    _liveRegion: null,
+    
+    init() {
+        this._createLiveRegion();
+        this._setupGlobalKeyboardHandlers();
+    },
+    
+    _createLiveRegion() {
+        if (this._liveRegion) return;
+        
+        this._liveRegion = document.createElement('div');
+        this._liveRegion.id = 'a11y-live-region';
+        this._liveRegion.setAttribute('role', 'status');
+        this._liveRegion.setAttribute('aria-live', 'polite');
+        this._liveRegion.setAttribute('aria-atomic', 'true');
+        this._liveRegion.className = 'sr-only';
+        document.body.appendChild(this._liveRegion);
+    },
+    
+    announce(message, priority = 'polite') {
+        if (!this._liveRegion) this._createLiveRegion();
+        
+        this._liveRegion.setAttribute('aria-live', priority);
+        this._liveRegion.textContent = '';
+        
+        setTimeout(() => {
+            this._liveRegion.textContent = message;
+        }, 100);
+    },
+    
+    _setupGlobalKeyboardHandlers() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this._focusTrapStack.length > 0) {
+                const currentTrap = this._focusTrapStack[this._focusTrapStack.length - 1];
+                if (currentTrap.onEscape) {
+                    currentTrap.onEscape();
+                }
+            }
+        });
+    },
+    
+    trapFocus(element, options = {}) {
+        if (!element) return null;
+        
+        const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusableElements = element.querySelectorAll(focusableSelector);
+        const firstFocusable = focusableElements[0];
+        const lastFocusable = focusableElements[focusableElements.length - 1];
+        
+        const previousActiveElement = document.activeElement;
+        
+        const handleKeydown = (e) => {
+            if (e.key !== 'Tab') return;
+            
+            if (e.shiftKey) {
+                if (document.activeElement === firstFocusable) {
+                    e.preventDefault();
+                    lastFocusable?.focus();
+                }
+            } else {
+                if (document.activeElement === lastFocusable) {
+                    e.preventDefault();
+                    firstFocusable?.focus();
+                }
+            }
+        };
+        
+        element.addEventListener('keydown', handleKeydown);
+        
+        if (options.autoFocus !== false && firstFocusable) {
+            setTimeout(() => firstFocusable.focus(), 50);
+        }
+        
+        const trapInfo = {
+            element,
+            handleKeydown,
+            previousActiveElement,
+            onEscape: options.onEscape
+        };
+        
+        this._focusTrapStack.push(trapInfo);
+        
+        return {
+            release: () => this.releaseFocus(trapInfo)
+        };
+    },
+    
+    releaseFocus(trapInfo) {
+        if (!trapInfo) return;
+        
+        trapInfo.element.removeEventListener('keydown', trapInfo.handleKeydown);
+        
+        const index = this._focusTrapStack.indexOf(trapInfo);
+        if (index > -1) {
+            this._focusTrapStack.splice(index, 1);
+        }
+        
+        if (trapInfo.previousActiveElement && trapInfo.previousActiveElement.focus) {
+            trapInfo.previousActiveElement.focus();
+        }
+    },
+    
+    openModal(modalElement, options = {}) {
+        if (!modalElement) return null;
+        
+        modalElement.setAttribute('role', 'dialog');
+        modalElement.setAttribute('aria-modal', 'true');
+        
+        if (options.labelledBy) {
+            modalElement.setAttribute('aria-labelledby', options.labelledBy);
+        }
+        if (options.describedBy) {
+            modalElement.setAttribute('aria-describedby', options.describedBy);
+        }
+        
+        modalElement.classList.remove('hidden');
+        modalElement.setAttribute('aria-hidden', 'false');
+        
+        document.body.style.overflow = 'hidden';
+        
+        const trap = this.trapFocus(modalElement, {
+            onEscape: options.onClose,
+            autoFocus: options.autoFocus
+        });
+        
+        if (options.label) {
+            this.announce(options.label + ' abierto');
+        }
+        
+        return trap;
+    },
+    
+    closeModal(modalElement, trap) {
+        if (!modalElement) return;
+        
+        modalElement.classList.add('hidden');
+        modalElement.setAttribute('aria-hidden', 'true');
+        
+        if (trap) {
+            trap.release();
+        }
+        
+        if (this._focusTrapStack.length === 0) {
+            document.body.style.overflow = '';
+        }
+    },
+    
+    makeInteractive(element, onClick, options = {}) {
+        if (!element) return;
+        
+        element.setAttribute('role', options.role || 'button');
+        element.setAttribute('tabindex', '0');
+        
+        if (options.label) {
+            element.setAttribute('aria-label', options.label);
+        }
+        
+        element.addEventListener('click', onClick);
+        element.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick(e);
+            }
+        });
+    }
+};
+
+const Toast = {
+    _container: null,
+    _queue: [],
+    _isShowing: false,
+    _currentTimeout: null,
+    
+    init() {
+        this._container = document.getElementById('toast-container');
+        if (!this._container) {
+            this._container = document.createElement('div');
+            this._container.id = 'toast-container';
+            this._container.className = 'toast-container';
+            this._container.setAttribute('role', 'region');
+            this._container.setAttribute('aria-label', 'Notificaciones');
+            this._container.setAttribute('aria-live', 'polite');
+            document.body.appendChild(this._container);
+        }
+    },
+    
+    show(message, type = 'info', duration = 3000) {
+        if (!this._container) this.init();
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        
+        const icons = {
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+        
+        toast.innerHTML = `
+            <span class="toast-icon" aria-hidden="true">${icons[type] || icons.info}</span>
+            <span class="toast-message">${Utils.escapeHtml(message)}</span>
+            <button class="toast-close" aria-label="Cerrar notificacion" tabindex="0">&times;</button>
+        `;
+        
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.addEventListener('click', () => this._removeToast(toast));
+        closeBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this._removeToast(toast);
+            }
+        });
+        
+        this._container.appendChild(toast);
+        
+        requestAnimationFrame(() => {
+            toast.classList.add('toast-visible');
+        });
+        
+        if (duration > 0) {
+            setTimeout(() => this._removeToast(toast), duration);
+        }
+        
+        A11y.announce(message, type === 'error' ? 'assertive' : 'polite');
+        
+        return toast;
+    },
+    
+    _removeToast(toast) {
+        if (!toast || !toast.parentNode) return;
+        
+        toast.classList.remove('toast-visible');
+        toast.classList.add('toast-hiding');
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    },
+    
+    success(message, duration) {
+        return this.show(message, 'success', duration);
+    },
+    
+    error(message, duration) {
+        return this.show(message, 'error', duration);
+    },
+    
+    warning(message, duration) {
+        return this.show(message, 'warning', duration);
+    },
+    
+    info(message, duration) {
+        return this.show(message, 'info', duration);
+    }
+};
+
 Logger.init();
+A11y.init();
+Toast.init();
 
 window.escapeHtml = Utils.escapeHtml.bind(Utils);
 window.escapeAttribute = Utils.escapeAttribute.bind(Utils);
@@ -197,3 +462,9 @@ window.sanitizeForJs = Utils.sanitizeForJs.bind(Utils);
 window.Logger = Logger;
 window.ErrorHandler = ErrorHandler;
 window.FallbackUI = FallbackUI;
+window.A11y = A11y;
+window.Toast = Toast;
+
+window.showToast = function(message, type, duration) {
+    return Toast.show(message, type, duration);
+};
