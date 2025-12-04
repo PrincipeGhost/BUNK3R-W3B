@@ -138,3 +138,87 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
   - `user-scalable=yes` already set in viewport
 - Updated `App.handleBottomNav()` to manage `aria-current` attribute
 - Updated `App.showToast()` to use centralized Toast module with haptic feedback
+
+### Section 19 - Centralized State Management
+- Created `StateManager` module in `utils.js` with:
+  - Centralized state storage for user, auth, wallet, balance, sections
+  - Event-based pub/sub system for state changes with `subscribe()` and `unsubscribe()`
+  - Helper methods: `setUser()`, `setBalance()`, `updateBalance()`, `setWallet()`, `setSection()`
+  - Pending operations tracking: `addPendingOperation()`, `removePendingOperation()`, `hasPendingOperations()`
+  - Session management: `updateActivity()`, `isSessionExpired()`
+  - Notifications management: `addNotification()`, `markNotificationsRead()`
+  - Feed/Stories state: `updateFeed()`, `updateStories()`
+  - Full reset capability with `reset()`
+- Created `RequestManager` for API requests with:
+  - Configurable timeouts (default 30s)
+  - Automatic retry with exponential backoff (3 retries by default)
+  - Request cancellation by key to prevent race conditions
+  - Pending request tracking
+- Created `Debounce` utility for debouncing function calls
+- Created `Throttle` utility for throttling function calls
+
+### Section 20 - Production Logs
+- Logger module already implemented with log levels
+- Production environment automatically sets log level to WARN
+- Debug/info logs suppressed in production
+
+### Section 21 - Rate Limiting Implementation
+- Created `RateLimiter` class in backend with:
+  - Thread-safe request tracking
+  - Automatic cleanup of old entries
+  - Configurable limits per action type
+- Created `@rate_limit()` decorator for Flask endpoints
+- Configured rate limits for critical endpoints:
+  - `posts_create`: 10 requests per minute
+  - `posts_like`: 60 requests per minute
+  - `comments_create`: 30 requests per minute
+  - `follow`: 30 requests per minute
+  - `payment_verify`: 20 requests per minute
+  - `2fa_verify`: 5 requests per 5 minutes
+  - `vn_purchase`: 5 requests per minute
+- Added rate limiting to endpoints:
+  - POST `/api/posts` - create publications
+  - POST `/api/posts/<id>/like` - like posts
+  - POST `/api/publications/<id>/comments` - add comments
+  - POST `/api/users/<id>/follow` - follow users
+  - POST `/api/ton/payment/<id>/verify` - verify payments
+  - POST `/api/2fa/verify` - 2FA verification
+  - POST `/api/vn/purchase` - virtual number purchase
+- Response headers include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`
+
+### Section 22 - Timeouts and Retries
+- `RequestManager` implements:
+  - Default 30 second timeout for all requests
+  - Automatic retry on 502, 503, 504 errors
+  - Exponential backoff: 1s, 2s, 4s delays
+  - Request cancellation to prevent race conditions
+  - AbortController support for clean cancellation
+
+### Section 23 - Cloudinary Improvements
+- Added pre-encryption file size validation in `addFiles()`:
+  - Images validated to max 10MB before encryption
+  - Videos validated to max 100MB before encryption
+  - Invalid file types rejected with user-friendly errors
+- Enhanced `showUploadProgress()` with detailed stage messages:
+  - 0-50%: "Encriptando archivos..."
+  - 50-70%: "Preparando subida..."
+  - 70-90%: "Subiendo a servidor..."
+  - 90-100%: "Finalizando..."
+- Progress now shows percentage and current stage
+
+### Section 24 - Session Management
+- Session activity monitoring via `startSessionActivityMonitor()`:
+  - Tracks click, touch, keypress, scroll events
+  - Checks session every 60 seconds
+- Automatic 2FA re-verification after 10 minutes inactivity
+- Session refresh via `/api/2fa/refresh` endpoint
+- StateManager integration:
+  - `updateActivity()`: Updates last activity timestamp
+  - `isSessionExpired()`: Checks if session has expired
+  - Session state sync across modules
+
+### Section 25 - Table Creation Improvements
+- Moved `pending_payments` table creation from runtime to initialization
+- Added `initialize_payments_tables()` method in DatabaseManager
+- Table initialization now happens at app startup
+- Added indexes for `user_id` and `status` columns on pending_payments table

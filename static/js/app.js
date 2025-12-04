@@ -451,11 +451,17 @@ const App = {
         }
         
         this.lastActivityTime = Date.now();
+        if (typeof StateManager !== 'undefined') {
+            StateManager.updateActivity();
+        }
         
         const activityEvents = ['click', 'touchstart', 'keypress', 'scroll'];
         activityEvents.forEach(event => {
             document.addEventListener(event, () => {
                 this.lastActivityTime = Date.now();
+                if (typeof StateManager !== 'undefined') {
+                    StateManager.updateActivity();
+                }
             }, { passive: true });
         });
         
@@ -467,10 +473,17 @@ const App = {
     async checkSessionValidity() {
         if (!this.twoFactorEnabled) return;
         
-        const inactiveTime = Date.now() - this.lastActivityTime;
+        const lastActivity = typeof StateManager !== 'undefined' 
+            ? StateManager.get('lastActivityTime') 
+            : this.lastActivityTime;
+        const inactiveTime = Date.now() - lastActivity;
         const tenMinutes = 10 * 60 * 1000;
         
         if (inactiveTime >= tenMinutes) {
+            Logger?.info('Session expired due to inactivity');
+            if (typeof StateManager !== 'undefined') {
+                StateManager.set('twoFactorVerified', false);
+            }
             this.show2FAVerifyScreen();
             document.getElementById('main-app').classList.add('hidden');
             return;
@@ -480,13 +493,19 @@ const App = {
             const response = await this.apiRequest('/api/2fa/session', { method: 'POST' });
             
             if (response.requiresVerification) {
+                if (typeof StateManager !== 'undefined') {
+                    StateManager.set('twoFactorVerified', false);
+                }
                 this.show2FAVerifyScreen();
                 document.getElementById('main-app').classList.add('hidden');
             } else if (response.sessionValid) {
+                if (typeof StateManager !== 'undefined') {
+                    StateManager.set('twoFactorVerified', true);
+                }
                 await this.apiRequest('/api/2fa/refresh', { method: 'POST' });
             }
         } catch (error) {
-            console.error('Error checking session:', error);
+            Logger?.error('Error checking session:', error);
         }
     },
     

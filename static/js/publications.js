@@ -493,19 +493,48 @@ const PublicationsManager = {
         this.addFiles(files);
     },
     
+    MAX_IMAGE_SIZE: 10 * 1024 * 1024,
+    MAX_VIDEO_SIZE: 100 * 1024 * 1024,
+    
     addFiles(files) {
-        const validFiles = files.filter(file => {
+        const validatedFiles = [];
+        const errors = [];
+        
+        for (const file of files) {
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
-            return isImage || isVideo;
-        });
+            
+            if (!isImage && !isVideo) {
+                errors.push(`${file.name}: tipo no soportado`);
+                continue;
+            }
+            
+            if (isImage && file.size > this.MAX_IMAGE_SIZE) {
+                errors.push(`${file.name}: imagen muy grande (máx 10MB)`);
+                continue;
+            }
+            
+            if (isVideo && file.size > this.MAX_VIDEO_SIZE) {
+                errors.push(`${file.name}: video muy grande (máx 100MB)`);
+                continue;
+            }
+            
+            validatedFiles.push(file);
+        }
         
-        if (this.selectedFiles.length + validFiles.length > 10) {
+        if (errors.length > 0) {
+            this.showToast(errors[0], 'error');
+            Logger?.warn('File validation errors:', errors);
+        }
+        
+        if (validatedFiles.length === 0) return;
+        
+        if (this.selectedFiles.length + validatedFiles.length > 10) {
             this.showToast('Máximo 10 archivos permitidos', 'error');
             return;
         }
         
-        this.selectedFiles = [...this.selectedFiles, ...validFiles];
+        this.selectedFiles = [...this.selectedFiles, ...validatedFiles];
         this.updateMediaPreview();
     },
     
@@ -633,7 +662,7 @@ const PublicationsManager = {
         }
     },
     
-    showUploadProgress(percent) {
+    showUploadProgress(percent, stage = '') {
         const progress = document.getElementById('upload-progress');
         const fill = document.getElementById('progress-bar-fill');
         const text = document.getElementById('progress-text');
@@ -641,7 +670,25 @@ const PublicationsManager = {
         if (progress) {
             progress.classList.remove('hidden');
             fill.style.width = `${percent}%`;
-            text.textContent = percent < 100 ? 'Encriptando y subiendo...' : 'Procesando...';
+            
+            let message = '';
+            if (stage) {
+                message = stage;
+            } else if (percent < 50) {
+                message = 'Encriptando archivos...';
+            } else if (percent < 70) {
+                message = 'Preparando subida...';
+            } else if (percent < 90) {
+                message = 'Subiendo a servidor...';
+            } else if (percent < 100) {
+                message = 'Finalizando...';
+            } else {
+                message = 'Completado';
+            }
+            
+            if (text) {
+                text.textContent = `${percent}% - ${message}`;
+            }
         }
     },
     

@@ -1486,6 +1486,35 @@ class DatabaseManager:
             logger.error(f"Error initializing virtual numbers tables: {e}")
             return False
     
+    def initialize_payments_tables(self):
+        """Inicializar tablas para sistema de pagos TON"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS pending_payments (
+                            id SERIAL PRIMARY KEY,
+                            payment_id VARCHAR(20) UNIQUE NOT NULL,
+                            user_id VARCHAR(50) NOT NULL,
+                            credits INTEGER NOT NULL,
+                            ton_amount DECIMAL(20, 9) NOT NULL,
+                            status VARCHAR(20) DEFAULT 'pending',
+                            tx_hash VARCHAR(100),
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            confirmed_at TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_pending_payments_user 
+                            ON pending_payments(user_id);
+                        CREATE INDEX IF NOT EXISTS idx_pending_payments_status 
+                            ON pending_payments(status);
+                    """)
+                    conn.commit()
+            logger.info("Payments tables initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Error initializing payments tables: {e}")
+            return False
+    
     def get_virtual_number_setting(self, key: str, default: str = None) -> str:
         """Obtener configuracion de numeros virtuales"""
         try:

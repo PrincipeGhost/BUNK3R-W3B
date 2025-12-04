@@ -452,9 +452,408 @@ const Toast = {
     }
 };
 
+const StateManager = {
+    _state: {
+        user: null,
+        isOwner: false,
+        isDemoMode: false,
+        isAuthenticated: false,
+        twoFactorEnabled: false,
+        twoFactorVerified: false,
+        
+        balance: 0,
+        walletAddress: null,
+        isWalletConnected: false,
+        isDeviceTrusted: false,
+        deviceId: null,
+        
+        currentSection: 'dashboard',
+        previousSection: null,
+        
+        pendingOperations: new Set(),
+        
+        feedPosts: [],
+        stories: [],
+        notifications: [],
+        unreadNotifications: 0,
+        
+        lastActivityTime: Date.now(),
+        sessionExpiry: null
+    },
+    
+    _subscribers: new Map(),
+    _version: 0,
+    
+    init() {
+        Logger.debug('StateManager initialized');
+    },
+    
+    get(key) {
+        if (key) {
+            return this._state[key];
+        }
+        return { ...this._state };
+    },
+    
+    set(key, value, silent = false) {
+        const oldValue = this._state[key];
+        if (oldValue === value) return;
+        
+        this._state[key] = value;
+        this._version++;
+        
+        if (!silent) {
+            this._notify(key, value, oldValue);
+        }
+        
+        Logger.debug(`State updated: ${key}`, { old: oldValue, new: value });
+    },
+    
+    update(updates, silent = false) {
+        const changes = {};
+        
+        for (const [key, value] of Object.entries(updates)) {
+            if (this._state[key] !== value) {
+                changes[key] = { old: this._state[key], new: value };
+                this._state[key] = value;
+            }
+        }
+        
+        if (Object.keys(changes).length > 0) {
+            this._version++;
+            
+            if (!silent) {
+                for (const [key, change] of Object.entries(changes)) {
+                    this._notify(key, change.new, change.old);
+                }
+                this._notify('*', this._state, changes);
+            }
+        }
+        
+        return Object.keys(changes).length > 0;
+    },
+    
+    subscribe(key, callback) {
+        if (!this._subscribers.has(key)) {
+            this._subscribers.set(key, new Set());
+        }
+        this._subscribers.get(key).add(callback);
+        
+        return () => this.unsubscribe(key, callback);
+    },
+    
+    unsubscribe(key, callback) {
+        if (this._subscribers.has(key)) {
+            this._subscribers.get(key).delete(callback);
+        }
+    },
+    
+    _notify(key, newValue, oldValue) {
+        if (this._subscribers.has(key)) {
+            this._subscribers.get(key).forEach(callback => {
+                try {
+                    callback(newValue, oldValue, key);
+                } catch (error) {
+                    Logger.error('StateManager subscriber error:', error);
+                }
+            });
+        }
+    },
+    
+    setUser(userData) {
+        this.update({
+            user: userData,
+            isAuthenticated: !!userData,
+            isOwner: userData?.isOwner || false
+        });
+    },
+    
+    setBalance(balance) {
+        this.set('balance', parseFloat(balance) || 0);
+    },
+    
+    updateBalance(delta) {
+        const newBalance = Math.max(0, this.get('balance') + delta);
+        this.set('balance', newBalance);
+        return newBalance;
+    },
+    
+    setWallet(address, connected = true) {
+        this.update({
+            walletAddress: address,
+            isWalletConnected: connected && !!address
+        });
+    },
+    
+    setSection(section) {
+        const current = this.get('currentSection');
+        if (current !== section) {
+            this.update({
+                previousSection: current,
+                currentSection: section
+            });
+        }
+    },
+    
+    addPendingOperation(operationId) {
+        const pending = new Set(this._state.pendingOperations);
+        pending.add(operationId);
+        this.set('pendingOperations', pending);
+    },
+    
+    removePendingOperation(operationId) {
+        const pending = new Set(this._state.pendingOperations);
+        pending.delete(operationId);
+        this.set('pendingOperations', pending);
+    },
+    
+    hasPendingOperations() {
+        return this._state.pendingOperations.size > 0;
+    },
+    
+    isPending(operationId) {
+        return this._state.pendingOperations.has(operationId);
+    },
+    
+    updateActivity() {
+        this.set('lastActivityTime', Date.now(), true);
+    },
+    
+    isSessionExpired() {
+        const expiry = this.get('sessionExpiry');
+        if (!expiry) return false;
+        return Date.now() > expiry;
+    },
+    
+    addNotification(notification) {
+        const notifications = [...this._state.notifications, notification];
+        const unread = this._state.unreadNotifications + 1;
+        this.update({ notifications, unreadNotifications: unread });
+    },
+    
+    markNotificationsRead() {
+        this.set('unreadNotifications', 0);
+    },
+    
+    updateFeed(posts) {
+        this.set('feedPosts', posts);
+    },
+    
+    updateStories(stories) {
+        this.set('stories', stories);
+    },
+    
+    reset() {
+        this._state = {
+            user: null,
+            isOwner: false,
+            isDemoMode: false,
+            isAuthenticated: false,
+            twoFactorEnabled: false,
+            twoFactorVerified: false,
+            balance: 0,
+            walletAddress: null,
+            isWalletConnected: false,
+            isDeviceTrusted: false,
+            deviceId: null,
+            currentSection: 'dashboard',
+            previousSection: null,
+            pendingOperations: new Set(),
+            feedPosts: [],
+            stories: [],
+            notifications: [],
+            unreadNotifications: 0,
+            lastActivityTime: Date.now(),
+            sessionExpiry: null
+        };
+        this._version++;
+        this._notify('*', this._state, null);
+        Logger.debug('StateManager reset');
+    },
+    
+    getVersion() {
+        return this._version;
+    },
+    
+    debug() {
+        Logger.debug('StateManager state:', {
+            ...this._state,
+            pendingOperations: Array.from(this._state.pendingOperations)
+        });
+        return this._state;
+    }
+};
+
+const RequestManager = {
+    _pendingRequests: new Map(),
+    _requestId: 0,
+    
+    DEFAULT_TIMEOUT: 30000,
+    MAX_RETRIES: 3,
+    RETRY_DELAYS: [1000, 2000, 4000],
+    
+    async fetch(url, options = {}) {
+        const {
+            timeout = this.DEFAULT_TIMEOUT,
+            retries = this.MAX_RETRIES,
+            retryOn = [502, 503, 504],
+            cancelKey = null,
+            ...fetchOptions
+        } = options;
+        
+        if (cancelKey && this._pendingRequests.has(cancelKey)) {
+            this._pendingRequests.get(cancelKey).abort();
+            this._pendingRequests.delete(cancelKey);
+        }
+        
+        const controller = new AbortController();
+        const requestId = ++this._requestId;
+        
+        if (cancelKey) {
+            this._pendingRequests.set(cancelKey, controller);
+        }
+        
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, timeout);
+        
+        let lastError = null;
+        
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                if (controller.signal.aborted) {
+                    throw new DOMException('Request was cancelled', 'AbortError');
+                }
+                
+                const response = await fetch(url, {
+                    ...fetchOptions,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (cancelKey) {
+                    this._pendingRequests.delete(cancelKey);
+                }
+                
+                if (!response.ok && retryOn.includes(response.status) && attempt < retries) {
+                    const delay = this.RETRY_DELAYS[Math.min(attempt, this.RETRY_DELAYS.length - 1)];
+                    Logger.warn(`Request failed with ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+                    await this._delay(delay);
+                    continue;
+                }
+                
+                return response;
+                
+            } catch (error) {
+                lastError = error;
+                
+                if (error.name === 'AbortError') {
+                    clearTimeout(timeoutId);
+                    if (cancelKey) {
+                        this._pendingRequests.delete(cancelKey);
+                    }
+                    throw error;
+                }
+                
+                if (attempt < retries) {
+                    const delay = this.RETRY_DELAYS[Math.min(attempt, this.RETRY_DELAYS.length - 1)];
+                    Logger.warn(`Request error, retrying in ${delay}ms (attempt ${attempt + 1}/${retries}):`, error.message);
+                    await this._delay(delay);
+                }
+            }
+        }
+        
+        clearTimeout(timeoutId);
+        if (cancelKey) {
+            this._pendingRequests.delete(cancelKey);
+        }
+        
+        throw lastError || new Error('Request failed after retries');
+    },
+    
+    cancel(cancelKey) {
+        if (this._pendingRequests.has(cancelKey)) {
+            this._pendingRequests.get(cancelKey).abort();
+            this._pendingRequests.delete(cancelKey);
+            Logger.debug(`Request cancelled: ${cancelKey}`);
+            return true;
+        }
+        return false;
+    },
+    
+    cancelAll() {
+        for (const [key, controller] of this._pendingRequests) {
+            controller.abort();
+        }
+        this._pendingRequests.clear();
+        Logger.debug('All pending requests cancelled');
+    },
+    
+    hasPending(cancelKey) {
+        return this._pendingRequests.has(cancelKey);
+    },
+    
+    _delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+};
+
+const Debounce = {
+    _timers: new Map(),
+    
+    run(key, callback, delay = 300) {
+        if (this._timers.has(key)) {
+            clearTimeout(this._timers.get(key));
+        }
+        
+        const timerId = setTimeout(() => {
+            this._timers.delete(key);
+            callback();
+        }, delay);
+        
+        this._timers.set(key, timerId);
+    },
+    
+    cancel(key) {
+        if (this._timers.has(key)) {
+            clearTimeout(this._timers.get(key));
+            this._timers.delete(key);
+        }
+    },
+    
+    cancelAll() {
+        for (const timerId of this._timers.values()) {
+            clearTimeout(timerId);
+        }
+        this._timers.clear();
+    }
+};
+
+const Throttle = {
+    _lastCalls: new Map(),
+    
+    run(key, callback, limit = 1000) {
+        const now = Date.now();
+        const lastCall = this._lastCalls.get(key) || 0;
+        
+        if (now - lastCall >= limit) {
+            this._lastCalls.set(key, now);
+            callback();
+            return true;
+        }
+        return false;
+    },
+    
+    reset(key) {
+        this._lastCalls.delete(key);
+    }
+};
+
 Logger.init();
 A11y.init();
 Toast.init();
+StateManager.init();
 
 window.escapeHtml = Utils.escapeHtml.bind(Utils);
 window.escapeAttribute = Utils.escapeAttribute.bind(Utils);
@@ -464,6 +863,10 @@ window.ErrorHandler = ErrorHandler;
 window.FallbackUI = FallbackUI;
 window.A11y = A11y;
 window.Toast = Toast;
+window.StateManager = StateManager;
+window.RequestManager = RequestManager;
+window.Debounce = Debounce;
+window.Throttle = Throttle;
 
 window.showToast = function(message, type, duration) {
     return Toast.show(message, type, duration);

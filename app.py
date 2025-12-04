@@ -93,6 +93,8 @@ try:
     logger.info("Security manager initialized")
     db_manager.initialize_virtual_numbers_tables()
     logger.info("Virtual numbers tables initialized")
+    db_manager.initialize_payments_tables()
+    logger.info("Payments tables initialized")
     vn_manager = VirtualNumbersManager(db_manager)
     logger.info("Virtual numbers manager initialized")
 except Exception as e:
@@ -303,6 +305,152 @@ class InputValidator:
 
 
 input_validator = InputValidator()
+
+
+import threading
+import time
+from collections import defaultdict
+
+class RateLimiter:
+    """Sistema de rate limiting para proteger endpoints críticos."""
+    
+    def __init__(self):
+        self._requests = defaultdict(list)
+        self._lock = threading.Lock()
+        self._cleanup_interval = 60
+        self._last_cleanup = time.time()
+    
+    def _cleanup_old_entries(self):
+        """Limpia entradas antiguas del registro."""
+        current_time = time.time()
+        if current_time - self._last_cleanup < self._cleanup_interval:
+            return
+        
+        self._last_cleanup = current_time
+        keys_to_delete = []
+        
+        for key, timestamps in list(self._requests.items()):
+            self._requests[key] = [t for t in timestamps if current_time - t < 3600]
+            if not self._requests[key]:
+                keys_to_delete.append(key)
+        
+        for key in keys_to_delete:
+            del self._requests[key]
+    
+    def is_rate_limited(self, key: str, limit: int, window: int) -> tuple:
+        """
+        Verifica si una clave está rate-limited.
+        
+        Args:
+            key: Identificador único (user_id, IP, etc.)
+            limit: Número máximo de requests permitidos
+            window: Ventana de tiempo en segundos
+            
+        Returns:
+            (is_limited: bool, remaining: int, reset_time: int)
+        """
+        import time
+        current_time = time.time()
+        
+        with self._lock:
+            self._cleanup_old_entries()
+            
+            timestamps = self._requests[key]
+            valid_timestamps = [t for t in timestamps if current_time - t < window]
+            self._requests[key] = valid_timestamps
+            
+            if len(valid_timestamps) >= limit:
+                oldest = min(valid_timestamps) if valid_timestamps else current_time
+                reset_time = int(oldest + window - current_time)
+                return True, 0, reset_time
+            
+            self._requests[key].append(current_time)
+            remaining = limit - len(self._requests[key])
+            return False, remaining, window
+    
+    def get_usage(self, key: str, window: int) -> int:
+        """Obtiene el número de requests actuales para una clave."""
+        import time
+        current_time = time.time()
+        
+        with self._lock:
+            timestamps = self._requests.get(key, [])
+            valid_timestamps = [t for t in timestamps if current_time - t < window]
+            return len(valid_timestamps)
+
+
+rate_limiter = RateLimiter()
+
+RATE_LIMITS = {
+    'posts_create': {'limit': 10, 'window': 60},
+    'posts_like': {'limit': 60, 'window': 60},
+    'comments_create': {'limit': 30, 'window': 60},
+    'follow': {'limit': 30, 'window': 60},
+    'payment_verify': {'limit': 20, 'window': 60},
+    '2fa_verify': {'limit': 5, 'window': 300},
+    'vn_purchase': {'limit': 5, 'window': 60},
+    'login': {'limit': 10, 'window': 300},
+    'default': {'limit': 100, 'window': 60}
+}
+
+
+def rate_limit(action: str = 'default', use_ip: bool = False):
+    """
+    Decorador de rate limiting para endpoints Flask.
+    
+    Args:
+        action: Tipo de acción para determinar límites
+        use_ip: Si usar IP en lugar de user_id como identificador
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            limits = RATE_LIMITS.get(action, RATE_LIMITS['default'])
+            limit = limits['limit']
+            window = limits['window']
+            
+            if use_ip:
+                client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                if client_ip:
+                    client_ip = client_ip.split(',')[0].strip()
+                key = f"{action}:{client_ip}"
+            else:
+                user = getattr(request, 'telegram_user', None)
+                if user:
+                    user_id = str(user.get('id', 'anonymous'))
+                else:
+                    user_id = request.headers.get('X-Forwarded-For', request.remote_addr)
+                    if user_id:
+                        user_id = user_id.split(',')[0].strip()
+                key = f"{action}:{user_id}"
+            
+            is_limited, remaining, reset_time = rate_limiter.is_rate_limited(key, limit, window)
+            
+            if is_limited:
+                response = jsonify({
+                    'error': 'Demasiadas solicitudes. Intenta de nuevo más tarde.',
+                    'retry_after': reset_time
+                })
+                response.status_code = 429
+                response.headers['Retry-After'] = str(reset_time)
+                response.headers['X-RateLimit-Limit'] = str(limit)
+                response.headers['X-RateLimit-Remaining'] = '0'
+                response.headers['X-RateLimit-Reset'] = str(int(time.time()) + reset_time)
+                logger.warning(f"Rate limit exceeded for {key}")
+                return response
+            
+            response = f(*args, **kwargs)
+            
+            if hasattr(response, 'headers'):
+                response.headers['X-RateLimit-Limit'] = str(limit)
+                response.headers['X-RateLimit-Remaining'] = str(remaining)
+            
+            return response
+        return decorated_function
+    return decorator
+
+
+import time
 
 
 def validate_telegram_webapp_data(init_data: str):
@@ -596,6 +744,7 @@ def setup_2fa():
 
 @app.route('/api/2fa/verify', methods=['POST'])
 @require_telegram_user
+@rate_limit('2fa_verify')
 def verify_2fa():
     """Verificar código TOTP"""
     user_id = str(request.telegram_user.get('id'))
@@ -1270,6 +1419,7 @@ def get_statuses():
 
 @app.route('/api/posts', methods=['POST'])
 @require_telegram_user
+@rate_limit('posts_create')
 def create_post():
     """Crear una nueva publicación."""
     try:
@@ -1437,6 +1587,7 @@ def delete_post(post_id):
 
 @app.route('/api/posts/<int:post_id>/like', methods=['POST'])
 @require_telegram_user
+@rate_limit('posts_like')
 def like_post(post_id):
     """Dar like a una publicación."""
     try:
@@ -1751,6 +1902,7 @@ def update_my_profile():
 
 @app.route('/api/users/<user_id>/follow', methods=['POST'])
 @require_telegram_user
+@rate_limit('follow')
 def follow_user(user_id):
     """Seguir a un usuario."""
     try:
@@ -2310,21 +2462,6 @@ def create_ton_payment():
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS pending_payments (
-                        id SERIAL PRIMARY KEY,
-                        payment_id VARCHAR(20) UNIQUE NOT NULL,
-                        user_id VARCHAR(50) NOT NULL,
-                        credits INTEGER NOT NULL,
-                        ton_amount DECIMAL(20, 9) NOT NULL,
-                        status VARCHAR(20) DEFAULT 'pending',
-                        tx_hash VARCHAR(100),
-                        created_at TIMESTAMP DEFAULT NOW(),
-                        confirmed_at TIMESTAMP
-                    )
-                """)
-                conn.commit()
-                
-                cur.execute("""
                     INSERT INTO pending_payments (payment_id, user_id, credits, ton_amount)
                     VALUES (%s, %s, %s, %s)
                 """, (payment_id, user_id, credits, ton_amount))
@@ -2346,6 +2483,7 @@ def create_ton_payment():
 
 @app.route('/api/ton/payment/<payment_id>/verify', methods=['POST'])
 @require_telegram_user
+@rate_limit('payment_verify')
 def verify_ton_payment(payment_id):
     """Verificar si un pago fue recibido en la blockchain."""
     try:
@@ -4266,6 +4404,7 @@ def get_post_comments(post_id):
 
 @app.route('/api/publications/<int:post_id>/comments', methods=['POST'])
 @require_telegram_auth
+@rate_limit('comments_create')
 def add_comment(post_id):
     """Add a comment to a post"""
     try:
@@ -5096,6 +5235,7 @@ def get_vn_services():
 
 @app.route('/api/vn/purchase', methods=['POST'])
 @require_telegram_user
+@rate_limit('vn_purchase')
 def purchase_vn():
     """Purchase a virtual number"""
     try:
