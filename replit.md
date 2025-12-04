@@ -97,6 +97,12 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Fixed Telegram Wallet synchronization issues
+  - Added missing `getAuthHeaders()` function in App object
+  - Fixed wallet address conversion to use non-bounceable format (UQ...) matching Telegram Wallet
+  - Previously used bounceable format (EQ...) which caused address mismatch
+  - Wallet now correctly syncs across devices using proper authentication headers
+
 - 2024-12-04: Integrated ChangeNow cryptocurrency exchange
   - Full Exchange section accessible via sidebar menu
   - Backend API endpoints for currency listing, rate estimation, and transaction creation
