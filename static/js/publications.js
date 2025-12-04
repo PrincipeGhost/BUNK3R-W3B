@@ -275,6 +275,8 @@ const PublicationsManager = {
                 
                 ${mediaHtml}
                 
+                ${captionHtml}
+                
                 <div class="publication-actions">
                     <div class="publication-actions-left">
                         <button class="publication-action-btn ${post.user_reaction ? 'liked' : ''}" 
@@ -306,8 +308,6 @@ const PublicationsManager = {
                         </button>
                     ` : ''}
                 </div>
-                
-                ${captionHtml}
                 
                 ${post.is_encrypted ? '<span class="encryption-badge">🔒</span>' : ''}
             </article>
