@@ -29,6 +29,8 @@ from tracking.database import DatabaseManager
 from tracking.models import Tracking
 from tracking.email_service import EmailService, prepare_tracking_email_data, send_tracking_email
 from tracking.security import SecurityManager
+from tracking.encryption import encryption_manager
+from tracking.cloudinary_service import cloudinary_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -3664,6 +3666,956 @@ def admin_get_logs():
     except Exception as e:
         logger.error(f"Error getting logs: {e}")
         return jsonify({'success': True, 'logs': []})
+
+
+# ============================================================
+# ENCRYPTED PUBLICATIONS SYSTEM - API ENDPOINTS
+# ============================================================
+
+@app.route('/api/publications/create', methods=['POST'])
+@require_telegram_auth
+def create_publication():
+    """Create a new encrypted publication with media carousel support"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if 'files' not in request.files and 'media' not in request.files:
+            caption = request.form.get('caption', '')
+            content_type = 'text'
+            
+            encryption_meta = encryption_manager.generate_content_key()
+            encrypted_caption = encryption_manager.encrypt_text(caption)
+            
+            post_id = db_manager.create_encrypted_post(
+                user_id=user_id,
+                content_type=content_type,
+                caption=encrypted_caption.get('encrypted_data') if encrypted_caption['success'] else caption,
+                encryption_key=encryption_meta['key'],
+                encryption_iv=encryption_meta['iv'],
+                is_encrypted=True
+            )
+            
+            if not post_id:
+                return jsonify({'success': False, 'error': 'Error creating post'}), 500
+            
+            if caption:
+                db_manager.process_hashtags(post_id, caption)
+                db_manager.process_mentions(post_id, caption)
+            
+            return jsonify({
+                'success': True,
+                'post_id': post_id,
+                'message': 'Publicación creada exitosamente'
+            })
+        
+        files = request.files.getlist('files') or request.files.getlist('media')
+        caption = request.form.get('caption', '')
+        
+        if len(files) > 10:
+            return jsonify({'success': False, 'error': 'Máximo 10 archivos permitidos'}), 400
+        
+        has_video = any(f.content_type.startswith('video/') for f in files)
+        content_type = 'video' if has_video else 'image'
+        if len(files) > 1:
+            content_type = 'carousel'
+        
+        encryption_meta = encryption_manager.generate_content_key()
+        
+        post_id = db_manager.create_encrypted_post(
+            user_id=user_id,
+            content_type=content_type,
+            caption=caption,
+            encryption_key=encryption_meta['key'],
+            encryption_iv=encryption_meta['iv'],
+            is_encrypted=True
+        )
+        
+        if not post_id:
+            return jsonify({'success': False, 'error': 'Error creating post'}), 500
+        
+        media_results = []
+        for i, file in enumerate(files):
+            file_data = file.read()
+            
+            upload_result = cloudinary_service.upload_encrypted_media(
+                file_data=file_data,
+                content_type=file.content_type,
+                folder=f"encrypted_posts/{user_id}"
+            )
+            
+            if not upload_result['success']:
+                logger.error(f"Failed to upload file {i}: {upload_result.get('error')}")
+                continue
+            
+            media_id = db_manager.add_post_media(
+                post_id=post_id,
+                media_type=upload_result['resource_type'],
+                media_url=upload_result['url'],
+                encrypted_url=upload_result['url'],
+                encryption_key=upload_result['encryption_key'],
+                encryption_iv=upload_result['encryption_iv'],
+                media_order=i
+            )
+            
+            media_results.append({
+                'id': media_id,
+                'url': upload_result['url'],
+                'type': upload_result['resource_type']
+            })
+        
+        if caption:
+            db_manager.process_hashtags(post_id, caption)
+            db_manager.process_mentions(post_id, caption)
+        
+        return jsonify({
+            'success': True,
+            'post_id': post_id,
+            'media_count': len(media_results),
+            'message': 'Publicación creada exitosamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/feed', methods=['GET'])
+@require_telegram_auth
+def get_feed():
+    """Get user's feed with encrypted content"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_feed_posts(user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting feed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>', methods=['GET'])
+@require_telegram_auth
+def get_publication(post_id):
+    """Get a single publication with all details"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        post = db_manager.get_post_with_media(post_id, user_id)
+        
+        if not post:
+            return jsonify({'success': False, 'error': 'Publicación no encontrada'}), 404
+        
+        db_manager.record_post_view(post_id, user_id)
+        
+        return jsonify({
+            'success': True,
+            'post': post
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>', methods=['PUT'])
+@require_telegram_auth
+def update_publication(post_id):
+    """Update a publication (caption, comments enabled)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        success = db_manager.update_post(
+            post_id=post_id,
+            user_id=user_id,
+            caption=data.get('caption'),
+            comments_enabled=data.get('comments_enabled')
+        )
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'No se pudo actualizar'}), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Publicación actualizada'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>', methods=['DELETE'])
+@require_telegram_auth
+def delete_publication(post_id):
+    """Delete a publication"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.delete_post(post_id, user_id)
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar'}), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Publicación eliminada'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/gallery/<user_id>', methods=['GET'])
+@require_telegram_auth
+def get_user_gallery(user_id):
+    """Get user's gallery (grid of posts)"""
+    try:
+        viewer_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_user_gallery(user_id, viewer_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting gallery: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/react', methods=['POST'])
+@require_telegram_auth
+def react_to_post(post_id):
+    """Add or change reaction to a post"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        reaction_type = data.get('reaction', 'like')
+        
+        success = db_manager.add_reaction(user_id, post_id, reaction_type)
+        
+        return jsonify({
+            'success': success,
+            'reaction': reaction_type
+        })
+        
+    except Exception as e:
+        logger.error(f"Error reacting to post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/unreact', methods=['POST'])
+@require_telegram_auth
+def unreact_to_post(post_id):
+    """Remove reaction from a post"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.remove_reaction(user_id, post_id)
+        
+        return jsonify({
+            'success': success
+        })
+        
+    except Exception as e:
+        logger.error(f"Error unreacting to post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/comments', methods=['GET'])
+@require_telegram_auth
+def get_post_comments(post_id):
+    """Get comments for a post"""
+    try:
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        
+        comments = db_manager.get_post_comments(post_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'comments': comments
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting comments: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/comments', methods=['POST'])
+@require_telegram_auth
+def add_comment(post_id):
+    """Add a comment to a post"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        content = data.get('content', '').strip()
+        parent_id = data.get('parent_id')
+        
+        if not content:
+            return jsonify({'success': False, 'error': 'Contenido requerido'}), 400
+        
+        comment_id = db_manager.add_comment(user_id, post_id, content, parent_id)
+        
+        if comment_id:
+            db_manager.process_mentions(post_id, content, 'comment')
+        
+        return jsonify({
+            'success': comment_id is not None,
+            'comment_id': comment_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/like', methods=['POST'])
+@require_telegram_auth
+def like_comment(comment_id):
+    """Like a comment"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.like_comment(user_id, comment_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error liking comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/unlike', methods=['POST'])
+@require_telegram_auth
+def unlike_comment(comment_id):
+    """Unlike a comment"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.unlike_comment(user_id, comment_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error unliking comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/pin-comment', methods=['POST'])
+@require_telegram_auth
+def pin_comment(post_id):
+    """Pin a comment (post owner only)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        comment_id = data.get('comment_id')
+        
+        if not comment_id:
+            return jsonify({'success': False, 'error': 'ID de comentario requerido'}), 400
+        
+        success = db_manager.pin_comment(user_id, post_id, comment_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error pinning comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/save', methods=['POST'])
+@require_telegram_auth
+def save_post(post_id):
+    """Save a post to favorites"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.save_post(user_id, post_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error saving post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/unsave', methods=['POST'])
+@require_telegram_auth
+def unsave_post(post_id):
+    """Remove post from favorites"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.unsave_post(user_id, post_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error unsaving post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/saved', methods=['GET'])
+@require_telegram_auth
+def get_saved_posts():
+    """Get user's saved posts"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_saved_posts(user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting saved posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/publications/<int:post_id>/share', methods=['POST'])
+@require_telegram_auth
+def share_post(post_id):
+    """Share/repost a publication"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        share_type = data.get('type', 'repost')
+        quote_text = data.get('quote')
+        recipient_id = data.get('recipient_id')
+        
+        share_id = db_manager.share_post(user_id, post_id, share_type, quote_text, recipient_id)
+        
+        return jsonify({
+            'success': share_id is not None,
+            'share_id': share_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sharing post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# STORIES SYSTEM
+# ============================================================
+
+@app.route('/api/stories/create', methods=['POST'])
+@require_telegram_auth
+def create_story():
+    """Create a new story (24h expiry)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'Archivo requerido'}), 400
+        
+        file = request.files['file']
+        file_data = file.read()
+        
+        if file.content_type.startswith('video/'):
+            pass
+        
+        upload_result = cloudinary_service.upload_story_media(
+            file_data=file_data,
+            content_type=file.content_type
+        )
+        
+        if not upload_result['success']:
+            return jsonify({'success': False, 'error': upload_result.get('error')}), 500
+        
+        story_id = db_manager.create_story(
+            user_id=user_id,
+            media_type=upload_result['resource_type'],
+            media_url=upload_result['url'],
+            encrypted_url=upload_result['url'],
+            encryption_key=upload_result['encryption_key'],
+            encryption_iv=upload_result['encryption_iv']
+        )
+        
+        return jsonify({
+            'success': story_id is not None,
+            'story_id': story_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stories/feed', methods=['GET'])
+@require_telegram_auth
+def get_stories_feed():
+    """Get stories from followed users"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        stories = db_manager.get_stories_feed(user_id)
+        
+        return jsonify({
+            'success': True,
+            'stories': stories
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting stories feed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stories/user/<target_user_id>', methods=['GET'])
+@require_telegram_auth
+def get_user_stories(target_user_id):
+    """Get all stories from a specific user"""
+    try:
+        viewer_id = str(request.telegram_user.get('id', 0))
+        
+        stories = db_manager.get_user_stories(target_user_id, viewer_id)
+        
+        return jsonify({
+            'success': True,
+            'stories': stories
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user stories: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stories/<int:story_id>/view', methods=['POST'])
+@require_telegram_auth
+def view_story(story_id):
+    """Mark a story as viewed"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.view_story(story_id, user_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error viewing story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stories/<int:story_id>/viewers', methods=['GET'])
+@require_telegram_auth
+def get_story_viewers(story_id):
+    """Get list of users who viewed a story (owner only)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        viewers = db_manager.get_story_viewers(story_id, user_id)
+        
+        return jsonify({
+            'success': True,
+            'viewers': viewers
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting story viewers: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# EXPLORE & SEARCH
+# ============================================================
+
+@app.route('/api/explore', methods=['GET'])
+@require_telegram_auth
+def explore_posts():
+    """Get trending/popular posts for explore page"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_explore_posts(user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting explore posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/search/posts', methods=['GET'])
+@require_telegram_auth
+def search_posts():
+    """Search posts by caption text"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        if not query:
+            return jsonify({'success': True, 'posts': []})
+        
+        posts = db_manager.search_posts(query, user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/search/users', methods=['GET'])
+@require_telegram_auth
+def search_users():
+    """Search users by username or name"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 20))
+        
+        if not query:
+            return jsonify({'success': True, 'users': []})
+        
+        users = db_manager.search_users(query, user_id, limit)
+        
+        return jsonify({
+            'success': True,
+            'users': users
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/hashtag/<hashtag>', methods=['GET'])
+@require_telegram_auth
+def get_hashtag_posts(hashtag):
+    """Get posts by hashtag"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_posts_by_hashtag(hashtag, user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'hashtag': hashtag,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting hashtag posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/trending/hashtags', methods=['GET'])
+@require_telegram_auth
+def get_trending_hashtags():
+    """Get trending hashtags"""
+    try:
+        limit = int(request.args.get('limit', 10))
+        
+        hashtags = db_manager.get_trending_hashtags(limit)
+        
+        return jsonify({
+            'success': True,
+            'hashtags': hashtags
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting trending hashtags: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/suggested/users', methods=['GET'])
+@require_telegram_auth
+def get_suggested_users():
+    """Get suggested users to follow"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 10))
+        
+        users = db_manager.get_suggested_users(user_id, limit)
+        
+        return jsonify({
+            'success': True,
+            'users': users
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting suggested users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+@app.route('/api/notifications', methods=['GET'])
+@require_telegram_auth
+def get_notifications():
+    """Get user notifications"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+        
+        notifications = db_manager.get_notifications(user_id, limit, offset, unread_only)
+        
+        return jsonify({
+            'success': True,
+            'notifications': notifications
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/count', methods=['GET'])
+@require_telegram_auth
+def get_notifications_count():
+    """Get unread notifications count"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        count = db_manager.get_unread_notifications_count(user_id)
+        
+        return jsonify({
+            'success': True,
+            'count': count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting notifications count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/read', methods=['POST'])
+@require_telegram_auth
+def mark_notifications_read():
+    """Mark notifications as read"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        notification_ids = data.get('ids')
+        
+        success = db_manager.mark_notifications_read(user_id, notification_ids)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error marking notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# BLOCK & REPORT SYSTEM
+# ============================================================
+
+@app.route('/api/users/<blocked_user_id>/block', methods=['POST'])
+@require_telegram_auth
+def block_user(blocked_user_id):
+    """Block a user"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if user_id == blocked_user_id:
+            return jsonify({'success': False, 'error': 'No puedes bloquearte a ti mismo'}), 400
+        
+        success = db_manager.block_user(user_id, blocked_user_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error blocking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/users/<blocked_user_id>/unblock', methods=['POST'])
+@require_telegram_auth
+def unblock_user(blocked_user_id):
+    """Unblock a user"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.unblock_user(user_id, blocked_user_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error unblocking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/users/blocked', methods=['GET'])
+@require_telegram_auth
+def get_blocked_users():
+    """Get list of blocked users"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        blocked = db_manager.get_blocked_users(user_id)
+        
+        return jsonify({
+            'success': True,
+            'blocked_users': blocked
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting blocked users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/report', methods=['POST'])
+@require_telegram_auth
+def create_report():
+    """Create a content report"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        content_type = data.get('content_type')
+        content_id = data.get('content_id')
+        reason = data.get('reason')
+        description = data.get('description')
+        
+        if not all([content_type, content_id, reason]):
+            return jsonify({'success': False, 'error': 'Datos incompletos'}), 400
+        
+        report_id = db_manager.create_report(
+            user_id, content_type, content_id, reason, description
+        )
+        
+        return jsonify({
+            'success': report_id is not None,
+            'report_id': report_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/reports', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_reports():
+    """Admin: Get content reports"""
+    try:
+        status = request.args.get('status', 'pending')
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        
+        reports = db_manager.get_reports(status, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'reports': reports
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting reports: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/reports/<int:report_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def update_report(report_id):
+    """Admin: Update report status"""
+    try:
+        admin_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        status = data.get('status')
+        notes = data.get('notes')
+        
+        if not status:
+            return jsonify({'success': False, 'error': 'Estado requerido'}), 400
+        
+        success = db_manager.update_report_status(report_id, status, admin_id, notes)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error updating report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENCRYPTION KEY ENDPOINTS (for client-side decryption)
+# ============================================================
+
+@app.route('/api/encryption/key', methods=['GET'])
+@require_telegram_auth
+def get_content_encryption_key():
+    """Get encryption key for decrypting content"""
+    try:
+        content_type = request.args.get('type')
+        content_id = request.args.get('id')
+        
+        if not content_type or not content_id:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        if content_type == 'post':
+            post = db_manager.get_post_with_media(int(content_id))
+            if post:
+                return jsonify({
+                    'success': True,
+                    'key': post.get('encryption_key'),
+                    'iv': post.get('encryption_iv'),
+                    'media_keys': [{
+                        'id': m['id'],
+                        'key': m.get('encryption_key'),
+                        'iv': m.get('encryption_iv')
+                    } for m in post.get('media', [])]
+                })
+        
+        return jsonify({'success': False, 'error': 'Content not found'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting encryption key: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cloudinary/status', methods=['GET'])
+@require_telegram_auth
+def check_cloudinary_status():
+    """Check if Cloudinary is properly configured"""
+    try:
+        return jsonify({
+            'success': True,
+            'configured': cloudinary_service.is_configured()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':
