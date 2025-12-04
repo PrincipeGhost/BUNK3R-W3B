@@ -1603,7 +1603,7 @@ const App = {
                 <div class="bot-info">
                     <h3>${this.escapeHtml(bot.botName)}</h3>
                     <p class="bot-desc">${this.escapeHtml(bot.description || '')}</p>
-                    <span class="bot-price">${bot.price > 0 ? bot.price + ' creditos' : 'Gratis'}</span>
+                    <span class="bot-price">${bot.price > 0 ? bot.price + ' BUNK3RCO1N' : 'Gratis'}</span>
                 </div>
                 <div class="bot-actions">
                     <button class="bot-buy-btn" onclick="App.purchaseBot('${this.escapeHtml(bot.botType)}', '${this.escapeHtml(bot.botName)}', ${bot.price})">
@@ -1670,7 +1670,7 @@ const App = {
                         Quieres obtener <strong>${this.escapeHtml(botName)}</strong>?
                     </p>
                     <p style="text-align: center; font-size: 18px; font-weight: bold; color: var(--accent-warning);">
-                        ${price} creditos
+                        ${price} BUNK3RCO1N
                     </p>
                 </div>
                 <div class="modal-footer">
@@ -2355,7 +2355,7 @@ const App = {
             });
 
             if (response.success) {
-                this.showToast(`+${credits} creditos agregados!`, 'success');
+                this.showToast(`+${credits} BUNK3RCO1N agregados!`, 'success');
                 this.loadWalletBalance();
             }
         } catch (error) {
@@ -2407,14 +2407,14 @@ const App = {
         
         const modalHtml = `
             <div class="payment-modal-content">
-                <h3>Recarga de Creditos</h3>
+                <h3>Recarga de BUNK3RCO1N</h3>
                 <div class="payment-info">
                     <div class="payment-amount">
                         <span class="label">Cantidad a enviar:</span>
                         <span class="value">${tonAmount} TON</span>
                     </div>
                     <div class="payment-credits">
-                        <span class="label">Creditos a recibir:</span>
+                        <span class="label">BUNK3RCO1N a recibir:</span>
                         <span class="value">+${credits}</span>
                     </div>
                 </div>
@@ -2495,7 +2495,7 @@ const App = {
                 
                 if (response.status === 'confirmed') {
                     this.closeModal();
-                    this.showToast(`+${response.creditsAdded} creditos agregados!`, 'success');
+                    this.showToast(`+${response.creditsAdded} BUNK3RCO1N agregados!`, 'success');
                     this.loadWalletBalance();
                     return true;
                 }
