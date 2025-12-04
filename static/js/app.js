@@ -1544,11 +1544,11 @@ const App = {
     
     openBotPanel(botType) {
         if (botType === 'tracking_manager') {
-            document.getElementById('bots-page').classList.add('hidden');
-            document.getElementById('home-page').classList.add('hidden');
-            document.getElementById('tracking-section').classList.remove('hidden');
+            document.getElementById('bots-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('tracking-module').classList.remove('hidden');
             this.previousSection = 'bots';
-            this.loadTrackingData();
+            this.loadTrackings();
         }
     },
     
