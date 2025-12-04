@@ -1475,28 +1475,18 @@ const App = {
     
     async loadUserBots() {
         const myBotsList = document.getElementById('my-bots-list');
-        const availableBotsList = document.getElementById('available-bots-list');
         const myBotsEmpty = document.getElementById('my-bots-empty');
-        const availableBotsEmpty = document.getElementById('available-bots-empty');
         
         myBotsList.innerHTML = '<div class="bots-loading"><div class="loading-spinner"></div><p>Cargando tus bots...</p></div>';
-        availableBotsList.innerHTML = '<div class="bots-loading"><div class="loading-spinner"></div><p>Cargando bots disponibles...</p></div>';
         myBotsEmpty.classList.add('hidden');
-        availableBotsEmpty.classList.add('hidden');
         
         try {
-            const [myBotsResponse, availableBotsResponse] = await Promise.all([
-                this.apiRequest('/api/bots/my'),
-                this.apiRequest('/api/bots/available')
-            ]);
-            
+            const myBotsResponse = await this.apiRequest('/api/bots/my');
             this.renderMyBots(myBotsResponse.bots || []);
-            this.renderAvailableBots(availableBotsResponse.bots || []);
             
         } catch (error) {
             console.error('Error loading bots:', error);
             myBotsList.innerHTML = '<div class="bots-empty"><div class="empty-icon">⚠️</div><p>Error al cargar bots</p></div>';
-            availableBotsList.innerHTML = '<div class="bots-empty"><div class="empty-icon">⚠️</div><p>Error al cargar bots</p></div>';
         }
     },
     
