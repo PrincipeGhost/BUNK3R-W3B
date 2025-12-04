@@ -16,6 +16,8 @@ const App = {
     lastActivityTime: Date.now(),
     tonConnectUI: null,
     connectedWallet: null,
+    walletSyncedFromServer: false,
+    syncedWalletAddress: null,
     USDT_MASTER_ADDRESS: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
     MERCHANT_WALLET: 'UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck',
     
@@ -2261,10 +2263,14 @@ const App = {
             
             if (data.success && data.address) {
                 console.log('Wallet cargada del servidor:', data.address);
+                this.walletSyncedFromServer = true;
+                this.syncedWalletAddress = data.address;
                 this.updateWalletUI(data.address, true);
                 return data.address;
             } else {
                 console.log('No hay wallet guardada para este usuario');
+                this.walletSyncedFromServer = false;
+                this.syncedWalletAddress = null;
             }
         } catch (error) {
             console.error('Error cargando wallet guardada:', error.message || error);
@@ -2297,8 +2303,13 @@ const App = {
 
     async initiateUSDTPayment(credits, usdtAmount) {
         if (!this.connectedWallet) {
-            this.showToast('Primero conecta tu wallet', 'error');
-            await this.connectWallet();
+            if (this.walletSyncedFromServer && this.syncedWalletAddress) {
+                this.showToast('Tu wallet esta sincronizada pero necesitas conectarla en este dispositivo para firmar transacciones', 'info');
+                await this.connectWallet();
+            } else {
+                this.showToast('Primero conecta tu wallet', 'error');
+                await this.connectWallet();
+            }
             return;
         }
 
