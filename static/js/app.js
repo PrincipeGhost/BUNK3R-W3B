@@ -823,12 +823,15 @@ const App = {
             });
         });
         
-        const editProfileBtn = document.getElementById('edit-profile-btn');
-        if (editProfileBtn) {
-            editProfileBtn.addEventListener('click', () => {
+        document.body.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('#edit-profile-btn');
+            if (editBtn) {
+                console.log('Edit profile button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
                 this.toggleEditMode();
-            });
-        }
+            }
+        }, true);
         
         this.setupAvatarUpload();
         this.initExchange();
@@ -1175,7 +1178,10 @@ const App = {
     },
     
     toggleEditMode() {
+        console.log('toggleEditMode called, current state:', this.editModeActive);
         this.editModeActive = !this.editModeActive;
+        console.log('new edit mode state:', this.editModeActive);
+        
         const editBtn = document.getElementById('edit-profile-btn');
         
         if (editBtn) {
