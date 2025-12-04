@@ -265,7 +265,8 @@ def validate_user():
             'isOwner': False
         }), 403
     
-    avatar_url = None
+    photo_url = user.get('photo_url')
+    
     if db_manager:
         try:
             logger.info(f"Creating/updating user {user_id} in database")
@@ -277,14 +278,8 @@ def validate_user():
                 telegram_id=user_id
             )
             logger.info(f"User created/updated: {created_user}")
-            
-            user_profile = db_manager.get_user_profile(str(user_id), str(user_id))
-            logger.info(f"User profile retrieved: {user_profile}")
-            if user_profile:
-                avatar_url = user_profile.get('avatar_url')
-                logger.info(f"Avatar URL from profile: {avatar_url}")
         except Exception as e:
-            logger.error(f"Error getting user profile for avatar: {e}")
+            logger.error(f"Error creating/updating user: {e}")
     
     return jsonify({
         'valid': True,
@@ -294,7 +289,7 @@ def validate_user():
             'lastName': user.get('last_name', ''),
             'username': user.get('username', ''),
             'languageCode': user.get('language_code', 'es'),
-            'avatarUrl': avatar_url
+            'photoUrl': photo_url
         },
         'isOwner': True
     })

@@ -1497,63 +1497,30 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    font-weight: 600;
-    color: white;
-    text-transform: uppercase;
     border: 3px solid #333;
+    overflow: hidden;
+    position: relative;
 }
 
 .profile-page-avatar-img {
-    width: 80px;
-    height: 80px;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid #333;
 }
 
 .profile-page-avatar-img.hidden {
     display: none;
 }
 
-.profile-page-add-btn {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 22px;
-    height: 22px;
-    background: #0095f6;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
+.profile-page-avatar-initial {
+    font-size: 32px;
     font-weight: 600;
     color: white;
-    border: 2px solid var(--bg-primary);
-    cursor: pointer;
-    z-index: 2;
+    text-transform: uppercase;
 }
 
-.profile-page-add-btn:hover {
-    background: #1da1f7;
-}
-
-.avatar-loading {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 3;
-}
-
-.avatar-loading.hidden {
+.profile-page-avatar-initial.hidden {
     display: none;
 }
 

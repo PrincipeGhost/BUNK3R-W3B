@@ -9,7 +9,8 @@ const App = {
     trackings: [],
     delayReasons: [],
     statuses: [],
-    userAvatarUrl: null,
+    userPhotoUrl: null,
+    userInitials: 'U',
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -42,9 +43,11 @@ const App = {
             this.user = response.user;
             this.isOwner = response.isOwner;
             
-            if (response.user.avatarUrl) {
-                this.userAvatarUrl = response.user.avatarUrl;
+            if (response.user.photoUrl) {
+                this.userPhotoUrl = response.user.photoUrl;
             }
+            
+            this.userInitials = (response.user.firstName || response.user.username || 'U').charAt(0).toUpperCase();
             
             this.showMainApp();
             this.setupEventListeners();
@@ -68,21 +71,12 @@ const App = {
             username: 'demo_user'
         };
         
+        this.userInitials = 'D';
+        this.userPhotoUrl = null;
+        
         this.showMainApp();
         this.setupEventListeners();
-        
-        try {
-            const profileResponse = await this.apiRequest('/api/users/me');
-            if (profileResponse.success && profileResponse.profile) {
-                if (profileResponse.profile.avatarUrl) {
-                    this.userAvatarUrl = profileResponse.profile.avatarUrl;
-                    this.updateAllAvatars();
-                    this.updateProfilePage();
-                }
-            }
-        } catch (error) {
-            console.log('No se pudo cargar el perfil guardado:', error);
-        }
+        this.updateAllAvatars();
         
         await this.loadInitialData();
     },
@@ -430,119 +424,64 @@ const App = {
     },
     
     updateProfilePage() {
-        const avatar = document.getElementById('profile-page-avatar');
-        const avatarImg = document.getElementById('profile-page-avatar-img');
         const username = document.getElementById('profile-page-username');
         const name = document.getElementById('profile-page-name');
         
-        if (avatar && this.user) {
-            avatar.textContent = this.user.first_name ? this.user.first_name.charAt(0).toUpperCase() : 'U';
-        }
         if (username && this.user) {
             username.textContent = this.user.username ? `@${this.user.username}` : '@demo_user';
         }
         if (name && this.user) {
-            name.textContent = this.user.first_name || 'Demo';
+            name.textContent = this.user.firstName || 'Demo';
         }
         
-        if (this.userAvatarUrl && avatarImg) {
-            avatarImg.src = this.userAvatarUrl;
-            avatarImg.classList.remove('hidden');
-            if (avatar) avatar.classList.add('hidden');
-        } else if (avatarImg) {
-            avatarImg.classList.add('hidden');
-            if (avatar) avatar.classList.remove('hidden');
-        }
+        this.updateAllAvatars();
     },
     
     setupAvatarUpload() {
         const avatarWrap = document.getElementById('avatar-upload-wrap');
         const avatarInput = document.getElementById('avatar-input');
-        const avatarAddBtn = document.getElementById('avatar-add-btn');
-        
-        if (avatarWrap && avatarInput) {
-            avatarWrap.addEventListener('click', () => {
-                avatarInput.click();
-            });
-            
-            avatarInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    this.uploadAvatar(e.target.files[0]);
-                }
-            });
-        }
-    },
-    
-    async uploadAvatar(file) {
-        const avatarLoading = document.getElementById('avatar-loading');
-        const avatarInput = document.getElementById('avatar-input');
-        
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
-            this.showToast('La imagen es muy grande. Maximo 5MB', 'error');
-            return;
-        }
-        
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-            this.showToast('Tipo de archivo no permitido', 'error');
-            return;
-        }
-        
-        if (avatarLoading) avatarLoading.classList.remove('hidden');
-        
-        try {
-            const formData = new FormData();
-            formData.append('avatar', file);
-            
-            const headers = {};
-            if (this.isDemoMode) {
-                headers['X-Demo-Mode'] = 'true';
-            } else if (this.initData) {
-                headers['X-Telegram-Init-Data'] = this.initData;
-            }
-            
-            const response = await fetch('/api/users/me/avatar', {
-                method: 'POST',
-                headers: headers,
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                this.userAvatarUrl = data.avatarUrl;
-                this.updateProfilePage();
-                this.updateAllAvatars();
-                this.showToast('Foto de perfil actualizada', 'success');
-            } else {
-                this.showToast(data.error || 'Error al subir imagen', 'error');
-            }
-        } catch (error) {
-            console.error('Error uploading avatar:', error);
-            this.showToast('Error al subir imagen', 'error');
-        } finally {
-            if (avatarLoading) avatarLoading.classList.add('hidden');
-            if (avatarInput) avatarInput.value = '';
-        }
     },
     
     updateAllAvatars() {
         const sidebarAvatar = document.getElementById('sidebar-avatar');
         const bottomNavAvatar = document.getElementById('bottom-nav-avatar');
+        const profileAvatar = document.getElementById('profile-avatar');
+        const profileAvatarImg = document.getElementById('profile-avatar-img');
+        const profileAvatarInitial = document.getElementById('profile-avatar-initial');
         
-        if (this.userAvatarUrl) {
-            if (sidebarAvatar) {
-                sidebarAvatar.style.backgroundImage = `url(${this.userAvatarUrl})`;
-                sidebarAvatar.style.backgroundSize = 'cover';
-                sidebarAvatar.style.backgroundPosition = 'center';
-                sidebarAvatar.textContent = '';
+        const avatarElements = [sidebarAvatar, bottomNavAvatar];
+        
+        if (this.userPhotoUrl) {
+            avatarElements.forEach(el => {
+                if (el) {
+                    el.style.backgroundImage = `url(${this.userPhotoUrl})`;
+                    el.style.backgroundSize = 'cover';
+                    el.style.backgroundPosition = 'center';
+                    el.textContent = '';
+                }
+            });
+            
+            if (profileAvatarImg) {
+                profileAvatarImg.src = this.userPhotoUrl;
+                profileAvatarImg.classList.remove('hidden');
             }
-            if (bottomNavAvatar) {
-                bottomNavAvatar.style.backgroundImage = `url(${this.userAvatarUrl})`;
-                bottomNavAvatar.style.backgroundSize = 'cover';
-                bottomNavAvatar.style.backgroundPosition = 'center';
-                bottomNavAvatar.textContent = '';
+            if (profileAvatarInitial) {
+                profileAvatarInitial.classList.add('hidden');
+            }
+        } else {
+            avatarElements.forEach(el => {
+                if (el) {
+                    el.style.backgroundImage = 'none';
+                    el.textContent = this.userInitials;
+                }
+            });
+            
+            if (profileAvatarImg) {
+                profileAvatarImg.classList.add('hidden');
+            }
+            if (profileAvatarInitial) {
+                profileAvatarInitial.textContent = this.userInitials;
+                profileAvatarInitial.classList.remove('hidden');
             }
         }
     },

@@ -1,0 +1,86 @@
+2025-12-03T23:53:31.639873389Z   Using cached idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+2025-12-03T23:53:31.671954583Z Collecting urllib3<3,>=1.21.1 (from requests->-r requirements.txt (line 4))
+2025-12-03T23:53:31.673113653Z   Using cached urllib3-2.5.0-py3-none-any.whl.metadata (6.5 kB)
+2025-12-03T23:53:31.707774526Z Collecting certifi>=2017.4.17 (from requests->-r requirements.txt (line 4))
+2025-12-03T23:53:31.708992718Z   Using cached certifi-2025.11.12-py3-none-any.whl.metadata (2.5 kB)
+2025-12-03T23:53:31.765237098Z Collecting markupsafe>=2.1.1 (from werkzeug->-r requirements.txt (line 7))
+2025-12-03T23:53:31.766559683Z   Using cached markupsafe-3.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+2025-12-03T23:53:31.774082211Z Using cached flask-3.0.0-py3-none-any.whl (99 kB)
+2025-12-03T23:53:31.775261732Z Using cached gunicorn-21.2.0-py3-none-any.whl (80 kB)
+2025-12-03T23:53:31.776395852Z Using cached psycopg2_binary-2.9.11-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.2 MB)
+2025-12-03T23:53:31.780521321Z Using cached requests-2.32.5-py3-none-any.whl (64 kB)
+2025-12-03T23:53:31.78163908Z Using cached charset_normalizer-3.4.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (153 kB)
+2025-12-03T23:53:31.782863413Z Using cached idna-3.11-py3-none-any.whl (71 kB)
+2025-12-03T23:53:31.783960891Z Using cached urllib3-2.5.0-py3-none-any.whl (129 kB)
+2025-12-03T23:53:31.785096241Z Using cached python_dotenv-1.2.1-py3-none-any.whl (21 kB)
+2025-12-03T23:53:31.786466187Z Using cached pytz-2025.2-py2.py3-none-any.whl (509 kB)
+2025-12-03T23:53:31.788242704Z Using cached werkzeug-3.1.4-py3-none-any.whl (224 kB)
+2025-12-03T23:53:31.789665612Z Using cached blinker-1.9.0-py3-none-any.whl (8.5 kB)
+2025-12-03T23:53:31.790964076Z Using cached certifi-2025.11.12-py3-none-any.whl (159 kB)
+2025-12-03T23:53:31.7922746Z Using cached click-8.3.1-py3-none-any.whl (108 kB)
+2025-12-03T23:53:31.793457021Z Using cached itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+2025-12-03T23:53:31.7945422Z Using cached jinja2-3.1.6-py3-none-any.whl (134 kB)
+2025-12-03T23:53:31.795741681Z Using cached markupsafe-3.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+2025-12-03T23:53:31.796848421Z Using cached packaging-25.0-py3-none-any.whl (66 kB)
+2025-12-03T23:53:31.843118479Z Installing collected packages: pytz, urllib3, python-dotenv, psycopg2-binary, packaging, markupsafe, itsdangerous, idna, click, charset_normalizer, certifi, blinker, werkzeug, requests, Jinja2, gunicorn, flask
+2025-12-03T23:53:32.834122253Z 
+2025-12-03T23:53:32.83664619Z Successfully installed Jinja2-3.1.6 blinker-1.9.0 certifi-2025.11.12 charset_normalizer-3.4.4 click-8.3.1 flask-3.0.0 gunicorn-21.2.0 idna-3.11 itsdangerous-2.2.0 markupsafe-3.0.3 packaging-25.0 psycopg2-binary-2.9.11 python-dotenv-1.2.1 pytz-2025.2 requests-2.32.5 urllib3-2.5.0 werkzeug-3.1.4
+2025-12-03T23:53:32.842687009Z 
+2025-12-03T23:53:32.842702679Z [notice] A new release of pip is available: 25.1.1 -> 25.3
+2025-12-03T23:53:32.842708049Z [notice] To update, run: pip install --upgrade pip
+2025-12-03T23:53:40.282003763Z ==> Uploading build...
+2025-12-03T23:53:53.708128662Z ==> Uploaded in 10.4s. Compression took 3.0s
+2025-12-03T23:53:53.787521366Z ==> Build successful 🎉
+2025-12-03T23:53:56.114927098Z ==> Deploying...
+2025-12-03T23:54:21.677049139Z ==> Running 'gunicorn app:app -b 0.0.0.0:$PORT'
+2025-12-03T23:54:26.589051156Z INFO:tracking.database:Database connection configured using DATABASE_URL
+2025-12-03T23:54:26.589096687Z INFO:app:Database connection established
+2025-12-03T23:54:26.674536706Z [2025-12-03 23:54:26 +0000] [56] [INFO] Starting gunicorn 21.2.0
+2025-12-03T23:54:26.675060029Z [2025-12-03 23:54:26 +0000] [56] [INFO] Listening at: http://0.0.0.0:10000 (56)
+2025-12-03T23:54:26.675122981Z [2025-12-03 23:54:26 +0000] [56] [INFO] Using worker: sync
+2025-12-03T23:54:26.67925537Z [2025-12-03 23:54:26 +0000] [57] [INFO] Booting worker with pid: 57
+2025-12-03T23:54:27.167792127Z 127.0.0.1 - - [03/Dec/2025:23:54:27 +0000] "HEAD / HTTP/1.1" 200 0 "-" "Go-http-client/1.1"
+2025-12-03T23:54:36.983256246Z ==> Your service is live 🎉
+2025-12-03T23:54:37.016640921Z ==> 
+2025-12-03T23:54:37.047354368Z ==> ///////////////////////////////////////////////////////////
+2025-12-03T23:54:37.078634893Z ==> 
+2025-12-03T23:54:37.108663289Z ==> Available at your primary URL https://bunk3r-w3b.onrender.com
+2025-12-03T23:54:37.139180605Z ==> 
+2025-12-03T23:54:37.169594612Z ==> ///////////////////////////////////////////////////////////
+2025-12-03T23:54:38.456034925Z 127.0.0.1 - - [03/Dec/2025:23:54:38 +0000] "GET / HTTP/1.1" 200 42017 "-" "Go-http-client/2.0"
+2025-12-03T23:55:28.590747518Z 127.0.0.1 - - [03/Dec/2025:23:55:28 +0000] "GET / HTTP/1.1" 200 42017 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:28.876199181Z 127.0.0.1 - - [03/Dec/2025:23:55:28 +0000] "GET /static/js/app.js HTTP/1.1" 200 0 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:28.877757792Z 127.0.0.1 - - [03/Dec/2025:23:55:28 +0000] "GET /static/css/styles.css HTTP/1.1" 200 0 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:29.25578145Z 127.0.0.1 - - [03/Dec/2025:23:55:29 +0000] "GET /static/images/logo.png HTTP/1.1" 200 0 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:29.625673164Z INFO:app:Creating/updating user 7729022720 in database
+2025-12-03T23:55:31.081292321Z ERROR:tracking.database:Error getting/creating user 7729022720: null value in column "password" of relation "users" violates not-null constraint
+2025-12-03T23:55:31.081350462Z DETAIL:  Failing row contains (7729022720, caoscrew357, null, 7729022720, CaosCrew, , null, null, 1, 0, f, t, 2025-12-03 23:55:30.577996, 2025-12-03 23:55:30.577996, 2025-12-03 23:55:30.577996, null).
+2025-12-03T23:55:31.081354773Z 
+2025-12-03T23:55:31.081360133Z INFO:app:User created/updated: None
+2025-12-03T23:55:32.376629809Z INFO:app:User profile retrieved: None
+2025-12-03T23:55:32.37666379Z 127.0.0.1 - - [03/Dec/2025:23:55:32 +0000] "POST /api/validate HTTP/1.1" 200 154 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:32.394316985Z 127.0.0.1 - - [03/Dec/2025:23:55:32 +0000] "GET /favicon.ico HTTP/1.1" 404 207 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:34.135101926Z 127.0.0.1 - - [03/Dec/2025:23:55:34 +0000] "GET /api/stats HTTP/1.1" 200 98 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:34.136064622Z 127.0.0.1 - - [03/Dec/2025:23:55:34 +0000] "GET /api/delay-reasons HTTP/1.1" 200 538 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:34.136839972Z 127.0.0.1 - - [03/Dec/2025:23:55:34 +0000] "GET /api/statuses HTTP/1.1" 200 362 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:43.150235321Z ERROR:tracking.database:Error getting/creating user 7729022720: null value in column "password" of relation "users" violates not-null constraint
+2025-12-03T23:55:43.150252891Z DETAIL:  Failing row contains (7729022720, caoscrew357, null, 7729022720, CaosCrew, , null, null, 1, 0, f, t, 2025-12-03 23:55:42.65682, 2025-12-03 23:55:42.65682, 2025-12-03 23:55:42.65682, null).
+2025-12-03T23:55:43.150255922Z 
+2025-12-03T23:55:44.728392612Z INFO:tracking.database:Updated avatar data for user 7729022720
+2025-12-03T23:55:46.039636169Z INFO:tracking.database:Updated profile for user 7729022720
+2025-12-03T23:55:46.040570153Z 127.0.0.1 - - [03/Dec/2025:23:55:46 +0000] "POST /api/users/me/avatar HTTP/1.1" 200 93 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:55:47.588668323Z 127.0.0.1 - - [03/Dec/2025:23:55:47 +0000] "GET /api/avatar/7729022720 HTTP/1.1" 404 29 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:00.98356382Z 127.0.0.1 - - [03/Dec/2025:23:56:00 +0000] "GET / HTTP/1.1" 200 42017 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:01.25147172Z 127.0.0.1 - - [03/Dec/2025:23:56:01 +0000] "GET /static/css/styles.css HTTP/1.1" 304 0 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:01.252438356Z 127.0.0.1 - - [03/Dec/2025:23:56:01 +0000] "GET /static/js/app.js HTTP/1.1" 304 0 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:01.25336765Z 127.0.0.1 - - [03/Dec/2025:23:56:01 +0000] "GET /static/images/logo.png HTTP/1.1" 304 0 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:01.516951016Z INFO:app:Creating/updating user 7729022720 in database
+2025-12-03T23:56:02.989511757Z ERROR:tracking.database:Error getting/creating user 7729022720: null value in column "password" of relation "users" violates not-null constraint
+2025-12-03T23:56:02.989534698Z DETAIL:  Failing row contains (7729022720, caoscrew357, null, 7729022720, CaosCrew, , null, null, 1, 0, f, t, 2025-12-03 23:56:02.479941, 2025-12-03 23:56:02.479941, 2025-12-03 23:56:02.479941, null).
+2025-12-03T23:56:02.989540178Z 
+2025-12-03T23:56:02.989796985Z INFO:app:User created/updated: None
+2025-12-03T23:56:04.262365043Z INFO:app:User profile retrieved: None
+2025-12-03T23:56:04.262934338Z 127.0.0.1 - - [03/Dec/2025:23:56:04 +0000] "POST /api/validate HTTP/1.1" 200 154 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:04.51076587Z 127.0.0.1 - - [03/Dec/2025:23:56:04 +0000] "GET /api/statuses HTTP/1.1" 200 362 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:05.943631636Z 127.0.0.1 - - [03/Dec/2025:23:56:05 +0000] "GET /api/stats HTTP/1.1" 200 98 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+2025-12-03T23:56:05.944844479Z 127.0.0.1 - - [03/Dec/2025:23:56:05 +0000] "GET /api/delay-reasons HTTP/1.1" 200 538 "https://bunk3r-w3b.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
