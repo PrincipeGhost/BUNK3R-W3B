@@ -288,7 +288,7 @@ const App = {
         this.completeLogin();
     },
     
-    completeLogin() {
+    async completeLogin() {
         try {
             this.showMainApp();
             this.setupEventListeners();
@@ -297,6 +297,8 @@ const App = {
             this.startSessionActivityMonitor();
             this.initTonConnect();
             this.loadWalletBalance();
+            
+            await this.initSecuritySystem();
         } catch (error) {
             console.error('Error in completeLogin():', error);
             this.showMainApp();
@@ -811,6 +813,12 @@ const App = {
     },
     
     switchSection(sectionId) {
+        if (sectionId === 'wallet' && !this.deviceTrusted && !this.isDeviceTrusted) {
+            console.log('Acceso a wallet bloqueado - dispositivo no confiable');
+            this.showDeviceBlockedScreen();
+            return;
+        }
+        
         if (sectionId !== 'detail') {
             this.previousSection = this.currentSection;
         }
@@ -831,9 +839,9 @@ const App = {
         this.currentSection = sectionId;
         
         if (sectionId === 'detail') {
-            this.tg.BackButton.show();
+            this.tg?.BackButton?.show();
         } else {
-            this.tg.BackButton.hide();
+            this.tg?.BackButton?.hide();
         }
         
         if (sectionId === 'trackings') {
@@ -842,6 +850,12 @@ const App = {
         
         if (sectionId === 'dashboard') {
             this.loadInitialData();
+        }
+        
+        if (sectionId === 'profile') {
+            this.loadSecurityStatus();
+            this.loadTrustedDevices();
+            this.loadSecurityActivity();
         }
     },
     
@@ -2307,33 +2321,6 @@ const App = {
         }
     },
 
-    generateDeviceId() {
-        let deviceId = localStorage.getItem('bunk3r_device_id');
-        if (!deviceId) {
-            const nav = window.navigator;
-            const screen = window.screen;
-            const fingerprint = [
-                nav.userAgent,
-                screen.width + 'x' + screen.height,
-                screen.colorDepth,
-                new Date().getTimezoneOffset(),
-                nav.language,
-                nav.platform
-            ].join('|');
-            
-            let hash = 0;
-            for (let i = 0; i < fingerprint.length; i++) {
-                const char = fingerprint.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash;
-            }
-            
-            deviceId = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
-            localStorage.setItem('bunk3r_device_id', deviceId);
-        }
-        return deviceId;
-    },
-
     getDeviceType() {
         const ua = navigator.userAgent.toLowerCase();
         if (ua.includes('telegram')) {
@@ -2363,35 +2350,6 @@ const App = {
             'unknown': 'Dispositivo'
         };
         return names[type] || 'Dispositivo';
-    },
-
-    async initDeviceTrust() {
-        this.deviceId = this.generateDeviceId();
-        console.log('Device ID:', this.deviceId);
-        
-        try {
-            const response = await fetch('/api/devices/trusted/check', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.getAuthHeaders()
-                },
-                body: JSON.stringify({ deviceId: this.deviceId })
-            });
-            const data = await response.json();
-            
-            if (data.success && data.isTrusted) {
-                this.isDeviceTrusted = true;
-                this.trustedDeviceName = data.deviceName;
-                console.log('Dispositivo de confianza:', data.deviceName);
-            } else {
-                this.isDeviceTrusted = false;
-                console.log('Dispositivo no es de confianza');
-            }
-        } catch (error) {
-            console.error('Error verificando dispositivo:', error);
-            this.isDeviceTrusted = false;
-        }
     },
 
     async addCurrentDeviceAsTrusted() {
@@ -2967,10 +2925,55 @@ const App = {
 
     showDeviceBlockedScreen() {
         this.hideAllAuthScreens();
+        document.getElementById('main-app').classList.add('hidden');
         document.getElementById('device-blocked-screen').classList.remove('hidden');
         
         document.getElementById('trust-device-btn').onclick = () => this.startDeviceVerification();
         document.getElementById('view-readonly-btn').onclick = () => this.enterReadOnlyMode();
+    },
+
+    async connectTelegramWallet() {
+        return new Promise((resolve) => {
+            if (!this.tonConnectUI) {
+                this.showToast('TON Connect no disponible', 'error');
+                resolve(null);
+                return;
+            }
+
+            if (this.connectedWallet) {
+                const address = this.connectedWallet.account?.address;
+                if (address) {
+                    const friendlyAddress = this.rawAddressToUserFriendly(address);
+                    resolve(friendlyAddress);
+                    return;
+                }
+            }
+
+            const unsubscribe = this.tonConnectUI.onStatusChange((wallet) => {
+                if (wallet) {
+                    const address = wallet.account?.address;
+                    if (address) {
+                        const friendlyAddress = this.rawAddressToUserFriendly(address);
+                        this.connectedWallet = wallet;
+                        unsubscribe();
+                        resolve(friendlyAddress);
+                    }
+                }
+            });
+
+            this.tonConnectUI.openModal().catch((error) => {
+                console.error('Error opening TON Connect modal:', error);
+                unsubscribe();
+                resolve(null);
+            });
+
+            setTimeout(() => {
+                unsubscribe();
+                if (!this.connectedWallet) {
+                    resolve(null);
+                }
+            }, 120000);
+        });
     },
 
     showWrongWalletScreen(expectedHint, connectedAddress, attemptsRemaining) {
