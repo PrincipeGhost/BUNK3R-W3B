@@ -110,6 +110,7 @@ const PublicationsManager = {
     selectedFiles: [],
     currentPostIndex: 0,
     isUploading: false,
+    contentType: 'media',
     
     REACTION_EMOJIS: ['❤️', '😂', '😮', '😢', '😡', '👏', '🔥', '💯'],
     
@@ -157,11 +158,35 @@ const PublicationsManager = {
             captionInput.addEventListener('input', () => this.updateCaptionCounter());
         }
         
+        // Content type selector (Media vs Text only)
+        const contentTypeBtns = document.querySelectorAll('.content-type-btn');
+        contentTypeBtns.forEach(btn => {
+            btn.addEventListener('click', () => this.switchContentType(btn.dataset.type));
+        });
+        
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('create-publication-modal')) {
                 this.hideCreateModal();
             }
         });
+    },
+    
+    switchContentType(type) {
+        this.contentType = type;
+        const fileUploadSection = document.getElementById('file-upload-section');
+        const contentTypeBtns = document.querySelectorAll('.content-type-btn');
+        
+        contentTypeBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        
+        if (type === 'text') {
+            fileUploadSection?.classList.add('hidden');
+            this.selectedFiles = [];
+            this.updateMediaPreview();
+        } else {
+            fileUploadSection?.classList.remove('hidden');
+        }
     },
     
     async loadFeed() {
@@ -365,7 +390,11 @@ const PublicationsManager = {
         if (modal) {
             modal.classList.remove('hidden');
             this.selectedFiles = [];
+            this.contentType = 'media';
+            this.switchContentType('media');
             this.updateMediaPreview();
+            document.getElementById('caption-input').value = '';
+            this.updateCaptionCounter();
         }
     },
     
@@ -374,6 +403,7 @@ const PublicationsManager = {
         if (modal) {
             modal.classList.add('hidden');
             this.selectedFiles = [];
+            this.contentType = 'media';
             this.updateMediaPreview();
             document.getElementById('caption-input').value = '';
             this.updateCaptionCounter();
