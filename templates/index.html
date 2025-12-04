@@ -306,11 +306,26 @@
 
             <!-- PAGINA PRINCIPAL / HOME -->
             <div id="home-screen" class="home-screen">
-                <div class="home-feed" id="home-feed">
-                    <div class="feed-empty">
-                        <div class="feed-empty-icon">📱</div>
-                        <p>Aun no hay publicaciones</p>
-                        <span class="feed-empty-hint">Las publicaciones de la comunidad apareceran aqui</span>
+                <!-- Stories Bar -->
+                <div class="stories-bar" id="stories-bar">
+                    <div class="story-item add-story" onclick="PublicationsManager.createStory()">
+                        <div class="story-avatar-wrapper add">
+                            <div class="story-avatar" id="add-story-avatar">
+                                <span class="story-add-icon">+</span>
+                            </div>
+                        </div>
+                        <span class="story-username">Tu historia</span>
+                    </div>
+                    <div class="stories-list" id="stories-list">
+                        <!-- Historias de otros usuarios -->
+                    </div>
+                </div>
+                
+                <!-- Feed de Publicaciones -->
+                <div class="publications-feed" id="publications-feed">
+                    <div class="feed-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Cargando publicaciones...</p>
                     </div>
                 </div>
             </div>
@@ -665,11 +680,13 @@
                     
                     <!-- Vista Publicaciones -->
                     <div class="profile-tab-content active" id="tab-posts">
-                        <div class="profile-gallery-empty">
-                            <div class="gallery-add-tile">
-                                <span class="gallery-add-icon">+</span>
-                                <span class="gallery-add-text">Subir</span>
-                            </div>
+                        <div class="gallery-grid" id="profile-gallery">
+                            <!-- Galeria de publicaciones cargada dinamicamente -->
+                        </div>
+                        <div class="empty-gallery hidden" id="empty-gallery">
+                            <div class="empty-gallery-icon">📷</div>
+                            <h4>Comparte tu primer momento</h4>
+                            <p>Las fotos y videos que compartas aparecerán aquí</p>
                         </div>
                     </div>
                     
@@ -1621,6 +1638,248 @@
 
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- MODALES SISTEMA PUBLICACIONES -->
+    <!-- Modal Crear Publicacion -->
+    <div id="create-post-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal create-post-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="Publications.closeCreateModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>Crear publicacion</h2>
+                <button class="pub-modal-action" onclick="Publications.submitPost()">Publicar</button>
+            </div>
+            <div class="pub-modal-content">
+                <div class="create-post-media-section">
+                    <div class="media-upload-area" id="media-upload-area">
+                        <input type="file" id="media-input" multiple accept="image/*,video/*" class="hidden">
+                        <div class="media-upload-placeholder" id="media-placeholder">
+                            <div class="upload-icon">📷</div>
+                            <p>Arrastra fotos y videos aqui</p>
+                            <span class="upload-hint">o haz clic para seleccionar</span>
+                        </div>
+                        <div class="media-preview-carousel hidden" id="media-preview">
+                            <div class="carousel-items" id="carousel-items"></div>
+                            <div class="carousel-indicators" id="carousel-indicators"></div>
+                            <button class="carousel-nav prev hidden" id="carousel-prev"><</button>
+                            <button class="carousel-nav next hidden" id="carousel-next">></button>
+                            <button class="add-more-media" id="add-more-media">+ Agregar mas</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="create-post-form">
+                    <textarea id="post-caption" class="post-caption-input" placeholder="Escribe un pie de foto..." maxlength="10000"></textarea>
+                    <div class="caption-counter"><span id="caption-count">0</span>/10000</div>
+                    <div class="post-options">
+                        <div class="post-option">
+                            <span class="option-icon">📍</span>
+                            <input type="text" class="option-input" id="post-location" placeholder="Agregar ubicacion">
+                        </div>
+                        <div class="post-option">
+                            <span class="option-icon">👥</span>
+                            <input type="text" class="option-input" id="post-mentions" placeholder="Etiquetar personas (@usuario)">
+                        </div>
+                        <div class="post-option">
+                            <span class="option-icon">#</span>
+                            <input type="text" class="option-input" id="post-hashtags" placeholder="Hashtags (#tema)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pub-modal-footer">
+                <div class="upload-progress hidden" id="upload-progress">
+                    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                    <span class="progress-text" id="progress-text">Encriptando y subiendo...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Publicacion -->
+    <div id="view-post-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal view-post-modal">
+            <div class="pub-modal-header mobile-header">
+                <button class="pub-modal-close" onclick="Publications.closeViewModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <div class="post-author-mini" id="post-author-mini"></div>
+                <button class="post-options-btn" onclick="Publications.showPostOptions()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                        <circle cx="12" cy="12" r="1.5"></circle>
+                        <circle cx="12" cy="6" r="1.5"></circle>
+                        <circle cx="12" cy="18" r="1.5"></circle>
+                    </svg>
+                </button>
+            </div>
+            <div class="view-post-container">
+                <div class="view-post-media" id="view-post-media">
+                    <!-- Carousel de imagenes/video -->
+                </div>
+                <div class="view-post-sidebar">
+                    <div class="post-header" id="post-header">
+                        <!-- Info autor -->
+                    </div>
+                    <div class="post-comments-section" id="post-comments">
+                        <!-- Comentarios -->
+                    </div>
+                    <div class="post-actions-bar" id="post-actions">
+                        <!-- Acciones -->
+                    </div>
+                    <div class="post-info" id="post-info">
+                        <!-- Likes y fecha -->
+                    </div>
+                    <div class="add-comment-section">
+                        <div class="emoji-picker-btn" onclick="Publications.toggleEmojiPicker()">😊</div>
+                        <input type="text" class="comment-input" id="comment-input" placeholder="Agregar un comentario...">
+                        <button class="send-comment-btn" onclick="Publications.submitComment()">Publicar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historias -->
+    <div id="story-viewer-modal" class="story-viewer-overlay hidden">
+        <div class="story-viewer">
+            <div class="story-progress-bar" id="story-progress-bar"></div>
+            <div class="story-header">
+                <div class="story-author" id="story-author"></div>
+                <button class="story-close" onclick="Publications.closeStoryViewer()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="story-content" id="story-content">
+                <!-- Contenido de la historia -->
+            </div>
+            <div class="story-navigation">
+                <div class="story-nav-area story-prev" onclick="Publications.prevStory()"></div>
+                <div class="story-nav-area story-next" onclick="Publications.nextStory()"></div>
+            </div>
+            <div class="story-footer hidden" id="story-footer">
+                <input type="text" class="story-reply-input" placeholder="Enviar mensaje...">
+                <div class="story-reactions">
+                    <span onclick="Publications.reactToStory('❤️')">❤️</span>
+                    <span onclick="Publications.reactToStory('🔥')">🔥</span>
+                    <span onclick="Publications.reactToStory('😍')">😍</span>
+                    <span onclick="Publications.reactToStory('😂')">😂</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear Historia -->
+    <div id="create-story-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal create-story-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="Publications.closeStoryModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>Crear historia</h2>
+                <button class="pub-modal-action" onclick="Publications.submitStory()">Compartir</button>
+            </div>
+            <div class="story-preview-area">
+                <input type="file" id="story-media-input" accept="image/*,video/*" class="hidden">
+                <div class="story-upload-placeholder" id="story-placeholder">
+                    <div class="upload-icon">📷</div>
+                    <p>Selecciona una foto o video</p>
+                    <span class="upload-hint">Duracion maxima: 15 segundos</span>
+                </div>
+                <div class="story-preview hidden" id="story-preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Opciones de Publicacion -->
+    <div id="post-options-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal options-modal">
+            <div class="options-list">
+                <button class="option-item danger" onclick="Publications.reportPost()">Reportar</button>
+                <button class="option-item" onclick="Publications.sharePost()">Compartir</button>
+                <button class="option-item" onclick="Publications.copyLink()">Copiar enlace</button>
+                <button class="option-item edit-option hidden" onclick="Publications.editPost()">Editar</button>
+                <button class="option-item danger delete-option hidden" onclick="Publications.deletePost()">Eliminar</button>
+                <button class="option-item cancel" onclick="Publications.closeOptionsModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Likes -->
+    <div id="likes-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal likes-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="Publications.closeLikesModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>Me gusta</h2>
+            </div>
+            <div class="likes-list" id="likes-list">
+                <!-- Lista de usuarios que dieron like -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Reportar -->
+    <div id="report-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal report-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="Publications.closeReportModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>Reportar publicacion</h2>
+            </div>
+            <div class="report-reasons">
+                <button class="report-reason" data-reason="spam">Es spam</button>
+                <button class="report-reason" data-reason="inappropriate">Contenido inapropiado</button>
+                <button class="report-reason" data-reason="harassment">Acoso o bullying</button>
+                <button class="report-reason" data-reason="violence">Violencia o amenazas</button>
+                <button class="report-reason" data-reason="false_info">Informacion falsa</button>
+                <button class="report-reason" data-reason="hate_speech">Discurso de odio</button>
+                <button class="report-reason" data-reason="copyright">Infraccion de derechos</button>
+                <button class="report-reason" data-reason="other">Otro motivo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boton flotante crear publicacion -->
+    <button class="fab-create-post hidden" id="fab-create-post" onclick="Publications.openCreateModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
+
+    <!-- Stories Bar -->
+    <div class="stories-bar hidden" id="stories-bar">
+        <div class="story-item add-story" onclick="Publications.openStoryModal()">
+            <div class="story-avatar-wrapper add">
+                <div class="story-avatar" id="add-story-avatar">
+                    <span class="story-add-icon">+</span>
+                </div>
+            </div>
+            <span class="story-username">Tu historia</span>
+        </div>
+        <div class="stories-list" id="stories-list">
+            <!-- Historias de otros usuarios -->
+        </div>
+    </div>
+
     <!-- BARRA DE NAVEGACION INFERIOR -->
     <nav class="bottom-nav hidden" id="bottom-nav">
         <button class="bottom-nav-item active" data-nav="home">
@@ -1657,6 +1916,7 @@
     </nav>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/publications.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             App.init();
