@@ -1861,35 +1861,48 @@ class DatabaseManager:
             return None
     
     def get_post_comments(self, post_id: int, limit: int = 50, offset: int = 0) -> List[dict]:
-        """Obtener comentarios de una publicación"""
+        """Obtener comentarios de una publicación - optimizado con una sola consulta"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
-                        """SELECT c.*, u.username, u.first_name, u.avatar_url,
-                           (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes_count
-                           FROM post_comments c
-                           LEFT JOIN users u ON c.user_id = u.id
-                           WHERE c.post_id = %s AND c.is_active = TRUE AND c.parent_comment_id IS NULL
-                           ORDER BY c.is_pinned DESC, c.created_at DESC
-                           LIMIT %s OFFSET %s""",
-                        (post_id, limit, offset)
-                    )
-                    comments = [dict(row) for row in cur.fetchall()]
-                    
-                    for comment in comments:
-                        cur.execute(
-                            """SELECT c.*, u.username, u.first_name, u.avatar_url,
-                               (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes_count
-                               FROM post_comments c
-                               LEFT JOIN users u ON c.user_id = u.id
-                               WHERE c.parent_comment_id = %s AND c.is_active = TRUE
-                               ORDER BY c.created_at ASC""",
-                            (comment['id'],)
+                        """WITH parent_comments AS (
+                            SELECT c.id
+                            FROM post_comments c
+                            WHERE c.post_id = %s AND c.is_active = TRUE AND c.parent_comment_id IS NULL
+                            ORDER BY c.is_pinned DESC, c.created_at DESC
+                            LIMIT %s OFFSET %s
                         )
-                        comment['replies'] = [dict(row) for row in cur.fetchall()]
+                        SELECT c.*, u.username, u.first_name, u.avatar_url
+                        FROM post_comments c
+                        LEFT JOIN users u ON c.user_id = u.id
+                        WHERE c.post_id = %s AND c.is_active = TRUE
+                          AND (c.parent_comment_id IS NULL AND c.id IN (SELECT id FROM parent_comments)
+                               OR c.parent_comment_id IN (SELECT id FROM parent_comments))
+                        ORDER BY c.created_at ASC""",
+                        (post_id, limit, offset, post_id)
+                    )
+                    all_comments = [dict(row) for row in cur.fetchall()]
                     
-                    return comments
+                    comments_map = {}
+                    result = []
+                    
+                    for comment in all_comments:
+                        if comment['parent_comment_id'] is None:
+                            comment['replies'] = []
+                            comments_map[comment['id']] = comment
+                            result.append(comment)
+                    
+                    for comment in all_comments:
+                        if comment['parent_comment_id'] is not None:
+                            parent_id = comment['parent_comment_id']
+                            parent = comments_map.get(parent_id)
+                            if parent is not None:
+                                parent['replies'].append(comment)
+                    
+                    result.sort(key=lambda x: (not x.get('is_pinned', False), x.get('created_at')), reverse=True)
+                    
+                    return result
         except Exception as e:
             logger.error(f"Error getting comments: {e}")
             return []
