@@ -97,6 +97,13 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Added custom loading screen for cold starts
+  - Custom branded preload overlay with BUNK3R logo and animated spinner
+  - Inline CSS for instant rendering (no external dependencies)
+  - Smooth fade-out transition when app is ready
+  - Added /api/health endpoint for server health checks (useful for external monitoring)
+  - Loading screen shows immediately before CSS/JS files load
+
 - 2024-12-04: Implemented dynamic bot validation system
   - Bots are now loaded dynamically per user (only shows bots the user owns/purchased)
   - Added bot_types table with owner_only flag for exclusive bots

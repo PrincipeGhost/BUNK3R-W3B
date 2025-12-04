@@ -227,6 +227,35 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/health')
+def health_check():
+    """Endpoint para verificar que el servidor está listo (útil para monitoreo externo)."""
+    db_ready = False
+    
+    if db_manager:
+        try:
+            conn = db_manager.get_connection()
+            with conn.cursor() as cur:
+                cur.execute('SELECT 1')
+            db_ready = True
+        except Exception as e:
+            logger.error(f"Health check database error: {e}")
+            db_ready = False
+    
+    if not db_ready:
+        return jsonify({
+            'ready': False,
+            'database': False,
+            'timestamp': datetime.now().isoformat()
+        }), 503
+    
+    return jsonify({
+        'ready': True,
+        'database': True,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
 @app.route('/api/validate', methods=['POST'])
 def validate_user():
     """Valida el usuario de Telegram y verifica permisos."""

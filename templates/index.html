@@ -4,12 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BUNK3R</title>
+    <style>
+        body{margin:0;padding:0;background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+        .preload-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999}
+        .preload-logo{font-size:42px;font-weight:800;color:#fff;letter-spacing:3px;margin-bottom:30px;text-shadow:0 4px 20px rgba(66,153,225,0.3)}
+        .preload-logo .red{color:#fc8181;text-shadow:0 4px 20px rgba(252,129,129,0.4)}
+        .preload-spinner{width:60px;height:60px;position:relative;margin-bottom:20px}
+        .preload-spinner::before,.preload-spinner::after{content:'';position:absolute;width:100%;height:100%;border:3px solid transparent;border-radius:50%}
+        .preload-spinner::before{border-top-color:#4299e1;animation:spin 1s linear infinite}
+        .preload-spinner::after{border-right-color:#fc8181;animation:spin 1.5s linear infinite reverse}
+        .preload-text{color:#a0aec0;font-size:14px}
+        .preload-dots::after{content:'';animation:dots 1.5s infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
+    </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
+    <div class="preload-overlay" id="preload-overlay">
+        <div class="preload-logo">BUNK<span class="red">3</span>R</div>
+        <div class="preload-spinner"></div>
+        <p class="preload-text">Cargando<span class="preload-dots"></span></p>
+    </div>
     <div id="app">
-        <div id="loading-screen" class="loading-screen">
+        <div id="loading-screen" class="loading-screen hidden">
             <div class="loader"></div>
             <p>Verificando acceso...</p>
         </div>
@@ -731,5 +750,18 @@
     </nav>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        function hidePreloadOverlay() {
+            var overlay = document.getElementById('preload-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s ease';
+                setTimeout(function() { overlay.remove(); }, 300);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(hidePreloadOverlay, 500);
+        });
+    </script>
 </body>
 </html>
