@@ -2701,6 +2701,195 @@ body {
     line-height: 1.5;
 }
 
+/* ============================================================ */
+/* PANTALLA DE VERIFICACION 2FA MEJORADA */
+/* ============================================================ */
+
+.verify-2fa-container {
+    max-width: 400px;
+}
+
+.security-shield-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.shield-outer {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(246, 173, 85, 0.15), rgba(246, 173, 85, 0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse-shield 2s ease-in-out infinite;
+}
+
+.shield-inner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-warning), #d69e2e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1a1a2e;
+    box-shadow: 0 8px 32px rgba(246, 173, 85, 0.4);
+}
+
+@keyframes pulse-shield {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(246, 173, 85, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 15px rgba(246, 173, 85, 0);
+    }
+}
+
+.otp-input-group {
+    margin-bottom: 24px;
+}
+
+.otp-input-group .auth-label {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.otp-inputs-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.otp-input {
+    width: 48px;
+    height: 60px;
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    transition: all 0.2s ease;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+.otp-input::-webkit-outer-spin-button,
+.otp-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.otp-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    background: rgba(66, 153, 225, 0.05);
+    box-shadow: 0 0 0 4px rgba(66, 153, 225, 0.15);
+    transform: translateY(-2px);
+}
+
+.otp-input.filled {
+    border-color: var(--accent-success);
+    background: rgba(72, 187, 120, 0.05);
+}
+
+.otp-input.error {
+    border-color: var(--accent-danger);
+    background: rgba(252, 129, 129, 0.05);
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+.otp-separator {
+    width: 12px;
+    height: 3px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin: 0 4px;
+}
+
+.verify-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: rgba(66, 153, 225, 0.1);
+    border-radius: var(--radius);
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.verify-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(66, 153, 225, 0.2);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.security-footer {
+    margin-top: 24px;
+}
+
+.security-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(72, 187, 120, 0.1);
+    border-radius: 20px;
+    color: var(--accent-success);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.security-badge svg {
+    opacity: 0.9;
+}
+
+.auth-btn.primary .btn-text {
+    display: inline-block;
+}
+
+.auth-btn.primary.loading .btn-text {
+    opacity: 0.5;
+}
+
+@media (max-width: 380px) {
+    .otp-input {
+        width: 42px;
+        height: 52px;
+        font-size: 20px;
+    }
+    
+    .otp-inputs-container {
+        gap: 6px;
+    }
+    
+    .otp-separator {
+        width: 8px;
+        margin: 0 2px;
+    }
+}
+
 /* ========== EXCHANGE STYLES ========== */
 .exchange-container {
     padding: 16px;

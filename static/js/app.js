@@ -170,17 +170,143 @@ const App = {
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('verify-2fa-screen').classList.remove('hidden');
         
-        const input = document.getElementById('verify-2fa-code');
-        if (input) {
-            input.focus();
+        this.setupOTPInputs();
+        this.setup2FAEventListeners();
+        
+        const firstInput = document.querySelector('.otp-input[data-index="0"]');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 100);
+        }
+    },
+    
+    setupOTPInputs() {
+        const container = document.getElementById('otp-inputs-container');
+        if (!container) return;
+        
+        const inputs = container.querySelectorAll('.otp-input');
+        const hiddenInput = document.getElementById('verify-2fa-code');
+        
+        inputs.forEach((input, index) => {
+            input.value = '';
+            input.classList.remove('filled', 'error');
+            
+            input.addEventListener('input', (e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                e.target.value = value.slice(0, 1);
+                
+                if (value) {
+                    e.target.classList.add('filled');
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                } else {
+                    e.target.classList.remove('filled');
+                }
+                
+                this.updateHiddenOTPValue(inputs, hiddenInput);
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    if (!e.target.value && index > 0) {
+                        inputs[index - 1].focus();
+                        inputs[index - 1].value = '';
+                        inputs[index - 1].classList.remove('filled');
+                    } else {
+                        e.target.classList.remove('filled');
+                    }
+                    this.updateHiddenOTPValue(inputs, hiddenInput);
+                }
+                
+                if (e.key === 'ArrowLeft' && index > 0) {
+                    e.preventDefault();
+                    inputs[index - 1].focus();
+                }
+                
+                if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+                    e.preventDefault();
+                    inputs[index + 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                
+                pastedData.split('').forEach((digit, i) => {
+                    if (inputs[i]) {
+                        inputs[i].value = digit;
+                        inputs[i].classList.add('filled');
+                    }
+                });
+                
+                this.updateHiddenOTPValue(inputs, hiddenInput);
+                
+                const focusIndex = Math.min(pastedData.length, inputs.length - 1);
+                inputs[focusIndex].focus();
+            });
+            
+            input.addEventListener('focus', () => {
+                input.select();
+            });
+        });
+    },
+    
+    updateHiddenOTPValue(inputs, hiddenInput) {
+        const code = Array.from(inputs).map(i => i.value).join('');
+        if (hiddenInput) {
+            hiddenInput.value = code;
         }
         
-        this.setup2FAEventListeners();
+        if (code.length === 6) {
+            this.autoVerify2FA(code);
+        }
+    },
+    
+    async autoVerify2FA(code) {
+        const verifyBtn = document.getElementById('verify-2fa-btn');
+        const loadingEl = document.getElementById('verify-loading');
+        const inputs = document.querySelectorAll('.otp-input');
+        
+        if (verifyBtn) verifyBtn.classList.add('hidden');
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        
+        inputs.forEach(input => input.disabled = true);
+        
+        const result = await this.verify2FACode(code);
+        
+        if (verifyBtn) verifyBtn.classList.remove('hidden');
+        if (loadingEl) loadingEl.classList.add('hidden');
+        inputs.forEach(input => input.disabled = false);
+    },
+    
+    clearOTPInputs() {
+        const inputs = document.querySelectorAll('.otp-input');
+        const hiddenInput = document.getElementById('verify-2fa-code');
+        
+        inputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('filled', 'error');
+            input.disabled = false;
+        });
+        
+        if (hiddenInput) hiddenInput.value = '';
+        if (inputs[0]) inputs[0].focus();
+    },
+    
+    showOTPError() {
+        const inputs = document.querySelectorAll('.otp-input');
+        inputs.forEach(input => {
+            input.classList.add('error');
+        });
+        
+        setTimeout(() => {
+            this.clearOTPInputs();
+        }, 600);
     },
     
     setup2FAEventListeners() {
         const setupCodeInput = document.getElementById('setup-2fa-code');
-        const verifyCodeInput = document.getElementById('verify-2fa-code');
         const verifySetupBtn = document.getElementById('verify-setup-2fa-btn');
         const skipBtn = document.getElementById('skip-2fa-btn');
         const verifyBtn = document.getElementById('verify-2fa-btn');
@@ -193,18 +319,6 @@ const App = {
             setupCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && e.target.value.length === 6) {
                     this.verifyAndEnable2FA(e.target.value);
-                }
-            });
-        }
-        
-        if (verifyCodeInput) {
-            verifyCodeInput.addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
-            });
-            
-            verifyCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && e.target.value.length === 6) {
-                    this.verify2FACode(e.target.value);
                 }
             });
         }
@@ -230,7 +344,7 @@ const App = {
             verifyBtn.addEventListener('click', () => {
                 const code = document.getElementById('verify-2fa-code').value;
                 if (code.length === 6) {
-                    this.verify2FACode(code);
+                    this.autoVerify2FA(code);
                 } else {
                     this.showToast('Ingresa un codigo de 6 digitos', 'error');
                 }
@@ -273,13 +387,14 @@ const App = {
             if (response.success) {
                 document.getElementById('verify-2fa-screen').classList.add('hidden');
                 this.completeLogin();
+                return { success: true };
             } else {
                 if (errorEl) {
                     errorEl.textContent = response.error || 'Codigo incorrecto';
                     errorEl.classList.remove('hidden');
                 }
-                document.getElementById('verify-2fa-code').value = '';
-                document.getElementById('verify-2fa-code').focus();
+                this.showOTPError();
+                return { success: false, error: response.error };
             }
         } catch (error) {
             console.error('Error verifying 2FA:', error);
@@ -287,6 +402,8 @@ const App = {
                 errorEl.textContent = 'Error al verificar. Intenta de nuevo.';
                 errorEl.classList.remove('hidden');
             }
+            this.showOTPError();
+            return { success: false, error: 'Error de conexion' };
         }
     },
     

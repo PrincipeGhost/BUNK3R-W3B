@@ -72,22 +72,57 @@
 
         <!-- PANTALLA DE VERIFICACION 2FA -->
         <div id="verify-2fa-screen" class="auth-screen hidden">
-            <div class="auth-container">
+            <div class="auth-container verify-2fa-container">
                 <div class="auth-logo">BUNK<span class="red">3</span>R</div>
-                <div class="auth-icon">🔒</div>
+                
+                <div class="security-shield-icon">
+                    <div class="shield-outer">
+                        <div class="shield-inner">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
                 <h2 class="auth-title">Verificacion 2FA</h2>
                 <p class="auth-subtitle">Ingresa el codigo de tu app de autenticacion</p>
                 
-                <div class="auth-input-group">
+                <div class="otp-input-group">
                     <label class="auth-label">Codigo de 6 digitos</label>
-                    <input type="text" id="verify-2fa-code" class="auth-input" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="000000" autocomplete="off" autofocus>
+                    <div class="otp-inputs-container" id="otp-inputs-container">
+                        <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="off" data-index="0">
+                        <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="off" data-index="1">
+                        <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="off" data-index="2">
+                        <div class="otp-separator"></div>
+                        <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="off" data-index="3">
+                        <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="off" data-index="4">
+                        <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="off" data-index="5">
+                    </div>
+                    <input type="hidden" id="verify-2fa-code" value="">
                 </div>
                 
                 <p class="auth-error hidden" id="verify-2fa-error"></p>
                 
-                <button class="auth-btn primary" id="verify-2fa-btn">Verificar</button>
+                <div class="verify-loading hidden" id="verify-loading">
+                    <div class="verify-spinner"></div>
+                    <span>Verificando...</span>
+                </div>
                 
-                <p class="auth-hint">Abre Google Authenticator y copia el codigo de BUNK3R</p>
+                <button class="auth-btn primary" id="verify-2fa-btn">
+                    <span class="btn-text">Verificar</span>
+                </button>
+                
+                <div class="security-footer">
+                    <div class="security-badge">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        <span>Conexion segura</span>
+                    </div>
+                    <p class="auth-hint">Abre Google Authenticator y copia el codigo de BUNK3R</p>
+                </div>
             </div>
         </div>
 
