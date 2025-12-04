@@ -343,7 +343,7 @@
                                     </svg>
                                 </div>
                                 <div class="ton-wallet-details">
-                                    <span class="ton-wallet-label">Wallet conectada</span>
+                                    <span class="ton-wallet-label" id="ton-wallet-status-label">Wallet conectada</span>
                                     <div class="ton-wallet-address-container">
                                         <span class="ton-wallet-address" id="ton-wallet-address"></span>
                                         <button class="ton-copy-btn" id="ton-copy-address" title="Copiar direccion">
@@ -355,7 +355,10 @@
                                     </div>
                                 </div>
                             </div>
-                            <button class="ton-disconnect-btn" id="ton-disconnect-btn">Desconectar</button>
+                            <div class="ton-wallet-actions">
+                                <button class="ton-change-btn" id="ton-change-btn">Cambiar wallet</button>
+                                <button class="ton-disconnect-btn" id="ton-disconnect-btn">Desconectar</button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -3275,6 +3275,27 @@ body {
     background: rgba(255, 255, 255, 0.4);
 }
 
+.ton-wallet-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ton-change-btn {
+    background: rgba(0, 152, 234, 0.3);
+    color: #fff;
+    border: 1px solid rgba(0, 152, 234, 0.5);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.ton-change-btn:hover {
+    background: rgba(0, 152, 234, 0.5);
+}
+
 .ton-disconnect-btn {
     background: rgba(255, 255, 255, 0.2);
     color: #fff;
@@ -3284,7 +3305,6 @@ body {
     font-size: 14px;
     cursor: pointer;
     transition: var(--transition);
-    align-self: flex-start;
 }
 
 .ton-disconnect-btn:hover {

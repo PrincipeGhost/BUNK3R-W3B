@@ -2080,6 +2080,11 @@ const App = {
             disconnectBtn.addEventListener('click', () => this.disconnectWallet());
         }
 
+        const changeBtn = document.getElementById('ton-change-btn');
+        if (changeBtn) {
+            changeBtn.addEventListener('click', () => this.connectWallet());
+        }
+
         const copyAddressBtn = document.getElementById('ton-copy-address');
         if (copyAddressBtn) {
             copyAddressBtn.addEventListener('click', () => this.copyWalletAddress());
@@ -2197,10 +2202,13 @@ const App = {
         return crc;
     },
 
-    updateWalletUI(wallet) {
+    updateWalletUI(wallet, isSyncedFromServer = false) {
         const notConnected = document.getElementById('ton-wallet-not-connected');
         const connected = document.getElementById('ton-wallet-connected');
         const addressEl = document.getElementById('ton-wallet-address');
+        const statusLabel = document.getElementById('ton-wallet-status-label');
+        const disconnectBtn = document.getElementById('ton-disconnect-btn');
+        const changeBtn = document.getElementById('ton-change-btn');
 
         let rawAddress = null;
         if (wallet) {
@@ -2216,7 +2224,18 @@ const App = {
             this.currentWalletRawAddress = rawAddress;
             
             if (addressEl) addressEl.textContent = friendlyAddress;
-            console.log('Wallet UI actualizada - Raw:', rawAddress.slice(0, 10) + '..., Friendly:', friendlyAddress);
+            
+            if (isSyncedFromServer && !this.connectedWallet) {
+                if (statusLabel) statusLabel.textContent = 'Wallet sincronizada';
+                if (disconnectBtn) disconnectBtn.classList.add('hidden');
+                if (changeBtn) changeBtn.classList.remove('hidden');
+            } else {
+                if (statusLabel) statusLabel.textContent = 'Wallet conectada';
+                if (disconnectBtn) disconnectBtn.classList.remove('hidden');
+                if (changeBtn) changeBtn.classList.add('hidden');
+            }
+            
+            console.log('Wallet UI actualizada - Raw:', rawAddress.slice(0, 10) + '..., Friendly:', friendlyAddress, isSyncedFromServer ? '(sincronizada)' : '(conectada)');
         } else {
             if (notConnected) notConnected.classList.remove('hidden');
             if (connected) connected.classList.add('hidden');
@@ -2242,7 +2261,7 @@ const App = {
             
             if (data.success && data.address) {
                 console.log('Wallet cargada del servidor:', data.address);
-                this.updateWalletUI(data.address);
+                this.updateWalletUI(data.address, true);
                 return data.address;
             } else {
                 console.log('No hay wallet guardada para este usuario');
