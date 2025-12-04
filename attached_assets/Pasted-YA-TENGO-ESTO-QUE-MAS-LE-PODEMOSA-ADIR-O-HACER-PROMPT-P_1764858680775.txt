@@ -1,0 +1,171 @@
+YA TENGO ESTO QUE MAS LE PODEMOSAÑADIR O HACER
+
+PROMPT PARA CORREGIR Y COMPLETAR EL SISTEMA DE BILLETERA BUNK3RCO1N
+PARTE 1: CORREGIR ERRORES ACTUALES
+1.1 - TON Connect no inicializa correctamente
+
+Error en consola: "Error initializing TON Connect: {}"
+Verificar que existe el archivo static/tonconnect-manifest.json
+El manifest debe tener la estructura correcta con:
+url: URL de la aplicación
+name: Nombre de la app
+iconUrl: URL del icono
+Si no existe, crear el archivo con la configuración correcta
+1.2 - Eliminar llamadas a funciones que ya no existen
+
+En initTonConnect() (alrededor de línea 2066-2067) se llaman:
+initDeviceTrust() - YA FUE ELIMINADA, quitar esta llamada
+updateDeviceTrustUI() - NO EXISTE, quitar esta llamada
+Estas líneas causan errores silenciosos
+PARTE 2: IMPLEMENTAR LÓGICA FALTANTE
+2.1 - Sistema de Wallet de Respaldo
+
+La función setupBackupWallet() usa prompt() nativo - reemplazar con modal bonito
+Crear endpoint /api/security/wallet/backup en el backend que:
+Valide el formato de la wallet TON
+Guarde la wallet de respaldo en la tabla users (campo backup_wallet_address)
+Registre la actividad en security_activity_log
+Agregar columna backup_wallet_address a la tabla users si no existe
+2.2 - Registro Automático de Wallet Primaria
+
+Cuando el usuario conecta su wallet por primera vez:
+Detectar si ya tiene primary_wallet_address registrada
+Si NO tiene, registrar automáticamente la wallet conectada como primaria
+Usar security_manager.register_primary_wallet()
+Mostrar mensaje de confirmación al usuario
+Esto es importante para el sistema de seguridad de dispositivos
+2.3 - Historial de Transacciones en UI
+
+El endpoint /api/wallet/transactions ya existe
+Crear componente visual en la sección wallet que muestre:
+Lista de transacciones con fecha, tipo (recarga/gasto), cantidad
+Iconos diferentes para recargas (+) y gastos (-)
+Opción de ver más/cargar más transacciones
+Agregar botón "Ver historial" en la sección de wallet
+2.4 - Sistema de Gastos/Débitos de BUNK3RCO1N
+
+Crear endpoint /api/wallet/debit que:
+Reciba: amount, type (bot_purchase, product_purchase, etc.), description, reference_id
+Verifique que el usuario tenga saldo suficiente
+Registre la transacción con amount NEGATIVO
+Retorne el nuevo saldo
+Usar este endpoint cuando el usuario compre bots o productos
+2.5 - Integración con ChangeNow (Exchange de Crypto)
+
+Buscar la integración de ChangeNow en Replit o usar su API directamente
+Crear endpoints para:
+/api/exchange/estimate - Obtener estimación de cambio
+/api/exchange/create - Crear orden de cambio
+/api/exchange/status/{id} - Verificar estado
+Crear UI de exchange en la sección wallet con:
+Selector de moneda origen/destino
+Campo de cantidad
+Estimación en tiempo real
+Botón de intercambiar
+2.6 - Notificaciones de Telegram para Pagos
+
+Verificar que BOT_TOKEN esté configurado como secret
+En verify_ton_payment(), después de confirmar el pago, llamar a:
+security_manager.send_telegram_notification(
+    user_id, 
+    f"✅ Recarga exitosa: +{credits} BUNK3RCO1N"
+)
+
+También notificar cuando se hace un gasto grande
+PARTE 3: MEJORAS DE UX
+3.1 - Modal de Pago con QR Code
+
+En showPaymentModal(), agregar QR code de la wallet del comerciante
+Usar librería como qrcode.js para generar el QR
+El QR debe contener: ton://transfer/{MERCHANT_WALLET}?amount={TON_AMOUNT}&text={COMMENT}
+3.2 - Validación de Formato de Wallet TON
+
+Antes de guardar cualquier wallet, validar que:
+Tenga el formato correcto (empiece con UQ o EQ para mainnet)
+Tenga la longitud correcta (48 caracteres en formato user-friendly)
+Mostrar error si el formato es inválido
+3.3 - Límites de Recarga
+
+Agregar campos en tabla users: daily_recharge_total, last_recharge_date
+En create_ton_payment():
+Verificar límite diario (ej: máximo 100 TON por día)
+Verificar límite por transacción (ya existe: 0.5-1000 TON)
+Mostrar al usuario cuánto le queda disponible
+3.4 - Conversión de Precios a USD
+
+Obtener precio actual de TON en USD (usar API como CoinGecko)
+Mostrar equivalente en USD junto al precio en TON
+Ejemplo: "5 TON (~$15 USD)"
+3.5 - Timeout de Pagos Pendientes
+
+Los pagos en pending_payments deben expirar después de 30 minutos
+Crear tarea que marque como expired los pagos antiguos
+En la UI, mostrar temporizador de tiempo restante para pagar
+Cuando expire, cerrar el modal y mostrar mensaje
+ORDEN DE PRIORIDAD SUGERIDO:
+Corregir errores de TON Connect y funciones eliminadas (CRÍTICO)
+Registro automático de wallet primaria (IMPORTANTE para seguridad)
+Sistema de débitos para compras (NECESARIO para marketplace)
+Historial de transacciones en UI (MEJORA UX)
+Wallet de respaldo con modal (MEJORA UX)
+Notificaciones de Telegram (MEJORA UX)
+Mejoras adicionales (QR, validación, límites, etc.)
+
+4.2 - Transferencias entre Usuarios
+Permitir enviar BUNK3RCO1N a otro usuario por @username o ID
+Crear endpoint /api/wallet/transfer que:
+Valide que el destinatario existe
+Verifique saldo suficiente
+Cree 2 transacciones (débito al emisor, crédito al receptor)
+Requiera 2FA si está activado
+Límite diario de transferencias (ej: 1000 BUNK3RCO1N/día)
+UI: Botón "Enviar" en la sección wallet
+
+4.5 - Estadísticas y Dashboard de Wallet
+Mostrar en la sección wallet:
+Total gastado este mes
+Total recargado este mes
+Gráfico de balance últimos 30 días
+Top 3 categorías de gasto
+Endpoint /api/wallet/stats que retorne estos datos
+Usar Chart.js para visualizaciones
+
+4.6 - Retiros a Wallet Externa (Cashout)
+Permitir convertir BUNK3RCO1N de vuelta a TON
+Comisión del 5% por retiro
+Mínimo de retiro: 100 BUNK3RCO1N
+Proceso:
+Usuario solicita retiro
+Admin aprueba manualmente
+Se envía TON a la wallet del usuario
+Crear tabla withdrawal_requests
+Endpoints para solicitar y gestionar retiros
+
+
+4.7 - Auto-Recarga Inteligente
+Configurar recarga automática cuando el saldo baje de X
+Usuario define:
+Umbral mínimo (ej: 50 BUNK3RCO1N)
+Cantidad a recargar (ej: 100 BUNK3RCO1N)
+Wallet autorizada para el débito
+Crear tabla auto_recharge_config
+Mostrar toggle en configuración de wallet
+
+4.9 - Exportar Historial
+Botón "Exportar" en historial de transacciones
+Formatos: CSV, PDF
+Filtros por fecha, tipo de transacción
+Útil para contabilidad del usuario
+4.10 - Alertas y Notificaciones Personalizadas POR MENSAJE PRIVADO DE TELEGRAM Y EN LA APP DENTRO DEL USUARUIO EN NOTIFIACIONES
+Usuario configura alertas para:
+Saldo bajo (cuando baje de X)
+Recarga recibida
+Transferencia recibida
+Precio de TON cambia más de X%
+Crear tabla notification_preferences
+UI en configuración de perfil
+
+5.2 - Whitelist de Wallets para Retiros
+Usuario debe pre-aprobar wallets externas
+Agregar nueva wallet requiere confirmación por email/2FA
+24 horas de espera antes de poder usar nueva wallet
