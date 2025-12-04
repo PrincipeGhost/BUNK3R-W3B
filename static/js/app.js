@@ -1511,20 +1511,45 @@ const App = {
         }
         
         myBotsEmpty.classList.add('hidden');
-        myBotsList.innerHTML = bots.map(bot => `
-            <div class="bot-card active-bot" data-bot-id="${bot.id}">
-                <div class="bot-avatar">${bot.icon || '🤖'}</div>
-                <div class="bot-info">
-                    <h3>${this.escapeHtml(bot.botName)}</h3>
-                    <p class="bot-status online">En linea</p>
-                    ${bot.description ? `<p class="bot-desc">${this.escapeHtml(bot.description)}</p>` : ''}
+        myBotsList.innerHTML = bots.map(bot => {
+            if (bot.botType === 'tracking_manager') {
+                return `
+                    <div class="bot-card active-bot owner-bot clickable" data-bot-id="${bot.id}" onclick="App.openBotPanel('${this.escapeHtml(bot.botType)}')">
+                        <div class="bot-avatar">${bot.icon || '🤖'}</div>
+                        <div class="bot-info">
+                            <h3>${this.escapeHtml(bot.botName)}</h3>
+                            <p class="bot-status online">En linea</p>
+                            ${bot.description ? `<p class="bot-desc">${this.escapeHtml(bot.description)}</p>` : ''}
+                        </div>
+                        <div class="bot-arrow">→</div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="bot-card active-bot" data-bot-id="${bot.id}">
+                    <div class="bot-avatar">${bot.icon || '🤖'}</div>
+                    <div class="bot-info">
+                        <h3>${this.escapeHtml(bot.botName)}</h3>
+                        <p class="bot-status online">En linea</p>
+                        ${bot.description ? `<p class="bot-desc">${this.escapeHtml(bot.description)}</p>` : ''}
+                    </div>
+                    <div class="bot-actions">
+                        <button class="bot-action-btn" onclick="App.configureBot(${bot.id}, '${this.escapeHtml(bot.botType)}')">Configurar</button>
+                        <button class="bot-remove-btn" onclick="App.confirmRemoveBot(${bot.id}, '${this.escapeHtml(bot.botName)}')">Quitar</button>
+                    </div>
                 </div>
-                <div class="bot-actions">
-                    <button class="bot-action-btn" onclick="App.configureBot(${bot.id}, '${this.escapeHtml(bot.botType)}')">Configurar</button>
-                    <button class="bot-remove-btn" onclick="App.confirmRemoveBot(${bot.id}, '${this.escapeHtml(bot.botName)}')">Quitar</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    },
+    
+    openBotPanel(botType) {
+        if (botType === 'tracking_manager') {
+            document.getElementById('bots-page').classList.add('hidden');
+            document.getElementById('home-page').classList.add('hidden');
+            document.getElementById('tracking-section').classList.remove('hidden');
+            this.previousSection = 'bots';
+            this.loadTrackingData();
+        }
     },
     
     renderAvailableBots(bots) {

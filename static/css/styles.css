@@ -2225,6 +2225,27 @@ body {
     color: white;
 }
 
+.bot-card.clickable {
+    cursor: pointer;
+}
+
+.bot-card.clickable:hover {
+    background: var(--bg-input);
+    transform: translateX(4px);
+}
+
+.bot-card.owner-bot {
+    border-color: var(--accent-primary);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+
+.bot-arrow {
+    font-size: 20px;
+    color: var(--accent-primary);
+    font-weight: bold;
+    padding: 0 8px;
+}
+
 /* ==================== WALLET ==================== */
 .wallet-balance-card {
     background: linear-gradient(135deg, #1a1a2e 0%, #2d3748 100%);
