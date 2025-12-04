@@ -51,6 +51,7 @@ def allowed_file(filename):
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
 CHANNEL_ID = os.environ.get('CHANNEL_ID', '')
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
+USER_TELEGRAM_ID = os.environ.get('USER_TELEGRAM_ID', '')
 
 try:
     db_manager = DatabaseManager()
@@ -138,6 +139,18 @@ def is_owner(user_id: int) -> bool:
     except:
         return False
 
+def is_test_user(user_id: int) -> bool:
+    """Verifica si el usuario es el usuario de prueba."""
+    try:
+        test_user_id = int(USER_TELEGRAM_ID) if USER_TELEGRAM_ID else 0
+        return user_id == test_user_id
+    except:
+        return False
+
+def is_allowed_user(user_id: int) -> bool:
+    """Verifica si el usuario tiene permiso de acceso (owner o usuario de prueba)."""
+    return is_owner(user_id) or is_test_user(user_id)
+
 
 def require_telegram_auth(f):
     """Decorador para requerir autenticación de Telegram o modo demo."""
@@ -168,12 +181,13 @@ def require_telegram_auth(f):
         if not user_id:
             return jsonify({'error': 'Usuario no identificado', 'code': 'NO_USER'}), 401
         
-        if not is_owner(user_id):
-            return jsonify({'error': 'Solo el owner puede acceder', 'code': 'NOT_OWNER'}), 403
+        if not is_allowed_user(user_id):
+            return jsonify({'error': 'Acceso no autorizado', 'code': 'NOT_ALLOWED'}), 403
         
         request.telegram_user = user
         request.telegram_data = validated_data
-        request.is_owner = True
+        request.is_owner = is_owner(user_id)
+        request.is_test_user = is_test_user(user_id)
         request.is_demo = False
         
         return f(*args, **kwargs)
@@ -525,11 +539,12 @@ def validate_user():
         }), 401
     
     owner_status = is_owner(user_id)
+    test_user_status = is_test_user(user_id)
     
-    if not owner_status:
+    if not owner_status and not test_user_status:
         return jsonify({
             'valid': False,
-            'error': 'Solo el owner puede acceder a esta aplicación',
+            'error': 'Acceso no autorizado',
             'isOwner': False
         }), 403
     
@@ -564,7 +579,8 @@ def validate_user():
             'languageCode': user.get('language_code', 'es'),
             'photoUrl': photo_url
         },
-        'isOwner': True
+        'isOwner': owner_status,
+        'isTestUser': test_user_status
     })
 
 

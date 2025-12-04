@@ -16,6 +16,7 @@ CHANNEL_ID = "-1002889052376"
 ADMIN_TOKEN = "110917"
 RESEND_API_KEY = "re_h4v6TkUk_NUoP1XUtvPknzphaU95vdX4N"
 TON_WALLET_ADDRESS = "UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59"
+USER_TELEGRAM_ID = "7729022720"
 
 [workflows]
 runButton = "Project"
@@ -48,10 +49,6 @@ externalPort = 80
 [[ports]]
 localPort = 38709
 externalPort = 3000
-
-[[ports]]
-localPort = 38787
-externalPort = 5173
 
 [[ports]]
 localPort = 39139
