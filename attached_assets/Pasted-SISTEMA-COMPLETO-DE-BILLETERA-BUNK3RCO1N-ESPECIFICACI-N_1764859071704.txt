@@ -1,0 +1,485 @@
+SISTEMA COMPLETO DE BILLETERA BUNK3RCO1N - ESPECIFICACIÓN TÉCNICA
+FASE 1: CORRECCIÓN DE ERRORES CRÍTICOS
+1.1 - Reparar Inicialización de TON Connect
+Problema: Error en consola "Error initializing TON Connect: {}"
+
+Solución:
+
+Verificar existencia del archivo static/tonconnect-manifest.json
+Estructura requerida del manifest:
+{
+  "url": "https://[REPLIT_APP_URL]",
+  "name": "BUNK3R",
+  "iconUrl": "https://[REPLIT_APP_URL]/static/images/logo.png",
+  "termsOfUseUrl": "https://[REPLIT_APP_URL]/terms",
+  "privacyPolicyUrl": "https://[REPLIT_APP_URL]/privacy"
+}
+
+Asegurar que la URL sea accesible públicamente (no localhost)
+Verificar que el icono exista y sea accesible (PNG, mínimo 180x180px)
+Archivos a modificar: static/tonconnect-manifest.json
+
+1.2 - Eliminar Llamadas a Funciones Obsoletas
+Problema: En initTonConnect() se llaman funciones que ya no existen, causando errores silenciosos
+
+Solución:
+
+En static/js/app.js, localizar la función initTonConnect() (aprox. línea 2031-2092)
+Eliminar las siguientes líneas (aprox. 2066-2067):
+await this.initDeviceTrust(); ← ELIMINAR
+this.updateDeviceTrustUI(); ← ELIMINAR
+Estas funciones fueron eliminadas anteriormente y ya no son necesarias
+Archivos a modificar: static/js/app.js
+
+FASE 2: IMPLEMENTACIÓN DE LÓGICA CORE
+2.1 - Sistema de Wallet de Respaldo
+Estado actual: La función setupBackupWallet() usa prompt() nativo del navegador
+
+Implementación requerida:
+
+Backend (app.py):
+
+@app.route('/api/security/wallet/backup', methods=['POST'])
+@require_telegram_user
+def set_backup_wallet():
+    """
+    Configurar wallet de respaldo para recuperación de cuenta.
+    
+    Request body:
+    {
+        "backupWallet": "UQ..." (dirección TON user-friendly)
+    }
+    
+    Validaciones:
+    - Formato válido (empiece con UQ o EQ, 48 caracteres)
+    - No puede ser igual a la wallet primaria
+    - Registrar en security_activity_log
+    """
+
+Base de datos:
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_wallet_address VARCHAR(100);
+
+Frontend (static/js/app.js):
+
+Reemplazar prompt() con modal estilizado que incluya:
+Campo de input para dirección de wallet
+Validación en tiempo real del formato
+Botones de confirmar/cancelar
+Mensaje de éxito/error
+Archivos a modificar: app.py, static/js/app.js, templates/index.html (si se necesita HTML del modal)
+
+2.2 - Registro Automático de Wallet Primaria
+Objetivo: Cuando un usuario conecta su wallet TON por primera vez, registrarla automáticamente como wallet primaria para el sistema de seguridad
+
+Implementación:
+
+Frontend (static/js/app.js):
+En la función saveWalletToBackend() o en el callback de onStatusChange de TON Connect:
+
+async saveWalletToBackend(rawAddress) {
+    // ... código existente ...
+    
+    // Después de guardar exitosamente, verificar si es primera wallet
+    const checkResponse = await this.apiRequest('/api/security/wallet/primary/check');
+    
+    if (checkResponse.success && !checkResponse.hasPrimaryWallet) {
+        // Registrar como wallet primaria
+        await this.apiRequest('/api/security/wallet/primary/register', {
+            method: 'POST',
+            body: JSON.stringify({ walletAddress: friendlyAddress })
+        });
+        
+        this.showToast('Wallet registrada como principal para seguridad', 'success');
+    }
+}
+
+Backend (app.py):
+
+@app.route('/api/security/wallet/primary/check', methods=['GET'])
+@require_telegram_user
+def check_primary_wallet():
+    """Verificar si el usuario ya tiene wallet primaria registrada."""
+    
+@app.route('/api/security/wallet/primary/register', methods=['POST'])
+@require_telegram_user
+def register_primary_wallet():
+    """
+    Registrar wallet como primaria (solo si no tiene una).
+    Usa security_manager.register_primary_wallet()
+    """
+
+Archivos a modificar: app.py, static/js/app.js, tracking/security.py (si necesita ajustes)
+
+2.3 - Historial de Transacciones en UI
+Estado actual: El endpoint /api/wallet/transactions existe pero no hay UI
+
+Implementación:
+
+HTML (templates/index.html):
+Agregar en la sección wallet:
+
+<div class="wallet-history-section">
+    <div class="section-header">
+        <h3>Historial de Transacciones</h3>
+        <button id="export-history-btn" class="btn-secondary">Exportar</button>
+    </div>
+    <div id="transactions-list" class="transactions-container">
+        <!-- Transacciones se cargan dinámicamente -->
+    </div>
+    <button id="load-more-transactions" class="btn-load-more hidden">
+        Cargar más
+    </button>
+</div>
+
+CSS (estilos requeridos):
+
+Lista de transacciones con scroll
+Iconos: ↑ verde para recargas, ↓ rojo para gastos
+Formato de fecha legible (ej: "Hace 2 horas", "4 Dic 2025")
+Animación de carga
+JavaScript (static/js/app.js):
+
+async loadTransactionHistory(offset = 0, limit = 10) {
+    const response = await this.apiRequest(`/api/wallet/transactions?offset=${offset}&limit=${limit}`);
+    // Renderizar lista con iconos según tipo (credit/debit)
+    // Formatear fechas de manera amigable
+    // Mostrar botón "cargar más" si hay más transacciones
+}
+renderTransaction(tx) {
+    const isCredit = tx.amount > 0;
+    return `
+        <div class="transaction-item ${isCredit ? 'credit' : 'debit'}">
+            <div class="tx-icon">${isCredit ? '↑' : '↓'}</div>
+            <div class="tx-details">
+                <span class="tx-description">${tx.description}</span>
+                <span class="tx-date">${this.formatDate(tx.created_at)}</span>
+            </div>
+            <div class="tx-amount ${isCredit ? 'positive' : 'negative'}">
+                ${isCredit ? '+' : ''}${tx.amount} B3C
+            </div>
+        </div>
+    `;
+}
+
+Archivos a modificar: templates/index.html, static/js/app.js, static/css/style.css
+
+2.4 - Sistema de Gastos/Débitos de BUNK3RCO1N
+Objetivo: Permitir gastar BUNK3RCO1N en compras dentro de la app
+
+Backend (app.py):
+
+@app.route('/api/wallet/debit', methods=['POST'])
+@require_telegram_user
+def debit_wallet():
+    """
+    Realizar un débito de BUNK3RCO1N.
+    
+    Request body:
+    {
+        "amount": 100,                    # Cantidad a debitar (positivo)
+        "type": "bot_purchase",           # Tipo: bot_purchase, product_purchase, transfer, withdrawal
+        "description": "Compra de Bot X", # Descripción para historial
+        "reference_id": "bot_123"         # ID del item comprado (opcional)
+    }
+    
+    Proceso:
+    1. Verificar que amount > 0
+    2. Obtener saldo actual del usuario
+    3. Verificar saldo >= amount
+    4. Insertar transacción con amount NEGATIVO (-amount)
+    5. Retornar nuevo saldo
+    
+    Response:
+    {
+        "success": true,
+        "newBalance": 400,
+        "amountDebited": 100
+    }
+    
+    Errores:
+    - 400: Cantidad inválida
+    - 402: Saldo insuficiente
+    """
+
+Uso en compras:
+
+// Al comprar un bot
+async purchaseBot(botId, price) {
+    const response = await this.apiRequest('/api/wallet/debit', {
+        method: 'POST',
+        body: JSON.stringify({
+            amount: price,
+            type: 'bot_purchase',
+            description: `Compra de Bot #${botId}`,
+            reference_id: botId
+        })
+    });
+    
+    if (response.success) {
+        // Proceder con la activación del bot
+        await this.activateBot(botId);
+    } else if (response.error === 'insufficient_balance') {
+        this.showToast('Saldo insuficiente. Recarga tu wallet.', 'error');
+    }
+}
+
+Archivos a modificar: app.py, static/js/app.js
+
+2.5 - Integración con ChangeNow (Exchange de Crypto)
+Objetivo: Permitir intercambio de criptomonedas dentro de la app
+
+Configuración:
+
+Obtener API key de ChangeNow (https://changenow.io/api)
+Almacenar como secret: CHANGENOW_API_KEY
+Backend (app.py):
+
+CHANGENOW_API_URL = "https://api.changenow.io/v2"
+CHANGENOW_API_KEY = os.environ.get('CHANGENOW_API_KEY')
+@app.route('/api/exchange/currencies', methods=['GET'])
+@require_telegram_user
+def get_available_currencies():
+    """Obtener lista de monedas disponibles para intercambio."""
+@app.route('/api/exchange/estimate', methods=['POST'])
+@require_telegram_user
+def get_exchange_estimate():
+    """
+    Obtener estimación de intercambio.
+    
+    Request: { "fromCurrency": "btc", "toCurrency": "ton", "amount": 0.01 }
+    Response: { "estimatedAmount": 15.5, "rate": 1550, "fee": 0.5 }
+    """
+@app.route('/api/exchange/create', methods=['POST'])
+@require_telegram_user
+def create_exchange():
+    """
+    Crear orden de intercambio.
+    
+    Request: {
+        "fromCurrency": "btc",
+        "toCurrency": "ton", 
+        "amount": 0.01,
+        "addressTo": "UQ..."  # Wallet destino del usuario
+    }
+    Response: {
+        "id": "abc123",
+        "payinAddress": "bc1...",  # Donde el usuario debe enviar
+        "expectedAmount": 15.5
+    }
+    """
+@app.route('/api/exchange/status/<exchange_id>', methods=['GET'])
+@require_telegram_user
+def get_exchange_status(exchange_id):
+    """
+    Verificar estado del intercambio.
+    Estados: waiting, confirming, exchanging, sending, finished, failed
+    """
+
+Frontend - UI de Exchange:
+
+<div class="exchange-section">
+    <h3>Intercambiar Crypto</h3>
+    
+    <div class="exchange-form">
+        <div class="exchange-input">
+            <label>Envías</label>
+            <input type="number" id="exchange-amount" placeholder="0.00">
+            <select id="exchange-from-currency">
+                <option value="btc">BTC</option>
+                <option value="eth">ETH</option>
+                <option value="usdt">USDT</option>
+            </select>
+        </div>
+        
+        <div class="exchange-arrow">↓</div>
+        
+        <div class="exchange-output">
+            <label>Recibes</label>
+            <span id="exchange-estimate">0.00</span>
+            <select id="exchange-to-currency">
+                <option value="ton">TON</option>
+            </select>
+        </div>
+        
+        <div class="exchange-rate" id="exchange-rate-info"></div>
+        
+        <button id="start-exchange-btn" class="btn-primary">
+            Iniciar Intercambio
+        </button>
+    </div>
+</div>
+
+Archivos a modificar: app.py, static/js/app.js, templates/index.html, static/css/style.css
+
+2.6 - Notificaciones de Telegram para Pagos
+Configuración requerida:
+
+Secret: BOT_TOKEN (token del bot de Telegram)
+Implementación en app.py:
+
+# En verify_ton_payment(), después de confirmar el pago:
+if payment_confirmed:
+    # ... código existente de actualización de saldo ...
+    
+    # Enviar notificación al usuario
+    if security_manager:
+        security_manager.send_telegram_notification(
+            user_id,
+            f"✅ *Recarga exitosa*\n\n"
+            f"💰 +{credits} BUNK3RCO1N\n"
+            f"📊 Nuevo saldo: {new_balance} B3C\n"
+            f"🔗 TX: `{tx_hash[:16]}...`"
+        )
+# En debit_wallet(), para gastos grandes (> 100 B3C):
+if amount > 100 and security_manager:
+    security_manager.send_telegram_notification(
+        user_id,
+        f"💸 *Gasto registrado*\n\n"
+        f"📦 {description}\n"
+        f"💰 -{amount} BUNK3RCO1N\n"
+        f"📊 Saldo restante: {new_balance} B3C"
+    )
+
+Verificar función en tracking/security.py:
+
+def send_telegram_notification(self, user_id: str, message: str):
+    """
+    Enviar notificación por Telegram al usuario.
+    Requiere BOT_TOKEN configurado.
+    """
+    bot_token = os.environ.get('BOT_TOKEN')
+    if not bot_token:
+        logger.warning("BOT_TOKEN not configured, skipping notification")
+        return False
+    
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        response = requests.post(url, json={
+            "chat_id": user_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        })
+        return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Error sending Telegram notification: {e}")
+        return False
+
+Archivos a modificar: app.py, tracking/security.py
+
+FASE 3: MEJORAS DE EXPERIENCIA DE USUARIO
+3.1 - Modal de Pago con QR Code
+Dependencia: Agregar librería QRCode.js
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+Modificar showPaymentModal() en static/js/app.js:
+
+showPaymentModal(paymentData) {
+    const { paymentId, merchantWallet, tonAmount, credits, comment } = paymentData;
+    
+    // Generar deep link para TON
+    const tonDeepLink = `ton://transfer/${merchantWallet}?amount=${tonAmount * 1e9}&text=${encodeURIComponent(comment)}`;
+    
+    const modalHtml = `
+        <div class="payment-modal-content">
+            <h3>Recarga de BUNK3RCO1N</h3>
+            
+            <!-- QR Code -->
+            <div class="qr-container">
+                <div id="payment-qr-code"></div>
+                <p class="qr-hint">Escanea con Tonkeeper o cualquier wallet TON</p>
+            </div>
+            
+            <!-- Resto del contenido existente -->
+            ...
+        </div>
+    `;
+    
+    this.showModal(modalHtml);
+    
+    // Generar QR después de mostrar el modal
+    new QRCode(document.getElementById('payment-qr-code'), {
+        text: tonDeepLink,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff"
+    });
+}
+
+CSS adicional:
+
+.qr-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 12px;
+    margin: 15px 0;
+}
+.qr-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+}
+
+Archivos a modificar: templates/index.html, static/js/app.js, static/css/style.css
+
+3.2 - Validación de Formato de Wallet TON
+Función de validación en static/js/app.js:
+
+validateTonWalletAddress(address) {
+    /**
+     * Valida formato de dirección TON user-friendly.
+     * 
+     * Formatos válidos:
+     * - Mainnet: Empieza con "EQ" o "UQ" (48 caracteres)
+     * - Testnet: Empieza con "kQ" o "0Q" (48 caracteres)
+     * 
+     * Returns: { valid: boolean, error: string|null }
+     */
+    if (!address || typeof address !== 'string') {
+        return { valid: false, error: 'Dirección requerida' };
+    }
+    
+    address = address.trim();
+    
+    // Verificar longitud (48 caracteres para user-friendly)
+    if (address.length !== 48) {
+        return { valid: false, error: 'La dirección debe tener 48 caracteres' };
+    }
+    
+    // Verificar prefijo para mainnet
+    const validPrefixes = ['EQ', 'UQ'];
+    const prefix = address.substring(0, 2);
+    
+    if (!validPrefixes.includes(prefix)) {
+        return { valid: false, error: 'Dirección inválida. Debe empezar con EQ o UQ' };
+    }
+    
+    // Verificar que solo contenga caracteres base64 válidos
+    const base64Regex = /^[A-Za-z0-9_-]+$/;
+    if (!base64Regex.test(address)) {
+        return { valid: false, error: 'La dirección contiene caracteres inválidos' };
+    }
+    
+    return { valid: true, error: null };
+}
+
+Usar antes de guardar cualquier wallet:
+
+async setupBackupWallet() {
+    // ... obtener dirección del modal ...
+    
+    const validation = this.validateTonWalletAddress(address);
+    if (!validation.valid) {
+        this.showToast(validation.error, 'error');
+        return;
+    }
+    
+    // Proceder a guardar...
+}
+
+Archivos a modificar: `static/js/app.
