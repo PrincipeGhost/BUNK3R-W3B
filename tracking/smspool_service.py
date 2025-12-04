@@ -97,6 +97,152 @@ class SMSPoolService:
     def _get_service_name(self, service_id: str, provided_name: str = '') -> str:
         """Get readable service name from ID or provided name"""
         service_names = {
+            'whatsapp': 'WhatsApp',
+            'telegram': 'Telegram',
+            'instagram': 'Instagram',
+            'facebook': 'Facebook',
+            'twitter': 'Twitter / X',
+            'google': 'Google',
+            'gmail': 'Gmail',
+            'microsoft': 'Microsoft',
+            'tiktok': 'TikTok',
+            'snapchat': 'Snapchat',
+            'uber': 'Uber',
+            'lyft': 'Lyft',
+            'paypal': 'PayPal',
+            'netflix': 'Netflix',
+            'spotify': 'Spotify',
+            'discord': 'Discord',
+            'steam': 'Steam',
+            'twitch': 'Twitch',
+            'linkedin': 'LinkedIn',
+            'apple': 'Apple',
+            'yahoo': 'Yahoo',
+            'binance': 'Binance',
+            'coinbase': 'Coinbase',
+            'openai': 'OpenAI',
+            'chatgpt': 'ChatGPT',
+            'tinder': 'Tinder',
+            'bumble': 'Bumble',
+            'wechat': 'WeChat',
+            'line': 'Line',
+            'viber': 'Viber',
+            'signal': 'Signal',
+            'airbnb': 'Airbnb',
+            'ebay': 'eBay',
+            'aliexpress': 'AliExpress',
+            'wish': 'Wish',
+            'shopee': 'Shopee',
+            'lazada': 'Lazada',
+            'grab': 'Grab',
+            'bolt': 'Bolt',
+            'doordash': 'DoorDash',
+            'ubereats': 'Uber Eats',
+            'deliveroo': 'Deliveroo',
+            'zalo': 'Zalo',
+            'kakao': 'Kakao',
+            'naver': 'Naver',
+            'yandex': 'Yandex',
+            'vkontakte': 'VKontakte',
+            'vk': 'VKontakte',
+            'odnoklassniki': 'Odnoklassniki',
+            'mercadolibre': 'Mercado Libre',
+            'rappi': 'Rappi',
+            'gojek': 'Gojek',
+            'tokopedia': 'Tokopedia',
+            'blizzard': 'Blizzard',
+            'epicgames': 'Epic Games',
+            'riotgames': 'Riot Games',
+            'mihoyo': 'Mihoyo',
+            'garena': 'Garena',
+            'zoom': 'Zoom',
+            'slack': 'Slack',
+            'teams': 'Microsoft Teams',
+            'skype': 'Skype',
+            'dropbox': 'Dropbox',
+            'box': 'Box',
+            'googledrive': 'Google Drive',
+            'onedrive': 'OneDrive',
+            'protonmail': 'Proton Mail',
+            'tutanota': 'Tutanota',
+            'crypto': 'Crypto.com',
+            'kraken': 'Kraken',
+            'ftx': 'FTX',
+            'gemini': 'Gemini',
+            'kucoin': 'KuCoin',
+            'huobi': 'Huobi',
+            'okx': 'OKX',
+            'bybit': 'Bybit',
+            'bitmart': 'BitMart',
+            'gateio': 'Gate.io',
+            'amazon': 'Amazon',
+            'plivo': 'Plivo',
+            'reddit': 'Reddit',
+            'pinterest': 'Pinterest',
+            'clubhouse': 'Clubhouse',
+            'hinge': 'Hinge',
+            'okcupid': 'OkCupid',
+            'badoo': 'Badoo',
+            'grindr': 'Grindr',
+            'uber_driver': 'Uber Driver',
+            'lyft_driver': 'Lyft Driver',
+            'doordash_driver': 'DoorDash Driver',
+            'instacart': 'Instacart',
+            'postmates': 'Postmates',
+            'grubhub': 'Grubhub',
+            'venmo': 'Venmo',
+            'cashapp': 'Cash App',
+            'zelle': 'Zelle',
+            'wise': 'Wise',
+            'revolut': 'Revolut',
+            'chime': 'Chime',
+            'sofi': 'SoFi',
+            'robinhood': 'Robinhood',
+            'etoro': 'eToro',
+            'webull': 'Webull',
+            'tradingview': 'TradingView',
+            'metatrader': 'MetaTrader',
+            'shopify': 'Shopify',
+            'etsy': 'Etsy',
+            'walmart': 'Walmart',
+            'target': 'Target',
+            'bestbuy': 'Best Buy',
+            'homedepot': 'Home Depot',
+            'ikea': 'IKEA',
+            'nike': 'Nike',
+            'adidas': 'Adidas',
+            'hbo': 'HBO Max',
+            'hulu': 'Hulu',
+            'disney': 'Disney+',
+            'primevideo': 'Prime Video',
+            'paramount': 'Paramount+',
+            'peacock': 'Peacock',
+            'crunchyroll': 'Crunchyroll',
+            'fiverr': 'Fiverr',
+            'upwork': 'Upwork',
+            'freelancer': 'Freelancer',
+            'taskrabbit': 'TaskRabbit',
+            'thumbtack': 'Thumbtack',
+            'notion': 'Notion',
+            'trello': 'Trello',
+            'asana': 'Asana',
+            'monday': 'Monday.com',
+            'clickup': 'ClickUp',
+            'airtable': 'Airtable',
+            'figma': 'Figma',
+            'canva': 'Canva',
+            'adobe': 'Adobe',
+            'mailchimp': 'Mailchimp',
+            'hubspot': 'HubSpot',
+            'salesforce': 'Salesforce',
+            'stripe': 'Stripe',
+            'square': 'Square',
+            'payoneer': 'Payoneer',
+            'skrill': 'Skrill',
+            'neteller': 'Neteller',
+            'paysera': 'Paysera',
+            'any': 'Cualquier servicio',
+            'other': 'Otro servicio',
             'pl': 'Plivo',
             'am': 'Amazon',
             'wa': 'WhatsApp',
@@ -145,7 +291,6 @@ class SMSPoolService:
             'ka': 'Kakao',
             'nt': 'Naver',
             'ym': 'Yandex',
-            'vk': 'VKontakte',
             'ok': 'Odnoklassniki',
             'mg': 'Mercado Libre',
             'ra': 'Rappi',
@@ -172,65 +317,151 @@ class SMSPoolService:
             'ge': 'Gemini',
             'ki': 'KuCoin',
             'hp': 'Huobi',
-            'ok': 'OKX',
             'bg': 'Bybit',
             'bm': 'BitMart',
             'gt': 'Gate.io',
-            'any': 'Cualquier servicio',
-            'other': 'Otro servicio',
+            'rd': 'Reddit',
+            'pt': 'Pinterest',
+            'ch': 'Clubhouse',
+            'hg': 'Hinge',
+            'oc': 'OkCupid',
+            'bd': 'Badoo',
+            'gr': 'Grindr',
+            'ic': 'Instacart',
+            'pm2': 'Postmates',
+            'gh': 'Grubhub',
+            'vm': 'Venmo',
+            'ca': 'Cash App',
+            'ze': 'Zelle',
+            'wz': 'Wise',
+            'rv': 'Revolut',
+            'cm': 'Chime',
+            'sf': 'SoFi',
+            'rh': 'Robinhood',
+            'et': 'eToro',
+            'wb': 'Webull',
+            'tv': 'TradingView',
+            'sy': 'Shopify',
+            'es': 'Etsy',
+            'wm': 'Walmart',
+            'tg2': 'Target',
+            'bb2': 'Best Buy',
+            'hd': 'Home Depot',
+            'ik': 'IKEA',
+            'nk': 'Nike',
+            'ad': 'Adidas',
+            'hb': 'HBO Max',
+            'hl': 'Hulu',
+            'ds': 'Disney+',
+            'pv': 'Prime Video',
+            'pmt': 'Paramount+',
+            'pk': 'Peacock',
+            'cr': 'Crunchyroll',
+            'fv': 'Fiverr',
+            'uw': 'Upwork',
+            'fl': 'Freelancer',
+            'tr': 'TaskRabbit',
+            'th': 'Thumbtack',
+            'nt2': 'Notion',
+            'tl': 'Trello',
+            'as': 'Asana',
+            'mn': 'Monday.com',
+            'cu': 'ClickUp',
+            'at': 'Airtable',
+            'fg': 'Figma',
+            'cv': 'Canva',
+            'ab2': 'Adobe',
+            'mc': 'Mailchimp',
+            'hs': 'HubSpot',
+            'sf2': 'Salesforce',
+            'sr': 'Stripe',
+            'sq': 'Square',
+            'py': 'Payoneer',
+            'skl': 'Skrill',
+            'nl': 'Neteller',
+            'ps': 'Paysera',
         }
         
-        if provided_name and len(provided_name) > 3:
-            return provided_name
+        if provided_name:
+            name_lower = provided_name.lower().strip()
+            if name_lower in service_names:
+                return service_names[name_lower]
+            if len(provided_name) > 2:
+                return provided_name.title() if provided_name.islower() else provided_name
         
-        service_id_lower = service_id.lower() if service_id else ''
+        service_id_lower = service_id.lower().strip() if service_id else ''
+        
         if service_id_lower in service_names:
             return service_names[service_id_lower]
         
         for key, name in service_names.items():
             if key in service_id_lower or service_id_lower in key:
                 return name
+            if key in name.lower():
+                if key in service_id_lower:
+                    return name
         
-        return provided_name if provided_name else service_id
+        if provided_name:
+            return provided_name.title() if provided_name.islower() else provided_name
+        
+        return service_id.title() if service_id and service_id.islower() else (service_id or 'Servicio')
     
     def get_services(self, country_id: Optional[str] = None) -> Dict:
-        """Get list of available services/apps with prices for a country"""
-        if not country_id:
-            result = self._make_request('service/retrieve_all')
-            if result['success']:
-                services = []
-                data = result['data']
-                logger.info(f"SMSPool service/retrieve_all response type: {type(data)}")
-                if isinstance(data, list):
-                    for service in data:
-                        service_id = service.get('ID') or service.get('id') or ''
-                        raw_name = service.get('name', '')
-                        name = self._get_service_name(service_id, raw_name)
-                        services.append({
-                            'id': service_id,
-                            'name': name,
-                            'short_name': service.get('short_name', ''),
-                            'price': 0.0,
-                            'icon': self._get_service_icon(name)
-                        })
-                return {'success': True, 'services': services}
-            return result
+        """Get list of available services/apps with prices for a country
         
-        result = self._make_request('request/pricing', {'country': country_id})
-        logger.info(f"SMSPool request/pricing response for country {country_id}: success={result.get('success')}")
+        Uses SMSPool's service/retrieve_all endpoint with optional country filter.
+        Falls back to individual price requests if prices not included in response.
+        """
+        params = {}
+        if country_id:
+            params['country'] = country_id
+        
+        logger.info(f"SMSPool: Fetching services with country={country_id}")
+        result = self._make_request('service/retrieve_all', params)
+        logger.info(f"SMSPool service/retrieve_all response for country {country_id}: success={result.get('success')}, data_type={type(result.get('data'))}")
         
         if result['success']:
             services = []
             data = result['data']
+            logger.info(f"SMSPool services data type: {type(data)}")
             
-            if isinstance(data, dict):
-                logger.info(f"SMSPool pricing data (dict) sample keys: {list(data.keys())[:5]}")
+            if isinstance(data, list):
+                logger.info(f"SMSPool services count: {len(data)}")
+                for service in data:
+                    service_id = service.get('ID') or service.get('id') or ''
+                    raw_name = service.get('name', '')
+                    name = self._get_service_name(service_id, raw_name)
+                    
+                    price = 0.0
+                    if 'price' in service:
+                        try:
+                            price = float(service.get('price', 0))
+                        except (ValueError, TypeError):
+                            price = 0.0
+                    elif 'low_price' in service:
+                        try:
+                            price = float(service.get('low_price', 0))
+                        except (ValueError, TypeError):
+                            price = 0.0
+                    
+                    services.append({
+                        'id': service_id,
+                        'name': name,
+                        'short_name': service.get('short_name', raw_name),
+                        'price': price,
+                        'icon': self._get_service_icon(name)
+                    })
+            elif isinstance(data, dict):
+                logger.info(f"SMSPool services data (dict) sample keys: {list(data.keys())[:10]}")
                 for service_id, service_data in data.items():
                     if isinstance(service_data, dict):
-                        price = float(service_data.get('price', service_data.get('low_price', 0)))
+                        price = 0.0
+                        try:
+                            price = float(service_data.get('price', service_data.get('low_price', 0)))
+                        except (ValueError, TypeError):
+                            price = 0.0
                         raw_name = service_data.get('name', service_data.get('short_name', ''))
                         name = self._get_service_name(service_id, raw_name)
-                        logger.debug(f"Service {service_id}: raw_name='{raw_name}', resolved_name='{name}'")
                         services.append({
                             'id': service_id,
                             'name': name,
@@ -247,23 +478,18 @@ class SMSPoolService:
                             'price': float(service_data),
                             'icon': self._get_service_icon(name)
                         })
-            elif isinstance(data, list):
-                logger.info(f"SMSPool pricing data (list) count: {len(data)}")
-                for item in data:
-                    if isinstance(item, dict):
-                        service_id = item.get('ID') or item.get('id') or item.get('service') or ''
-                        price = float(item.get('price', item.get('low_price', 0)))
-                        raw_name = item.get('name', item.get('short_name', ''))
-                        name = self._get_service_name(service_id, raw_name)
-                        services.append({
-                            'id': service_id,
-                            'name': name,
-                            'short_name': item.get('short_name', ''),
-                            'price': price,
-                            'icon': self._get_service_icon(name)
-                        })
             
-            services = [s for s in services if s['price'] > 0]
+            if country_id and services:
+                services_with_prices = []
+                for service in services:
+                    if service['price'] <= 0:
+                        price_result = self.get_price(country_id, service['id'])
+                        if price_result['success'] and price_result.get('price', 0) > 0:
+                            service['price'] = price_result['price']
+                    if service['price'] > 0:
+                        services_with_prices.append(service)
+                services = services_with_prices
+            
             services.sort(key=lambda x: x['name'].lower())
             logger.info(f"Returning {len(services)} services for country {country_id}")
             
@@ -410,9 +636,10 @@ class SMSPoolService:
         service_icons = {
             'whatsapp': '💬',
             'telegram': '✈️',
-            'instagram': '📷',
-            'facebook': '👤',
+            'instagram': '📸',
+            'facebook': '👥',
             'twitter': '🐦',
+            'x': '🐦',
             'google': '🔍',
             'gmail': '📧',
             'microsoft': '🪟',
@@ -450,7 +677,112 @@ class SMSPoolService:
             'bolt': '⚡',
             'doordash': '🍔',
             'ubereats': '🍕',
-            'deliveroo': '🚴'
+            'uber eats': '🍕',
+            'deliveroo': '🚴',
+            'reddit': '📰',
+            'pinterest': '📌',
+            'clubhouse': '🎙️',
+            'hinge': '💕',
+            'okcupid': '💘',
+            'badoo': '💜',
+            'grindr': '🌈',
+            'instacart': '🛒',
+            'postmates': '📦',
+            'grubhub': '🍽️',
+            'venmo': '💸',
+            'cashapp': '💵',
+            'cash app': '💵',
+            'zelle': '💱',
+            'wise': '🌍',
+            'revolut': '💳',
+            'chime': '🏦',
+            'sofi': '💰',
+            'robinhood': '📈',
+            'etoro': '📊',
+            'webull': '📉',
+            'tradingview': '📈',
+            'metatrader': '📊',
+            'shopify': '🛍️',
+            'etsy': '🎨',
+            'walmart': '🏪',
+            'target': '🎯',
+            'bestbuy': '💻',
+            'best buy': '💻',
+            'homedepot': '🔨',
+            'home depot': '🔨',
+            'ikea': '🏠',
+            'nike': '👟',
+            'adidas': '👟',
+            'hbo': '🎥',
+            'hulu': '📺',
+            'disney': '🏰',
+            'primevideo': '🎬',
+            'prime video': '🎬',
+            'paramount': '⭐',
+            'peacock': '🦚',
+            'crunchyroll': '🍣',
+            'fiverr': '💼',
+            'upwork': '💻',
+            'freelancer': '👨‍💻',
+            'taskrabbit': '🐰',
+            'thumbtack': '📍',
+            'notion': '📝',
+            'trello': '📋',
+            'asana': '✅',
+            'monday': '📊',
+            'clickup': '📌',
+            'airtable': '📊',
+            'figma': '🎨',
+            'canva': '🖼️',
+            'adobe': '🎨',
+            'mailchimp': '📧',
+            'hubspot': '🔧',
+            'salesforce': '☁️',
+            'stripe': '💳',
+            'square': '💳',
+            'payoneer': '💱',
+            'skrill': '💰',
+            'neteller': '💵',
+            'paysera': '💳',
+            'blizzard': '🎮',
+            'epic': '🎮',
+            'riot': '🎮',
+            'mihoyo': '🎮',
+            'garena': '🎮',
+            'zoom': '📹',
+            'slack': '💬',
+            'teams': '👥',
+            'skype': '📞',
+            'dropbox': '📁',
+            'box': '📦',
+            'drive': '💾',
+            'onedrive': '☁️',
+            'proton': '🔐',
+            'tutanota': '📧',
+            'crypto': '🪙',
+            'kraken': '🐙',
+            'ftx': '💹',
+            'gemini': '♊',
+            'kucoin': '🪙',
+            'huobi': '🔥',
+            'okx': '💱',
+            'bybit': '📈',
+            'bitmart': '💰',
+            'gate': '🚪',
+            'zalo': '💬',
+            'kakao': '💬',
+            'naver': '📧',
+            'yandex': '🔍',
+            'vkontakte': '📱',
+            'vk': '📱',
+            'odnoklassniki': '👥',
+            'mercado': '🛒',
+            'rappi': '🛵',
+            'gojek': '🛵',
+            'tokopedia': '🛒',
+            'plivo': '📞',
+            'any': '📱',
+            'other': '📱',
         }
         
         name_lower = service_name.lower() if service_name else ''

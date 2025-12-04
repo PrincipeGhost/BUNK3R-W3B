@@ -5,18 +5,188 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BUNK3R</title>
     <style>
-        body{margin:0;padding:0;background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-        .preload-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999}
-        .preload-logo{font-size:42px;font-weight:800;color:#fff;letter-spacing:3px;margin-bottom:30px;text-shadow:0 4px 20px rgba(66,153,225,0.3)}
-        .preload-logo .red{color:#fc8181;text-shadow:0 4px 20px rgba(252,129,129,0.4)}
-        .preload-spinner{width:60px;height:60px;position:relative;margin-bottom:20px}
-        .preload-spinner::before,.preload-spinner::after{content:'';position:absolute;width:100%;height:100%;border:3px solid transparent;border-radius:50%}
-        .preload-spinner::before{border-top-color:#4299e1;animation:spin 1s linear infinite}
-        .preload-spinner::after{border-right-color:#fc8181;animation:spin 1.5s linear infinite reverse}
-        .preload-text{color:#a0aec0;font-size:14px}
-        .preload-dots::after{content:'';animation:dots 1.5s infinite}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
+        body{margin:0;padding:0;background:#0d0d1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+        
+        .preload-overlay{
+            position:fixed;top:0;left:0;right:0;bottom:0;
+            background:linear-gradient(180deg, #0d0d1a 0%, #1a1a2e 50%, #0d0d1a 100%);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            z-index:99999;
+            overflow:hidden;
+        }
+        
+        .preload-overlay::before{
+            content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+            background:repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255,255,255,0.02) 2px,
+                rgba(255,255,255,0.02) 4px
+            );
+            pointer-events:none;
+            animation:scanlines 8s linear infinite;
+        }
+        
+        .preload-overlay::after{
+            content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+            background:radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.4) 100%);
+            pointer-events:none;
+        }
+        
+        .preload-glow{
+            position:absolute;width:300px;height:300px;
+            background:radial-gradient(circle, rgba(66,153,225,0.15) 0%, transparent 70%);
+            animation:pulse-glow 3s ease-in-out infinite;
+            filter:blur(60px);
+        }
+        
+        .preload-glow.secondary{
+            background:radial-gradient(circle, rgba(252,129,129,0.1) 0%, transparent 70%);
+            animation-delay:1.5s;
+            transform:translateX(50px);
+        }
+        
+        .preload-content{
+            position:relative;z-index:2;
+            display:flex;flex-direction:column;align-items:center;
+            animation:fade-in 0.8s ease-out;
+        }
+        
+        .preload-logo-container{
+            position:relative;margin-bottom:40px;
+        }
+        
+        .preload-logo{
+            font-size:52px;font-weight:900;color:#fff;
+            letter-spacing:6px;
+            text-shadow:
+                0 0 10px rgba(66,153,225,0.5),
+                0 0 30px rgba(66,153,225,0.3),
+                0 0 60px rgba(66,153,225,0.2),
+                2px 2px 0 #16213e,
+                4px 4px 0 #0d0d1a;
+            font-family:'Courier New',monospace;
+            animation:logo-flicker 4s ease-in-out infinite;
+            position:relative;
+        }
+        
+        .preload-logo::before{
+            content:'BUNK3R';position:absolute;top:0;left:0;
+            color:#4299e1;opacity:0;
+            animation:glitch-1 3s linear infinite;
+            clip-path:polygon(0 0, 100% 0, 100% 45%, 0 45%);
+        }
+        
+        .preload-logo::after{
+            content:'BUNK3R';position:absolute;top:0;left:0;
+            color:#fc8181;opacity:0;
+            animation:glitch-2 3s linear infinite;
+            clip-path:polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+        }
+        
+        .preload-logo .red{
+            color:#fc8181;
+            text-shadow:
+                0 0 10px rgba(252,129,129,0.6),
+                0 0 30px rgba(252,129,129,0.4),
+                0 0 60px rgba(252,129,129,0.2),
+                2px 2px 0 #16213e,
+                4px 4px 0 #0d0d1a;
+            position:relative;
+            display:inline-block;
+            animation:number-pulse 2s ease-in-out infinite;
+        }
+        
+        .preload-tagline{
+            font-size:11px;color:#4299e1;
+            letter-spacing:8px;text-transform:uppercase;
+            margin-top:8px;opacity:0.7;
+            font-family:'Courier New',monospace;
+        }
+        
+        .preload-loader{
+            display:flex;flex-direction:column;align-items:center;
+            margin-bottom:30px;
+        }
+        
+        .preload-bar-container{
+            width:200px;height:6px;
+            background:rgba(255,255,255,0.1);
+            border-radius:3px;
+            overflow:hidden;
+            position:relative;
+            border:1px solid rgba(255,255,255,0.1);
+        }
+        
+        .preload-bar{
+            height:100%;width:0%;
+            background:linear-gradient(90deg, #4299e1 0%, #667eea 50%, #fc8181 100%);
+            border-radius:3px;
+            animation:loading-bar 2.5s ease-in-out forwards;
+            box-shadow:0 0 10px rgba(66,153,225,0.5);
+        }
+        
+        .preload-bar::after{
+            content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+            background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            animation:shimmer 1.5s infinite;
+        }
+        
+        .preload-pixels{
+            display:flex;gap:4px;margin-top:20px;
+        }
+        
+        .preload-pixel{
+            width:8px;height:8px;
+            background:#4299e1;
+            animation:pixel-dance 0.8s ease-in-out infinite;
+        }
+        
+        .preload-pixel:nth-child(1){animation-delay:0s;background:#4299e1}
+        .preload-pixel:nth-child(2){animation-delay:0.1s;background:#667eea}
+        .preload-pixel:nth-child(3){animation-delay:0.2s;background:#9f7aea}
+        .preload-pixel:nth-child(4){animation-delay:0.3s;background:#fc8181}
+        .preload-pixel:nth-child(5){animation-delay:0.4s;background:#f6ad55}
+        
+        .preload-text{
+            color:#a0aec0;font-size:12px;
+            letter-spacing:2px;text-transform:uppercase;
+            font-family:'Courier New',monospace;
+            margin-top:16px;
+        }
+        
+        .preload-text::after{
+            content:'';animation:cursor-blink 1s step-end infinite;
+        }
+        
+        .preload-version{
+            position:absolute;bottom:30px;
+            font-size:10px;color:rgba(255,255,255,0.2);
+            letter-spacing:2px;
+            font-family:'Courier New',monospace;
+        }
+        
+        @keyframes scanlines{from{background-position:0 0}to{background-position:0 100%}}
+        @keyframes pulse-glow{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:0.8;transform:scale(1.1)}}
+        @keyframes fade-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes logo-flicker{0%,100%{opacity:1}95%{opacity:1}96%{opacity:0.8}97%{opacity:1}98%{opacity:0.9}99%{opacity:1}}
+        @keyframes glitch-1{0%,95%{opacity:0}96%{opacity:0.6;transform:translateX(-2px)}97%{opacity:0}98%{opacity:0.4;transform:translateX(2px)}100%{opacity:0}}
+        @keyframes glitch-2{0%,93%{opacity:0}94%{opacity:0.5;transform:translateX(3px)}95%{opacity:0}97%{opacity:0.3;transform:translateX(-3px)}100%{opacity:0}}
+        @keyframes number-pulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.05);filter:brightness(1.2)}}
+        @keyframes loading-bar{0%{width:0%}20%{width:20%}40%{width:35%}60%{width:65%}80%{width:85%}100%{width:100%}}
+        @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+        @keyframes pixel-dance{0%,100%{transform:translateY(0);opacity:0.6}50%{transform:translateY(-6px);opacity:1}}
+        @keyframes cursor-blink{0%,100%{content:'_'}50%{content:''}}
+        
+        .preload-overlay.fade-out{
+            animation:overlay-fadeout 0.5s ease-out forwards;
+        }
+        
+        @keyframes overlay-fadeout{
+            0%{opacity:1;transform:scale(1)}
+            100%{opacity:0;transform:scale(1.02);pointer-events:none}
+        }
     </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/dist/tonconnect-ui.min.js"></script>
@@ -25,9 +195,33 @@
 </head>
 <body>
     <div class="preload-overlay" id="preload-overlay">
-        <div class="preload-logo">BUNK<span class="red">3</span>R</div>
-        <div class="preload-spinner"></div>
-        <p class="preload-text">Cargando<span class="preload-dots"></span></p>
+        <div class="preload-glow"></div>
+        <div class="preload-glow secondary"></div>
+        
+        <div class="preload-content">
+            <div class="preload-logo-container">
+                <div class="preload-logo">BUNK<span class="red">3</span>R</div>
+                <div class="preload-tagline">Secure Access</div>
+            </div>
+            
+            <div class="preload-loader">
+                <div class="preload-bar-container">
+                    <div class="preload-bar"></div>
+                </div>
+                
+                <div class="preload-pixels">
+                    <div class="preload-pixel"></div>
+                    <div class="preload-pixel"></div>
+                    <div class="preload-pixel"></div>
+                    <div class="preload-pixel"></div>
+                    <div class="preload-pixel"></div>
+                </div>
+                
+                <p class="preload-text">Inicializando</p>
+            </div>
+        </div>
+        
+        <div class="preload-version">v2.0</div>
     </div>
     <div id="app">
         <div id="loading-screen" class="loading-screen hidden">
