@@ -98,7 +98,10 @@ const CryptoModule = {
             const decrypted = await this.decrypt(encryptedData, key, ivBase64);
             return new Blob([decrypted], { type: originalType });
         } catch (error) {
-            console.error('Decryption error:', error);
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.handle(error, 'Media decryption', false);
+            }
+            Logger?.warn('Decryption failed for media:', error.message);
             return null;
         }
     }
@@ -198,54 +201,76 @@ const PublicationsManager = {
     },
     
     async loadFeed() {
+        const feedContainer = document.getElementById('publications-feed');
         try {
-            console.log('Loading feed...');
+            if (typeof FallbackUI !== 'undefined' && feedContainer) {
+                FallbackUI.showSkeleton('publications-feed', 2);
+            }
+            
+            Logger?.debug('Loading feed...');
             const response = await this.apiRequest('/api/publications/feed');
-            console.log('Feed response:', response);
+            Logger?.debug('Feed response:', response);
+            
             if (response.success) {
                 this.feedPosts = response.posts;
-                console.log('Posts loaded:', this.feedPosts.length);
+                Logger?.info('Posts loaded:', this.feedPosts.length);
                 this.renderFeed();
             } else {
-                console.error('Feed load failed:', response.error);
+                Logger?.error('Feed load failed:', response.error);
+                if (typeof FallbackUI !== 'undefined') {
+                    FallbackUI.showLoadingError('publications-feed', 'PublicationsManager.loadFeed()', 'Error al cargar publicaciones');
+                }
             }
         } catch (error) {
-            console.error('Error loading feed:', error);
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.handle(error, 'Load feed');
+            }
+            if (typeof FallbackUI !== 'undefined') {
+                FallbackUI.showLoadingError('publications-feed', 'PublicationsManager.loadFeed()', 'Error de conexión');
+            }
         }
     },
     
     async loadStories() {
         try {
+            Logger?.debug('Loading stories...');
             const response = await this.apiRequest('/api/stories/feed');
             if (response.success) {
                 this.renderStories(response.stories);
+                Logger?.info('Stories loaded:', response.stories?.length || 0);
+            } else {
+                Logger?.warn('Stories load failed:', response.error);
             }
         } catch (error) {
-            console.error('Error loading stories:', error);
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.handle(error, 'Load stories', false);
+            }
         }
     },
     
     renderFeed() {
-        console.log('renderFeed called, posts:', this.feedPosts.length);
+        Logger?.debug('renderFeed called, posts:', this.feedPosts.length);
         const feedContainer = document.getElementById('publications-feed');
-        console.log('Feed container found:', !!feedContainer);
         if (!feedContainer) return;
         
         if (this.feedPosts.length === 0) {
-            feedContainer.innerHTML = `
-                <div class="empty-gallery">
-                    <div class="empty-gallery-icon">📷</div>
-                    <h4>Sin publicaciones</h4>
-                    <p>Sé el primero en compartir algo</p>
-                </div>
-            `;
+            if (typeof FallbackUI !== 'undefined') {
+                FallbackUI.showEmptyState('publications-feed', '📷', 'Sin publicaciones', 'Sé el primero en compartir algo');
+            } else {
+                feedContainer.innerHTML = `
+                    <div class="empty-gallery">
+                        <div class="empty-gallery-icon">📷</div>
+                        <h4>Sin publicaciones</h4>
+                        <p>Sé el primero en compartir algo</p>
+                    </div>
+                `;
+            }
             return;
         }
         
         const postsHtml = this.feedPosts.map(post => this.renderPost(post)).join('');
-        console.log('Posts HTML length:', postsHtml.length);
         feedContainer.innerHTML = postsHtml;
-        console.log('Feed container updated');
+        Logger?.debug('Feed container updated');
         this.setupPostInteractions();
     },
     
@@ -264,14 +289,14 @@ const PublicationsManager = {
                 <div class="publication-header">
                     <div class="publication-author">
                         <img src="${safeAvatarUrl}" 
-                             alt="${username}" class="publication-author-avatar"
+                             alt="Avatar de ${displayName}" class="publication-author-avatar"
                              onerror="this.src='${this.DEFAULT_AVATAR}'">
                         <div class="publication-author-info">
                             <span class="publication-author-name">${displayName}</span>
                             <span class="publication-time">${timeAgo}</span>
                         </div>
                     </div>
-                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${safeUserId}')" data-post-menu="${parseInt(post.id)}">
+                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${safeUserId}')" data-post-menu="${parseInt(post.id)}" aria-label="Opciones de publicacion">
                         ⋯
                     </button>
                 </div>
@@ -284,21 +309,27 @@ const PublicationsManager = {
                     <div class="publication-actions-left">
                         <button class="publication-action-btn ${post.user_reaction ? 'liked' : ''}" 
                                 onclick="PublicationsManager.toggleReaction(${parseInt(post.id)})"
-                                data-reaction-btn="${parseInt(post.id)}">
+                                data-reaction-btn="${parseInt(post.id)}"
+                                aria-label="${post.user_reaction ? 'Quitar me gusta' : 'Me gusta'}"
+                                aria-pressed="${post.user_reaction ? 'true' : 'false'}">
                             ${post.user_reaction ? '❤️' : '🤍'}
                         </button>
                         <button class="publication-action-btn" 
-                                onclick="document.getElementById('inline-comment-${parseInt(post.id)}').focus()">
+                                onclick="document.getElementById('inline-comment-${parseInt(post.id)}').focus()"
+                                aria-label="Comentar">
                             💬
                         </button>
                         <button class="publication-action-btn" 
-                                onclick="PublicationsManager.sharePost(${parseInt(post.id)})">
+                                onclick="PublicationsManager.sharePost(${parseInt(post.id)})"
+                                aria-label="Compartir">
                             ↗️
                         </button>
                     </div>
                     <button class="publication-action-btn ${post.user_saved ? 'saved' : ''}" 
                             onclick="PublicationsManager.toggleSave(${parseInt(post.id)})"
-                            data-save-btn="${parseInt(post.id)}">
+                            data-save-btn="${parseInt(post.id)}"
+                            aria-label="${post.user_saved ? 'Quitar de guardados' : 'Guardar'}"
+                            aria-pressed="${post.user_saved ? 'true' : 'false'}">
                         ${post.user_saved ? '🔖' : '📑'}
                     </button>
                 </div>

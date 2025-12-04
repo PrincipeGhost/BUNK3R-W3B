@@ -72,3 +72,36 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
   - `app.js`: Tracking cards (recipientName, productName, addresses), search queries, history notes
 - All dynamic HTML uses parseInt() for numeric IDs to prevent injection
 - All onclick handlers use escapeAttribute() for string parameters
+
+### Section 16 - Error Handling Improvements
+- Created centralized `Logger` module with log levels (DEBUG, INFO, WARN, ERROR)
+- Logger automatically reduces verbosity in production environment
+- Created `ErrorHandler` module with:
+  - `sanitize_error()`: Removes sensitive info from error messages
+  - `_getUserFriendlyMessage()`: Maps technical errors to user-friendly Spanish messages
+  - Integration with toast notification system
+- Created `FallbackUI` module with:
+  - `showLoadingError()`: Displays retry button on failed loads
+  - `showEmptyState()`: Displays empty state with icons
+  - `showSkeleton()`: Displays skeleton loaders during data fetch
+- Added CSS for error-fallback, empty-state, and skeleton-card components
+- Updated `loadFeed()` and `loadStories()` to show proper error feedback
+- Updated `decryptMedia()` to use ErrorHandler for encryption errors
+- Backend: Created `sanitize_error()` function to prevent technical error exposure
+- All API endpoints now use sanitize_error() instead of raw str(e)
+
+### Section 17 - Backend Input Validation
+- Created `InputValidator` class with comprehensive validation methods:
+  - `sanitize_html()`: Escapes HTML to prevent XSS
+  - `sanitize_text()`: Removes control characters, limits length
+  - `sanitize_name()`: Sanitizes names with character filtering
+  - `validate_url()`: SSRF protection with private IP blocking
+  - `validate_telegram_url()`: Validates Telegram-specific URLs
+  - `validate_cloudinary_url()`: Validates Cloudinary URLs
+  - `validate_file_content()`: Magic byte validation for file types
+  - `validate_tracking_id()`: Format validation for tracking IDs
+  - `validate_caption()`: Caption length and sanitization
+- Updated `download_telegram_photo()` with SSRF protection and content validation
+- Updated `/api/tracking` endpoint with input sanitization
+- Updated `/api/posts` endpoint with caption and URL validation
+- All text fields now have maximum length limits defined

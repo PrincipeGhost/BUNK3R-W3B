@@ -52,13 +52,27 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def download_telegram_photo(photo_url: str) -> str:
-    """Descarga la foto de Telegram y la convierte a base64."""
+    """Descarga la foto de Telegram y la convierte a base64 con validación SSRF."""
     try:
+        if 'input_validator' in globals():
+            is_valid, error = input_validator.validate_url(photo_url)
+            if not is_valid:
+                logger.warning(f"Invalid Telegram photo URL blocked: {error}")
+                return None
+        
         import requests
-        response = requests.get(photo_url, timeout=10)
+        response = requests.get(photo_url, timeout=10, allow_redirects=False)
         if response.status_code == 200:
             content_type = response.headers.get('content-type', 'image/jpeg')
             if 'image' in content_type:
+                if 'input_validator' in globals():
+                    is_valid_content, detected_type = input_validator.validate_file_content(
+                        response.content[:1024], 'image'
+                    )
+                    if not is_valid_content:
+                        logger.warning(f"Invalid file content in Telegram photo: {detected_type}")
+                        return None
+                
                 image_data = base64.b64encode(response.content).decode('utf-8')
                 return f"data:{content_type};base64,{image_data}"
         return None
@@ -104,6 +118,191 @@ DELAY_REASONS = [
     {"id": "address", "text": "Dirección incorrecta", "days": 2},
     {"id": "recipient_absent", "text": "Destinatario ausente", "days": 1}
 ]
+
+
+def sanitize_error(error, context=""):
+    """Sanitiza mensajes de error para no exponer detalles internos."""
+    error_str = str(error).lower()
+    
+    error_map = {
+        'connection': 'Error de conexión con el servicio',
+        'timeout': 'La operación tardó demasiado',
+        'permission': 'No tienes permisos para esta acción',
+        'not found': 'Recurso no encontrado',
+        'duplicate': 'Este registro ya existe',
+        'invalid': 'Datos inválidos',
+        'decrypt': 'Error al procesar contenido cifrado',
+        'database': 'Error temporal del servidor',
+        'psycopg2': 'Error temporal del servidor',
+        'json': 'Error en el formato de datos'
+    }
+    
+    for key, friendly_msg in error_map.items():
+        if key in error_str:
+            logger.error(f"[{context}] {error}")
+            return friendly_msg
+    
+    logger.error(f"[{context}] {error}")
+    return 'Ha ocurrido un error. Intenta de nuevo.'
+
+
+import re
+import html
+from urllib.parse import urlparse
+
+class InputValidator:
+    """Validador y sanitizador de inputs para prevenir ataques."""
+    
+    MAX_TEXT_LENGTH = 5000
+    MAX_NAME_LENGTH = 100
+    MAX_URL_LENGTH = 2048
+    MAX_CAPTION_LENGTH = 2200
+    
+    ALLOWED_URL_SCHEMES = {'http', 'https'}
+    ALLOWED_URL_HOSTS_TELEGRAM = {'t.me', 'telegram.org', 'api.telegram.org'}
+    ALLOWED_URL_HOSTS_CLOUDINARY = {'res.cloudinary.com', 'cloudinary.com'}
+    
+    @staticmethod
+    def sanitize_html(text: str) -> str:
+        """Escapa HTML para prevenir XSS."""
+        if not text:
+            return ''
+        return html.escape(str(text))
+    
+    @staticmethod
+    def sanitize_text(text: str, max_length: int = None) -> str:
+        """Sanitiza texto removiendo caracteres peligrosos y limitando longitud."""
+        if not text:
+            return ''
+        
+        text = str(text).strip()
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+        
+        max_len = max_length or InputValidator.MAX_TEXT_LENGTH
+        if len(text) > max_len:
+            text = text[:max_len]
+        
+        return text
+    
+    @staticmethod
+    def sanitize_name(name: str) -> str:
+        """Sanitiza nombres (personas, productos, etc.)."""
+        if not name:
+            return ''
+        name = InputValidator.sanitize_text(name, InputValidator.MAX_NAME_LENGTH)
+        name = re.sub(r'[<>"\'\\/;`]', '', name)
+        return name
+    
+    @staticmethod
+    def validate_url(url: str, allowed_hosts: set = None) -> tuple:
+        """
+        Valida una URL para prevenir SSRF.
+        Returns: (is_valid: bool, error_message: str)
+        """
+        if not url:
+            return False, "URL vacía"
+        
+        if len(url) > InputValidator.MAX_URL_LENGTH:
+            return False, "URL demasiado larga"
+        
+        try:
+            parsed = urlparse(url)
+            
+            if parsed.scheme not in InputValidator.ALLOWED_URL_SCHEMES:
+                return False, f"Esquema no permitido: {parsed.scheme}"
+            
+            if not parsed.netloc:
+                return False, "URL sin host"
+            
+            host = parsed.netloc.lower().split(':')[0]
+            
+            private_patterns = [
+                r'^localhost$',
+                r'^127\.',
+                r'^10\.',
+                r'^172\.(1[6-9]|2[0-9]|3[0-1])\.',
+                r'^192\.168\.',
+                r'^0\.',
+                r'\.local$',
+                r'^169\.254\.',
+                r'^::1$',
+                r'^fc00:',
+                r'^fe80:'
+            ]
+            
+            for pattern in private_patterns:
+                if re.match(pattern, host):
+                    return False, "URL a dirección privada no permitida"
+            
+            if allowed_hosts and host not in allowed_hosts:
+                return False, f"Host no permitido: {host}"
+            
+            return True, None
+            
+        except Exception as e:
+            return False, f"URL inválida: {str(e)}"
+    
+    @staticmethod
+    def validate_telegram_url(url: str) -> tuple:
+        """Valida URLs de Telegram específicamente."""
+        return InputValidator.validate_url(url, InputValidator.ALLOWED_URL_HOSTS_TELEGRAM)
+    
+    @staticmethod
+    def validate_cloudinary_url(url: str) -> tuple:
+        """Valida URLs de Cloudinary específicamente."""
+        return InputValidator.validate_url(url, InputValidator.ALLOWED_URL_HOSTS_CLOUDINARY)
+    
+    @staticmethod
+    def validate_file_content(file_content: bytes, expected_type: str) -> tuple:
+        """
+        Valida el contenido real del archivo usando magic bytes.
+        Returns: (is_valid: bool, detected_type: str)
+        """
+        MAGIC_BYTES = {
+            'image/jpeg': [b'\xff\xd8\xff'],
+            'image/png': [b'\x89PNG\r\n\x1a\n'],
+            'image/gif': [b'GIF87a', b'GIF89a'],
+            'image/webp': [b'RIFF'],
+            'video/mp4': [b'\x00\x00\x00\x18ftyp', b'\x00\x00\x00\x1cftyp', b'\x00\x00\x00\x20ftyp', b'ftyp'],
+            'video/webm': [b'\x1a\x45\xdf\xa3']
+        }
+        
+        if not file_content or len(file_content) < 8:
+            return False, "Archivo vacío o muy pequeño"
+        
+        for mime_type, signatures in MAGIC_BYTES.items():
+            for sig in signatures:
+                if file_content[:len(sig)] == sig:
+                    if expected_type and not mime_type.startswith(expected_type.split('/')[0]):
+                        return False, f"Tipo esperado {expected_type} pero encontrado {mime_type}"
+                    return True, mime_type
+        
+        return False, "Tipo de archivo no reconocido"
+    
+    @staticmethod
+    def validate_tracking_id(tracking_id: str) -> tuple:
+        """Valida formato de tracking ID."""
+        if not tracking_id:
+            return False, "Tracking ID vacío"
+        
+        tracking_id = str(tracking_id).strip().upper()
+        
+        if not re.match(r'^[A-Z0-9\-_]{5,50}$', tracking_id):
+            return False, "Formato de tracking ID inválido"
+        
+        return True, tracking_id
+    
+    @staticmethod
+    def validate_caption(caption: str) -> str:
+        """Valida y sanitiza caption de publicaciones."""
+        if not caption:
+            return ''
+        
+        caption = InputValidator.sanitize_text(caption, InputValidator.MAX_CAPTION_LENGTH)
+        return caption
+
+
+input_validator = InputValidator()
 
 
 def validate_telegram_webapp_data(init_data: str):
@@ -682,8 +881,7 @@ def get_trackings():
         })
         
     except Exception as e:
-        logger.error(f"Error fetching trackings: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'get_trackings')}), 500
 
 
 @app.route('/api/tracking/<tracking_id>', methods=['GET'])
@@ -740,8 +938,7 @@ def get_tracking(tracking_id):
         })
         
     except Exception as e:
-        logger.error(f"Error fetching tracking {tracking_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, f'get_tracking:{tracking_id}')}), 500
 
 
 @app.route('/api/tracking', methods=['POST'])
@@ -759,30 +956,40 @@ def create_tracking():
             if not data.get(field):
                 return jsonify({'error': f'Campo requerido: {field}'}), 400
         
+        is_valid, tracking_id = input_validator.validate_tracking_id(data['trackingId'])
+        if not is_valid:
+            return jsonify({'error': tracking_id}), 400
+        
+        recipient_name = input_validator.sanitize_name(data['recipientName'])
+        product_name = input_validator.sanitize_name(data['productName'])
+        
+        if not recipient_name or not product_name:
+            return jsonify({'error': 'Nombre de destinatario y producto son requeridos'}), 400
+        
         user = request.telegram_user
         
         now = datetime.now()
         date_time = data.get('dateTime') or now.strftime('%d/%m/%Y %H:%M')
         
         tracking = Tracking(
-            tracking_id=data['trackingId'],
-            recipient_name=data['recipientName'],
-            product_name=data['productName'],
-            product_price=data.get('productPrice', '0'),
-            status=data.get('status', 'RETENIDO'),
-            delivery_address=data.get('deliveryAddress', ''),
-            sender_address=data.get('senderAddress', ''),
+            tracking_id=tracking_id,
+            recipient_name=recipient_name,
+            product_name=product_name,
+            product_price=input_validator.sanitize_text(data.get('productPrice', '0'), 20),
+            status=data.get('status', 'RETENIDO') if data.get('status') in STATUS_MAP else 'RETENIDO',
+            delivery_address=input_validator.sanitize_text(data.get('deliveryAddress', ''), 500),
+            sender_address=input_validator.sanitize_text(data.get('senderAddress', ''), 500),
             date_time=date_time,
-            package_weight=data.get('packageWeight', '0.5 kg'),
-            estimated_delivery_date=data.get('estimatedDelivery', ''),
-            recipient_postal_code=data.get('recipientPostalCode', ''),
-            recipient_province=data.get('recipientProvince', ''),
-            recipient_country=data.get('recipientCountry', ''),
-            sender_postal_code=data.get('senderPostalCode', ''),
-            sender_province=data.get('senderProvince', ''),
-            sender_country=data.get('senderCountry', ''),
+            package_weight=input_validator.sanitize_text(data.get('packageWeight', '0.5 kg'), 20),
+            estimated_delivery_date=input_validator.sanitize_text(data.get('estimatedDelivery', ''), 50),
+            recipient_postal_code=input_validator.sanitize_text(data.get('recipientPostalCode', ''), 20),
+            recipient_province=input_validator.sanitize_text(data.get('recipientProvince', ''), 100),
+            recipient_country=input_validator.sanitize_text(data.get('recipientCountry', ''), 100),
+            sender_postal_code=input_validator.sanitize_text(data.get('senderPostalCode', ''), 20),
+            sender_province=input_validator.sanitize_text(data.get('senderProvince', ''), 100),
+            sender_country=input_validator.sanitize_text(data.get('senderCountry', ''), 100),
             user_telegram_id=user.get('id'),
-            username=user.get('username', '')
+            username=input_validator.sanitize_name(user.get('username', ''))
         )
         
         success = db_manager.save_tracking(tracking, created_by_admin_id=user.get('id'))
@@ -798,7 +1005,7 @@ def create_tracking():
             
     except Exception as e:
         logger.error(f"Error creating tracking: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/tracking/<tracking_id>/status', methods=['PUT'])
@@ -831,7 +1038,7 @@ def update_tracking_status(tracking_id):
             
     except Exception as e:
         logger.error(f"Error updating tracking status: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/tracking/<tracking_id>/delay', methods=['POST'])
@@ -858,7 +1065,7 @@ def add_delay(tracking_id):
             
     except Exception as e:
         logger.error(f"Error adding delay: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/tracking/<tracking_id>', methods=['PUT'])
@@ -914,7 +1121,7 @@ def update_tracking(tracking_id):
         
     except Exception as e:
         logger.error(f"Error updating tracking: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/tracking/<tracking_id>', methods=['DELETE'])
@@ -942,7 +1149,7 @@ def delete_tracking(tracking_id):
             
     except Exception as e:
         logger.error(f"Error deleting tracking: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/tracking/<tracking_id>/email', methods=['POST'])
@@ -989,7 +1196,7 @@ def send_email(tracking_id):
             
     except Exception as e:
         logger.error(f"Error sending email: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/stats', methods=['GET'])
@@ -1030,7 +1237,7 @@ def get_stats():
         
     except Exception as e:
         logger.error(f"Error fetching stats: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/delay-reasons', methods=['GET'])
@@ -1078,19 +1285,25 @@ def create_post():
             return jsonify({'error': 'Tipo de contenido inválido'}), 400
         
         content_url = data.get('contentUrl')
-        caption = data.get('caption', '')
+        caption = input_validator.validate_caption(data.get('caption', ''))
         
         if content_type == 'text' and not caption:
             return jsonify({'error': 'El texto es requerido para posts de tipo texto'}), 400
         
-        if content_type in ['image', 'video'] and not content_url:
-            return jsonify({'error': 'La URL del contenido es requerida'}), 400
+        if content_type in ['image', 'video']:
+            if not content_url:
+                return jsonify({'error': 'La URL del contenido es requerida'}), 400
+            is_valid, error = input_validator.validate_cloudinary_url(content_url)
+            if not is_valid:
+                is_valid, error = input_validator.validate_url(content_url)
+                if not is_valid:
+                    return jsonify({'error': 'URL de contenido inválida'}), 400
         
         db_manager.get_or_create_user(
             user_id=user_id,
-            username=user.get('username'),
-            first_name=user.get('first_name'),
-            last_name=user.get('last_name'),
+            username=input_validator.sanitize_name(user.get('username', '')),
+            first_name=input_validator.sanitize_name(user.get('first_name', '')),
+            last_name=input_validator.sanitize_name(user.get('last_name', '')),
             telegram_id=user.get('id')
         )
         
@@ -1111,8 +1324,7 @@ def create_post():
             return jsonify({'error': 'Error al crear la publicación'}), 500
             
     except Exception as e:
-        logger.error(f"Error creating post: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'create_post')}), 500
 
 
 @app.route('/api/posts', methods=['GET'])
@@ -1158,8 +1370,7 @@ def get_posts_feed():
         })
         
     except Exception as e:
-        logger.error(f"Error getting posts feed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'get_posts_feed')}), 500
 
 
 @app.route('/api/posts/<int:post_id>', methods=['GET'])
@@ -1195,7 +1406,7 @@ def get_post_detail(post_id):
         
     except Exception as e:
         logger.error(f"Error getting post {post_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
@@ -1221,7 +1432,7 @@ def delete_post(post_id):
             
     except Exception as e:
         logger.error(f"Error deleting post {post_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/posts/<int:post_id>/like', methods=['POST'])
@@ -1249,7 +1460,7 @@ def like_post(post_id):
             
     except Exception as e:
         logger.error(f"Error liking post {post_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/posts/<int:post_id>/like', methods=['DELETE'])
@@ -1277,7 +1488,7 @@ def unlike_post(post_id):
             
     except Exception as e:
         logger.error(f"Error unliking post {post_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 # ============================================================
@@ -1322,7 +1533,7 @@ def get_user_profile(user_id):
         
     except Exception as e:
         logger.error(f"Error getting user profile {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/<user_id>/posts', methods=['GET'])
@@ -1379,7 +1590,7 @@ def get_user_posts(user_id):
         
     except Exception as e:
         logger.error(f"Error getting user posts {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/me/avatar', methods=['POST'])
@@ -1441,7 +1652,7 @@ def upload_avatar():
             
     except Exception as e:
         logger.error(f"Error uploading avatar: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/avatar/<user_id>')
@@ -1505,7 +1716,7 @@ def get_my_profile():
             
     except Exception as e:
         logger.error(f"Error getting my profile: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/me/profile', methods=['PUT'])
@@ -1535,7 +1746,7 @@ def update_my_profile():
             
     except Exception as e:
         logger.error(f"Error updating profile: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/<user_id>/follow', methods=['POST'])
@@ -1575,7 +1786,7 @@ def follow_user(user_id):
             
     except Exception as e:
         logger.error(f"Error following user {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/<user_id>/follow', methods=['DELETE'])
@@ -1604,7 +1815,7 @@ def unfollow_user(user_id):
             
     except Exception as e:
         logger.error(f"Error unfollowing user {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/<user_id>/followers', methods=['GET'])
@@ -1643,7 +1854,7 @@ def get_user_followers(user_id):
         
     except Exception as e:
         logger.error(f"Error getting followers for {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/users/<user_id>/following', methods=['GET'])
@@ -1682,7 +1893,7 @@ def get_user_following(user_id):
         
     except Exception as e:
         logger.error(f"Error getting following for {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 # ============================================================
@@ -1709,7 +1920,7 @@ def init_bots():
             
     except Exception as e:
         logger.error(f"Error initializing bots: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/bots/my', methods=['GET'])
@@ -1751,7 +1962,7 @@ def get_my_bots():
         
     except Exception as e:
         logger.error(f"Error getting user bots: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/bots/available', methods=['GET'])
@@ -1793,7 +2004,7 @@ def get_available_bots():
         
     except Exception as e:
         logger.error(f"Error getting available bots: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/bots/purchase', methods=['POST'])
@@ -1834,7 +2045,7 @@ def purchase_bot():
             
     except Exception as e:
         logger.error(f"Error purchasing bot: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 @app.route('/api/bots/<int:bot_id>/remove', methods=['POST'])
@@ -1860,7 +2071,7 @@ def remove_bot(bot_id):
             
     except Exception as e:
         logger.error(f"Error removing bot {bot_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 import requests
@@ -1892,7 +2103,7 @@ def get_exchange_currencies():
             
     except Exception as e:
         logger.error(f"Error getting currencies: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 @app.route('/api/exchange/min-amount', methods=['GET'])
 @require_telegram_user
@@ -1919,7 +2130,7 @@ def get_min_amount():
             
     except Exception as e:
         logger.error(f"Error getting min amount: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 @app.route('/api/exchange/estimate', methods=['GET'])
 @require_telegram_user
@@ -1953,7 +2164,7 @@ def get_exchange_estimate():
             
     except Exception as e:
         logger.error(f"Error getting estimate: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 @app.route('/api/exchange/create', methods=['POST'])
 @require_telegram_user
@@ -2004,7 +2215,7 @@ def create_exchange():
             
     except Exception as e:
         logger.error(f"Error creating exchange: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 @app.route('/api/exchange/status/<tx_id>', methods=['GET'])
 @require_telegram_user
@@ -2034,7 +2245,7 @@ def get_exchange_status(tx_id):
             
     except Exception as e:
         logger.error(f"Error getting status: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
 TONCENTER_API_URL = 'https://toncenter.com/api/v3'

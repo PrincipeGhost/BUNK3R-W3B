@@ -617,25 +617,30 @@ const App = {
         const sidebarOverlay = document.getElementById('sidebar-overlay');
         const sidebarClose = document.getElementById('sidebar-close');
         
+        const closeSidebar = () => {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+            hamburgerMenu.setAttribute('aria-expanded', 'false');
+            sidebarOverlay.setAttribute('aria-hidden', 'true');
+        };
+        
         if (hamburgerMenu && sidebar) {
             hamburgerMenu.addEventListener('click', () => {
                 sidebar.classList.add('active');
                 sidebarOverlay.classList.add('active');
+                hamburgerMenu.setAttribute('aria-expanded', 'true');
+                sidebarOverlay.setAttribute('aria-hidden', 'false');
+                const firstFocusable = sidebar.querySelector('button, a, [tabindex]:not([tabindex="-1"])');
+                if (firstFocusable) firstFocusable.focus();
             });
         }
         
         if (sidebarClose) {
-            sidebarClose.addEventListener('click', () => {
-                sidebar.classList.remove('active');
-                sidebarOverlay.classList.remove('active');
-            });
+            sidebarClose.addEventListener('click', closeSidebar);
         }
         
         if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', () => {
-                sidebar.classList.remove('active');
-                sidebarOverlay.classList.remove('active');
-            });
+            sidebarOverlay.addEventListener('click', closeSidebar);
         }
         
         document.querySelectorAll('.sidebar-item').forEach(item => {
@@ -1984,12 +1989,20 @@ const App = {
     
     showModal(content) {
         const modal = document.getElementById('modal-content');
+        const overlay = document.getElementById('modal-overlay');
         modal.innerHTML = content;
-        document.getElementById('modal-overlay').classList.remove('hidden');
+        overlay.classList.remove('hidden');
+        overlay.setAttribute('aria-hidden', 'false');
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        const focusable = modal.querySelector('button, input, [tabindex]:not([tabindex="-1"])');
+        if (focusable) focusable.focus();
     },
     
     closeModal() {
-        document.getElementById('modal-overlay').classList.add('hidden');
+        const overlay = document.getElementById('modal-overlay');
+        overlay.classList.add('hidden');
+        overlay.setAttribute('aria-hidden', 'true');
     },
     
     showToast(message, type = 'info') {
@@ -1997,6 +2010,9 @@ const App = {
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.textContent = message;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'polite');
+        toast.setAttribute('aria-atomic', 'true');
         container.appendChild(toast);
         
         if (this.tg) {
