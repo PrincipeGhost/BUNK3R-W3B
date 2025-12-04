@@ -284,12 +284,22 @@
                         <span class="sidebar-icon">💬</span>
                         <span>Foro</span>
                     </a>
+                    <div class="sidebar-divider"></div>
+                    <a href="#" class="sidebar-item" data-section="settings">
+                        <span class="sidebar-icon">⚙️</span>
+                        <span>Configuracion</span>
+                    </a>
                 </nav>
                 <div class="sidebar-profile" id="sidebar-profile">
                     <div class="sidebar-profile-avatar" id="sidebar-avatar"></div>
                     <div class="sidebar-profile-info">
                         <span class="sidebar-profile-name" id="sidebar-name"></span>
-                        <span class="sidebar-profile-role">Owner</span>
+                        <span class="sidebar-profile-role" id="sidebar-role">Usuario</span>
+                    </div>
+                    <div class="sidebar-admin-arrow hidden" id="sidebar-admin-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -812,6 +822,288 @@
                                 <div class="activity-list" id="security-activity-list">
                                     <div class="activity-loading">Cargando actividad...</div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGINA CONFIGURACION -->
+            <div id="settings-screen" class="page-screen hidden">
+                <div class="page-header settings-header">
+                    <button class="back-btn" id="settings-back-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <h1 class="page-title">Configuracion</h1>
+                </div>
+                <div class="settings-content">
+                    <!-- Seccion de Cuenta -->
+                    <div class="settings-section">
+                        <h3 class="settings-section-title">Mi Cuenta</h3>
+                        <div class="settings-list">
+                            <div class="settings-item">
+                                <span class="settings-icon">👤</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Perfil</span>
+                                    <span class="settings-item-desc">Edita tu informacion personal</span>
+                                </div>
+                                <span class="settings-arrow">›</span>
+                            </div>
+                            <div class="settings-item">
+                                <span class="settings-icon">🔔</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Notificaciones</span>
+                                    <span class="settings-item-desc">Configura tus alertas</span>
+                                </div>
+                                <span class="settings-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seccion de Seguridad -->
+                    <div class="settings-section">
+                        <h3 class="settings-section-title">Seguridad</h3>
+                        
+                        <!-- Estado de Seguridad -->
+                        <div class="security-status-card" id="settings-security-card">
+                            <div class="security-card-header">
+                                <div class="security-card-icon" id="settings-security-icon">🛡️</div>
+                                <div class="security-card-info">
+                                    <span class="security-card-title" id="settings-security-title">Estado de Seguridad</span>
+                                    <span class="security-card-level" id="settings-security-level">Nivel: --</span>
+                                </div>
+                                <div class="security-score-circle" id="settings-security-score">
+                                    <span>0%</span>
+                                </div>
+                            </div>
+                            <div class="security-quick-status">
+                                <div class="quick-status-item">
+                                    <span class="status-dot" id="settings-wallet-dot"></span>
+                                    <span>Wallet</span>
+                                </div>
+                                <div class="quick-status-item">
+                                    <span class="status-dot" id="settings-2fa-dot"></span>
+                                    <span>2FA</span>
+                                </div>
+                                <div class="quick-status-item">
+                                    <span class="status-dot" id="settings-devices-dot"></span>
+                                    <span>Dispositivos</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dispositivos de Confianza -->
+                        <div class="settings-devices-section">
+                            <div class="settings-devices-header">
+                                <div class="devices-title-row">
+                                    <span class="settings-icon">📱</span>
+                                    <div class="devices-title-info">
+                                        <span class="settings-item-title">Dispositivos de Confianza</span>
+                                        <span class="devices-count" id="settings-devices-count">0/2 dispositivos</span>
+                                    </div>
+                                </div>
+                                <button class="add-device-small-btn" id="settings-add-device-btn">+ Agregar</button>
+                            </div>
+                            <div class="settings-devices-list" id="settings-devices-list">
+                                <div class="devices-loading">Cargando dispositivos...</div>
+                            </div>
+                        </div>
+
+                        <!-- Opciones de Seguridad -->
+                        <div class="settings-list">
+                            <div class="settings-item" id="settings-2fa-item">
+                                <span class="settings-icon">🔐</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Autenticacion 2FA</span>
+                                    <span class="settings-item-desc" id="settings-2fa-status">Estado: --</span>
+                                </div>
+                                <span class="settings-arrow">›</span>
+                            </div>
+                            <div class="settings-item" id="settings-backup-wallet-item">
+                                <span class="settings-icon">💳</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Wallet de Respaldo</span>
+                                    <span class="settings-item-desc" id="settings-backup-status">No configurada</span>
+                                </div>
+                                <span class="settings-arrow">›</span>
+                            </div>
+                            <div class="settings-item" id="settings-activity-item">
+                                <span class="settings-icon">📋</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Historial de Actividad</span>
+                                    <span class="settings-item-desc">Ver actividad de seguridad</span>
+                                </div>
+                                <span class="settings-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seccion de Aplicacion -->
+                    <div class="settings-section">
+                        <h3 class="settings-section-title">Aplicacion</h3>
+                        <div class="settings-list">
+                            <div class="settings-item">
+                                <span class="settings-icon">🌙</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Tema</span>
+                                    <span class="settings-item-desc">Modo oscuro</span>
+                                </div>
+                                <div class="settings-toggle active">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <span class="settings-icon">🌐</span>
+                                <div class="settings-item-info">
+                                    <span class="settings-item-title">Idioma</span>
+                                    <span class="settings-item-desc">Espanol</span>
+                                </div>
+                                <span class="settings-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cerrar Sesion -->
+                    <div class="settings-section">
+                        <button class="settings-logout-btn" id="settings-logout-btn">
+                            <span class="logout-icon">🚪</span>
+                            Cerrar todas las sesiones
+                        </button>
+                    </div>
+
+                    <div class="settings-footer">
+                        <span class="settings-version">BUNK3R v1.0.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGINA ADMINISTRACION (Solo Owner) -->
+            <div id="admin-screen" class="page-screen hidden">
+                <div class="page-header admin-header">
+                    <button class="back-btn" id="admin-back-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <h1 class="page-title">Panel de Administracion</h1>
+                </div>
+                <div class="admin-content">
+                    <!-- Stats Rapidas -->
+                    <div class="admin-stats-grid">
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-icon">👥</span>
+                            <span class="admin-stat-value" id="admin-total-users">0</span>
+                            <span class="admin-stat-label">Usuarios</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-icon">🤖</span>
+                            <span class="admin-stat-value" id="admin-total-bots">0</span>
+                            <span class="admin-stat-label">Bots Activos</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-icon">💰</span>
+                            <span class="admin-stat-value" id="admin-total-transactions">0</span>
+                            <span class="admin-stat-label">Transacciones</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-icon">⚠️</span>
+                            <span class="admin-stat-value" id="admin-security-alerts">0</span>
+                            <span class="admin-stat-label">Alertas</span>
+                        </div>
+                    </div>
+
+                    <!-- Menu de Administracion -->
+                    <div class="admin-section">
+                        <h3 class="admin-section-title">Gestion</h3>
+                        <div class="admin-menu-list">
+                            <div class="admin-menu-item" id="admin-users-btn">
+                                <span class="admin-menu-icon">👥</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Gestion de Usuarios</span>
+                                    <span class="admin-menu-desc">Ver y administrar usuarios</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                            <div class="admin-menu-item" id="admin-bots-btn">
+                                <span class="admin-menu-icon">🤖</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Gestion de Bots</span>
+                                    <span class="admin-menu-desc">Administrar bots del sistema</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                            <div class="admin-menu-item" id="admin-products-btn">
+                                <span class="admin-menu-icon">🛒</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Productos</span>
+                                    <span class="admin-menu-desc">Marketplace y productos</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                            <div class="admin-menu-item" id="admin-transactions-btn">
+                                <span class="admin-menu-icon">💳</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Transacciones</span>
+                                    <span class="admin-menu-desc">Historial de transacciones</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seccion de Seguridad -->
+                    <div class="admin-section">
+                        <h3 class="admin-section-title">Seguridad</h3>
+                        <div class="admin-menu-list">
+                            <div class="admin-menu-item" id="admin-security-alerts-btn">
+                                <span class="admin-menu-icon">🚨</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Alertas de Seguridad</span>
+                                    <span class="admin-menu-desc">Revisar alertas activas</span>
+                                </div>
+                                <span class="admin-alert-badge hidden" id="admin-alert-badge">0</span>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                            <div class="admin-menu-item" id="admin-activity-btn">
+                                <span class="admin-menu-icon">📊</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Registro de Actividad</span>
+                                    <span class="admin-menu-desc">Ver todas las actividades</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                            <div class="admin-menu-item" id="admin-lockouts-btn">
+                                <span class="admin-menu-icon">🔒</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Usuarios Bloqueados</span>
+                                    <span class="admin-menu-desc">Gestionar bloqueos</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seccion de Sistema -->
+                    <div class="admin-section">
+                        <h3 class="admin-section-title">Sistema</h3>
+                        <div class="admin-menu-list">
+                            <div class="admin-menu-item" id="admin-settings-btn">
+                                <span class="admin-menu-icon">⚙️</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Configuracion del Sistema</span>
+                                    <span class="admin-menu-desc">Ajustes generales</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
+                            </div>
+                            <div class="admin-menu-item" id="admin-logs-btn">
+                                <span class="admin-menu-icon">📝</span>
+                                <div class="admin-menu-info">
+                                    <span class="admin-menu-title">Logs del Sistema</span>
+                                    <span class="admin-menu-desc">Ver registros del servidor</span>
+                                </div>
+                                <span class="admin-menu-arrow">›</span>
                             </div>
                         </div>
                     </div>

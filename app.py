@@ -2995,8 +2995,56 @@ def check_user_lockout():
 # ENDPOINTS DE ADMIN - SEGURIDAD
 # ============================================================
 
+@app.route('/api/admin/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_stats():
+    """Admin: Obtener estadisticas generales del sistema (solo owner)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'total_users': 0,
+                'active_bots': 0,
+                'total_transactions': 0,
+                'security_alerts': 0
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM users")
+                total_users = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM user_bots WHERE active = true")
+                active_bots = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM wallet_transactions")
+                total_transactions = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM security_alerts WHERE resolved = false")
+                security_alerts = cur.fetchone()[0] or 0
+        
+        return jsonify({
+            'success': True,
+            'total_users': total_users,
+            'active_bots': active_bots,
+            'total_transactions': total_transactions,
+            'security_alerts': security_alerts
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Error al obtener estadisticas'
+        }), 500
+
+
 @app.route('/api/admin/security/users', methods=['GET'])
 @require_telegram_auth
+@require_owner
 def admin_get_users_devices():
     """Admin: Obtener todos los usuarios con sus dispositivos."""
     try:
@@ -3017,6 +3065,7 @@ def admin_get_users_devices():
 
 @app.route('/api/admin/security/user/<user_id>/devices', methods=['GET'])
 @require_telegram_auth
+@require_owner
 def admin_get_user_devices(user_id):
     """Admin: Obtener dispositivos de un usuario especifico."""
     try:
@@ -3037,6 +3086,7 @@ def admin_get_user_devices(user_id):
 
 @app.route('/api/admin/security/user/<user_id>/device/remove', methods=['POST'])
 @require_telegram_auth
+@require_owner
 def admin_remove_user_device(user_id):
     """Admin: Eliminar dispositivo de un usuario."""
     try:
@@ -3060,6 +3110,7 @@ def admin_remove_user_device(user_id):
 
 @app.route('/api/admin/security/alerts', methods=['GET'])
 @require_telegram_auth
+@require_owner
 def admin_get_security_alerts():
     """Admin: Obtener alertas de seguridad."""
     try:
@@ -3081,6 +3132,7 @@ def admin_get_security_alerts():
 
 @app.route('/api/admin/security/alerts/<int:alert_id>/resolve', methods=['POST'])
 @require_telegram_auth
+@require_owner
 def admin_resolve_alert(alert_id):
     """Admin: Resolver una alerta de seguridad."""
     try:
@@ -3102,6 +3154,7 @@ def admin_resolve_alert(alert_id):
 
 @app.route('/api/admin/security/statistics', methods=['GET'])
 @require_telegram_auth
+@require_owner
 def admin_get_security_stats():
     """Admin: Obtener estadisticas de seguridad."""
     try:
@@ -3118,6 +3171,7 @@ def admin_get_security_stats():
 
 @app.route('/api/admin/security/user/<user_id>/activity', methods=['GET'])
 @require_telegram_auth
+@require_owner
 def admin_get_user_activity(user_id):
     """Admin: Obtener actividad de seguridad de un usuario."""
     try:

@@ -415,6 +415,8 @@ const App = {
         if (profileModalUsername) {
             profileModalUsername.textContent = '@' + userUsername;
         }
+        
+        this.updateSidebarRole();
     },
     
     openModule(moduleName) {
@@ -436,6 +438,8 @@ const App = {
         document.getElementById('wallet-screen').classList.add('hidden');
         document.getElementById('profile-screen').classList.add('hidden');
         document.getElementById('exchange-screen')?.classList.add('hidden');
+        document.getElementById('settings-screen')?.classList.add('hidden');
+        document.getElementById('admin-screen')?.classList.add('hidden');
         document.getElementById('home-screen').classList.remove('hidden');
         
         document.querySelectorAll('.bottom-nav-item').forEach(item => {
@@ -504,11 +508,51 @@ const App = {
                     this.showPage('exchange');
                 } else if (section === 'bots') {
                     this.showPage('bots');
+                } else if (section === 'settings') {
+                    this.showSettingsScreen();
                 } else {
                     this.showToast('Seccion: ' + item.textContent.trim(), 'info');
                 }
             });
         });
+        
+        const sidebarProfile = document.getElementById('sidebar-profile');
+        if (sidebarProfile) {
+            sidebarProfile.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+                if (this.isOwner) {
+                    this.showAdminScreen();
+                } else {
+                    this.showPage('profile');
+                }
+            });
+        }
+        
+        const settingsBackBtn = document.getElementById('settings-back-btn');
+        if (settingsBackBtn) {
+            settingsBackBtn.addEventListener('click', () => this.goToHome());
+        }
+        
+        const adminBackBtn = document.getElementById('admin-back-btn');
+        if (adminBackBtn) {
+            adminBackBtn.addEventListener('click', () => this.goToHome());
+        }
+        
+        const settingsAddDeviceBtn = document.getElementById('settings-add-device-btn');
+        if (settingsAddDeviceBtn) {
+            settingsAddDeviceBtn.addEventListener('click', () => this.showAddDeviceModal());
+        }
+        
+        const settingsBackupWalletItem = document.getElementById('settings-backup-wallet-item');
+        if (settingsBackupWalletItem) {
+            settingsBackupWalletItem.addEventListener('click', () => this.showBackupWalletModal());
+        }
+        
+        const settingsLogoutBtn = document.getElementById('settings-logout-btn');
+        if (settingsLogoutBtn) {
+            settingsLogoutBtn.addEventListener('click', () => this.logoutAllDevices());
+        }
         
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -696,6 +740,8 @@ const App = {
         document.getElementById('wallet-screen').classList.add('hidden');
         document.getElementById('profile-screen').classList.add('hidden');
         document.getElementById('exchange-screen')?.classList.add('hidden');
+        document.getElementById('settings-screen')?.classList.add('hidden');
+        document.getElementById('admin-screen')?.classList.add('hidden');
         
         const pageScreen = document.getElementById(`${pageName}-screen`);
         if (pageScreen) {
@@ -717,6 +763,183 @@ const App = {
         if (pageName === 'wallet') {
             this.loadTransactionHistory();
             this.loadWalletBalance();
+        }
+    },
+    
+    showSettingsScreen() {
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('tracking-module').classList.add('hidden');
+        document.getElementById('marketplace-screen').classList.add('hidden');
+        document.getElementById('bots-screen').classList.add('hidden');
+        document.getElementById('wallet-screen').classList.add('hidden');
+        document.getElementById('profile-screen').classList.add('hidden');
+        document.getElementById('exchange-screen')?.classList.add('hidden');
+        document.getElementById('admin-screen')?.classList.add('hidden');
+        document.getElementById('settings-screen').classList.remove('hidden');
+        
+        if (this.tg && this.tg.BackButton) {
+            this.tg.BackButton.show();
+        }
+        
+        this.loadSettingsSecurityStatus();
+        this.loadSettingsDevices();
+    },
+    
+    showAdminScreen() {
+        if (!this.isOwner) {
+            this.showToast('Acceso denegado', 'error');
+            return;
+        }
+        
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('tracking-module').classList.add('hidden');
+        document.getElementById('marketplace-screen').classList.add('hidden');
+        document.getElementById('bots-screen').classList.add('hidden');
+        document.getElementById('wallet-screen').classList.add('hidden');
+        document.getElementById('profile-screen').classList.add('hidden');
+        document.getElementById('exchange-screen')?.classList.add('hidden');
+        document.getElementById('settings-screen')?.classList.add('hidden');
+        document.getElementById('admin-screen').classList.remove('hidden');
+        
+        if (this.tg && this.tg.BackButton) {
+            this.tg.BackButton.show();
+        }
+        
+        this.loadAdminStats();
+    },
+    
+    async loadSettingsSecurityStatus() {
+        try {
+            const response = await this.apiRequest('/api/security/status');
+            if (response.success) {
+                const scoreEl = document.getElementById('settings-security-score');
+                const levelEl = document.getElementById('settings-security-level');
+                const walletDot = document.getElementById('settings-wallet-dot');
+                const twofaDot = document.getElementById('settings-2fa-dot');
+                const devicesDot = document.getElementById('settings-devices-dot');
+                const twoFaStatus = document.getElementById('settings-2fa-status');
+                const backupStatus = document.getElementById('settings-backup-status');
+                const devicesCount = document.getElementById('settings-devices-count');
+                
+                if (scoreEl) {
+                    const score = response.security_score || 0;
+                    scoreEl.innerHTML = `<span>${score}%</span>`;
+                    scoreEl.style.background = `conic-gradient(var(--accent-success) ${score}%, var(--bg-input) ${score}%)`;
+                }
+                
+                if (levelEl) {
+                    levelEl.textContent = `Nivel: ${response.security_level || 'bajo'}`;
+                }
+                
+                if (walletDot) {
+                    walletDot.className = 'status-dot ' + (response.wallet_connected ? 'active' : 'inactive');
+                }
+                
+                if (twofaDot) {
+                    twofaDot.className = 'status-dot ' + (response.two_factor_enabled ? 'active' : 'inactive');
+                }
+                
+                if (devicesDot) {
+                    const hasDevices = (response.trusted_devices_count || 0) > 0;
+                    devicesDot.className = 'status-dot ' + (hasDevices ? 'active' : 'warning');
+                }
+                
+                if (twoFaStatus) {
+                    twoFaStatus.textContent = response.two_factor_enabled ? 'Activado' : 'Desactivado';
+                }
+                
+                if (backupStatus) {
+                    backupStatus.textContent = response.has_backup_wallet ? 'Configurada' : 'No configurada';
+                }
+                
+                if (devicesCount) {
+                    devicesCount.textContent = `${response.trusted_devices_count || 0}/${response.max_devices || 2} dispositivos`;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading security status:', error);
+        }
+    },
+    
+    async loadSettingsDevices() {
+        try {
+            const response = await this.apiRequest('/api/security/devices');
+            const listEl = document.getElementById('settings-devices-list');
+            
+            if (!listEl) return;
+            
+            if (response.success && response.devices && response.devices.length > 0) {
+                listEl.innerHTML = response.devices.map(device => `
+                    <div class="settings-device-item">
+                        <span class="device-icon">${this.getDeviceIcon(device.device_type)}</span>
+                        <div class="device-info">
+                            <span class="device-name">${device.device_name || 'Dispositivo'}</span>
+                            <span class="device-details">${device.device_type || 'Desconocido'}</span>
+                        </div>
+                        ${device.is_current ? '<span class="device-current">Actual</span>' : `
+                            <button class="device-remove-btn" onclick="App.removeDevice('${device.device_id}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        `}
+                    </div>
+                `).join('');
+            } else {
+                listEl.innerHTML = '<div class="devices-empty">No hay dispositivos de confianza</div>';
+            }
+        } catch (error) {
+            console.error('Error loading devices:', error);
+        }
+    },
+    
+    getDeviceIcon(deviceType) {
+        const type = (deviceType || '').toLowerCase();
+        if (type.includes('iphone') || type.includes('android') || type.includes('mobile')) {
+            return '📱';
+        } else if (type.includes('ipad') || type.includes('tablet')) {
+            return '📲';
+        } else if (type.includes('mac') || type.includes('windows') || type.includes('linux')) {
+            return '💻';
+        }
+        return '📱';
+    },
+    
+    async loadAdminStats() {
+        try {
+            const response = await this.apiRequest('/api/admin/stats');
+            if (response.success) {
+                document.getElementById('admin-total-users').textContent = response.total_users || 0;
+                document.getElementById('admin-total-bots').textContent = response.active_bots || 0;
+                document.getElementById('admin-total-transactions').textContent = response.total_transactions || 0;
+                document.getElementById('admin-security-alerts').textContent = response.security_alerts || 0;
+                
+                const alertBadge = document.getElementById('admin-alert-badge');
+                if (alertBadge && response.security_alerts > 0) {
+                    alertBadge.textContent = response.security_alerts;
+                    alertBadge.classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading admin stats:', error);
+        }
+    },
+    
+    updateSidebarRole() {
+        const roleEl = document.getElementById('sidebar-role');
+        const arrowEl = document.getElementById('sidebar-admin-arrow');
+        
+        if (roleEl) {
+            roleEl.textContent = this.isOwner ? 'Owner' : 'Usuario';
+        }
+        
+        if (arrowEl) {
+            if (this.isOwner) {
+                arrowEl.classList.remove('hidden');
+            } else {
+                arrowEl.classList.add('hidden');
+            }
         }
     },
     
