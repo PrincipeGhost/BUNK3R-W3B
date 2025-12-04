@@ -357,8 +357,10 @@ const App = {
     },
     
     showMainApp() {
+        this.hidePreloadOverlay();
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
+        document.getElementById('bottom-nav').classList.remove('hidden');
         
         const userName = this.user.firstName || this.user.username || 'Usuario';
         const userUsername = this.user.username || 'usuario';

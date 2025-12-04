@@ -790,7 +790,7 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- BARRA DE NAVEGACION INFERIOR -->
-    <nav class="bottom-nav" id="bottom-nav">
+    <nav class="bottom-nav hidden" id="bottom-nav">
         <button class="bottom-nav-item active" data-nav="home">
             <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -826,16 +826,8 @@
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
-        function hidePreloadOverlay() {
-            var overlay = document.getElementById('preload-overlay');
-            if (overlay) {
-                overlay.style.opacity = '0';
-                overlay.style.transition = 'opacity 0.3s ease';
-                setTimeout(function() { overlay.remove(); }, 300);
-            }
-        }
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(hidePreloadOverlay, 500);
+            App.init();
         });
     </script>
 </body>
