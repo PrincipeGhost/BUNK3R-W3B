@@ -8,3 +8,5 @@ werkzeug
 Pillow
 pyotp
 qrcode
+cloudinary
+cryptography
