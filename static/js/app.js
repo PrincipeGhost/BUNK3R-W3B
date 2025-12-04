@@ -1420,7 +1420,7 @@ const App = {
                     resultsContainer.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-icon">📭</div>
-                            <p>No se encontraron resultados para "${query}"</p>
+                            <p>No se encontraron resultados para "${this.escapeHtml(query)}"</p>
                         </div>
                     `;
                 } else {
@@ -1447,26 +1447,26 @@ const App = {
         }
         
         container.innerHTML = trackings.map(t => `
-            <div class="tracking-card" data-id="${t.trackingId}">
+            <div class="tracking-card" data-id="${this.escapeHtml(t.trackingId)}">
                 <div class="tracking-header">
-                    <span class="tracking-id">${this.truncateId(t.trackingId)}</span>
-                    <span class="tracking-status status-${t.status}">
-                        ${t.statusIcon} ${t.statusLabel}
+                    <span class="tracking-id">${this.escapeHtml(this.truncateId(t.trackingId))}</span>
+                    <span class="tracking-status status-${this.escapeHtml(t.status)}">
+                        ${this.escapeHtml(t.statusIcon)} ${this.escapeHtml(t.statusLabel)}
                     </span>
                 </div>
                 <div class="tracking-info">
                     <div class="tracking-info-row">
                         <span class="icon">👤</span>
-                        <span class="value">${t.recipientName || 'Sin nombre'}</span>
+                        <span class="value">${this.escapeHtml(t.recipientName || 'Sin nombre')}</span>
                     </div>
                     <div class="tracking-info-row">
                         <span class="icon">📦</span>
-                        <span class="value">${t.productName || 'Sin producto'}</span>
+                        <span class="value">${this.escapeHtml(t.productName || 'Sin producto')}</span>
                     </div>
                     ${t.productPrice ? `
                     <div class="tracking-info-row">
                         <span class="icon">💰</span>
-                        <span class="value">${t.productPrice}€</span>
+                        <span class="value">${this.escapeHtml(t.productPrice)}€</span>
                     </div>
                     ` : ''}
                 </div>
@@ -1504,9 +1504,9 @@ const App = {
             detailContainer.innerHTML = `
                 <div class="detail-section">
                     <div class="tracking-header" style="margin-bottom: 0;">
-                        <span class="tracking-id" style="font-size: 14px;">${t.trackingId}</span>
-                        <span class="tracking-status status-${t.status}">
-                            ${t.statusIcon} ${t.statusLabel}
+                        <span class="tracking-id" style="font-size: 14px;">${this.escapeHtml(t.trackingId)}</span>
+                        <span class="tracking-status status-${this.escapeHtml(t.status)}">
+                            ${this.escapeHtml(t.statusIcon)} ${this.escapeHtml(t.statusLabel)}
                         </span>
                     </div>
                 </div>
@@ -1515,19 +1515,19 @@ const App = {
                     <div class="detail-title">Informacion del Paquete</div>
                     <div class="detail-row">
                         <span class="detail-label">Destinatario</span>
-                        <span class="detail-value">${t.recipientName || 'No especificado'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.recipientName || 'No especificado')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Producto</span>
-                        <span class="detail-value">${t.productName || 'No especificado'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.productName || 'No especificado')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Precio</span>
-                        <span class="detail-value">${t.productPrice || '0'}€</span>
+                        <span class="detail-value">${this.escapeHtml(t.productPrice || '0')}€</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Peso</span>
-                        <span class="detail-value">${t.packageWeight || 'No especificado'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.packageWeight || 'No especificado')}</span>
                     </div>
                 </div>
                 
@@ -1535,23 +1535,23 @@ const App = {
                     <div class="detail-title">Direcciones</div>
                     <div class="detail-row">
                         <span class="detail-label">Direccion entrega</span>
-                        <span class="detail-value">${t.deliveryAddress || 'No especificada'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.deliveryAddress || 'No especificada')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">CP Destino</span>
-                        <span class="detail-value">${t.recipientPostalCode || '-'} ${t.recipientProvince || ''}</span>
+                        <span class="detail-value">${this.escapeHtml(t.recipientPostalCode || '-')} ${this.escapeHtml(t.recipientProvince || '')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Pais Destino</span>
-                        <span class="detail-value">${t.recipientCountry || 'No especificado'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.recipientCountry || 'No especificado')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Direccion origen</span>
-                        <span class="detail-value">${t.senderAddress || 'No especificada'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.senderAddress || 'No especificada')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">CP Origen</span>
-                        <span class="detail-value">${t.senderPostalCode || '-'} ${t.senderProvince || ''}</span>
+                        <span class="detail-value">${this.escapeHtml(t.senderPostalCode || '-')} ${this.escapeHtml(t.senderProvince || '')}</span>
                     </div>
                 </div>
                 
@@ -1559,11 +1559,11 @@ const App = {
                     <div class="detail-title">Fechas</div>
                     <div class="detail-row">
                         <span class="detail-label">Entrega estimada</span>
-                        <span class="detail-value">${t.estimatedDelivery || 'Por calcular'}</span>
+                        <span class="detail-value">${this.escapeHtml(t.estimatedDelivery || 'Por calcular')}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Dias de retraso</span>
-                        <span class="detail-value">${t.delayDays || 0} dias</span>
+                        <span class="detail-value">${parseInt(t.delayDays) || 0} dias</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Creado</span>
@@ -1580,8 +1580,8 @@ const App = {
                     <div class="detail-title">Historial</div>
                     ${history.slice(0, 5).map(h => `
                         <div class="history-item">
-                            <div class="history-status">${h.status}</div>
-                            ${h.notes ? `<div class="history-notes">${h.notes}</div>` : ''}
+                            <div class="history-status">${this.escapeHtml(h.status)}</div>
+                            ${h.notes ? `<div class="history-notes">${this.escapeHtml(h.notes)}</div>` : ''}
                             <div class="history-date">${this.formatDate(h.changedAt)}</div>
                         </div>
                     `).join('')}

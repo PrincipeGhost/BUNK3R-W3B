@@ -130,10 +130,10 @@ function renderCountries(countries) {
     
     container.innerHTML = countries.map(country => `
         <div class="country-item ${selectedCountry?.id === country.id ? 'selected' : ''}" 
-             onclick="selectCountry('${country.id}', '${country.name}', '${country.flag || '🌍'}')">
+             onclick="selectCountry('${escapeAttribute(country.id)}', '${escapeAttribute(country.name)}', '${escapeAttribute(country.flag || '🌍')}')">
             <div class="item-left">
-                <span class="item-flag">${country.flag || '🌍'}</span>
-                <span class="item-name">${country.name}</span>
+                <span class="item-flag">${escapeHtml(country.flag || '🌍')}</span>
+                <span class="item-name">${escapeHtml(country.name)}</span>
             </div>
         </div>
     `).join('');
@@ -180,14 +180,14 @@ function renderServices(services) {
     
     container.innerHTML = services.map(service => `
         <div class="service-item ${selectedService?.id === service.id ? 'selected' : ''}" 
-             onclick="selectService('${service.id}', '${service.name}', '${service.icon || '📱'}', ${service.price_bunkercoin || 0})">
+             onclick="selectService('${escapeAttribute(service.id)}', '${escapeAttribute(service.name)}', '${escapeAttribute(service.icon || '📱')}', ${parseFloat(service.price_bunkercoin) || 0})">
             <div class="item-left">
-                <span class="item-icon">${service.icon || '📱'}</span>
-                <span class="item-name">${service.name}</span>
+                <span class="item-icon">${escapeHtml(service.icon || '📱')}</span>
+                <span class="item-name">${escapeHtml(service.name)}</span>
             </div>
             <div class="item-price">
                 <span>🪙</span>
-                <span>${(service.price_bunkercoin || 0).toFixed(2)}</span>
+                <span>${(parseFloat(service.price_bunkercoin) || 0).toFixed(2)}</span>
             </div>
         </div>
     `).join('');
@@ -208,8 +208,8 @@ function updatePurchaseButton() {
     if (selectedCountry && selectedService) {
         btn.disabled = false;
         btn.innerHTML = `
-            <span>Comprar ${selectedService.name}</span>
-            <span>🪙 ${selectedService.price.toFixed(2)}</span>
+            <span>Comprar ${escapeHtml(selectedService.name)}</span>
+            <span>🪙 ${(parseFloat(selectedService.price) || 0).toFixed(2)}</span>
         `;
     } else if (selectedCountry) {
         btn.disabled = true;
@@ -298,13 +298,13 @@ function renderActiveOrders(orders) {
     }
     
     container.innerHTML = orders.map(order => `
-        <div class="number-card" data-order-id="${order.id}">
+        <div class="number-card" data-order-id="${escapeAttribute(order.id)}">
             <div class="number-header">
                 <div class="number-service">
                     <div class="number-service-icon">📱</div>
                     <div class="number-service-info">
-                        <h4>${order.service}</h4>
-                        <span>${order.country}</span>
+                        <h4>${escapeHtml(order.service)}</h4>
+                        <span>${escapeHtml(order.country)}</span>
                     </div>
                 </div>
                 <div class="number-status ${order.status === 'received' ? 'status-received' : 'status-pending'}">
@@ -313,8 +313,8 @@ function renderActiveOrders(orders) {
             </div>
             
             <div class="phone-display">
-                <span class="phone-number">${order.phoneNumber || 'Asignando...'}</span>
-                <button class="copy-btn" onclick="copyToClipboard('${order.phoneNumber}')">
+                <span class="phone-number">${escapeHtml(order.phoneNumber || 'Asignando...')}</span>
+                <button class="copy-btn" onclick="copyToClipboard('${escapeAttribute(order.phoneNumber || '')}')">
                     📋
                 </button>
             </div>
@@ -329,8 +329,8 @@ function renderActiveOrders(orders) {
             ${order.smsCode ? `
                 <div class="sms-code-display">
                     <div class="sms-code-label">Codigo recibido</div>
-                    <div class="sms-code">${order.smsCode}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('${order.smsCode}')" style="margin-top: 10px; width: auto; padding: 8px 16px; border-radius: 8px;">
+                    <div class="sms-code">${escapeHtml(order.smsCode)}</div>
+                    <button class="copy-btn" onclick="copyToClipboard('${escapeAttribute(order.smsCode)}')" style="margin-top: 10px; width: auto; padding: 8px 16px; border-radius: 8px;">
                         📋 Copiar
                     </button>
                 </div>
@@ -338,10 +338,10 @@ function renderActiveOrders(orders) {
             
             ${order.status !== 'received' ? `
                 <div class="number-actions">
-                    <button class="action-btn primary" onclick="checkSMS('${order.id}')">
+                    <button class="action-btn primary" onclick="checkSMS('${escapeAttribute(order.id)}')">
                         🔄 Verificar
                     </button>
-                    <button class="action-btn danger" onclick="cancelOrder('${order.id}')">
+                    <button class="action-btn danger" onclick="cancelOrder('${escapeAttribute(order.id)}')">
                         ❌ Cancelar
                     </button>
                 </div>
@@ -446,14 +446,14 @@ function renderHistory(orders) {
                 <div class="history-left">
                     <div class="history-icon">📱</div>
                     <div class="history-info">
-                        <h5>${order.service}</h5>
-                        <span>${order.country} • ${order.phoneNumber || 'N/A'}</span>
+                        <h5>${escapeHtml(order.service)}</h5>
+                        <span>${escapeHtml(order.country)} • ${escapeHtml(order.phoneNumber || 'N/A')}</span>
                     </div>
                 </div>
                 <div class="history-right">
-                    <div class="history-cost">-${order.cost?.toFixed(2) || 0} 🪙</div>
+                    <div class="history-cost">-${(parseFloat(order.cost) || 0).toFixed(2)} 🪙</div>
                     <div class="history-status" style="${statusColors[order.status] || ''}">
-                        ${statusLabels[order.status] || order.status}
+                        ${statusLabels[order.status] || escapeHtml(order.status)}
                     </div>
                 </div>
             </div>
@@ -541,7 +541,7 @@ function showToast(message, type = 'info') {
         info: 'ℹ️'
     };
     
-    toast.innerHTML = `<span>${icons[type] || ''}</span><span>${message}</span>`;
+    toast.innerHTML = `<span>${icons[type] || ''}</span><span>${escapeHtml(message)}</span>`;
     toast.className = `toast ${type} show`;
     
     setTimeout(() => {

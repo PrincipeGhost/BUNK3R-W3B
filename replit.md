@@ -60,3 +60,15 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - **ChangeNow API:** For cryptocurrency exchange functionalities within the app.
 - **Cloudinary:** Encrypted media storage for publications system. All media is AES-256-GCM encrypted before uploading.
 - **Cryptography (Python):** For AES-256-GCM encryption/decryption of media files.
+- **SMSPool API:** For virtual phone numbers provisioning.
+
+## Recent Security Improvements (Dec 2025)
+
+### Section 15 - XSS Vulnerabilities Fixed
+- Created centralized `utils.js` with `escapeHtml()` and `escapeAttribute()` functions
+- Sanitized all user input rendering in:
+  - `virtual-numbers.js`: Service names, country names, prices
+  - `publications.js`: Usernames, captions, comments, stories, mentions
+  - `app.js`: Tracking cards (recipientName, productName, addresses), search queries, history notes
+- All dynamic HTML uses parseInt() for numeric IDs to prevent injection
+- All onclick handlers use escapeAttribute() for string parameters

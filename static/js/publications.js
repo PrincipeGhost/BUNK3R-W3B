@@ -255,20 +255,22 @@ const PublicationsManager = {
         const timeAgo = this.formatTimeAgo(post.created_at);
         const avatarUrl = post.avatar_url || this.DEFAULT_AVATAR;
         const likesText = post.reactions_count === 1 ? '1 me gusta' : `${post.reactions_count || 0} me gusta`;
+        const displayName = escapeHtml(post.first_name || post.username || 'Usuario');
+        const username = escapeHtml(post.username || '');
         
         return `
-            <article class="publication-card" data-post-id="${post.id}">
+            <article class="publication-card" data-post-id="${parseInt(post.id)}">
                 <div class="publication-header">
                     <div class="publication-author">
                         <img src="${avatarUrl}" 
-                             alt="${post.username}" class="publication-author-avatar"
+                             alt="${username}" class="publication-author-avatar"
                              onerror="this.src='${this.DEFAULT_AVATAR}'">
                         <div class="publication-author-info">
-                            <span class="publication-author-name">${post.first_name || post.username}</span>
+                            <span class="publication-author-name">${displayName}</span>
                             <span class="publication-time">${timeAgo}</span>
                         </div>
                     </div>
-                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${post.id}, '${post.user_id}')" data-post-menu="${post.id}">
+                    <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${escapeAttribute(post.user_id)}')" data-post-menu="${parseInt(post.id)}">
                         ⋯
                     </button>
                 </div>
@@ -280,46 +282,46 @@ const PublicationsManager = {
                 <div class="publication-actions">
                     <div class="publication-actions-left">
                         <button class="publication-action-btn ${post.user_reaction ? 'liked' : ''}" 
-                                onclick="PublicationsManager.toggleReaction(${post.id})"
-                                data-reaction-btn="${post.id}">
+                                onclick="PublicationsManager.toggleReaction(${parseInt(post.id)})"
+                                data-reaction-btn="${parseInt(post.id)}">
                             ${post.user_reaction ? '❤️' : '🤍'}
                         </button>
                         <button class="publication-action-btn" 
-                                onclick="document.getElementById('inline-comment-${post.id}').focus()">
+                                onclick="document.getElementById('inline-comment-${parseInt(post.id)}').focus()">
                             💬
                         </button>
                         <button class="publication-action-btn" 
-                                onclick="PublicationsManager.sharePost(${post.id})">
+                                onclick="PublicationsManager.sharePost(${parseInt(post.id)})">
                             ↗️
                         </button>
                     </div>
                     <button class="publication-action-btn ${post.user_saved ? 'saved' : ''}" 
-                            onclick="PublicationsManager.toggleSave(${post.id})"
-                            data-save-btn="${post.id}">
+                            onclick="PublicationsManager.toggleSave(${parseInt(post.id)})"
+                            data-save-btn="${parseInt(post.id)}">
                         ${post.user_saved ? '🔖' : '📑'}
                     </button>
                 </div>
                 
                 <div class="publication-stats">
-                    <span class="likes-count" data-reactions-count="${post.id}">${likesText}</span>
+                    <span class="likes-count" data-reactions-count="${parseInt(post.id)}">${likesText}</span>
                 </div>
                 
-                <div class="inline-comments-section" id="comments-section-${post.id}">
+                <div class="inline-comments-section" id="comments-section-${parseInt(post.id)}">
                     ${post.comments_count > 0 ? `
-                        <button class="view-comments-btn" onclick="PublicationsManager.loadInlineComments(${post.id})" data-view-comments="${post.id}">
-                            Ver ${post.comments_count > 2 ? 'los ' + post.comments_count : ''} comentario${post.comments_count > 1 ? 's' : ''}
+                        <button class="view-comments-btn" onclick="PublicationsManager.loadInlineComments(${parseInt(post.id)})" data-view-comments="${parseInt(post.id)}">
+                            Ver ${parseInt(post.comments_count) > 2 ? 'los ' + parseInt(post.comments_count) : ''} comentario${parseInt(post.comments_count) > 1 ? 's' : ''}
                         </button>
                     ` : ''}
-                    <div class="inline-comments-list" id="comments-list-${post.id}"></div>
+                    <div class="inline-comments-list" id="comments-list-${parseInt(post.id)}"></div>
                 </div>
                 
                 <div class="inline-comment-input">
                     <input type="text" 
-                           id="inline-comment-${post.id}" 
+                           id="inline-comment-${parseInt(post.id)}" 
                            class="comment-text-input" 
                            placeholder="Escribe un comentario..."
-                           onkeypress="if(event.key==='Enter') PublicationsManager.sendInlineComment(${post.id})">
-                    <button class="send-inline-btn" onclick="PublicationsManager.sendInlineComment(${post.id})">
+                           onkeypress="if(event.key==='Enter') PublicationsManager.sendInlineComment(${parseInt(post.id)})">
+                    <button class="send-inline-btn" onclick="PublicationsManager.sendInlineComment(${parseInt(post.id)})">
                         Publicar
                     </button>
                 </div>
@@ -351,19 +353,19 @@ const PublicationsManager = {
         
         return `
             <div class="publication-media">
-                <div class="media-carousel" data-carousel="${post.id}">
+                <div class="media-carousel" data-carousel="${parseInt(post.id)}">
                     <div class="carousel-track">
                         ${media.map((item, index) => `
                             <div class="carousel-slide">
                                 ${item.media_type === 'video' 
                                     ? `<video src="${item.media_url}" controls playsinline></video>`
-                                    : `<img src="${item.media_url}" alt="Media ${index + 1}" loading="lazy">`
+                                    : `<img src="${item.media_url}" alt="Media ${parseInt(index) + 1}" loading="lazy">`
                                 }
                             </div>
                         `).join('')}
                     </div>
-                    <button class="carousel-nav prev" onclick="PublicationsManager.prevSlide(${post.id})">‹</button>
-                    <button class="carousel-nav next" onclick="PublicationsManager.nextSlide(${post.id})">›</button>
+                    <button class="carousel-nav prev" onclick="PublicationsManager.prevSlide(${parseInt(post.id)})">‹</button>
+                    <button class="carousel-nav next" onclick="PublicationsManager.nextSlide(${parseInt(post.id)})">›</button>
                     <div class="carousel-dots">
                         ${media.map((_, i) => `
                             <span class="carousel-dot ${i === 0 ? 'active' : ''}" data-index="${i}"></span>
@@ -377,7 +379,8 @@ const PublicationsManager = {
     renderCaption(caption) {
         if (!caption) return '';
         
-        let processedCaption = caption
+        const safeCaption = escapeHtml(caption);
+        let processedCaption = safeCaption
             .replace(/#(\w+)/g, '<span class="hashtag" onclick="PublicationsManager.goToHashtag(\'$1\')">#$1</span>')
             .replace(/@(\w+)/g, '<span class="mention" onclick="PublicationsManager.goToProfile(\'$1\')">@$1</span>');
         
@@ -403,13 +406,13 @@ const PublicationsManager = {
         `;
         
         const storiesHtml = stories.map(story => `
-            <div class="story-item" onclick="PublicationsManager.viewStories('${story.user_id}')">
+            <div class="story-item" onclick="PublicationsManager.viewStories('${escapeAttribute(story.user_id)}')">
                 <div class="story-avatar-wrapper ${story.has_viewed ? 'viewed' : ''}">
                     <img src="${story.avatar_url || this.DEFAULT_AVATAR}" 
-                         class="story-avatar" alt="${story.username}"
+                         class="story-avatar" alt="${escapeHtml(story.username || '')}"
                          onerror="this.src='${this.DEFAULT_AVATAR}'">
                 </div>
-                <span class="story-username">${story.username || story.first_name}</span>
+                <span class="story-username">${escapeHtml(story.username || story.first_name || 'Usuario')}</span>
             </div>
         `).join('');
         
@@ -698,7 +701,7 @@ const PublicationsManager = {
             <div class="post-detail-header">
                 <button class="back-btn" onclick="PublicationsManager.closePostDetail()">←</button>
                 <span>Publicación</span>
-                <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${post.id}, '${post.user_id}')">⋯</button>
+                <button class="publication-menu-btn" onclick="PublicationsManager.showPostMenu(${parseInt(post.id)}, '${escapeAttribute(post.user_id)}')">⋯</button>
             </div>
             <div class="post-detail-content">
                 ${this.renderPost(post)}
@@ -709,9 +712,9 @@ const PublicationsManager = {
                 </div>
             </div>
             <div class="comment-input-wrapper">
-                <input type="text" class="comment-input" id="comment-input-${post.id}" 
+                <input type="text" class="comment-input" id="comment-input-${parseInt(post.id)}" 
                        placeholder="Añade un comentario...">
-                <button class="send-comment-btn" onclick="PublicationsManager.sendComment(${post.id})">➤</button>
+                <button class="send-comment-btn" onclick="PublicationsManager.sendComment(${parseInt(post.id)})">➤</button>
             </div>
         `;
         
@@ -724,20 +727,20 @@ const PublicationsManager = {
         }
         
         return comments.map(comment => `
-            <div class="comment-item" data-comment-id="${comment.id}">
+            <div class="comment-item" data-comment-id="${parseInt(comment.id)}">
                 <img src="${comment.avatar_url || '/static/images/default-avatar.png'}" 
-                     class="comment-avatar" alt="${comment.username}">
+                     class="comment-avatar" alt="${escapeHtml(comment.username || '')}">
                 <div class="comment-content">
                     <div class="comment-header">
-                        <span class="comment-username">${comment.username}</span>
+                        <span class="comment-username">${escapeHtml(comment.username || 'Usuario')}</span>
                         <span class="comment-time">${this.formatTimeAgo(comment.created_at)}</span>
                     </div>
-                    <div class="comment-text">${comment.content}</div>
+                    <div class="comment-text">${escapeHtml(comment.content || '')}</div>
                     <div class="comment-actions">
-                        <button class="comment-action-btn" onclick="PublicationsManager.likeComment(${comment.id})">
-                            ❤️ ${comment.likes_count || 0}
+                        <button class="comment-action-btn" onclick="PublicationsManager.likeComment(${parseInt(comment.id)})">
+                            ❤️ ${parseInt(comment.likes_count) || 0}
                         </button>
-                        <button class="comment-action-btn" onclick="PublicationsManager.replyToComment(${comment.id})">
+                        <button class="comment-action-btn" onclick="PublicationsManager.replyToComment(${parseInt(comment.id)})">
                             Responder
                         </button>
                     </div>
@@ -810,23 +813,23 @@ const PublicationsManager = {
         
         return comments.map(comment => {
             const avatarUrl = comment.avatar_url || this.DEFAULT_AVATAR;
-            const username = comment.first_name || comment.username || 'Usuario';
+            const username = escapeHtml(comment.first_name || comment.username || 'Usuario');
             const timeAgo = this.formatTimeAgo(comment.created_at);
             
             return `
-                <div class="inline-comment" data-comment-id="${comment.id}">
+                <div class="inline-comment" data-comment-id="${parseInt(comment.id)}">
                     <img src="${avatarUrl}" class="inline-comment-avatar" alt="${username}" onerror="this.src='${this.DEFAULT_AVATAR}'">
                     <div class="inline-comment-body">
                         <div class="inline-comment-bubble">
                             <span class="inline-comment-name">${username}</span>
-                            <span class="inline-comment-text">${comment.content}</span>
+                            <span class="inline-comment-text">${escapeHtml(comment.content || '')}</span>
                         </div>
                         <div class="inline-comment-meta">
                             <span class="inline-comment-time">${timeAgo}</span>
-                            <button class="inline-comment-like" onclick="PublicationsManager.likeComment(${comment.id})">
-                                Me gusta ${comment.likes_count > 0 ? '(' + comment.likes_count + ')' : ''}
+                            <button class="inline-comment-like" onclick="PublicationsManager.likeComment(${parseInt(comment.id)})">
+                                Me gusta ${parseInt(comment.likes_count) > 0 ? '(' + parseInt(comment.likes_count) + ')' : ''}
                             </button>
-                            <button class="inline-comment-reply" onclick="PublicationsManager.focusReply(${postId}, '${username}')">
+                            <button class="inline-comment-reply" onclick="PublicationsManager.focusReply(${parseInt(postId)}, '${escapeAttribute(comment.first_name || comment.username || 'Usuario')}')">
                                 Responder
                             </button>
                         </div>
@@ -834,14 +837,14 @@ const PublicationsManager = {
                             <div class="inline-comment-replies">
                                 ${comment.replies.map(reply => {
                                     const replyAvatar = reply.avatar_url || this.DEFAULT_AVATAR;
-                                    const replyName = reply.first_name || reply.username || 'Usuario';
+                                    const replyName = escapeHtml(reply.first_name || reply.username || 'Usuario');
                                     return `
                                         <div class="inline-comment inline-reply">
                                             <img src="${replyAvatar}" class="inline-comment-avatar small" alt="${replyName}" onerror="this.src='${this.DEFAULT_AVATAR}'">
                                             <div class="inline-comment-body">
                                                 <div class="inline-comment-bubble">
                                                     <span class="inline-comment-name">${replyName}</span>
-                                                    <span class="inline-comment-text">${reply.content}</span>
+                                                    <span class="inline-comment-text">${escapeHtml(reply.content || '')}</span>
                                                 </div>
                                                 <div class="inline-comment-meta">
                                                     <span class="inline-comment-time">${this.formatTimeAgo(reply.created_at)}</span>
