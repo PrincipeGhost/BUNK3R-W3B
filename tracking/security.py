@@ -856,3 +856,89 @@ class SecurityManager:
         except Exception as e:
             logger.error(f"Error getting device statistics: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def get_all_activity_admin(self, type_filter: str = 'all') -> List[Dict]:
+        """Admin function: Get all system activity"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    query = """
+                        SELECT sal.*, u.username
+                        FROM security_activity_log sal
+                        LEFT JOIN users u ON sal.user_id::text = u.id::text
+                        WHERE 1=1
+                    """
+                    params = []
+                    
+                    if type_filter != 'all':
+                        query += " AND sal.activity_type = %s"
+                        params.append(type_filter)
+                    
+                    query += " ORDER BY sal.created_at DESC LIMIT 100"
+                    
+                    cur.execute(query, params)
+                    rows = cur.fetchall()
+                    
+                    activities = []
+                    for row in rows:
+                        activities.append({
+                            'id': row[0],
+                            'user_id': row[1],
+                            'type': row[2],
+                            'description': row[3],
+                            'device_id': row[4],
+                            'ip_address': row[5],
+                            'metadata': row[6],
+                            'created_at': str(row[7]) if row[7] else None,
+                            'username': row[8] if len(row) > 8 else None
+                        })
+                    return activities
+        except Exception as e:
+            logger.error(f"Error getting all activity: {e}")
+            return []
+    
+    def get_locked_users_admin(self) -> List[Dict]:
+        """Admin function: Get all locked users"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT ul.*, u.username
+                        FROM user_lockouts ul
+                        LEFT JOIN users u ON ul.user_id::text = u.id::text
+                        WHERE ul.locked_until > NOW()
+                        ORDER BY ul.created_at DESC
+                    """)
+                    rows = cur.fetchall()
+                    
+                    lockouts = []
+                    for row in rows:
+                        lockouts.append({
+                            'id': row[0],
+                            'user_id': row[1],
+                            'reason': row[2],
+                            'locked_until': str(row[3]) if row[3] else None,
+                            'created_at': str(row[4]) if row[4] else None,
+                            'username': row[5] if len(row) > 5 else None
+                        })
+                    return lockouts
+        except Exception as e:
+            logger.error(f"Error getting locked users: {e}")
+            return []
+    
+    def unlock_user_admin(self, user_id: str) -> bool:
+        """Admin function: Unlock a user"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM user_lockouts WHERE user_id = %s", (user_id,))
+                    conn.commit()
+                    
+                    self.log_security_activity(
+                        user_id, 'ADMIN_UNLOCK',
+                        'Usuario desbloqueado por administrador'
+                    )
+                    return True
+        except Exception as e:
+            logger.error(f"Error unlocking user: {e}")
+            return False

@@ -539,6 +539,8 @@ const App = {
             adminBackBtn.addEventListener('click', () => this.goToHome());
         }
         
+        this.setupAdminEventListeners();
+        
         const settingsAddDeviceBtn = document.getElementById('settings-add-device-btn');
         if (settingsAddDeviceBtn) {
             settingsAddDeviceBtn.addEventListener('click', () => this.showAddDeviceModal());
@@ -4055,6 +4057,661 @@ const App = {
         }
 
         return true;
+    },
+
+    // ========================================
+    // ADMIN PANEL FUNCTIONS
+    // ========================================
+
+    setupAdminEventListeners() {
+        document.getElementById('admin-users-btn')?.addEventListener('click', () => this.openAdminModal('users'));
+        document.getElementById('admin-bots-btn')?.addEventListener('click', () => this.openAdminModal('bots'));
+        document.getElementById('admin-products-btn')?.addEventListener('click', () => this.openAdminModal('products'));
+        document.getElementById('admin-transactions-btn')?.addEventListener('click', () => this.openAdminModal('transactions'));
+        document.getElementById('admin-security-alerts-btn')?.addEventListener('click', () => this.openAdminModal('alerts'));
+        document.getElementById('admin-activity-btn')?.addEventListener('click', () => this.openAdminModal('activity'));
+        document.getElementById('admin-lockouts-btn')?.addEventListener('click', () => this.openAdminModal('lockouts'));
+        document.getElementById('admin-settings-btn')?.addEventListener('click', () => this.openAdminModal('settings'));
+        document.getElementById('admin-logs-btn')?.addEventListener('click', () => this.openAdminModal('logs'));
+
+        document.getElementById('admin-users-search')?.addEventListener('input', (e) => {
+            this.filterAdminUsers(e.target.value);
+        });
+
+        document.getElementById('admin-tx-filter')?.addEventListener('change', () => this.loadAdminTransactions());
+        document.getElementById('admin-tx-period')?.addEventListener('change', () => this.loadAdminTransactions());
+        document.getElementById('admin-activity-type')?.addEventListener('change', () => this.loadAdminActivity());
+        document.getElementById('admin-logs-level')?.addEventListener('change', () => this.loadSystemLogs());
+    },
+
+    openAdminModal(type) {
+        const modal = document.getElementById(`admin-${type}-modal`);
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.loadAdminModalData(type);
+        }
+    },
+
+    closeAdminModal(type) {
+        const modal = document.getElementById(`admin-${type}-modal`);
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    async loadAdminModalData(type) {
+        switch(type) {
+            case 'users':
+                await this.loadAdminUsers();
+                break;
+            case 'bots':
+                await this.loadAdminBots();
+                break;
+            case 'products':
+                await this.loadAdminProducts();
+                break;
+            case 'transactions':
+                await this.loadAdminTransactions();
+                break;
+            case 'alerts':
+                await this.loadAdminAlerts();
+                break;
+            case 'activity':
+                await this.loadAdminActivity();
+                break;
+            case 'lockouts':
+                await this.loadAdminLockouts();
+                break;
+            case 'settings':
+                await this.loadAdminSettings();
+                break;
+            case 'logs':
+                await this.loadSystemLogs();
+                break;
+        }
+    },
+
+    async loadAdminUsers() {
+        const listEl = document.getElementById('admin-users-list');
+        const countEl = document.getElementById('admin-users-count');
+        
+        try {
+            const response = await this.apiRequest('/api/admin/users');
+            
+            if (response.success && response.users) {
+                this.adminUsers = response.users;
+                countEl.textContent = response.users.length;
+                this.renderAdminUsers(response.users);
+            } else {
+                listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">👥</div><p>No hay usuarios registrados</p></div>';
+            }
+        } catch (error) {
+            console.error('Error loading admin users:', error);
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar usuarios</div>';
+        }
+    },
+
+    renderAdminUsers(users) {
+        const listEl = document.getElementById('admin-users-list');
+        
+        if (!users || users.length === 0) {
+            listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">👥</div><p>No hay usuarios registrados</p></div>';
+            return;
+        }
+        
+        listEl.innerHTML = users.map(user => `
+            <div class="admin-user-card" onclick="App.showUserDetail('${user.id}')">
+                <div class="admin-user-avatar">${(user.first_name || user.username || 'U')[0].toUpperCase()}</div>
+                <div class="admin-user-info">
+                    <div class="admin-user-name">${user.first_name || 'Usuario'} ${user.last_name || ''}</div>
+                    <div class="admin-user-username">@${user.username || 'sin_username'}</div>
+                    <div class="admin-user-meta">
+                        <span class="admin-user-badge ${user.is_active ? 'active' : ''}">${user.is_active ? 'Activo' : 'Inactivo'}</span>
+                        <span class="admin-user-badge credits">${user.credits || 0} creditos</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    filterAdminUsers(query) {
+        if (!this.adminUsers) return;
+        
+        const filtered = this.adminUsers.filter(user => {
+            const searchStr = `${user.first_name} ${user.last_name} ${user.username}`.toLowerCase();
+            return searchStr.includes(query.toLowerCase());
+        });
+        
+        this.renderAdminUsers(filtered);
+    },
+
+    async showUserDetail(userId) {
+        const modal = document.getElementById('admin-user-detail-modal');
+        const content = document.getElementById('admin-user-detail-content');
+        
+        if (!modal || !content) return;
+        
+        modal.classList.remove('hidden');
+        content.innerHTML = '<div class="admin-loading">Cargando...</div>';
+        
+        try {
+            const response = await this.apiRequest(`/api/admin/user/${userId}`);
+            
+            if (response.success && response.user) {
+                const user = response.user;
+                content.innerHTML = `
+                    <div class="admin-user-detail-header">
+                        <div class="admin-user-detail-avatar">${(user.first_name || user.username || 'U')[0].toUpperCase()}</div>
+                        <div class="admin-user-detail-name">${user.first_name || 'Usuario'} ${user.last_name || ''}</div>
+                        <div class="admin-user-detail-username">@${user.username || 'sin_username'}</div>
+                        <div class="admin-user-detail-stats">
+                            <div class="admin-user-stat">
+                                <div class="admin-user-stat-value">${user.credits || 0}</div>
+                                <div class="admin-user-stat-label">Creditos</div>
+                            </div>
+                            <div class="admin-user-stat">
+                                <div class="admin-user-stat-value">${user.level || 1}</div>
+                                <div class="admin-user-stat-label">Nivel</div>
+                            </div>
+                            <div class="admin-user-stat">
+                                <div class="admin-user-stat-value">${user.total_transactions || 0}</div>
+                                <div class="admin-user-stat-label">Transacciones</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="admin-user-actions">
+                        <button class="admin-user-action-btn primary" onclick="App.addCreditsToUser('${userId}')">Agregar Creditos</button>
+                        <button class="admin-user-action-btn danger" onclick="App.blockUser('${userId}')">${user.is_active ? 'Bloquear' : 'Desbloquear'}</button>
+                    </div>
+                    <div class="admin-user-section">
+                        <div class="admin-user-section-title">Informacion</div>
+                        <div class="admin-setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Telegram ID</span>
+                            </div>
+                            <span style="color: var(--text-muted);">${user.telegram_id || 'N/A'}</span>
+                        </div>
+                        <div class="admin-setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Wallet</span>
+                            </div>
+                            <span style="color: var(--text-muted); font-size: 11px;">${user.wallet_address ? user.wallet_address.substring(0, 20) + '...' : 'No conectada'}</span>
+                        </div>
+                        <div class="admin-setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Registrado</span>
+                            </div>
+                            <span style="color: var(--text-muted);">${this.formatDate(user.created_at)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            content.innerHTML = '<div class="admin-loading">Error al cargar usuario</div>';
+        }
+    },
+
+    async addCreditsToUser(userId) {
+        const amount = prompt('Cantidad de creditos a agregar:');
+        if (!amount || isNaN(amount)) return;
+        
+        try {
+            const response = await this.apiRequest('/api/admin/user/credits', {
+                method: 'POST',
+                body: JSON.stringify({ userId, amount: parseInt(amount) })
+            });
+            
+            if (response.success) {
+                this.showToast(`Creditos agregados correctamente`, 'success');
+                this.showUserDetail(userId);
+            } else {
+                this.showToast(response.error || 'Error al agregar creditos', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al agregar creditos', 'error');
+        }
+    },
+
+    async blockUser(userId) {
+        if (!confirm('¿Estas seguro de cambiar el estado de este usuario?')) return;
+        
+        try {
+            const response = await this.apiRequest('/api/admin/user/toggle-status', {
+                method: 'POST',
+                body: JSON.stringify({ userId })
+            });
+            
+            if (response.success) {
+                this.showToast('Estado actualizado', 'success');
+                this.loadAdminUsers();
+                this.closeAdminModal('user-detail');
+            }
+        } catch (error) {
+            this.showToast('Error al actualizar estado', 'error');
+        }
+    },
+
+    async loadAdminBots() {
+        const listEl = document.getElementById('admin-bots-list');
+        
+        try {
+            const response = await this.apiRequest('/api/admin/bots');
+            
+            if (response.success && response.bots) {
+                if (response.bots.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">🤖</div><p>No hay bots configurados</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.bots.map(bot => `
+                    <div class="admin-bot-card">
+                        <div class="admin-bot-icon">${bot.icon || '🤖'}</div>
+                        <div class="admin-bot-info">
+                            <div class="admin-bot-name">${bot.bot_name}</div>
+                            <div class="admin-bot-type">${bot.bot_type}</div>
+                            <div class="admin-bot-desc">${bot.description || 'Sin descripcion'}</div>
+                        </div>
+                        <div class="admin-bot-stats">
+                            <div class="admin-bot-price">${bot.price || 0} creditos</div>
+                            <div class="admin-bot-users">${bot.users_count || 0} usuarios</div>
+                        </div>
+                        <div class="admin-bot-actions">
+                            <button class="edit-btn" onclick="App.editBot(${bot.id})">Editar</button>
+                            <button class="delete-btn" onclick="App.deleteBot(${bot.id})">Eliminar</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar bots</div>';
+        }
+    },
+
+    showAddBotForm() {
+        const content = `
+            <div class="modal-header">
+                <span class="modal-title">Nuevo Bot</span>
+                <button class="modal-close" onclick="App.closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre del Bot</label>
+                    <input type="text" id="new-bot-name" placeholder="Ej: Bot Trading Pro">
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="new-bot-type">
+                        <option value="trading">Trading</option>
+                        <option value="signals">Señales</option>
+                        <option value="automation">Automatizacion</option>
+                        <option value="analytics">Analytics</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descripcion</label>
+                    <textarea id="new-bot-desc" placeholder="Descripcion del bot..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Precio (creditos)</label>
+                    <input type="number" id="new-bot-price" value="100" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Icono (emoji)</label>
+                    <input type="text" id="new-bot-icon" value="🤖" maxlength="2">
+                </div>
+                <button class="btn btn-primary" onclick="App.createBot()" style="width: 100%; margin-top: 16px;">Crear Bot</button>
+            </div>
+        `;
+        this.showModal(content);
+    },
+
+    async createBot() {
+        const name = document.getElementById('new-bot-name').value;
+        const type = document.getElementById('new-bot-type').value;
+        const description = document.getElementById('new-bot-desc').value;
+        const price = document.getElementById('new-bot-price').value;
+        const icon = document.getElementById('new-bot-icon').value;
+        
+        if (!name) {
+            this.showToast('Ingresa un nombre para el bot', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/admin/bots', {
+                method: 'POST',
+                body: JSON.stringify({ name, type, description, price: parseInt(price), icon })
+            });
+            
+            if (response.success) {
+                this.showToast('Bot creado correctamente', 'success');
+                this.closeModal();
+                this.loadAdminBots();
+            } else {
+                this.showToast(response.error || 'Error al crear bot', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al crear bot', 'error');
+        }
+    },
+
+    async deleteBot(botId) {
+        if (!confirm('¿Estas seguro de eliminar este bot?')) return;
+        
+        try {
+            const response = await this.apiRequest(`/api/admin/bots/${botId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Bot eliminado', 'success');
+                this.loadAdminBots();
+            }
+        } catch (error) {
+            this.showToast('Error al eliminar bot', 'error');
+        }
+    },
+
+    async loadAdminProducts() {
+        const listEl = document.getElementById('admin-products-list');
+        
+        try {
+            const response = await this.apiRequest('/api/admin/products');
+            
+            if (response.success && response.products) {
+                if (response.products.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">🛒</div><p>No hay productos configurados</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.products.map(product => `
+                    <div class="admin-product-card">
+                        <div class="admin-product-image">${product.icon || '📦'}</div>
+                        <div class="admin-product-info">
+                            <div class="admin-product-name">${product.name}</div>
+                            <div class="admin-product-category">${product.category || 'Sin categoria'}</div>
+                            <div class="admin-product-price">${product.price} creditos</div>
+                            <div class="admin-product-stock">Stock: ${product.stock || 'Ilimitado'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar productos</div>';
+        }
+    },
+
+    showAddProductForm() {
+        this.showToast('Funcion en desarrollo', 'info');
+    },
+
+    async loadAdminTransactions() {
+        const listEl = document.getElementById('admin-transactions-list');
+        const countEl = document.getElementById('admin-transactions-count');
+        const filter = document.getElementById('admin-tx-filter')?.value || 'all';
+        const period = document.getElementById('admin-tx-period')?.value || 'all';
+        
+        try {
+            const response = await this.apiRequest(`/api/admin/transactions?filter=${filter}&period=${period}`);
+            
+            if (response.success) {
+                countEl.textContent = response.transactions?.length || 0;
+                
+                document.getElementById('tx-total-deposits').textContent = `${response.totalDeposits || 0} TON`;
+                document.getElementById('tx-total-withdrawals').textContent = `${response.totalWithdrawals || 0} TON`;
+                
+                if (!response.transactions || response.transactions.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">💳</div><p>No hay transacciones</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.transactions.map(tx => `
+                    <div class="admin-tx-card">
+                        <div class="admin-tx-icon ${tx.type}">${this.getTxIcon(tx.type)}</div>
+                        <div class="admin-tx-info">
+                            <div class="admin-tx-type">${this.getTxTypeName(tx.type)}</div>
+                            <div class="admin-tx-user">@${tx.username || 'usuario'}</div>
+                        </div>
+                        <div class="admin-tx-amount">
+                            <div class="amount ${tx.type === 'deposit' ? 'positive' : 'negative'}">${tx.type === 'deposit' ? '+' : '-'}${tx.amount} TON</div>
+                            <div class="time">${this.formatDate(tx.created_at)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar transacciones</div>';
+        }
+    },
+
+    getTxIcon(type) {
+        const icons = { deposit: '📥', withdrawal: '📤', purchase: '🛒', transfer: '↔️' };
+        return icons[type] || '💰';
+    },
+
+    getTxTypeName(type) {
+        const names = { deposit: 'Deposito', withdrawal: 'Retiro', purchase: 'Compra', transfer: 'Transferencia' };
+        return names[type] || type;
+    },
+
+    async loadAdminAlerts() {
+        const listEl = document.getElementById('admin-alerts-list');
+        const countEl = document.getElementById('admin-alerts-count');
+        
+        try {
+            const response = await this.apiRequest('/api/admin/security/alerts');
+            
+            if (response.success && response.alerts) {
+                countEl.textContent = response.alerts.filter(a => !a.resolved).length;
+                
+                if (response.alerts.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">✅</div><p>No hay alertas de seguridad</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.alerts.map(alert => `
+                    <div class="admin-alert-card ${alert.resolved ? 'resolved' : ''}">
+                        <div class="admin-alert-header">
+                            <span class="admin-alert-type">${alert.alert_type || 'Alerta'}</span>
+                            <span class="admin-alert-time">${this.formatDate(alert.created_at)}</span>
+                        </div>
+                        <div class="admin-alert-desc">${alert.description || 'Sin descripcion'}</div>
+                        ${!alert.resolved ? `
+                            <div class="admin-alert-actions">
+                                <button class="admin-alert-btn resolve" onclick="App.resolveAlert(${alert.id})">Resolver</button>
+                                <button class="admin-alert-btn view" onclick="App.viewAlertDetails(${alert.id})">Ver mas</button>
+                            </div>
+                        ` : '<span style="font-size: 11px; color: var(--accent-success);">Resuelta</span>'}
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar alertas</div>';
+        }
+    },
+
+    async resolveAlert(alertId) {
+        try {
+            const response = await this.apiRequest(`/api/admin/security/alerts/${alertId}/resolve`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Alerta resuelta', 'success');
+                this.loadAdminAlerts();
+                this.loadAdminStats();
+            }
+        } catch (error) {
+            this.showToast('Error al resolver alerta', 'error');
+        }
+    },
+
+    viewAlertDetails(alertId) {
+        this.showToast('Detalles de alerta ' + alertId, 'info');
+    },
+
+    async loadAdminActivity() {
+        const listEl = document.getElementById('admin-activity-list');
+        const typeFilter = document.getElementById('admin-activity-type')?.value || 'all';
+        
+        try {
+            const response = await this.apiRequest(`/api/admin/activity?type=${typeFilter}`);
+            
+            if (response.success && response.activities) {
+                if (response.activities.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">📊</div><p>No hay actividad reciente</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.activities.map(activity => `
+                    <div class="admin-activity-item">
+                        <div class="admin-activity-icon">${this.getActivityIcon(activity.type)}</div>
+                        <div class="admin-activity-content">
+                            <div class="admin-activity-text">${activity.description}</div>
+                            <div class="admin-activity-meta">
+                                ${activity.username ? `@${activity.username} · ` : ''}${this.formatDate(activity.created_at)}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar actividad</div>';
+        }
+    },
+
+    getActivityIcon(type) {
+        const icons = { login: '🔐', wallet: '💰', security: '🛡️', transaction: '💳', bot: '🤖' };
+        return icons[type] || '📝';
+    },
+
+    async loadAdminLockouts() {
+        const listEl = document.getElementById('admin-lockouts-list');
+        const countEl = document.getElementById('admin-lockouts-count');
+        
+        try {
+            const response = await this.apiRequest('/api/admin/lockouts');
+            
+            if (response.success && response.lockouts) {
+                countEl.textContent = response.lockouts.length;
+                
+                if (response.lockouts.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">🔓</div><p>No hay usuarios bloqueados</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.lockouts.map(lockout => `
+                    <div class="admin-lockout-card">
+                        <div class="admin-lockout-info">
+                            <div class="admin-lockout-user">@${lockout.username || 'usuario'}</div>
+                            <div class="admin-lockout-reason">${lockout.reason || 'Sin razon'}</div>
+                            <div class="admin-lockout-time">Bloqueado: ${this.formatDate(lockout.locked_until)}</div>
+                        </div>
+                        <button class="admin-unlock-btn" onclick="App.unlockUser('${lockout.user_id}')">Desbloquear</button>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar bloqueos</div>';
+        }
+    },
+
+    async unlockUser(userId) {
+        if (!confirm('¿Desbloquear este usuario?')) return;
+        
+        try {
+            const response = await this.apiRequest('/api/admin/unlock-user', {
+                method: 'POST',
+                body: JSON.stringify({ userId })
+            });
+            
+            if (response.success) {
+                this.showToast('Usuario desbloqueado', 'success');
+                this.loadAdminLockouts();
+            }
+        } catch (error) {
+            this.showToast('Error al desbloquear usuario', 'error');
+        }
+    },
+
+    async loadAdminSettings() {
+        try {
+            const response = await this.apiRequest('/api/admin/settings');
+            
+            if (response.success) {
+                document.getElementById('setting-maintenance').checked = response.maintenanceMode || false;
+                document.getElementById('setting-registration').checked = response.registrationOpen !== false;
+                document.getElementById('setting-wallet-address').textContent = response.merchantWallet || 'No configurada';
+                document.getElementById('setting-min-deposit').value = response.minDeposit || 1;
+                document.getElementById('setting-email-alerts').checked = response.emailAlerts !== false;
+                document.getElementById('setting-telegram-alerts').checked = response.telegramAlerts !== false;
+            }
+        } catch (error) {
+            console.error('Error loading admin settings:', error);
+        }
+    },
+
+    async saveSystemSettings() {
+        const settings = {
+            maintenanceMode: document.getElementById('setting-maintenance').checked,
+            registrationOpen: document.getElementById('setting-registration').checked,
+            minDeposit: parseFloat(document.getElementById('setting-min-deposit').value),
+            emailAlerts: document.getElementById('setting-email-alerts').checked,
+            telegramAlerts: document.getElementById('setting-telegram-alerts').checked
+        };
+        
+        try {
+            const response = await this.apiRequest('/api/admin/settings', {
+                method: 'POST',
+                body: JSON.stringify(settings)
+            });
+            
+            if (response.success) {
+                this.showToast('Configuracion guardada', 'success');
+            } else {
+                this.showToast(response.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al guardar configuracion', 'error');
+        }
+    },
+
+    copyWalletAddress() {
+        const address = document.getElementById('setting-wallet-address').textContent;
+        if (address && address !== 'No configurada' && address !== 'Cargando...') {
+            navigator.clipboard.writeText(address);
+            this.showToast('Direccion copiada', 'success');
+        }
+    },
+
+    async loadSystemLogs() {
+        const listEl = document.getElementById('admin-logs-list');
+        const levelFilter = document.getElementById('admin-logs-level')?.value || 'all';
+        
+        try {
+            const response = await this.apiRequest(`/api/admin/logs?level=${levelFilter}`);
+            
+            if (response.success && response.logs) {
+                if (response.logs.length === 0) {
+                    listEl.innerHTML = '<div class="admin-empty-state"><div class="empty-icon">📝</div><p>No hay logs disponibles</p></div>';
+                    return;
+                }
+                
+                listEl.innerHTML = response.logs.map(log => `
+                    <div class="admin-log-entry">
+                        <span class="log-time">${log.time || ''}</span>
+                        <span class="log-level ${log.level}">${(log.level || 'INFO').toUpperCase()}</span>
+                        <span class="log-message">${log.message}</span>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="admin-loading">Error al cargar logs</div>';
+        }
+    },
+
+    editBot(botId) {
+        this.showToast('Editar bot ' + botId, 'info');
     }
 };
 

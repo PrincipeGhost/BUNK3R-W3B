@@ -1319,6 +1319,301 @@
         </div>
     </div>
 
+    <!-- MODALES DE ADMINISTRACION -->
+    
+    <!-- Modal Gestion de Usuarios -->
+    <div id="admin-users-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('users')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Gestion de Usuarios</h2>
+                <span class="admin-modal-count" id="admin-users-count">0</span>
+            </div>
+            <div class="admin-modal-search">
+                <input type="text" id="admin-users-search" placeholder="Buscar usuario...">
+            </div>
+            <div class="admin-modal-content" id="admin-users-list">
+                <div class="admin-loading">Cargando usuarios...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestion de Bots -->
+    <div id="admin-bots-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('bots')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Gestion de Bots</h2>
+                <button class="admin-add-btn" onclick="App.showAddBotForm()">+ Nuevo</button>
+            </div>
+            <div class="admin-modal-content" id="admin-bots-list">
+                <div class="admin-loading">Cargando bots...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Productos -->
+    <div id="admin-products-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('products')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Productos</h2>
+                <button class="admin-add-btn" onclick="App.showAddProductForm()">+ Nuevo</button>
+            </div>
+            <div class="admin-modal-tabs">
+                <button class="admin-tab active" data-tab="all">Todos</button>
+                <button class="admin-tab" data-tab="active">Activos</button>
+                <button class="admin-tab" data-tab="inactive">Inactivos</button>
+            </div>
+            <div class="admin-modal-content" id="admin-products-list">
+                <div class="admin-loading">Cargando productos...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Transacciones -->
+    <div id="admin-transactions-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('transactions')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Transacciones</h2>
+                <span class="admin-modal-count" id="admin-transactions-count">0</span>
+            </div>
+            <div class="admin-modal-filters">
+                <select id="admin-tx-filter">
+                    <option value="all">Todas</option>
+                    <option value="deposit">Depositos</option>
+                    <option value="withdrawal">Retiros</option>
+                    <option value="purchase">Compras</option>
+                </select>
+                <select id="admin-tx-period">
+                    <option value="today">Hoy</option>
+                    <option value="week">Esta semana</option>
+                    <option value="month">Este mes</option>
+                    <option value="all">Todo</option>
+                </select>
+            </div>
+            <div class="admin-tx-summary" id="admin-tx-summary">
+                <div class="tx-summary-item">
+                    <span class="tx-summary-label">Total Depositos</span>
+                    <span class="tx-summary-value" id="tx-total-deposits">0 TON</span>
+                </div>
+                <div class="tx-summary-item">
+                    <span class="tx-summary-label">Total Retiros</span>
+                    <span class="tx-summary-value" id="tx-total-withdrawals">0 TON</span>
+                </div>
+            </div>
+            <div class="admin-modal-content" id="admin-transactions-list">
+                <div class="admin-loading">Cargando transacciones...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Alertas de Seguridad -->
+    <div id="admin-alerts-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('alerts')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Alertas de Seguridad</h2>
+                <span class="admin-alert-count" id="admin-alerts-count">0</span>
+            </div>
+            <div class="admin-modal-tabs">
+                <button class="admin-tab active" data-tab="pending">Pendientes</button>
+                <button class="admin-tab" data-tab="resolved">Resueltas</button>
+            </div>
+            <div class="admin-modal-content" id="admin-alerts-list">
+                <div class="admin-loading">Cargando alertas...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registro de Actividad -->
+    <div id="admin-activity-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('activity')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Registro de Actividad</h2>
+            </div>
+            <div class="admin-modal-filters">
+                <select id="admin-activity-type">
+                    <option value="all">Todas</option>
+                    <option value="login">Inicios de sesion</option>
+                    <option value="wallet">Wallet</option>
+                    <option value="security">Seguridad</option>
+                    <option value="transaction">Transacciones</option>
+                </select>
+            </div>
+            <div class="admin-modal-content" id="admin-activity-list">
+                <div class="admin-loading">Cargando actividad...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Usuarios Bloqueados -->
+    <div id="admin-lockouts-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('lockouts')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Usuarios Bloqueados</h2>
+                <span class="admin-modal-count" id="admin-lockouts-count">0</span>
+            </div>
+            <div class="admin-modal-content" id="admin-lockouts-list">
+                <div class="admin-loading">Cargando usuarios bloqueados...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuracion del Sistema -->
+    <div id="admin-settings-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('settings')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Configuracion del Sistema</h2>
+            </div>
+            <div class="admin-modal-content" id="admin-settings-content">
+                <div class="admin-settings-section">
+                    <h3>General</h3>
+                    <div class="admin-setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Modo Mantenimiento</span>
+                            <span class="setting-desc">Desactivar acceso de usuarios</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-maintenance">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="admin-setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Registro Abierto</span>
+                            <span class="setting-desc">Permitir nuevos usuarios</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-registration" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="admin-settings-section">
+                    <h3>Wallet</h3>
+                    <div class="admin-setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Wallet Merchant</span>
+                            <span class="setting-value" id="setting-wallet-address">Cargando...</span>
+                        </div>
+                        <button class="btn-copy" onclick="App.copyWalletAddress()">Copiar</button>
+                    </div>
+                    <div class="admin-setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Min. Deposito</span>
+                            <span class="setting-desc">Monto minimo en TON</span>
+                        </div>
+                        <input type="number" id="setting-min-deposit" value="1" min="0.1" step="0.1" class="setting-input">
+                    </div>
+                </div>
+                <div class="admin-settings-section">
+                    <h3>Notificaciones</h3>
+                    <div class="admin-setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Alertas Email</span>
+                            <span class="setting-desc">Recibir alertas por email</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-email-alerts" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="admin-setting-item">
+                        <div class="setting-info">
+                            <span class="setting-label">Alertas Telegram</span>
+                            <span class="setting-desc">Recibir alertas en Telegram</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-telegram-alerts" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <button class="admin-save-btn" onclick="App.saveSystemSettings()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Logs del Sistema -->
+    <div id="admin-logs-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('logs')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Logs del Sistema</h2>
+                <button class="admin-refresh-btn" onclick="App.loadSystemLogs()">Actualizar</button>
+            </div>
+            <div class="admin-modal-filters">
+                <select id="admin-logs-level">
+                    <option value="all">Todos</option>
+                    <option value="error">Errores</option>
+                    <option value="warning">Advertencias</option>
+                    <option value="info">Info</option>
+                </select>
+            </div>
+            <div class="admin-modal-content admin-logs-content" id="admin-logs-list">
+                <div class="admin-loading">Cargando logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle de Usuario -->
+    <div id="admin-user-detail-modal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <button class="admin-modal-back" onclick="App.closeAdminModal('user-detail')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <h2>Detalle de Usuario</h2>
+            </div>
+            <div class="admin-modal-content" id="admin-user-detail-content">
+                <div class="admin-loading">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-overlay" class="modal-overlay hidden">
         <div id="modal-content" class="modal-content">
         </div>
