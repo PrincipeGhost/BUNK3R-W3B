@@ -1643,7 +1643,12 @@ def get_my_bots():
             return jsonify({'error': 'Database not available'}), 500
         
         user = request.telegram_user
-        user_id = str(user.get('id'))
+        is_demo = getattr(request, 'is_demo', False)
+        
+        if is_demo and OWNER_TELEGRAM_ID:
+            user_id = str(OWNER_TELEGRAM_ID)
+        else:
+            user_id = str(user.get('id'))
         
         bots = db_manager.get_user_bots(user_id)
         
@@ -1680,8 +1685,14 @@ def get_available_bots():
             return jsonify({'error': 'Database not available'}), 500
         
         user = request.telegram_user
-        user_id = str(user.get('id'))
-        user_is_owner = is_owner(user.get('id'))
+        is_demo = getattr(request, 'is_demo', False)
+        
+        if is_demo and OWNER_TELEGRAM_ID:
+            user_id = str(OWNER_TELEGRAM_ID)
+            user_is_owner = True
+        else:
+            user_id = str(user.get('id'))
+            user_is_owner = is_owner(user.get('id'))
         
         bots = db_manager.get_available_bots(user_id, is_owner=user_is_owner)
         
