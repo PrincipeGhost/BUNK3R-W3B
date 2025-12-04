@@ -1474,6 +1474,20 @@ const App = {
         }, 3000);
     },
     
+    getAuthHeaders() {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        if (this.isDemoMode) {
+            headers['X-Demo-Mode'] = 'true';
+        } else if (this.initData) {
+            headers['X-Telegram-Init-Data'] = this.initData;
+        }
+        
+        return headers;
+    },
+    
     async apiRequest(url, options = {}) {
         const headers = {
             'Content-Type': 'application/json'
@@ -2129,7 +2143,7 @@ const App = {
         }
     },
 
-    rawAddressToUserFriendly(rawAddress) {
+    rawAddressToUserFriendly(rawAddress, bounceable = false) {
         try {
             if (!rawAddress || !rawAddress.includes(':')) {
                 return rawAddress;
@@ -2144,7 +2158,7 @@ const App = {
             }
             
             const addressBytes = new Uint8Array(34);
-            addressBytes[0] = 0x11;
+            addressBytes[0] = bounceable ? 0x11 : 0x51;
             addressBytes[1] = workchain === -1 ? 0xff : workchain;
             addressBytes.set(hashBytes, 2);
             
