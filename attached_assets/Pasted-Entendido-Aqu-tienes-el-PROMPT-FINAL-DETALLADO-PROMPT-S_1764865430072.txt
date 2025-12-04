@@ -1,0 +1,189 @@
+Entendido. Aquí tienes el PROMPT FINAL DETALLADO:
+
+PROMPT: SISTEMA DE PUBLICACIONES ENCRIPTADAS
+OBJETIVO GENERAL
+Implementar un sistema completo de publicaciones (fotos, videos, texto) en el perfil del usuario, usando almacenamiento externo (Cloudinary) con encriptación de extremo a extremo para todo el contenido.
+
+1. MODAL DE CREAR PUBLICACIÓN
+Activación: Al tocar el botón "+" en la pestaña de publicaciones del perfil.
+
+Interfaz del modal:
+
+Selector de tipo de contenido: 📷 Foto | 🎬 Video | ✍️ Solo Texto
+Botón para seleccionar archivo desde el dispositivo
+Vista previa del contenido seleccionado
+Campo de texto para descripción/caption (sin límite de caracteres)
+Soporte para escribir @menciones (autocompletado de usuarios)
+Soporte para #hashtags
+Botón "Publicar" y botón "Cancelar"
+2. ALMACENAMIENTO Y ENCRIPTACIÓN
+Flujo de subida:
+
+Usuario selecciona foto/video
+El archivo se encripta en el cliente antes de subir
+Se sube el archivo encriptado a Cloudinary
+Se guarda la URL encriptada en la base de datos
+Solo usuarios autenticados dentro de la app pueden desencriptar y ver el contenido
+Encriptación:
+
+Algoritmo: AES-256 para archivos
+Clave de encriptación única por usuario o por publicación
+Las claves se manejan de forma segura en el servidor
+Nadie externo puede ver el contenido real (solo datos encriptados)
+3. VISUALIZACIÓN DE PUBLICACIONES
+Lugares donde aparecen:
+
+En el perfil del usuario (galería en cuadrícula tipo Instagram)
+Cuando otros usuarios visitan ese perfil
+En el feed general de la comunidad
+Cada publicación muestra:
+
+Contenido (imagen/video/texto) desencriptado para usuarios autenticados
+Avatar y nombre del autor
+Fecha de publicación
+Caption/descripción
+Contador de likes
+Contador de comentarios
+Botones de interacción
+4. INTERACCIONES EN PUBLICACIONES
+Función	Descripción
+❤️ Like	Dar/quitar like. Se guarda quién dio like.
+💬 Comentar	Agregar comentarios. Ver todos los comentarios.
+🔄 Compartir	Compartir publicación (genera link interno)
+✏️ Editar	Solo el dueño puede editar su publicación
+🗑️ Eliminar	Solo el dueño puede eliminar su publicación
+5. MENCIONES (@usuario)
+Al escribir "@" aparece lista de usuarios para mencionar
+Autocompletado mientras escribe
+El usuario mencionado recibe notificación
+Las menciones se destacan visualmente en el texto
+6. HASHTAGS (#tema)
+Al escribir "#" se pueden crear etiquetas
+Los hashtags son clickeables
+Al tocar un hashtag muestra todas las publicaciones con esa etiqueta
+Posibilidad de buscar por hashtag
+7. GALERÍA EN EL PERFIL
+Vista en cuadrícula (3 columnas) con miniaturas
+Al tocar una publicación se abre en pantalla completa
+Scroll infinito para cargar más publicaciones
+Indicador de tipo (icono de video si es video)
+8. VISTA DETALLE DE PUBLICACIÓN
+Cuando se abre una publicación:
+
+Imagen/video en tamaño grande
+Caption completo
+Lista de comentarios
+Campo para agregar comentario
+Botones de like/compartir
+Menú de opciones (editar/eliminar si es el dueño)
+9. SEGURIDAD TOTAL
+✅ Archivos encriptados antes de subir a Cloudinary
+✅ URLs y contenido encriptado en la base de datos
+✅ Solo usuarios autenticados (vía Telegram) pueden ver contenido
+✅ Desencriptación solo dentro de la app
+✅ Nadie externo puede acceder a las publicaciones reales
+10. COMPONENTES TÉCNICOS A CREAR
+Backend (Python/Flask):
+
+Endpoint para crear publicación con encriptación
+Endpoint para obtener publicaciones (con desencriptación)
+Endpoints para likes, comentarios, compartir
+Endpoints para editar/eliminar
+Sistema de menciones y notificaciones
+Sistema de hashtags
+Frontend (JavaScript):
+
+Modal de crear publicación
+Encriptación del lado del cliente
+Galería de publicaciones
+Vista detalle de publicación
+Componentes de interacción (likes, comentarios)
+Autocompletado de menciones
+Base de datos:
+
+Tabla de publicaciones (posts)
+Tabla de likes
+Tabla de comentarios
+Tabla de hashtags
+Tabla de menciones
+RESUMEN VISUAL DEL FLUJO:
+Usuario toca "+" 
+    ↓
+Modal: Selecciona foto/video/texto
+    ↓
+Escribe caption + @menciones + #hashtags
+    ↓
+Vista previa
+    ↓
+Toca "Publicar"
+    ↓
+Archivo se ENCRIPTA
+    ↓
+Sube a Cloudinary (encriptado)
+    ↓
+Guarda en base de datos
+    ↓
+Aparece en: Perfil + Feed
+    ↓
+Otros usuarios ven (desencriptado dentro de la app)
+
+Este es el prompt completo. Cuando me digas "HAZLO" o "EMPIEZA", comenzaré a implementar todo esto.
+
+
+FUNCIONALIDADES EXTRA PARA AÑADIR:
+📹 MEJORAS EN VIDEOS
+#	Funcionalidad	Descripción
+1	Límite de duración	Máximo 1 minutos por video Y 15 SEGUNDOS POR HISTORIA
+2	Reproducción automática	Videos se reproducen solos en el feed (sin sonido)
+3	Miniatura automática	Se genera preview del video
+4	Barra de progreso	Muestra cuánto falta del video
+🖼️ MEJORAS EN IMÁGENES
+#	Funcionalidad	Descripción
+5	Múltiples fotos (carrusel)	Hasta 10 fotos en una sola publicación
+6	Recortar imagen	Ajustar antes de subir
+7	Compresión automática	Optimiza peso sin perder calidad
+🔔 SISTEMA DE NOTIFICACIONES
+#	Funcionalidad	Descripción
+8	Like recibido	"X le dio like a tu publicación"
+9	Comentario nuevo	"X comentó en tu publicación"
+10	Mención	"X te mencionó en una publicación"
+11	Nuevo seguidor	"X comenzó a seguirte"
+12	Compartido	"X compartió tu publicación"
+💾 GUARDADOS/FAVORITOS
+#	Funcionalidad	Descripción
+13	Guardar publicación	Botón de bookmark para guardar
+14	Colección privada	Ver todas tus publicaciones guardadas
+💬 COMENTARIOS AVANZADOS
+#	Funcionalidad	Descripción
+15	Responder comentarios	Crear hilos de respuestas
+16	Like en comentarios	Dar like a un comentario específico
+17	Menciones en comentarios	@usuario dentro de comentarios
+18	Fijar comentario	El dueño fija un comentario arriba
+⚡ REACCIONES MÚLTIPLES
+#	Funcionalidad	Descripción
+19	Emojis de reacción	No solo ❤️, también: 😂 😮 😢 🔥 👏
+20	Ver quién reaccionó	Lista de usuarios por cada reacción
+🔒 CONTROLES DE PRIVACIDAD
+#	Funcionalidad	Descripción
+23	Reportar publicación	Botón para reportar contenido, Y QUE SE CRE ALGO NUEVO EN EL PANELD E ADMINSITARCION COMO REPORYTESY AHI APREZCA ESTOS NUEVOS REPORTES
+24	Bloquear usuario	Que no vea tu contenido NI VER SU CONTENIDO
+🔍 DESCUBRIMIENTO Y EXPLORAR
+#	Funcionalidad	Descripción
+25	Página Explorar	Publicaciones populares/trending
+26	Hashtags trending	Los más usados del momento
+27	Buscar por texto	Buscar en captions
+28	Sugerencias de usuarios	"Personas que quizás conozcas"
+📊 ESTADÍSTICAS
+#	Funcionalidad	Descripción
+29	Vistas en publicación	Cuántas personas la vieron
+30	Alcance del perfil	Estadísticas generales
+📱 HISTORIAS (24 HORAS)
+#	Funcionalidad	Descripción
+31	Crear historia	Foto/video que desaparece en 24h
+32	Ver quién vio	Lista de visualizaciones
+33	Responder a historia	Envía mensaje directo
+🔄 COMPARTIR AVANZADO
+#	Funcionalidad	Descripción
+34	Repostear	Republicar en tu perfil (como retweet)
+35	Compartir en mensaje	Enviar a un usuario específico
+36	Citar publicación	Compartir con tu propio comentario
