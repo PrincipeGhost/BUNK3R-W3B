@@ -1971,7 +1971,7 @@ TON_CREDIT_RATES = {
 }
 
 def calculate_credits_from_ton(ton_amount):
-    """Calcula creditos basado en TON con tasa del servidor."""
+    """Calcula BUNK3RCO1N basado en TON con tasa del servidor."""
     ton_amount = float(ton_amount)
     if ton_amount in TON_CREDIT_RATES:
         return TON_CREDIT_RATES[ton_amount]
@@ -2156,7 +2156,7 @@ def verify_ton_payment(payment_id):
                                 'txHash': tx_hash,
                                 'creditsAdded': credits,
                                 'newBalance': new_balance,
-                                'message': f'+{credits} creditos agregados!'
+                                'message': f'+{credits} BUNK3RCO1N agregados!'
                             })
                     
                     return jsonify({
@@ -2226,7 +2226,7 @@ def get_ton_wallet_info():
 @app.route('/api/wallet/balance', methods=['GET'])
 @require_telegram_user
 def get_wallet_balance():
-    """Obtener el saldo de creditos del usuario."""
+    """Obtener el saldo de BUNK3RCO1N del usuario."""
     try:
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         
@@ -2252,7 +2252,7 @@ def get_wallet_balance():
 @app.route('/api/wallet/credit', methods=['POST'])
 @require_telegram_user
 def credit_wallet():
-    """Agregar creditos a la billetera del usuario."""
+    """Agregar BUNK3RCO1N a la billetera del usuario."""
     try:
         data = request.get_json()
         credits = data.get('credits', 0)
