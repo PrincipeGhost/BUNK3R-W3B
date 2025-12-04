@@ -97,6 +97,15 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Implemented secure TON payment verification system
+  - New payment flow: Create pending payment -> User sends TON with comment -> Verify on blockchain
+  - Server-side credit calculation (no client-controlled credits)
+  - TonCenter API v3 integration for blockchain verification
+  - Payment modal with wallet address and unique comment to identify transactions
+  - Endpoints: /api/ton/payment/create, /verify, /status
+  - Rate table: 1 TON = 10 credits (with volume bonuses)
+  - Prevents fraud by verifying actual blockchain transactions before crediting
+
 - 2024-12-04: Fixed Telegram Wallet synchronization issues
   - Added missing `getAuthHeaders()` function in App object
   - Fixed wallet address conversion to use non-bounceable format (UQ...) matching Telegram Wallet

@@ -2087,10 +2087,10 @@ const App = {
 
         document.querySelectorAll('.recharge-option').forEach(option => {
             option.addEventListener('click', () => {
-                const amount = parseInt(option.dataset.amount);
-                const usdt = parseInt(option.dataset.usdt);
-                if (amount && usdt) {
-                    this.initiateUSDTPayment(amount, usdt);
+                const credits = parseInt(option.dataset.amount);
+                const tonAmount = parseFloat(option.dataset.ton || option.dataset.usdt);
+                if (credits && tonAmount) {
+                    this.initiateTONPayment(credits, tonAmount);
                 }
             });
         });
@@ -2099,9 +2099,9 @@ const App = {
         if (customRechargeBtn) {
             customRechargeBtn.addEventListener('click', () => {
                 const input = document.getElementById('custom-usdt-amount');
-                const amount = parseInt(input?.value);
+                const amount = parseFloat(input?.value);
                 if (amount && amount > 0) {
-                    this.initiateUSDTPayment(amount, amount);
+                    this.initiateTONPayment(Math.floor(amount * 10), amount);
                 } else {
                     this.showToast('Ingresa una cantidad valida', 'error');
                 }
@@ -2375,6 +2375,160 @@ const App = {
         } catch (error) {
             console.error('Error loading wallet balance:', error);
         }
+    },
+
+    async initiateTONPayment(credits, tonAmount) {
+        try {
+            this.showToast('Creando solicitud de pago...', 'info');
+            
+            const response = await this.apiRequest('/api/ton/payment/create', {
+                method: 'POST',
+                body: JSON.stringify({
+                    credits: credits,
+                    tonAmount: tonAmount
+                })
+            });
+            
+            if (!response.success) {
+                this.showToast(response.error || 'Error al crear pago', 'error');
+                return;
+            }
+            
+            this.showPaymentModal(response);
+            
+        } catch (error) {
+            console.error('Payment creation error:', error);
+            this.showToast('Error al iniciar pago: ' + (error.message || 'Intenta de nuevo'), 'error');
+        }
+    },
+
+    showPaymentModal(paymentData) {
+        const { paymentId, merchantWallet, tonAmount, credits, comment } = paymentData;
+        
+        const modalHtml = `
+            <div class="payment-modal-content">
+                <h3>Recarga de Creditos</h3>
+                <div class="payment-info">
+                    <div class="payment-amount">
+                        <span class="label">Cantidad a enviar:</span>
+                        <span class="value">${tonAmount} TON</span>
+                    </div>
+                    <div class="payment-credits">
+                        <span class="label">Creditos a recibir:</span>
+                        <span class="value">+${credits}</span>
+                    </div>
+                </div>
+                
+                <div class="payment-instructions">
+                    <p><strong>Paso 1:</strong> Copia la direccion de wallet</p>
+                    <div class="wallet-address-box" onclick="App.copyToClipboard('${merchantWallet}')">
+                        <span class="address">${merchantWallet}</span>
+                        <span class="copy-icon">📋</span>
+                    </div>
+                    
+                    <p><strong>Paso 2:</strong> Copia el comentario (IMPORTANTE)</p>
+                    <div class="comment-box" onclick="App.copyToClipboard('${comment}')">
+                        <span class="comment">${comment}</span>
+                        <span class="copy-icon">📋</span>
+                    </div>
+                    
+                    <p class="warning">⚠️ El comentario es OBLIGATORIO para identificar tu pago</p>
+                    
+                    <p><strong>Paso 3:</strong> Envia ${tonAmount} TON desde tu Telegram Wallet</p>
+                </div>
+                
+                <div class="payment-actions">
+                    <button class="btn-verify" onclick="App.verifyPayment('${paymentId}')">
+                        Ya envie el pago - Verificar
+                    </button>
+                    <button class="btn-cancel" onclick="App.closeModal()">
+                        Cancelar
+                    </button>
+                </div>
+                
+                <div id="payment-status" class="payment-status hidden">
+                    <div class="spinner"></div>
+                    <span>Verificando en blockchain...</span>
+                </div>
+            </div>
+        `;
+        
+        this.showModal(modalHtml);
+        this.currentPaymentId = paymentId;
+    },
+
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Copiado al portapapeles', 'success');
+        }).catch(() => {
+            const input = document.createElement('input');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            this.showToast('Copiado al portapapeles', 'success');
+        });
+    },
+
+    async verifyPayment(paymentId) {
+        const statusEl = document.getElementById('payment-status');
+        const verifyBtn = document.querySelector('.btn-verify');
+        
+        if (statusEl) {
+            statusEl.classList.remove('hidden');
+            statusEl.innerHTML = '<div class="spinner"></div><span>Verificando en blockchain...</span>';
+        }
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verificando...';
+        }
+        
+        let attempts = 0;
+        const maxAttempts = 12;
+        
+        const checkPayment = async () => {
+            try {
+                const response = await this.apiRequest(`/api/ton/payment/${paymentId}/verify`, {
+                    method: 'POST'
+                });
+                
+                if (response.status === 'confirmed') {
+                    this.closeModal();
+                    this.showToast(`+${response.creditsAdded} creditos agregados!`, 'success');
+                    this.loadWalletBalance();
+                    return true;
+                }
+                
+                attempts++;
+                if (attempts < maxAttempts) {
+                    if (statusEl) {
+                        statusEl.innerHTML = `<div class="spinner"></div><span>Buscando transaccion... (${attempts}/${maxAttempts})</span>`;
+                    }
+                    setTimeout(checkPayment, 5000);
+                } else {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<span class="error">No se encontro la transaccion. Verifica que hayas enviado el pago con el comentario correcto.</span>';
+                    }
+                    if (verifyBtn) {
+                        verifyBtn.disabled = false;
+                        verifyBtn.textContent = 'Reintentar verificacion';
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Verification error:', error);
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="error">Error al verificar. Intenta de nuevo.</span>';
+                }
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Reintentar verificacion';
+                }
+            }
+        };
+        
+        await checkPayment();
     }
 };
 

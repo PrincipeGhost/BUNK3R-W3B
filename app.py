@@ -1958,6 +1958,271 @@ def get_exchange_status(tx_id):
         return jsonify({'error': str(e)}), 500
 
 
+TONCENTER_API_URL = 'https://toncenter.com/api/v3'
+MERCHANT_TON_WALLET = os.environ.get('TON_WALLET_ADDRESS', 'UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck')
+
+TON_CREDIT_RATES = {
+    1: 10,
+    2: 22,
+    5: 60,
+    10: 130,
+    20: 280,
+    50: 750,
+}
+
+def calculate_credits_from_ton(ton_amount):
+    """Calcula creditos basado en TON con tasa del servidor."""
+    ton_amount = float(ton_amount)
+    if ton_amount in TON_CREDIT_RATES:
+        return TON_CREDIT_RATES[ton_amount]
+    credits = int(ton_amount * 10)
+    if ton_amount >= 10:
+        credits = int(credits * 1.3)
+    elif ton_amount >= 5:
+        credits = int(credits * 1.2)
+    elif ton_amount >= 2:
+        credits = int(credits * 1.1)
+    return max(credits, 1)
+
+
+@app.route('/api/ton/payment/create', methods=['POST'])
+@require_telegram_user
+def create_ton_payment():
+    """Crear una solicitud de pago pendiente."""
+    try:
+        data = request.get_json()
+        ton_amount = data.get('tonAmount', 0)
+        
+        if not ton_amount or float(ton_amount) <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        ton_amount = float(ton_amount)
+        if ton_amount < 0.5:
+            return jsonify({'success': False, 'error': 'Monto minimo: 0.5 TON'}), 400
+        if ton_amount > 1000:
+            return jsonify({'success': False, 'error': 'Monto maximo: 1000 TON'}), 400
+        
+        credits = calculate_credits_from_ton(ton_amount)
+        
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        payment_id = str(uuid.uuid4())[:8].upper()
+        
+        if not db_manager:
+            return jsonify({
+                'success': True, 
+                'paymentId': payment_id,
+                'merchantWallet': MERCHANT_TON_WALLET,
+                'tonAmount': ton_amount,
+                'credits': credits,
+                'message': 'Demo mode'
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS pending_payments (
+                        id SERIAL PRIMARY KEY,
+                        payment_id VARCHAR(20) UNIQUE NOT NULL,
+                        user_id VARCHAR(50) NOT NULL,
+                        credits INTEGER NOT NULL,
+                        ton_amount DECIMAL(20, 9) NOT NULL,
+                        status VARCHAR(20) DEFAULT 'pending',
+                        tx_hash VARCHAR(100),
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        confirmed_at TIMESTAMP
+                    )
+                """)
+                conn.commit()
+                
+                cur.execute("""
+                    INSERT INTO pending_payments (payment_id, user_id, credits, ton_amount)
+                    VALUES (%s, %s, %s, %s)
+                """, (payment_id, user_id, credits, ton_amount))
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'paymentId': payment_id,
+            'merchantWallet': MERCHANT_TON_WALLET,
+            'tonAmount': ton_amount,
+            'credits': credits,
+            'comment': f'BUNK3R-{payment_id}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating payment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ton/payment/<payment_id>/verify', methods=['POST'])
+@require_telegram_user
+def verify_ton_payment(payment_id):
+    """Verificar si un pago fue recibido en la blockchain."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': True, 'status': 'confirmed', 'message': 'Demo mode'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM pending_payments 
+                    WHERE payment_id = %s AND user_id = %s
+                """, (payment_id, user_id))
+                payment = cur.fetchone()
+                
+                if not payment:
+                    return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+                
+                if payment['status'] == 'confirmed':
+                    return jsonify({'success': True, 'status': 'confirmed', 'message': 'Pago ya confirmado'})
+                
+                expected_comment = f'BUNK3R-{payment_id}'
+                expected_amount = float(payment['ton_amount'])
+                
+                try:
+                    response = requests.get(
+                        f'{TONCENTER_API_URL}/transactions',
+                        params={
+                            'account': MERCHANT_TON_WALLET,
+                            'limit': 50,
+                            'sort': 'desc'
+                        },
+                        timeout=15
+                    )
+                    
+                    if response.status_code != 200:
+                        return jsonify({
+                            'success': True, 
+                            'status': 'pending',
+                            'message': 'Esperando confirmacion en la blockchain...'
+                        })
+                    
+                    tx_data = response.json()
+                    transactions = tx_data.get('transactions', [])
+                    
+                    for tx in transactions:
+                        in_msg = tx.get('in_msg', {})
+                        
+                        if not in_msg or in_msg.get('msg_type') != 'int_msg':
+                            continue
+                        
+                        msg_value = int(in_msg.get('value', 0))
+                        msg_amount_ton = msg_value / 1e9
+                        
+                        if msg_amount_ton < expected_amount * 0.99:
+                            continue
+                        
+                        decoded = in_msg.get('decoded_body', {})
+                        comment = decoded.get('text', '') if decoded else ''
+                        
+                        if not comment:
+                            raw_body = in_msg.get('message', '')
+                            if raw_body:
+                                try:
+                                    comment = bytes.fromhex(raw_body).decode('utf-8', errors='ignore')
+                                except:
+                                    pass
+                        
+                        if expected_comment.lower() in comment.lower():
+                            tx_hash = tx.get('hash', '')
+                            
+                            cur.execute("""
+                                UPDATE pending_payments 
+                                SET status = 'confirmed', tx_hash = %s, confirmed_at = NOW()
+                                WHERE payment_id = %s
+                            """, (tx_hash, payment_id))
+                            
+                            credits = calculate_credits_from_ton(expected_amount)
+                            cur.execute("""
+                                INSERT INTO wallet_transactions (user_id, amount, type, description, tx_hash, created_at)
+                                VALUES (%s, %s, 'credit', %s, %s, NOW())
+                            """, (user_id, credits, f'Recarga TON - {expected_amount} TON', tx_hash))
+                            
+                            conn.commit()
+                            
+                            cur.execute("""
+                                SELECT COALESCE(SUM(amount), 0) as balance
+                                FROM wallet_transactions
+                                WHERE user_id = %s
+                            """, (user_id,))
+                            result = cur.fetchone()
+                            new_balance = float(result['balance']) if result else credits
+                            
+                            return jsonify({
+                                'success': True,
+                                'status': 'confirmed',
+                                'txHash': tx_hash,
+                                'creditsAdded': credits,
+                                'newBalance': new_balance,
+                                'message': f'+{credits} creditos agregados!'
+                            })
+                    
+                    return jsonify({
+                        'success': True,
+                        'status': 'pending',
+                        'message': 'Transaccion no encontrada aun. Espera unos segundos...'
+                    })
+                    
+                except requests.RequestException as e:
+                    logger.error(f"TonCenter API error: {e}")
+                    return jsonify({
+                        'success': True,
+                        'status': 'pending',
+                        'message': 'Verificando en la blockchain...'
+                    })
+                    
+    except Exception as e:
+        logger.error(f"Error verifying payment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ton/payment/<payment_id>/status', methods=['GET'])
+@require_telegram_user
+def get_payment_status(payment_id):
+    """Obtener el estado de un pago pendiente."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': True, 'status': 'pending'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT status, tx_hash, credits FROM pending_payments 
+                    WHERE payment_id = %s AND user_id = %s
+                """, (payment_id, user_id))
+                payment = cur.fetchone()
+                
+                if not payment:
+                    return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'status': payment['status'],
+                    'txHash': payment.get('tx_hash'),
+                    'credits': payment['credits']
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting payment status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ton/wallet-info', methods=['GET'])
+@require_telegram_user
+def get_ton_wallet_info():
+    """Obtener informacion de la wallet del comerciante."""
+    return jsonify({
+        'success': True,
+        'merchantWallet': MERCHANT_TON_WALLET,
+        'currency': 'TON',
+        'network': 'mainnet'
+    })
+
+
 @app.route('/api/wallet/balance', methods=['GET'])
 @require_telegram_user
 def get_wallet_balance():

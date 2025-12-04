@@ -3374,3 +3374,176 @@ body {
     border: 2px solid var(--accent-primary);
     background: rgba(66, 153, 225, 0.1);
 }
+
+/* TON Payment Modal Styles */
+.payment-modal-content {
+    padding: 20px;
+}
+
+.payment-modal-content h3 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 20px;
+}
+
+.payment-info {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.payment-amount, .payment-credits {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.payment-amount .label, .payment-credits .label {
+    color: var(--text-secondary);
+}
+
+.payment-amount .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.payment-credits .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-success);
+}
+
+.payment-instructions {
+    margin-bottom: 20px;
+}
+
+.payment-instructions p {
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.payment-instructions p strong {
+    color: var(--text-primary);
+}
+
+.wallet-address-box, .comment-box {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.wallet-address-box:hover, .comment-box:hover {
+    border-color: var(--accent-primary);
+    background: rgba(66, 153, 225, 0.1);
+}
+
+.wallet-address-box .address {
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+    color: var(--text-primary);
+}
+
+.comment-box .comment {
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-success);
+}
+
+.copy-icon {
+    margin-left: 10px;
+    font-size: 18px;
+}
+
+.payment-instructions .warning {
+    color: var(--accent-warning);
+    font-weight: 600;
+    background: rgba(246, 173, 85, 0.1);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    margin: 16px 0;
+}
+
+.payment-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-verify {
+    background: var(--accent-success);
+    color: #fff;
+    border: none;
+    padding: 14px 24px;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-verify:hover {
+    background: #38a169;
+}
+
+.btn-verify:disabled {
+    background: var(--border-color);
+    cursor: not-allowed;
+}
+
+.btn-cancel {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-cancel:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.payment-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+}
+
+.payment-status .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.payment-status .error {
+    color: var(--accent-danger);
+    text-align: center;
+}
