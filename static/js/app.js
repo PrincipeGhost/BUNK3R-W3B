@@ -2838,6 +2838,710 @@ const App = {
         };
         
         await checkPayment();
+    },
+
+    // ============================================================
+    // SISTEMA DE SEGURIDAD - DISPOSITIVOS Y WALLET
+    // ============================================================
+
+    deviceId: null,
+    deviceTrusted: false,
+    walletVerified: false,
+    twoFAVerified: false,
+    securityStatus: null,
+    lockoutTimer: null,
+
+    generateDeviceId() {
+        let deviceId = localStorage.getItem('bunk3r_device_id');
+        if (!deviceId) {
+            const ua = navigator.userAgent;
+            const screenInfo = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const lang = navigator.language;
+            const random = Math.random().toString(36).substring(2);
+            const data = `${ua}|${screenInfo}|${timezone}|${lang}|${Date.now()}|${random}`;
+            deviceId = btoa(data).replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+            localStorage.setItem('bunk3r_device_id', deviceId);
+        }
+        this.deviceId = deviceId;
+        return deviceId;
+    },
+
+    getDeviceInfo() {
+        const ua = navigator.userAgent;
+        let deviceName = 'Dispositivo desconocido';
+        let deviceType = 'unknown';
+
+        if (/iPhone|iPad|iPod/.test(ua)) {
+            deviceType = 'ios';
+            if (/iPad/.test(ua)) {
+                deviceName = 'iPad';
+            } else {
+                deviceName = 'iPhone';
+            }
+        } else if (/Android/.test(ua)) {
+            deviceType = 'android';
+            const match = ua.match(/Android.*;\s*([^;)]+)/);
+            deviceName = match ? match[1].trim() : 'Dispositivo Android';
+        } else if (/Windows/.test(ua)) {
+            deviceType = 'windows';
+            deviceName = 'Windows PC';
+        } else if (/Mac/.test(ua)) {
+            deviceType = 'mac';
+            deviceName = 'Mac';
+        } else if (/Linux/.test(ua)) {
+            deviceType = 'linux';
+            deviceName = 'Linux PC';
+        }
+
+        return { deviceName, deviceType };
+    },
+
+    async checkDeviceTrust() {
+        if (!this.deviceId) {
+            this.generateDeviceId();
+        }
+
+        try {
+            const response = await this.apiRequest('/api/security/devices/check', {
+                method: 'POST',
+                body: JSON.stringify({ deviceId: this.deviceId })
+            });
+
+            this.deviceTrusted = response.isTrusted || false;
+            return this.deviceTrusted;
+        } catch (error) {
+            console.error('Error checking device trust:', error);
+            return false;
+        }
+    },
+
+    async checkUserLockout() {
+        try {
+            const response = await this.apiRequest('/api/security/lockout/check');
+            if (response.isLocked) {
+                this.showAccountLockedScreen(response.lockedUntil);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error checking lockout:', error);
+            return false;
+        }
+    },
+
+    showAccountLockedScreen(lockedUntil) {
+        this.hideAllAuthScreens();
+        document.getElementById('account-locked-screen').classList.remove('hidden');
+        
+        if (lockedUntil) {
+            this.startLockoutTimer(new Date(lockedUntil));
+        }
+    },
+
+    startLockoutTimer(lockedUntil) {
+        if (this.lockoutTimer) {
+            clearInterval(this.lockoutTimer);
+        }
+
+        const updateTimer = () => {
+            const now = new Date();
+            const diff = lockedUntil - now;
+            
+            if (diff <= 0) {
+                clearInterval(this.lockoutTimer);
+                document.getElementById('lockout-time').textContent = '00:00';
+                location.reload();
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            document.getElementById('lockout-time').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        };
+
+        updateTimer();
+        this.lockoutTimer = setInterval(updateTimer, 1000);
+    },
+
+    showDeviceBlockedScreen() {
+        this.hideAllAuthScreens();
+        document.getElementById('device-blocked-screen').classList.remove('hidden');
+        
+        document.getElementById('trust-device-btn').onclick = () => this.startDeviceVerification();
+        document.getElementById('view-readonly-btn').onclick = () => this.enterReadOnlyMode();
+    },
+
+    showWrongWalletScreen(expectedHint, connectedAddress, attemptsRemaining) {
+        this.hideAllAuthScreens();
+        document.getElementById('wrong-wallet-screen').classList.remove('hidden');
+        
+        document.getElementById('expected-wallet-hint').textContent = expectedHint;
+        document.getElementById('connected-wallet-hint').textContent = 
+            connectedAddress.substring(0, 8) + '...' + connectedAddress.substring(connectedAddress.length - 4);
+        document.getElementById('attempts-remaining').textContent = attemptsRemaining;
+        
+        if (attemptsRemaining <= 1) {
+            document.getElementById('attempts-warning').style.background = 'rgba(252, 129, 129, 0.2)';
+        }
+        
+        document.getElementById('retry-wallet-btn').onclick = () => this.startDeviceVerification();
+        document.getElementById('cancel-wallet-btn').onclick = () => this.showDeviceBlockedScreen();
+    },
+
+    async startDeviceVerification() {
+        try {
+            const walletAddress = await this.connectTelegramWallet();
+            if (!walletAddress) {
+                this.showToast('No se pudo conectar la wallet', 'error');
+                return;
+            }
+
+            const result = await this.validateWalletForDevice(walletAddress);
+            
+            if (result.is_locked) {
+                this.showAccountLockedScreen(result.locked_until);
+                return;
+            }
+
+            if (result.is_wrong_wallet) {
+                this.showWrongWalletScreen(
+                    result.registered_wallet_hint,
+                    walletAddress,
+                    result.attempts_remaining
+                );
+                return;
+            }
+
+            if (result.success) {
+                this.walletVerified = true;
+                this.connectedWalletAddress = walletAddress;
+                
+                const has2FA = await this.check2FARequired();
+                if (has2FA) {
+                    this.showAddDeviceStep(2);
+                } else {
+                    this.showAddDeviceStep(3);
+                }
+            }
+        } catch (error) {
+            console.error('Error in device verification:', error);
+            this.showToast('Error en la verificacion', 'error');
+        }
+    },
+
+    async validateWalletForDevice(walletAddress) {
+        try {
+            const response = await this.apiRequest('/api/security/wallet/validate', {
+                method: 'POST',
+                body: JSON.stringify({
+                    walletAddress: walletAddress,
+                    deviceId: this.deviceId
+                })
+            });
+            return response;
+        } catch (error) {
+            console.error('Error validating wallet:', error);
+            throw error;
+        }
+    },
+
+    async check2FARequired() {
+        try {
+            const response = await this.apiRequest('/api/2fa/status');
+            return response.enabled || false;
+        } catch (error) {
+            return false;
+        }
+    },
+
+    showAddDeviceStep(step) {
+        document.getElementById('add-device-modal').classList.remove('hidden');
+        
+        document.querySelectorAll('.add-device-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.step-item').forEach(el => {
+            el.classList.remove('active', 'completed');
+        });
+        
+        for (let i = 1; i < step; i++) {
+            document.querySelector(`.step-item[data-step="${i}"]`).classList.add('completed');
+        }
+        document.querySelector(`.step-item[data-step="${step}"]`).classList.add('active');
+        
+        document.getElementById(`add-device-step-${step}`).classList.remove('hidden');
+        
+        if (step === 2) {
+            document.getElementById('add-device-verify-2fa').onclick = () => this.verifyDeviceTwoFA();
+        } else if (step === 3) {
+            document.getElementById('add-device-confirm').onclick = () => this.confirmAddDevice();
+        }
+    },
+
+    async verifyDeviceTwoFA() {
+        const code = document.getElementById('add-device-2fa-code').value;
+        if (!code || code.length !== 6) {
+            this.showToast('Ingresa un codigo de 6 digitos', 'error');
+            return;
+        }
+
+        try {
+            const response = await this.apiRequest('/api/2fa/verify', {
+                method: 'POST',
+                body: JSON.stringify({ code })
+            });
+
+            if (response.success) {
+                this.twoFAVerified = true;
+                this.showAddDeviceStep(3);
+            } else {
+                this.showToast(response.error || 'Codigo incorrecto', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al verificar codigo', 'error');
+        }
+    },
+
+    async confirmAddDevice() {
+        const deviceName = document.getElementById('add-device-name').value || 'Mi dispositivo';
+        const { deviceType } = this.getDeviceInfo();
+
+        try {
+            const response = await this.apiRequest('/api/security/devices/add', {
+                method: 'POST',
+                body: JSON.stringify({
+                    deviceId: this.deviceId,
+                    deviceName: deviceName,
+                    deviceType: deviceType,
+                    walletVerified: this.walletVerified,
+                    twofaVerified: this.twoFAVerified || !await this.check2FARequired()
+                })
+            });
+
+            if (response.success) {
+                this.deviceTrusted = true;
+                document.getElementById('add-device-modal').classList.add('hidden');
+                this.hideAllAuthScreens();
+                document.getElementById('main-app').classList.remove('hidden');
+                this.showToast('Dispositivo agregado correctamente', 'success');
+                this.loadSecurityStatus();
+            } else {
+                this.showToast(response.error || 'Error al agregar dispositivo', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al agregar dispositivo', 'error');
+        }
+    },
+
+    enterReadOnlyMode() {
+        this.readOnlyMode = true;
+        this.hideAllAuthScreens();
+        document.getElementById('main-app').classList.remove('hidden');
+        this.showToast('Modo lectura - Algunas funciones estan deshabilitadas', 'warning');
+        
+        const walletNav = document.querySelector('[data-page="wallet"]');
+        if (walletNav) {
+            walletNav.addEventListener('click', (e) => {
+                if (this.readOnlyMode && !this.deviceTrusted) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.showDeviceBlockedScreen();
+                }
+            }, true);
+        }
+    },
+
+    async loadSecurityStatus() {
+        try {
+            const response = await this.apiRequest('/api/security/status');
+            if (response.success) {
+                this.securityStatus = response;
+                this.updateSecurityWidget(response);
+            }
+        } catch (error) {
+            console.error('Error loading security status:', error);
+        }
+    },
+
+    updateSecurityWidget(status) {
+        const scoreFill = document.getElementById('security-score-fill');
+        const scoreText = document.getElementById('security-score-text');
+        const statusTitle = document.getElementById('security-status-title');
+        
+        if (scoreFill) {
+            scoreFill.style.width = `${status.security_score}%`;
+            scoreFill.className = 'security-score-fill';
+            if (status.security_score >= 80) {
+                scoreFill.classList.add('high');
+            } else if (status.security_score >= 50) {
+                scoreFill.classList.add('medium');
+            } else {
+                scoreFill.classList.add('low');
+            }
+        }
+        
+        if (scoreText) {
+            scoreText.textContent = `Nivel: ${status.security_level}`;
+        }
+        
+        if (statusTitle) {
+            if (status.security_score >= 80) {
+                statusTitle.textContent = 'Tu cuenta esta bien protegida';
+            } else if (status.security_score >= 50) {
+                statusTitle.textContent = 'Tu cuenta necesita mas proteccion';
+            } else {
+                statusTitle.textContent = 'Tu cuenta tiene riesgo de seguridad';
+            }
+        }
+        
+        const walletIndicator = document.querySelector('#indicator-wallet .indicator-status');
+        if (walletIndicator) {
+            walletIndicator.textContent = status.wallet_connected ? 'Activa' : 'No';
+            walletIndicator.className = 'indicator-status ' + (status.wallet_connected ? 'active' : 'pending');
+        }
+        
+        const tfaIndicator = document.querySelector('#indicator-2fa .indicator-status');
+        if (tfaIndicator) {
+            tfaIndicator.textContent = status.two_factor_enabled ? 'Activo' : 'No';
+            tfaIndicator.className = 'indicator-status ' + (status.two_factor_enabled ? 'active' : 'pending');
+        }
+        
+        const devicesIndicator = document.querySelector('#indicator-devices .indicator-status');
+        if (devicesIndicator) {
+            devicesIndicator.textContent = `${status.trusted_devices_count}/${status.max_devices}`;
+            devicesIndicator.className = 'indicator-status ' + (status.trusted_devices_count > 0 ? 'active' : 'pending');
+        }
+
+        const backupBadge = document.getElementById('backup-wallet-badge');
+        if (backupBadge) {
+            if (status.has_backup_wallet) {
+                backupBadge.textContent = 'Configurada';
+                backupBadge.classList.add('configured');
+            } else {
+                backupBadge.textContent = 'No configurada';
+                backupBadge.classList.remove('configured');
+            }
+        }
+    },
+
+    async loadTrustedDevices() {
+        try {
+            const response = await this.apiRequest('/api/security/devices');
+            if (response.success) {
+                this.renderTrustedDevices(response.devices);
+            }
+        } catch (error) {
+            console.error('Error loading trusted devices:', error);
+        }
+    },
+
+    renderTrustedDevices(devices) {
+        const container = document.getElementById('trusted-devices-list');
+        if (!container) return;
+
+        if (!devices || devices.length === 0) {
+            container.innerHTML = `
+                <div class="devices-empty">
+                    <div class="devices-empty-icon">📱</div>
+                    <p>No tienes dispositivos de confianza</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = devices.map(device => {
+            const isCurrent = device.device_id === this.deviceId;
+            const icon = this.getDeviceIcon(device.device_type);
+            const lastUsed = device.last_used_at ? this.formatRelativeTime(device.last_used_at) : 'Nunca';
+            
+            return `
+                <div class="device-item ${isCurrent ? 'current' : ''}" data-device-id="${device.device_id}">
+                    <div class="device-item-icon">${icon}</div>
+                    <div class="device-item-info">
+                        <div class="device-item-name">
+                            ${device.device_name}
+                            ${isCurrent ? '<span class="current-badge">Este dispositivo</span>' : ''}
+                        </div>
+                        <div class="device-item-meta">Ultimo uso: ${lastUsed}</div>
+                    </div>
+                    ${!isCurrent ? `<button class="device-item-remove" onclick="App.removeDevice('${device.device_id}')">&times;</button>` : ''}
+                </div>
+            `;
+        }).join('');
+    },
+
+    getDeviceIcon(deviceType) {
+        const icons = {
+            'ios': '📱',
+            'android': '📱',
+            'windows': '💻',
+            'mac': '💻',
+            'linux': '🖥️',
+            'unknown': '📱'
+        };
+        return icons[deviceType] || '📱';
+    },
+
+    formatRelativeTime(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Ahora';
+        if (diffMins < 60) return `Hace ${diffMins} min`;
+        if (diffHours < 24) return `Hace ${diffHours}h`;
+        if (diffDays < 7) return `Hace ${diffDays} dias`;
+        return date.toLocaleDateString('es-ES');
+    },
+
+    async removeDevice(deviceId) {
+        const has2FA = await this.check2FARequired();
+        
+        if (has2FA) {
+            const code = prompt('Ingresa tu codigo 2FA para eliminar el dispositivo:');
+            if (!code || code.length !== 6) {
+                this.showToast('Codigo 2FA invalido', 'error');
+                return;
+            }
+
+            try {
+                const response = await this.apiRequest('/api/security/devices/remove', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        deviceId: deviceId,
+                        twofaCode: code
+                    })
+                });
+
+                if (response.success) {
+                    this.showToast('Dispositivo eliminado', 'success');
+                    this.loadTrustedDevices();
+                    this.loadSecurityStatus();
+                } else {
+                    this.showToast(response.error || 'Error al eliminar', 'error');
+                }
+            } catch (error) {
+                this.showToast('Error al eliminar dispositivo', 'error');
+            }
+        } else {
+            if (confirm('¿Estas seguro de eliminar este dispositivo?')) {
+                try {
+                    const response = await this.apiRequest('/api/security/devices/remove', {
+                        method: 'POST',
+                        body: JSON.stringify({ deviceId: deviceId })
+                    });
+
+                    if (response.success) {
+                        this.showToast('Dispositivo eliminado', 'success');
+                        this.loadTrustedDevices();
+                        this.loadSecurityStatus();
+                    } else {
+                        this.showToast(response.error || 'Error al eliminar', 'error');
+                    }
+                } catch (error) {
+                    this.showToast('Error al eliminar dispositivo', 'error');
+                }
+            }
+        }
+    },
+
+    async loadSecurityActivity() {
+        try {
+            const response = await this.apiRequest('/api/security/activity?limit=10');
+            if (response.success) {
+                this.renderSecurityActivity(response.activities);
+            }
+        } catch (error) {
+            console.error('Error loading security activity:', error);
+        }
+    },
+
+    renderSecurityActivity(activities) {
+        const container = document.getElementById('security-activity-list');
+        if (!container) return;
+
+        if (!activities || activities.length === 0) {
+            container.innerHTML = '<div class="activity-loading">No hay actividad reciente</div>';
+            return;
+        }
+
+        const activityIcons = {
+            'WALLET_REGISTERED': { icon: '💳', class: 'success' },
+            'DEVICE_ADDED': { icon: '📱', class: 'success' },
+            'DEVICE_REMOVED': { icon: '📱', class: 'warning' },
+            'WALLET_FAILED_ATTEMPT': { icon: '⚠️', class: 'danger' },
+            'USER_LOCKED': { icon: '🔒', class: 'danger' },
+            '2FA_ENABLED': { icon: '🔐', class: 'success' },
+            'ADMIN_DEVICE_REMOVED': { icon: '👮', class: 'warning' }
+        };
+
+        container.innerHTML = activities.map(activity => {
+            const config = activityIcons[activity.type] || { icon: '📝', class: '' };
+            const time = this.formatRelativeTime(activity.created_at);
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-item-icon ${config.class}">${config.icon}</div>
+                    <div class="activity-item-content">
+                        <div class="activity-item-desc">${activity.description}</div>
+                        <div class="activity-item-time">${time}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    setupSecurityEventListeners() {
+        document.getElementById('add-device-btn')?.addEventListener('click', () => {
+            if (this.walletVerified) {
+                this.showAddDeviceStep(2);
+            } else {
+                this.startDeviceVerification();
+            }
+        });
+
+        document.getElementById('close-add-device-modal')?.addEventListener('click', () => {
+            document.getElementById('add-device-modal').classList.add('hidden');
+        });
+
+        document.getElementById('logout-all-devices-btn')?.addEventListener('click', () => {
+            this.logoutAllDevices();
+        });
+
+        document.getElementById('setup-backup-wallet-btn')?.addEventListener('click', () => {
+            this.setupBackupWallet();
+        });
+
+        document.getElementById('see-all-activity-btn')?.addEventListener('click', () => {
+            this.showAllSecurityActivity();
+        });
+
+        document.getElementById('contact-support-btn')?.addEventListener('click', () => {
+            this.showToast('Contacta a @bunk3r_support en Telegram', 'info');
+        });
+    },
+
+    async logoutAllDevices() {
+        const has2FA = await this.check2FARequired();
+        let code = '';
+        
+        if (has2FA) {
+            code = prompt('Ingresa tu codigo 2FA para cerrar sesion en todos los dispositivos:');
+            if (!code || code.length !== 6) {
+                this.showToast('Codigo 2FA invalido', 'error');
+                return;
+            }
+        }
+
+        if (confirm('¿Estas seguro? Se cerrara sesion en todos los dispositivos excepto este.')) {
+            try {
+                const response = await this.apiRequest('/api/security/devices/remove-all', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        currentDeviceId: this.deviceId,
+                        twofaCode: code
+                    })
+                });
+
+                if (response.success) {
+                    this.showToast(`Sesion cerrada en ${response.removed_count} dispositivos`, 'success');
+                    this.loadTrustedDevices();
+                    this.loadSecurityStatus();
+                } else {
+                    this.showToast(response.error || 'Error al cerrar sesiones', 'error');
+                }
+            } catch (error) {
+                this.showToast('Error al cerrar sesiones', 'error');
+            }
+        }
+    },
+
+    async setupBackupWallet() {
+        const address = prompt('Ingresa la direccion de tu wallet de respaldo:');
+        if (!address) return;
+
+        try {
+            const response = await this.apiRequest('/api/security/wallet/backup', {
+                method: 'POST',
+                body: JSON.stringify({ backupWallet: address })
+            });
+
+            if (response.success) {
+                this.showToast('Wallet de respaldo configurada', 'success');
+                this.loadSecurityStatus();
+            } else {
+                this.showToast(response.error || 'Error al configurar wallet', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al configurar wallet de respaldo', 'error');
+        }
+    },
+
+    async showAllSecurityActivity() {
+        try {
+            const response = await this.apiRequest('/api/security/activity?limit=50');
+            if (response.success && response.activities) {
+                const content = response.activities.map(a => 
+                    `${a.created_at}: ${a.description}`
+                ).join('\n');
+                
+                const modalContent = `
+                    <div class="modal-header">
+                        <span class="modal-title">Historial de Actividad</span>
+                        <button class="modal-close" onclick="App.closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                        ${response.activities.map(activity => `
+                            <div class="activity-item" style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                <div style="font-size: 13px; color: var(--text-primary);">${activity.description}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${this.formatDate(activity.created_at)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                this.showModal(modalContent);
+            }
+        } catch (error) {
+            this.showToast('Error al cargar historial', 'error');
+        }
+    },
+
+    hideAllAuthScreens() {
+        const screens = [
+            'loading-screen',
+            'device-blocked-screen',
+            'wrong-wallet-screen',
+            'account-locked-screen',
+            'setup-2fa-screen',
+            'verify-2fa-screen'
+        ];
+        screens.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+    },
+
+    async initSecuritySystem() {
+        this.generateDeviceId();
+        
+        const isLocked = await this.checkUserLockout();
+        if (isLocked) return false;
+
+        const isTrusted = await this.checkDeviceTrust();
+        this.deviceTrusted = isTrusted;
+
+        this.setupSecurityEventListeners();
+
+        if (this.user) {
+            this.loadSecurityStatus();
+            this.loadTrustedDevices();
+            this.loadSecurityActivity();
+        }
+
+        return true;
     }
 };
 

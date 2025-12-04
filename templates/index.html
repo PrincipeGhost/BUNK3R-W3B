@@ -90,6 +90,150 @@
             </div>
         </div>
 
+        <!-- PANTALLA DE BLOQUEO - DISPOSITIVO NO CONFIABLE -->
+        <div id="device-blocked-screen" class="auth-screen hidden">
+            <div class="auth-container">
+                <div class="auth-logo">BUNK<span class="red">3</span>R</div>
+                <div class="auth-icon">🔐</div>
+                <h2 class="auth-title">Acceso Restringido</h2>
+                <p class="auth-subtitle">Para acceder a tu billetera, verifica tu dispositivo</p>
+                
+                <div class="wallet-preview-card" id="wallet-preview-card">
+                    <div class="wallet-preview-label">Tu saldo</div>
+                    <div class="wallet-preview-amount">
+                        <span class="blur-amount">$***</span>
+                    </div>
+                    <div class="wallet-preview-hint">Conecta tu wallet para ver el saldo</div>
+                </div>
+                
+                <div class="device-info-card">
+                    <div class="device-info-icon">📱</div>
+                    <div class="device-info-text">
+                        <span class="device-info-title">Dispositivo no reconocido</span>
+                        <span class="device-info-desc">Este dispositivo no esta en tu lista de confianza</span>
+                    </div>
+                </div>
+                
+                <button class="auth-btn primary" id="trust-device-btn">
+                    <span class="btn-icon">🔗</span>
+                    Conectar Wallet de Telegram
+                </button>
+                
+                <button class="auth-btn secondary" id="view-readonly-btn">
+                    Ver en modo lectura
+                </button>
+                
+                <p class="auth-hint">Necesitas conectar la misma wallet registrada en tu cuenta y verificar con 2FA</p>
+            </div>
+        </div>
+
+        <!-- PANTALLA DE WALLET INCORRECTA -->
+        <div id="wrong-wallet-screen" class="auth-screen hidden">
+            <div class="auth-container">
+                <div class="auth-logo">BUNK<span class="red">3</span>R</div>
+                <div class="auth-icon">⚠️</div>
+                <h2 class="auth-title">Wallet Incorrecta</h2>
+                <p class="auth-subtitle">Esta no es tu wallet registrada</p>
+                
+                <div class="wrong-wallet-info">
+                    <div class="wrong-wallet-row">
+                        <span class="wrong-wallet-label">Wallet esperada:</span>
+                        <span class="wrong-wallet-value" id="expected-wallet-hint">UQ...xxxx</span>
+                    </div>
+                    <div class="wrong-wallet-row">
+                        <span class="wrong-wallet-label">Wallet conectada:</span>
+                        <span class="wrong-wallet-value wrong" id="connected-wallet-hint">UQ...yyyy</span>
+                    </div>
+                </div>
+                
+                <div class="attempts-warning" id="attempts-warning">
+                    <span class="attempts-icon">⚠️</span>
+                    <span class="attempts-text">Intentos restantes: <strong id="attempts-remaining">3</strong></span>
+                </div>
+                
+                <button class="auth-btn primary" id="retry-wallet-btn">Conectar otra wallet</button>
+                <button class="auth-btn secondary" id="cancel-wallet-btn">Cancelar</button>
+                
+                <p class="auth-hint">Debes usar EXACTAMENTE la misma wallet asociada a tu cuenta</p>
+            </div>
+        </div>
+
+        <!-- PANTALLA DE CUENTA BLOQUEADA -->
+        <div id="account-locked-screen" class="auth-screen hidden">
+            <div class="auth-container">
+                <div class="auth-logo">BUNK<span class="red">3</span>R</div>
+                <div class="auth-icon">🔒</div>
+                <h2 class="auth-title">Cuenta Bloqueada</h2>
+                <p class="auth-subtitle">Demasiados intentos fallidos</p>
+                
+                <div class="lockout-timer">
+                    <div class="lockout-icon">⏱️</div>
+                    <div class="lockout-time" id="lockout-time">15:00</div>
+                    <div class="lockout-text">minutos restantes</div>
+                </div>
+                
+                <div class="lockout-info">
+                    <p>Tu cuenta ha sido bloqueada temporalmente por seguridad.</p>
+                    <p>Intentaste conectar una wallet diferente a la registrada.</p>
+                </div>
+                
+                <button class="auth-btn secondary" id="contact-support-btn">Contactar Soporte</button>
+                
+                <p class="auth-hint">Si no reconoces esta actividad, contacta a soporte inmediatamente</p>
+            </div>
+        </div>
+
+        <!-- MODAL AGREGAR DISPOSITIVO DE CONFIANZA -->
+        <div id="add-device-modal" class="modal-overlay hidden">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <span class="modal-title">Agregar Dispositivo de Confianza</span>
+                    <button class="modal-close" id="close-add-device-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="add-device-steps">
+                        <div class="step-item active" data-step="1">
+                            <div class="step-number">1</div>
+                            <div class="step-text">Conectar Wallet</div>
+                        </div>
+                        <div class="step-divider"></div>
+                        <div class="step-item" data-step="2">
+                            <div class="step-number">2</div>
+                            <div class="step-text">Verificar 2FA</div>
+                        </div>
+                        <div class="step-divider"></div>
+                        <div class="step-item" data-step="3">
+                            <div class="step-number">3</div>
+                            <div class="step-text">Confirmar</div>
+                        </div>
+                    </div>
+                    
+                    <div class="add-device-content" id="add-device-step-1">
+                        <div class="step-icon">🔗</div>
+                        <h3>Conecta tu Wallet de Telegram</h3>
+                        <p>Debes conectar la misma wallet que tienes registrada en tu cuenta</p>
+                        <button class="auth-btn primary" id="add-device-connect-wallet">Conectar Wallet</button>
+                    </div>
+                    
+                    <div class="add-device-content hidden" id="add-device-step-2">
+                        <div class="step-icon">🔐</div>
+                        <h3>Verificacion 2FA</h3>
+                        <p>Ingresa el codigo de tu app de autenticacion</p>
+                        <input type="text" class="auth-input" id="add-device-2fa-code" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="000000">
+                        <button class="auth-btn primary" id="add-device-verify-2fa">Verificar</button>
+                    </div>
+                    
+                    <div class="add-device-content hidden" id="add-device-step-3">
+                        <div class="step-icon">📱</div>
+                        <h3>Nombra tu Dispositivo</h3>
+                        <p>Dale un nombre para identificarlo facilmente</p>
+                        <input type="text" class="auth-input" id="add-device-name" placeholder="Ej: Mi telefono principal">
+                        <button class="auth-btn primary" id="add-device-confirm">Agregar Dispositivo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="main-app" class="hidden">
             <!-- BARRA SUPERIOR -->
             <div class="top-bar">
@@ -590,6 +734,77 @@
                                 <div class="account-info-text">
                                     <span class="account-label">Envios rastreados</span>
                                     <span class="account-value">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- SECCION SEGURIDAD -->
+                        <div class="security-section">
+                            <h3 class="security-section-title">Seguridad</h3>
+                            
+                            <!-- Widget Estado de Seguridad -->
+                            <div class="security-status-widget" id="security-status-widget">
+                                <div class="security-status-header">
+                                    <div class="security-status-icon" id="security-status-icon">🛡️</div>
+                                    <div class="security-status-info">
+                                        <span class="security-status-title" id="security-status-title">Tu cuenta esta protegida</span>
+                                        <div class="security-score-bar">
+                                            <div class="security-score-fill" id="security-score-fill" style="width: 0%"></div>
+                                        </div>
+                                        <span class="security-score-text" id="security-score-text">Nivel: --</span>
+                                    </div>
+                                </div>
+                                <div class="security-indicators">
+                                    <div class="security-indicator" id="indicator-wallet">
+                                        <span class="indicator-icon">💳</span>
+                                        <span class="indicator-text">Wallet</span>
+                                        <span class="indicator-status pending">--</span>
+                                    </div>
+                                    <div class="security-indicator" id="indicator-2fa">
+                                        <span class="indicator-icon">🔐</span>
+                                        <span class="indicator-text">2FA</span>
+                                        <span class="indicator-status pending">--</span>
+                                    </div>
+                                    <div class="security-indicator" id="indicator-devices">
+                                        <span class="indicator-icon">📱</span>
+                                        <span class="indicator-text">Dispositivos</span>
+                                        <span class="indicator-status pending">0/2</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Gestion de Dispositivos -->
+                            <div class="devices-management">
+                                <div class="devices-header">
+                                    <h4 class="devices-title">Dispositivos de Confianza</h4>
+                                    <button class="add-device-btn" id="add-device-btn">+ Agregar</button>
+                                </div>
+                                <div class="devices-list" id="trusted-devices-list">
+                                    <div class="devices-loading">Cargando dispositivos...</div>
+                                </div>
+                                <button class="logout-all-btn" id="logout-all-devices-btn">
+                                    Cerrar sesion en todos los dispositivos
+                                </button>
+                            </div>
+                            
+                            <!-- Wallet de Respaldo -->
+                            <div class="backup-wallet-section">
+                                <div class="backup-wallet-header">
+                                    <h4 class="backup-wallet-title">Wallet de Respaldo</h4>
+                                    <span class="backup-wallet-badge" id="backup-wallet-badge">No configurada</span>
+                                </div>
+                                <p class="backup-wallet-desc">Registra una wallet secundaria para recuperar tu cuenta en caso de emergencia.</p>
+                                <button class="backup-wallet-btn" id="setup-backup-wallet-btn">Configurar Wallet de Respaldo</button>
+                            </div>
+                            
+                            <!-- Historial de Actividad -->
+                            <div class="activity-history-section">
+                                <div class="activity-header">
+                                    <h4 class="activity-title">Actividad de Seguridad</h4>
+                                    <button class="see-all-btn" id="see-all-activity-btn">Ver todo</button>
+                                </div>
+                                <div class="activity-list" id="security-activity-list">
+                                    <div class="activity-loading">Cargando actividad...</div>
                                 </div>
                             </div>
                         </div>

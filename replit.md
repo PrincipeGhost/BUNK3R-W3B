@@ -97,6 +97,56 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: SISTEMA DE SEGURIDAD DE 17 PUNTOS PARA BUNK3RCO1N
+  - **Sistema Completo de Seguridad para Wallet y Dispositivos:**
+  
+  1. Bloqueo de BUNK3RCO1N en dispositivos no confiables
+  2. Validacion de wallet unica por usuario (primera wallet registrada)
+  3. Gestion de dispositivos de confianza (maximo 2)
+  4. Integracion con sistema 2FA existente
+  5. Controles de admin para monitoreo de usuarios/dispositivos
+  6. Notificaciones de Telegram para eventos de seguridad
+  7. Pantalla de bloqueo para dispositivos no confiables
+  8. Pantalla de wallet incorrecta con intentos restantes
+  9. Pantalla de cuenta bloqueada con temporizador
+  10. Modal de agregar dispositivo de confianza (3 pasos)
+  11. Widget de estado de seguridad con score
+  12. Listado y gestion de dispositivos en perfil
+  13. Sistema de wallet de respaldo para recuperacion
+  14. Historial de actividad de seguridad
+  15. Sistema de bloqueo por intentos fallidos (3 intentos = 15 min bloqueo)
+  16. Expiracion automatica de dispositivos (60 dias)
+  17. Cerrar sesion en todos los dispositivos
+  
+  - **Nuevas tablas en base de datos:**
+    - `trusted_devices` - Dispositivos de confianza por usuario
+    - `wallet_failed_attempts` - Intentos fallidos de wallet
+    - `user_lockouts` - Bloqueos temporales de cuenta
+    - `security_activity_log` - Historial de actividad de seguridad
+    - `security_alerts` - Alertas de seguridad para admin
+  
+  - **Nuevos endpoints de seguridad:**
+    - /api/security/wallet/validate - Validar wallet conectada
+    - /api/security/wallet/primary - Obtener wallet primaria
+    - /api/security/wallet/backup - Registrar wallet de respaldo
+    - /api/security/status - Estado de seguridad completo
+    - /api/security/devices - Lista de dispositivos
+    - /api/security/devices/check - Verificar dispositivo actual
+    - /api/security/devices/add - Agregar dispositivo de confianza
+    - /api/security/devices/remove - Eliminar dispositivo
+    - /api/security/devices/remove-all - Cerrar sesion en todos
+    - /api/security/activity - Historial de actividad
+    - /api/security/lockout/check - Verificar bloqueo
+  
+  - **Endpoints de admin:**
+    - /api/admin/security/users - Listar usuarios con dispositivos
+    - /api/admin/security/user/<id>/devices - Dispositivos de usuario
+    - /api/admin/security/user/<id>/device/remove - Eliminar dispositivo
+    - /api/admin/security/alerts - Alertas de seguridad
+    - /api/admin/security/alerts/<id>/resolve - Resolver alerta
+    - /api/admin/security/statistics - Estadisticas de seguridad
+    - /api/admin/security/user/<id>/activity - Actividad de usuario
+
 - 2024-12-04: Implemented Trusted Devices System for Wallet Synchronization
   - New database table `trusted_devices` for storing trusted device information per user
   - API endpoints: /api/devices/trusted (list), /check (verify), /add, /remove
