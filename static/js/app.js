@@ -25,6 +25,7 @@ const App = {
     MERCHANT_WALLET: null,
     _initialDataLoaded: false,
     _securityDataLoaded: false,
+    editModeActive: false,
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -822,6 +823,13 @@ const App = {
             });
         });
         
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', () => {
+                this.toggleEditMode();
+            });
+        }
+        
         this.setupAvatarUpload();
         this.initExchange();
     },
@@ -1118,7 +1126,7 @@ const App = {
                 
                 response.posts.forEach(post => {
                     const item = document.createElement('div');
-                    item.className = 'gallery-item';
+                    item.className = 'gallery-item' + (this.editModeActive ? ' edit-mode' : '');
                     item.dataset.postId = post.id;
                     
                     let thumbnail = '';
@@ -1140,8 +1148,19 @@ const App = {
                         thumbnail = `<div class="gallery-text-preview">${captionPreview}</div>`;
                     }
                     
+                    if (this.editModeActive) {
+                        thumbnail += `<button class="gallery-delete-btn" onclick="event.stopPropagation(); App.deleteGalleryPost(${post.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>`;
+                    }
+                    
                     item.innerHTML = thumbnail;
-                    item.addEventListener('click', () => this.openPostDetail(post.id));
+                    if (!this.editModeActive) {
+                        item.addEventListener('click', () => this.openPostDetail(post.id));
+                    }
                     gallery.appendChild(item);
                 });
             } else {
@@ -1152,6 +1171,51 @@ const App = {
             console.error('Error loading profile gallery:', error);
             gallery.innerHTML = '';
             emptyGallery?.classList.remove('hidden');
+        }
+    },
+    
+    toggleEditMode() {
+        this.editModeActive = !this.editModeActive;
+        const editBtn = document.getElementById('edit-profile-btn');
+        
+        if (editBtn) {
+            if (this.editModeActive) {
+                editBtn.textContent = 'Listo';
+                editBtn.classList.add('editing');
+            } else {
+                editBtn.textContent = 'Editar perfil';
+                editBtn.classList.remove('editing');
+            }
+        }
+        
+        this.loadProfileGallery();
+    },
+    
+    async deleteGalleryPost(postId) {
+        if (!confirm('¿Estás seguro de que quieres eliminar esta publicación?')) {
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest(`/api/publications/${postId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Publicación eliminada', 'success');
+                this.loadProfileGallery();
+                
+                const postsCountEl = document.getElementById('profile-page-posts');
+                if (postsCountEl) {
+                    const currentCount = parseInt(postsCountEl.textContent) || 0;
+                    postsCountEl.textContent = Math.max(0, currentCount - 1);
+                }
+            } else {
+                this.showToast(response.error || 'Error al eliminar', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            this.showToast('Error al eliminar la publicación', 'error');
         }
     },
     

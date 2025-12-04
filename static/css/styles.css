@@ -7344,6 +7344,58 @@ body {
     justify-content: center;
 }
 
+.gallery-item.edit-mode {
+    animation: shake 0.3s ease-in-out;
+}
+
+.gallery-item.edit-mode::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+.gallery-delete-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 28px;
+    height: 28px;
+    background: rgba(220, 38, 38, 0.9);
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.gallery-delete-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.gallery-delete-btn svg {
+    stroke: white;
+}
+
+.profile-page-btn.editing {
+    background: linear-gradient(135deg, #48bb78, #38a169) !important;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-1deg); }
+    75% { transform: rotate(1deg); }
+}
+
 .empty-gallery {
     display: flex;
     flex-direction: column;
