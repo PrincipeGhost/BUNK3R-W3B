@@ -31,6 +31,7 @@ from tracking.email_service import EmailService, prepare_tracking_email_data, se
 from tracking.security import SecurityManager
 from tracking.encryption import encryption_manager
 from tracking.cloudinary_service import cloudinary_service
+from tracking.smspool_service import SMSPoolService, VirtualNumbersManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,10 +62,15 @@ try:
     security_manager = SecurityManager(db_manager)
     security_manager.initialize_tables()
     logger.info("Security manager initialized")
+    db_manager.initialize_virtual_numbers_tables()
+    logger.info("Virtual numbers tables initialized")
+    vn_manager = VirtualNumbersManager(db_manager)
+    logger.info("Virtual numbers manager initialized")
 except Exception as e:
     logger.error(f"Database connection failed: {e}")
     db_manager = None
     security_manager = None
+    vn_manager = None
 
 STATUS_MAP = {
     'RETENIDO': {'icon': '📦', 'label': 'Retenido', 'color': '#f39c12'},
@@ -4626,6 +4632,465 @@ def check_cloudinary_status():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS PARA NUMEROS VIRTUALES
+# ============================================================
+
+@app.route('/api/vn/providers', methods=['GET'])
+@require_telegram_user
+def get_vn_providers():
+    """Get available virtual number providers (balance hidden for non-admins)"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        settings = db_manager.get_all_virtual_number_settings()
+        user_id = str(request.telegram_user.get('id'))
+        is_admin = is_owner(user_id)
+        
+        providers = []
+        
+        if settings.get('smspool_enabled', 'true') == 'true':
+            provider_info = {
+                'id': 'smspool',
+                'name': 'SMSPool',
+                'enabled': True,
+                'type': 'api'
+            }
+            if is_admin:
+                balance_result = vn_manager.get_smspool_balance()
+                provider_info['balance'] = balance_result.get('balance', 0) if balance_result.get('success') else 0
+            providers.append(provider_info)
+        
+        if settings.get('legitsms_enabled', 'true') == 'true':
+            inventory = db_manager.get_legitsms_inventory(available_only=True)
+            providers.append({
+                'id': 'legitsms',
+                'name': 'Legit SMS',
+                'enabled': True,
+                'available_numbers': len(inventory),
+                'type': 'inventory'
+            })
+        
+        return jsonify({
+            'success': True,
+            'providers': providers
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting VN providers: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/countries', methods=['GET'])
+@require_telegram_user
+def get_vn_countries():
+    """Get available countries for virtual numbers"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        provider = request.args.get('provider', 'smspool')
+        
+        if provider == 'smspool':
+            if not vn_manager.smspool.api_key:
+                return jsonify({'success': False, 'error': 'Servicio no configurado'}), 503
+            result = vn_manager.get_available_countries()
+            if result['success']:
+                return jsonify({
+                    'success': True,
+                    'countries': result['countries']
+                })
+            return jsonify({'success': False, 'error': result.get('error', 'Error al obtener paises')}), 500
+        
+        elif provider == 'legitsms':
+            inventory = db_manager.get_legitsms_inventory(available_only=True)
+            countries = {}
+            for item in inventory:
+                code = item['country_code']
+                if code not in countries:
+                    countries[code] = {
+                        'id': code,
+                        'name': item.get('country_name', code),
+                        'short_name': code,
+                        'flag': vn_manager.smspool._get_flag_emoji(code)
+                    }
+            return jsonify({
+                'success': True,
+                'countries': list(countries.values())
+            })
+        
+        return jsonify({'success': False, 'error': 'Invalid provider'}), 400
+        
+    except Exception as e:
+        logger.error(f"Error getting VN countries: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/services', methods=['GET'])
+@require_telegram_user
+def get_vn_services():
+    """Get available services for a country with prices"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        provider = request.args.get('provider', 'smspool')
+        country = request.args.get('country')
+        
+        if not country:
+            return jsonify({'success': False, 'error': 'Pais requerido'}), 400
+        
+        settings = db_manager.get_all_virtual_number_settings()
+        commission = float(settings.get('commission_percent', 30))
+        
+        if provider == 'smspool':
+            if not vn_manager.smspool.api_key:
+                return jsonify({'success': False, 'error': 'Servicio no configurado'}), 503
+            result = vn_manager.get_available_services(country, commission)
+            if result['success']:
+                return jsonify({
+                    'success': True,
+                    'services': result['services']
+                })
+            return jsonify({'success': False, 'error': result.get('error', 'Failed to get services')}), 500
+        
+        elif provider == 'legitsms':
+            inventory = db_manager.get_legitsms_inventory(available_only=True)
+            services = {}
+            for item in inventory:
+                if item['country_code'] == country:
+                    code = item['service_code']
+                    if code not in services:
+                        price_info = vn_manager.calculate_user_price(
+                            float(item.get('cost_usd', 0)), 
+                            commission
+                        )
+                        services[code] = {
+                            'id': code,
+                            'name': item.get('service_name', code),
+                            'short_name': code,
+                            'price': float(item.get('cost_usd', 0)),
+                            'original_price_usd': price_info['original_usd'],
+                            'price_usd': price_info['with_commission_usd'],
+                            'price_bunkercoin': price_info['bunkercoin'],
+                            'icon': vn_manager.smspool._get_service_icon(item.get('service_name', ''))
+                        }
+            return jsonify({
+                'success': True,
+                'services': list(services.values())
+            })
+        
+        return jsonify({'success': False, 'error': 'Invalid provider'}), 400
+        
+    except Exception as e:
+        logger.error(f"Error getting VN services: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/purchase', methods=['POST'])
+@require_telegram_user
+def purchase_vn():
+    """Purchase a virtual number"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Service not available'}), 503
+        
+        user_id = str(request.telegram_user.get('id'))
+        data = request.get_json() or {}
+        
+        provider = data.get('provider', 'smspool')
+        country = data.get('country')
+        service = data.get('service')
+        country_name = data.get('countryName', '')
+        service_name = data.get('serviceName', '')
+        
+        if not country or not service:
+            return jsonify({'success': False, 'error': 'Country and service required'}), 400
+        
+        settings = db_manager.get_all_virtual_number_settings()
+        commission = float(settings.get('commission_percent', 30))
+        
+        if provider == 'smspool':
+            result = vn_manager.purchase_virtual_number(
+                user_id, country, service, 
+                country_name, service_name, 
+                commission
+            )
+            return jsonify(result)
+        
+        elif provider == 'legitsms':
+            return jsonify({'success': False, 'error': 'Legit SMS not yet implemented'}), 501
+        
+        return jsonify({'success': False, 'error': 'Invalid provider'}), 400
+        
+    except Exception as e:
+        logger.error(f"Error purchasing VN: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/check/<order_id>', methods=['GET'])
+@require_telegram_user
+def check_vn_sms(order_id):
+    """Check if SMS has been received for an order"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        if not vn_manager.smspool.api_key:
+            return jsonify({'success': False, 'error': 'Servicio no configurado'}), 503
+        
+        user_id = str(request.telegram_user.get('id'))
+        result = vn_manager.check_sms_status(order_id, user_id)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error checking VN SMS: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/cancel/<order_id>', methods=['POST'])
+@require_telegram_user
+def cancel_vn_order(order_id):
+    """Cancel a virtual number order"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        if not vn_manager.smspool.api_key:
+            return jsonify({'success': False, 'error': 'Servicio no configurado'}), 503
+        
+        user_id = str(request.telegram_user.get('id'))
+        result = vn_manager.cancel_order(order_id, user_id)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error cancelling VN order: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/history', methods=['GET'])
+@require_telegram_user
+def get_vn_history():
+    """Get user's virtual number order history"""
+    try:
+        if not vn_manager:
+            return jsonify({'success': False, 'error': 'Service not available'}), 503
+        
+        user_id = str(request.telegram_user.get('id'))
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
+        
+        result = vn_manager.get_user_history(user_id, limit, offset)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting VN history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vn/active', methods=['GET'])
+@require_telegram_user
+def get_vn_active():
+    """Get user's active virtual number orders"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        user_id = str(request.telegram_user.get('id'))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, provider, country_code, country_name, service_code,
+                           service_name, phone_number, sms_code, status,
+                           bunkercoin_charged, expires_at, created_at
+                    FROM virtual_number_orders
+                    WHERE user_id = %s AND status IN ('pending', 'active')
+                    ORDER BY created_at DESC
+                """, (user_id,))
+                
+                orders = []
+                for row in cur.fetchall():
+                    orders.append({
+                        'id': str(row['id']),
+                        'provider': row['provider'],
+                        'country': row['country_name'] or row['country_code'],
+                        'service': row['service_name'] or row['service_code'],
+                        'phoneNumber': row['phone_number'],
+                        'smsCode': row['sms_code'],
+                        'status': row['status'],
+                        'cost': float(row['bunkercoin_charged']) if row['bunkercoin_charged'] else 0,
+                        'expiresAt': row['expires_at'].isoformat() if row['expires_at'] else None,
+                        'createdAt': row['created_at'].isoformat() if row['created_at'] else None
+                    })
+        
+        return jsonify({
+            'success': True,
+            'orders': orders
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting active VN orders: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS ADMIN PARA NUMEROS VIRTUALES
+# ============================================================
+
+@app.route('/api/admin/vn/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_admin_vn_stats():
+    """Admin: Get virtual number statistics"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        days = int(request.args.get('days', 30))
+        stats = db_manager.get_virtual_number_stats(days)
+        
+        balance_result = vn_manager.get_smspool_balance() if vn_manager else {'success': False}
+        
+        return jsonify({
+            'success': True,
+            'stats': stats,
+            'smspoolBalance': balance_result.get('balance', 0) if balance_result.get('success') else 0
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting admin VN stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/vn/settings', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_admin_vn_settings():
+    """Admin: Get virtual number settings"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        settings = db_manager.get_all_virtual_number_settings()
+        
+        return jsonify({
+            'success': True,
+            'settings': settings
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting admin VN settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/vn/settings', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def update_admin_vn_settings():
+    """Admin: Update virtual number settings"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        data = request.get_json() or {}
+        
+        allowed_keys = ['commission_percent', 'smspool_enabled', 'legitsms_enabled', 'default_expiry_minutes']
+        
+        for key, value in data.items():
+            if key in allowed_keys:
+                db_manager.set_virtual_number_setting(key, str(value))
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error updating admin VN settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/vn/inventory', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_admin_vn_inventory():
+    """Admin: Get Legit SMS inventory"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        available_only = request.args.get('available_only', 'true').lower() == 'true'
+        inventory = db_manager.get_legitsms_inventory(available_only)
+        
+        return jsonify({
+            'success': True,
+            'inventory': inventory
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting admin VN inventory: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/vn/inventory', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def add_admin_vn_inventory():
+    """Admin: Add number to Legit SMS inventory"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        data = request.get_json() or {}
+        
+        country_code = data.get('countryCode')
+        country_name = data.get('countryName')
+        service_code = data.get('serviceCode')
+        service_name = data.get('serviceName')
+        phone_number = data.get('phoneNumber')
+        cost_usd = float(data.get('costUsd', 0))
+        
+        if not all([country_code, service_code, phone_number]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        success = db_manager.add_to_legitsms_inventory(
+            country_code, country_name, service_code, service_name, phone_number, cost_usd
+        )
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error adding to admin VN inventory: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/vn/inventory/<inventory_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def delete_admin_vn_inventory(inventory_id):
+    """Admin: Delete number from Legit SMS inventory"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        success = db_manager.remove_from_legitsms_inventory(inventory_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error deleting from admin VN inventory: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/virtual-numbers')
+@require_telegram_auth
+def virtual_numbers_page():
+    """Render virtual numbers page"""
+    return render_template('virtual_numbers.html')
 
 
 if __name__ == '__main__':

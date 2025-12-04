@@ -517,6 +517,8 @@ const App = {
                     this.showPage('bots');
                 } else if (section === 'settings') {
                     this.showSettingsScreen();
+                } else if (section === 'numeros') {
+                    window.location.href = '/virtual-numbers';
                 } else {
                     this.showToast('Seccion: ' + item.textContent.trim(), 'info');
                 }

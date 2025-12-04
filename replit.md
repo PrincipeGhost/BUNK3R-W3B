@@ -37,6 +37,14 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
   - All content encrypted client-side before external storage
 - **Marketplace:** Sections for products and dynamic bot management (purchase, ownership).
 - **External Exchange:** Integration with ChangeNow cryptocurrency exchange for in-app currency swapping.
+- **Virtual Numbers System:** Purchase phone numbers for SMS verification using BUNK3RCO1N:
+  - SMSPool API integration for automated number provisioning
+  - Server-side price calculation with 30% commission (1 USD = 10 BUNK3RCO1N)
+  - Atomic purchase flow: order creation → wallet debit → provider API → refund on failure
+  - Automatic SMS polling every 5 seconds
+  - Order history and active orders management
+  - Admin-only provider balance visibility
+  - API key validation on all SMSPool endpoints
 
 **Technical Implementations:**
 - **Frontend:** Vanilla JavaScript for dynamic interactions, CSS3 for styling.

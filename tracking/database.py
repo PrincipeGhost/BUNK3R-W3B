@@ -17,7 +17,7 @@ try:
 except ImportError:
     SPAIN_TZ = None
 
-from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL
+from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL, CREATE_VIRTUAL_NUMBERS_SQL
 
 logger = logging.getLogger(__name__)
 
@@ -1466,6 +1466,157 @@ class DatabaseManager:
             return True
         except Exception as e:
             logger.error(f"Error initializing encrypted posts tables: {e}")
+            return False
+    
+    def initialize_virtual_numbers_tables(self):
+        """Inicializar tablas para sistema de numeros virtuales"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(CREATE_VIRTUAL_NUMBERS_SQL)
+                    conn.commit()
+            logger.info("Virtual numbers tables initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Error initializing virtual numbers tables: {e}")
+            return False
+    
+    def get_virtual_number_setting(self, key: str, default: str = None) -> str:
+        """Obtener configuracion de numeros virtuales"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT setting_value FROM virtual_number_settings WHERE setting_key = %s",
+                        (key,)
+                    )
+                    result = cur.fetchone()
+                    return result[0] if result else default
+        except Exception as e:
+            logger.error(f"Error getting virtual number setting {key}: {e}")
+            return default
+    
+    def set_virtual_number_setting(self, key: str, value: str) -> bool:
+        """Establecer configuracion de numeros virtuales"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO virtual_number_settings (setting_key, setting_value, updated_at)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (setting_key) DO UPDATE 
+                        SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP
+                    """, (key, value))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error setting virtual number setting {key}: {e}")
+            return False
+    
+    def get_all_virtual_number_settings(self) -> dict:
+        """Obtener todas las configuraciones de numeros virtuales"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("SELECT setting_key, setting_value FROM virtual_number_settings")
+                    settings = {}
+                    for row in cur.fetchall():
+                        settings[row['setting_key']] = row['setting_value']
+                    return settings
+        except Exception as e:
+            logger.error(f"Error getting all virtual number settings: {e}")
+            return {}
+    
+    def get_virtual_number_stats(self, days: int = 30) -> dict:
+        """Obtener estadisticas de numeros virtuales"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT 
+                            COUNT(*) as total_orders,
+                            COUNT(CASE WHEN status = 'received' THEN 1 END) as successful,
+                            COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
+                            COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
+                            COALESCE(SUM(bunkercoin_charged), 0) as total_revenue,
+                            COALESCE(SUM(cost_usd), 0) as total_cost,
+                            COALESCE(SUM(cost_with_commission - cost_usd), 0) as total_profit_usd
+                        FROM virtual_number_orders
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                    """, (days,))
+                    result = cur.fetchone()
+                    
+                    cur.execute("""
+                        SELECT 
+                            DATE(created_at) as date,
+                            COUNT(*) as orders,
+                            COALESCE(SUM(bunkercoin_charged), 0) as revenue
+                        FROM virtual_number_orders
+                        WHERE created_at >= NOW() - INTERVAL '7 days'
+                        GROUP BY DATE(created_at)
+                        ORDER BY date DESC
+                    """)
+                    daily_stats = [dict(row) for row in cur.fetchall()]
+                    
+                    return {
+                        'summary': dict(result) if result else {},
+                        'daily': daily_stats
+                    }
+        except Exception as e:
+            logger.error(f"Error getting virtual number stats: {e}")
+            return {'summary': {}, 'daily': []}
+    
+    def get_legitsms_inventory(self, available_only: bool = True) -> list:
+        """Obtener inventario de numeros Legit SMS"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    query = """
+                        SELECT * FROM virtual_number_inventory
+                        WHERE provider = 'legitsms'
+                    """
+                    if available_only:
+                        query += " AND is_available = TRUE"
+                    query += " ORDER BY created_at DESC"
+                    
+                    cur.execute(query)
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting legitsms inventory: {e}")
+            return []
+    
+    def add_to_legitsms_inventory(self, country_code: str, country_name: str,
+                                   service_code: str, service_name: str,
+                                   phone_number: str, cost_usd: float) -> bool:
+        """Agregar numero al inventario de Legit SMS"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO virtual_number_inventory 
+                        (provider, country_code, country_name, service_code, service_name, phone_number, cost_usd)
+                        VALUES ('legitsms', %s, %s, %s, %s, %s, %s)
+                    """, (country_code, country_name, service_code, service_name, phone_number, cost_usd))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error adding to legitsms inventory: {e}")
+            return False
+    
+    def remove_from_legitsms_inventory(self, inventory_id: str) -> bool:
+        """Eliminar numero del inventario de Legit SMS"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM virtual_number_inventory WHERE id = %s AND is_available = TRUE",
+                        (inventory_id,)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    return success
+        except Exception as e:
+            logger.error(f"Error removing from legitsms inventory: {e}")
             return False
     
     def create_encrypted_post(self, user_id: str, content_type: str, caption: str = None,

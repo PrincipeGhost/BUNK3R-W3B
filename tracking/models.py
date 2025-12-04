@@ -801,3 +801,108 @@ CREATE TABLE IF NOT EXISTS encryption_keys (
 CREATE INDEX IF NOT EXISTS idx_encryption_keys_user ON encryption_keys(user_id);
 CREATE INDEX IF NOT EXISTS idx_encryption_keys_active ON encryption_keys(is_active);
 """
+
+CREATE_VIRTUAL_NUMBERS_SQL = """
+-- ============================================================
+-- SISTEMA DE NUMEROS VIRTUALES
+-- ============================================================
+
+-- Tabla principal de ordenes de numeros virtuales
+CREATE TABLE IF NOT EXISTS virtual_number_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL,
+    provider VARCHAR(20) NOT NULL,  -- 'smspool' | 'legitsms'
+    country_code VARCHAR(10) NOT NULL,
+    country_name VARCHAR(100),
+    service_code VARCHAR(50) NOT NULL,
+    service_name VARCHAR(100),
+    phone_number VARCHAR(50),
+    provider_order_id VARCHAR(100),
+    
+    -- Precios
+    cost_usd DECIMAL(10,4),           -- Precio original USD del proveedor
+    cost_with_commission DECIMAL(10,4), -- Precio + comision
+    bunkercoin_charged DECIMAL(10,2),   -- Lo que pago el usuario en BUNK3RCO1N
+    
+    -- SMS recibido
+    sms_code TEXT,
+    sms_full_text TEXT,
+    
+    -- Estado: pending, active, received, cancelled, expired, refunded
+    status VARCHAR(20) DEFAULT 'pending',
+    expires_at TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_vn_orders_user ON virtual_number_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_vn_orders_status ON virtual_number_orders(status);
+CREATE INDEX IF NOT EXISTS idx_vn_orders_created ON virtual_number_orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vn_orders_provider ON virtual_number_orders(provider);
+
+-- ============================================================
+-- INVENTARIO DE NUMEROS MANUALES (Legit SMS)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS virtual_number_inventory (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider VARCHAR(20) DEFAULT 'legitsms',
+    country_code VARCHAR(10) NOT NULL,
+    country_name VARCHAR(100),
+    service_code VARCHAR(50) NOT NULL,
+    service_name VARCHAR(100),
+    phone_number VARCHAR(50) NOT NULL,
+    
+    cost_usd DECIMAL(10,4),  -- Lo que costo al comprarlo
+    is_available BOOLEAN DEFAULT TRUE,
+    assigned_to_user VARCHAR(255),
+    assigned_order_id UUID,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_vn_inventory_available ON virtual_number_inventory(is_available);
+CREATE INDEX IF NOT EXISTS idx_vn_inventory_provider ON virtual_number_inventory(provider);
+CREATE INDEX IF NOT EXISTS idx_vn_inventory_country ON virtual_number_inventory(country_code);
+CREATE INDEX IF NOT EXISTS idx_vn_inventory_service ON virtual_number_inventory(service_code);
+
+-- ============================================================
+-- CONFIGURACION DE NUMEROS VIRTUALES (Admin)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS virtual_number_settings (
+    id SERIAL PRIMARY KEY,
+    setting_key VARCHAR(50) UNIQUE NOT NULL,
+    setting_value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Valores iniciales de configuracion
+INSERT INTO virtual_number_settings (setting_key, setting_value) VALUES
+    ('commission_percent', '30'),
+    ('smspool_enabled', 'true'),
+    ('legitsms_enabled', 'true'),
+    ('default_expiry_minutes', '20'),
+    ('usd_to_bunkercoin_rate', '10')
+ON CONFLICT (setting_key) DO NOTHING;
+
+-- ============================================================
+-- ESTADISTICAS DE VENTAS DE NUMEROS VIRTUALES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS virtual_number_stats (
+    id SERIAL PRIMARY KEY,
+    stat_date DATE NOT NULL,
+    provider VARCHAR(20) NOT NULL,
+    orders_count INTEGER DEFAULT 0,
+    successful_count INTEGER DEFAULT 0,
+    cancelled_count INTEGER DEFAULT 0,
+    revenue_bunkercoin DECIMAL(12,2) DEFAULT 0,
+    cost_usd DECIMAL(12,4) DEFAULT 0,
+    profit_usd DECIMAL(12,4) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(stat_date, provider)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vn_stats_date ON virtual_number_stats(stat_date DESC);
+CREATE INDEX IF NOT EXISTS idx_vn_stats_provider ON virtual_number_stats(provider);
+"""
