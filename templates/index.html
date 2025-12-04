@@ -834,6 +834,43 @@
                 </div>
             </div>
 
+            <!-- PAGINA NOTIFICACIONES -->
+            <div id="notifications-screen" class="page-screen hidden">
+                <div class="notifications-header">
+                    <button class="back-btn" onclick="App.goToHome()" aria-label="Volver al inicio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h1 class="notifications-title">Notificaciones</h1>
+                    <button class="mark-all-read-btn" id="mark-all-read-btn" aria-label="Marcar todas como leidas">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true">
+                            <polyline points="9 11 12 14 22 4"></polyline>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="notifications-filter">
+                    <button class="notif-filter-btn active" data-filter="all">Todas</button>
+                    <button class="notif-filter-btn" data-filter="unread">No leidas</button>
+                    <button class="notif-filter-btn" data-filter="likes">Likes</button>
+                    <button class="notif-filter-btn" data-filter="comments">Comentarios</button>
+                    <button class="notif-filter-btn" data-filter="follows">Seguidores</button>
+                </div>
+                <div class="notifications-list" id="notifications-list" role="list" aria-label="Lista de notificaciones">
+                    <div class="notifications-loading">
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                </div>
+                <div class="notifications-empty hidden" id="notifications-empty">
+                    <div class="empty-icon">🔔</div>
+                    <h3>Sin notificaciones</h3>
+                    <p>Cuando alguien interactue contigo, aparecera aqui</p>
+                </div>
+            </div>
+
             <!-- PAGINA PERFIL -->
             <div id="profile-screen" class="page-screen hidden">
                 <div class="profile-page-header">
@@ -2196,6 +2233,16 @@
                 <line x1="16" y1="16" x2="16" y2="16"></line>
             </svg>
             <span class="sr-only">Bots</span>
+        </button>
+        <button class="bottom-nav-item" data-nav="notifications" aria-label="Notificaciones" id="nav-notifications-btn">
+            <div class="bottom-nav-icon-wrapper">
+                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <span class="notification-badge hidden" id="notification-badge" aria-label="Notificaciones no leidas">0</span>
+            </div>
+            <span class="sr-only">Notificaciones</span>
         </button>
         <button class="bottom-nav-item" data-nav="wallet" aria-label="Billetera">
             <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

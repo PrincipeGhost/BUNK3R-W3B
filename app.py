@@ -4894,6 +4894,45 @@ def mark_notifications_read():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/notifications/unread-count', methods=['GET'])
+@require_telegram_auth
+def get_unread_notifications_count():
+    """Get unread notifications count (alias)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        count = db_manager.get_unread_notifications_count(user_id)
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        logger.error(f"Error getting unread count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/mark-all-read', methods=['POST'])
+@require_telegram_auth
+def mark_all_notifications_read():
+    """Mark all notifications as read"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        success = db_manager.mark_notifications_read(user_id, None)
+        return jsonify({'success': success})
+    except Exception as e:
+        logger.error(f"Error marking all notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@require_telegram_auth
+def mark_single_notification_read(notification_id):
+    """Mark single notification as read"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        success = db_manager.mark_notifications_read(user_id, [notification_id])
+        return jsonify({'success': success})
+    except Exception as e:
+        logger.error(f"Error marking notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # BLOCK & REPORT SYSTEM
 # ============================================================

@@ -427,6 +427,11 @@ const App = {
             await this.loadMerchantWallet();
             
             await this.initSecuritySystem();
+            
+            this.initNotificationFilters();
+            this.updateNotificationBadge();
+            
+            setInterval(() => this.updateNotificationBadge(), 60000);
         } catch (error) {
             console.error('Error in completeLogin():', error);
             this.showMainApp();
@@ -911,6 +916,10 @@ const App = {
             case 'wallet':
                 this.showPage('wallet');
                 break;
+            case 'notifications':
+                this.showPage('notifications');
+                this.loadNotifications();
+                break;
             case 'profile':
                 this.showPage('profile');
                 this.updateProfilePage();
@@ -923,6 +932,7 @@ const App = {
             'home': 'Inicio',
             'marketplace': 'Tienda',
             'bots': 'Bots',
+            'notifications': 'Notificaciones',
             'wallet': 'Billetera',
             'profile': 'Mi perfil'
         };
@@ -934,6 +944,7 @@ const App = {
         document.getElementById('tracking-module').classList.add('hidden');
         document.getElementById('marketplace-screen').classList.add('hidden');
         document.getElementById('bots-screen').classList.add('hidden');
+        document.getElementById('notifications-screen')?.classList.add('hidden');
         document.getElementById('wallet-screen').classList.add('hidden');
         document.getElementById('profile-screen').classList.add('hidden');
         document.getElementById('exchange-screen')?.classList.add('hidden');
@@ -5074,6 +5085,252 @@ const App = {
 
     editBot(botId) {
         this.showToast('Editar bot ' + this.escapeHtml(String(botId)), 'info');
+    },
+
+    notificationsState: {
+        notifications: [],
+        offset: 0,
+        limit: 20,
+        hasMore: true,
+        currentFilter: 'all',
+        loading: false
+    },
+
+    async loadNotifications(filter = 'all', append = false) {
+        if (this.notificationsState.loading) return;
+        
+        const listEl = document.getElementById('notifications-list');
+        const emptyEl = document.getElementById('notifications-empty');
+        
+        if (!listEl) return;
+        
+        if (!append) {
+            this.notificationsState.offset = 0;
+            this.notificationsState.currentFilter = filter;
+            listEl.innerHTML = `
+                <div class="notifications-loading">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </div>
+            `;
+        }
+        
+        this.notificationsState.loading = true;
+        
+        try {
+            let url = `/api/notifications?limit=${this.notificationsState.limit}&offset=${this.notificationsState.offset}`;
+            if (filter !== 'all') {
+                url += `&filter=${filter}`;
+            }
+            
+            const response = await this.apiRequest(url);
+            
+            if (response.success) {
+                const notifications = response.notifications || [];
+                
+                if (!append) {
+                    this.notificationsState.notifications = notifications;
+                } else {
+                    this.notificationsState.notifications = [...this.notificationsState.notifications, ...notifications];
+                }
+                
+                this.notificationsState.hasMore = notifications.length >= this.notificationsState.limit;
+                this.notificationsState.offset += notifications.length;
+                
+                this.renderNotifications();
+                
+                if (this.notificationsState.notifications.length === 0) {
+                    listEl.innerHTML = '';
+                    emptyEl?.classList.remove('hidden');
+                } else {
+                    emptyEl?.classList.add('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h4>Error al cargar notificaciones</h4></div>';
+        } finally {
+            this.notificationsState.loading = false;
+        }
+    },
+
+    renderNotifications() {
+        const listEl = document.getElementById('notifications-list');
+        if (!listEl) return;
+        
+        const notifications = this.notificationsState.notifications;
+        
+        if (notifications.length === 0) {
+            listEl.innerHTML = '';
+            return;
+        }
+        
+        let html = notifications.map(notif => this.renderNotificationItem(notif)).join('');
+        
+        if (this.notificationsState.hasMore) {
+            html += `<button class="load-more-notifications" onclick="App.loadMoreNotifications()">Cargar mas notificaciones</button>`;
+        }
+        
+        listEl.innerHTML = html;
+    },
+
+    renderNotificationItem(notif) {
+        const typeIcons = {
+            'like': { icon: '❤️', class: 'like' },
+            'comment': { icon: '💬', class: 'comment' },
+            'follow': { icon: '👤', class: 'follow' },
+            'mention': { icon: '@', class: 'mention' },
+            'share': { icon: '🔄', class: 'share' }
+        };
+        
+        const typeInfo = typeIcons[notif.type] || { icon: '🔔', class: '' };
+        const isUnread = !notif.is_read;
+        const actorName = notif.actor_first_name || notif.actor_username || 'Alguien';
+        const avatarContent = notif.actor_avatar 
+            ? `<img src="${this.escapeAttribute(notif.actor_avatar)}" alt="">`
+            : `<span class="notification-avatar-initial">${this.escapeHtml(actorName[0].toUpperCase())}</span>`;
+        
+        const previewHtml = notif.preview_image 
+            ? `<div class="notification-preview"><img src="${this.escapeAttribute(notif.preview_image)}" alt=""></div>`
+            : '';
+        
+        return `
+            <div class="notification-item ${isUnread ? 'unread' : ''}" 
+                 role="listitem"
+                 data-notif-id="${notif.id}"
+                 onclick="App.handleNotificationClick(${notif.id}, '${this.sanitizeForJs(notif.type)}', ${notif.reference_id || 'null'})">
+                <div class="notification-avatar">
+                    ${avatarContent}
+                </div>
+                <span class="notification-icon ${typeInfo.class}">${typeInfo.icon}</span>
+                <div class="notification-content">
+                    <p class="notification-text">
+                        <strong>${this.escapeHtml(actorName)}</strong> 
+                        ${this.escapeHtml(notif.message || this.getNotificationMessage(notif.type))}
+                    </p>
+                    <span class="notification-time">${this.formatTimeAgo(notif.created_at)}</span>
+                </div>
+                ${previewHtml}
+            </div>
+        `;
+    },
+
+    getNotificationMessage(type) {
+        const messages = {
+            'like': 'le gusto tu publicacion',
+            'comment': 'comento en tu publicacion',
+            'follow': 'empezo a seguirte',
+            'mention': 'te menciono',
+            'share': 'compartio tu publicacion'
+        };
+        return messages[type] || 'interactuo contigo';
+    },
+
+    formatTimeAgo(dateStr) {
+        if (!dateStr) return '';
+        
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffSecs < 60) return 'ahora';
+        if (diffMins < 60) return `${diffMins}m`;
+        if (diffHours < 24) return `${diffHours}h`;
+        if (diffDays < 7) return `${diffDays}d`;
+        
+        return date.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    },
+
+    async handleNotificationClick(notifId, type, referenceId) {
+        await this.markNotificationAsRead(notifId);
+        
+        const item = document.querySelector(`[data-notif-id="${notifId}"]`);
+        if (item) {
+            item.classList.remove('unread');
+        }
+        
+        if (type === 'follow' && referenceId) {
+            this.showUserProfile(referenceId);
+        } else if (['like', 'comment', 'share', 'mention'].includes(type) && referenceId) {
+            Publications.showPostDetail(referenceId);
+        }
+    },
+
+    async markNotificationAsRead(notifId) {
+        try {
+            await this.apiRequest(`/api/notifications/${notifId}/read`, {
+                method: 'POST'
+            });
+            this.updateNotificationBadge();
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    },
+
+    async markAllNotificationsAsRead() {
+        try {
+            const response = await this.apiRequest('/api/notifications/mark-all-read', {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Todas las notificaciones marcadas como leidas', 'success');
+                this.notificationsState.notifications = this.notificationsState.notifications.map(n => ({
+                    ...n,
+                    is_read: true
+                }));
+                this.renderNotifications();
+                this.updateNotificationBadge();
+            }
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+            this.showToast('Error al marcar notificaciones', 'error');
+        }
+    },
+
+    async updateNotificationBadge() {
+        try {
+            const response = await this.apiRequest('/api/notifications/unread-count');
+            
+            const badge = document.getElementById('notification-badge');
+            if (badge) {
+                const count = response.count || 0;
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error updating notification badge:', error);
+        }
+    },
+
+    loadMoreNotifications() {
+        this.loadNotifications(this.notificationsState.currentFilter, true);
+    },
+
+    initNotificationFilters() {
+        document.querySelectorAll('.notif-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const filter = btn.dataset.filter;
+                this.loadNotifications(filter);
+            });
+        });
+        
+        const markAllBtn = document.getElementById('mark-all-read-btn');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', () => this.markAllNotificationsAsRead());
+        }
     }
 };
 
