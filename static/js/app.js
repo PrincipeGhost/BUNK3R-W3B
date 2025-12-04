@@ -823,15 +823,18 @@ const App = {
             });
         });
         
-        document.body.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('#edit-profile-btn');
-            if (editBtn) {
-                console.log('Edit profile button clicked!');
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleEditMode();
-            }
-        }, true);
+        if (!this._editProfileListenerAdded) {
+            this._editProfileListenerAdded = true;
+            document.body.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('#edit-profile-btn');
+                if (editBtn) {
+                    console.log('Edit profile button clicked!');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggleEditMode();
+                }
+            });
+        }
         
         this.setupAvatarUpload();
         this.initExchange();
