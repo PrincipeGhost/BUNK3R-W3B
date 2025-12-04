@@ -285,7 +285,7 @@ const PublicationsManager = {
                             ${post.user_reaction ? '❤️' : '🤍'}
                         </button>
                         <button class="publication-action-btn" 
-                                onclick="PublicationsManager.showComments(${post.id})">
+                                onclick="document.getElementById('inline-comment-${post.id}').focus()">
                             💬
                         </button>
                         <button class="publication-action-btn" 
@@ -302,11 +302,26 @@ const PublicationsManager = {
                 
                 <div class="publication-stats">
                     <span class="likes-count" data-reactions-count="${post.id}">${likesText}</span>
+                </div>
+                
+                <div class="inline-comments-section" id="comments-section-${post.id}">
                     ${post.comments_count > 0 ? `
-                        <button class="comments-count-btn" onclick="PublicationsManager.showComments(${post.id})">
-                            Ver ${post.comments_count} comentario${post.comments_count > 1 ? 's' : ''}
+                        <button class="view-comments-btn" onclick="PublicationsManager.loadInlineComments(${post.id})" data-view-comments="${post.id}">
+                            Ver ${post.comments_count > 2 ? 'los ' + post.comments_count : ''} comentario${post.comments_count > 1 ? 's' : ''}
                         </button>
                     ` : ''}
+                    <div class="inline-comments-list" id="comments-list-${post.id}"></div>
+                </div>
+                
+                <div class="inline-comment-input">
+                    <input type="text" 
+                           id="inline-comment-${post.id}" 
+                           class="comment-text-input" 
+                           placeholder="Escribe un comentario..."
+                           onkeypress="if(event.key==='Enter') PublicationsManager.sendInlineComment(${post.id})">
+                    <button class="send-inline-btn" onclick="PublicationsManager.sendInlineComment(${post.id})">
+                        Publicar
+                    </button>
                 </div>
                 
                 ${post.is_encrypted ? '<span class="encryption-badge">🔒</span>' : ''}
@@ -762,6 +777,125 @@ const PublicationsManager = {
             }
         } catch (error) {
             console.error('Comment error:', error);
+        }
+    },
+    
+    async loadInlineComments(postId) {
+        const container = document.getElementById(`comments-list-${postId}`);
+        const viewBtn = document.querySelector(`[data-view-comments="${postId}"]`);
+        
+        if (!container) return;
+        
+        container.innerHTML = '<div class="loading-comments">Cargando...</div>';
+        if (viewBtn) viewBtn.style.display = 'none';
+        
+        try {
+            const response = await this.apiRequest(`/api/publications/${postId}/comments?limit=10`);
+            
+            if (response.success && response.comments) {
+                container.innerHTML = this.renderInlineComments(response.comments, postId);
+            } else {
+                container.innerHTML = '<p class="no-comments">No hay comentarios</p>';
+            }
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            container.innerHTML = '<p class="no-comments">Error al cargar comentarios</p>';
+        }
+    },
+    
+    renderInlineComments(comments, postId) {
+        if (!comments || comments.length === 0) {
+            return '<p class="no-comments">No hay comentarios aún</p>';
+        }
+        
+        return comments.map(comment => {
+            const avatarUrl = comment.avatar_url || this.DEFAULT_AVATAR;
+            const username = comment.first_name || comment.username || 'Usuario';
+            const timeAgo = this.formatTimeAgo(comment.created_at);
+            
+            return `
+                <div class="inline-comment" data-comment-id="${comment.id}">
+                    <img src="${avatarUrl}" class="inline-comment-avatar" alt="${username}" onerror="this.src='${this.DEFAULT_AVATAR}'">
+                    <div class="inline-comment-body">
+                        <div class="inline-comment-bubble">
+                            <span class="inline-comment-name">${username}</span>
+                            <span class="inline-comment-text">${comment.content}</span>
+                        </div>
+                        <div class="inline-comment-meta">
+                            <span class="inline-comment-time">${timeAgo}</span>
+                            <button class="inline-comment-like" onclick="PublicationsManager.likeComment(${comment.id})">
+                                Me gusta ${comment.likes_count > 0 ? '(' + comment.likes_count + ')' : ''}
+                            </button>
+                            <button class="inline-comment-reply" onclick="PublicationsManager.focusReply(${postId}, '${username}')">
+                                Responder
+                            </button>
+                        </div>
+                        ${comment.replies && comment.replies.length > 0 ? `
+                            <div class="inline-comment-replies">
+                                ${comment.replies.map(reply => {
+                                    const replyAvatar = reply.avatar_url || this.DEFAULT_AVATAR;
+                                    const replyName = reply.first_name || reply.username || 'Usuario';
+                                    return `
+                                        <div class="inline-comment inline-reply">
+                                            <img src="${replyAvatar}" class="inline-comment-avatar small" alt="${replyName}" onerror="this.src='${this.DEFAULT_AVATAR}'">
+                                            <div class="inline-comment-body">
+                                                <div class="inline-comment-bubble">
+                                                    <span class="inline-comment-name">${replyName}</span>
+                                                    <span class="inline-comment-text">${reply.content}</span>
+                                                </div>
+                                                <div class="inline-comment-meta">
+                                                    <span class="inline-comment-time">${this.formatTimeAgo(reply.created_at)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+    
+    async sendInlineComment(postId) {
+        const input = document.getElementById(`inline-comment-${postId}`);
+        const content = input?.value.trim();
+        
+        if (!content) return;
+        
+        input.disabled = true;
+        
+        try {
+            const response = await this.apiRequest(`/api/publications/${postId}/comments`, {
+                method: 'POST',
+                body: JSON.stringify({ content })
+            });
+            
+            if (response.success) {
+                input.value = '';
+                
+                const post = this.feedPosts.find(p => p.id === postId);
+                if (post) {
+                    post.comments_count = (post.comments_count || 0) + 1;
+                }
+                
+                this.loadInlineComments(postId);
+                this.showToast('Comentario publicado', 'success');
+            }
+        } catch (error) {
+            console.error('Comment error:', error);
+            this.showToast('Error al comentar', 'error');
+        } finally {
+            input.disabled = false;
+        }
+    },
+    
+    focusReply(postId, username) {
+        const input = document.getElementById(`inline-comment-${postId}`);
+        if (input) {
+            input.value = `@${username} `;
+            input.focus();
         }
     },
     
