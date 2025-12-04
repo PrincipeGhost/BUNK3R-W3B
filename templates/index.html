@@ -1857,8 +1857,68 @@
         </div>
     </div>
 
+    <!-- Modal Crear Publicacion -->
+    <div id="create-publication-modal" class="pub-modal-overlay hidden">
+        <div class="pub-modal create-post-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="PublicationsManager.hideCreateModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>Nueva publicacion</h2>
+                <button class="pub-modal-action" id="publish-btn">Publicar</button>
+            </div>
+            <div class="create-post-content">
+                <!-- Selector de tipo de contenido -->
+                <div class="content-type-selector">
+                    <button class="content-type-btn active" data-type="media">
+                        <span class="type-icon">📷</span>
+                        <span>Foto/Video</span>
+                    </button>
+                    <button class="content-type-btn" data-type="text">
+                        <span class="type-icon">✍️</span>
+                        <span>Solo Texto</span>
+                    </button>
+                </div>
+                
+                <!-- Area de subida de archivos -->
+                <div class="file-upload-section" id="file-upload-section">
+                    <div class="file-upload-area" id="file-upload-area">
+                        <input type="file" id="publication-files" multiple accept="image/*,video/*" hidden>
+                        <div class="upload-placeholder">
+                            <span class="upload-icon">📤</span>
+                            <p>Toca para seleccionar</p>
+                            <span class="upload-hint">Fotos o videos (max 10)</span>
+                        </div>
+                    </div>
+                    <div class="media-preview-grid hidden" id="media-preview-grid">
+                        <!-- Vista previa de archivos seleccionados -->
+                    </div>
+                </div>
+                
+                <!-- Campo de caption -->
+                <div class="caption-section">
+                    <textarea id="caption-input" class="caption-textarea" placeholder="Escribe una descripcion... usa @menciones y #hashtags" rows="4"></textarea>
+                    <div class="caption-footer">
+                        <span class="caption-counter" id="caption-counter">0 caracteres</span>
+                    </div>
+                </div>
+                
+                <!-- Barra de progreso de subida -->
+                <div class="upload-progress hidden" id="upload-progress">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text" id="progress-text">Encriptando y subiendo...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Boton flotante crear publicacion -->
-    <button class="fab-create-post hidden" id="fab-create-post" onclick="Publications.openCreateModal()">
+    <button class="fab-create-post" id="floating-create-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>

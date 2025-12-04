@@ -306,6 +306,16 @@ def get_2fa_status():
     """Obtener estado de 2FA del usuario"""
     user_id = str(request.telegram_user.get('id'))
     
+    # En modo demo, no requerir verificación 2FA
+    if getattr(request, 'is_demo', False) or user_id == '0':
+        return jsonify({
+            'success': True,
+            'enabled': False,
+            'configured': False,
+            'sessionValid': True,
+            'requiresVerification': False
+        })
+    
     if not db_manager:
         return jsonify({'error': 'Database not available'}), 500
     

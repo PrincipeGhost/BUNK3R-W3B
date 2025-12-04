@@ -88,6 +88,13 @@ const App = {
     
     async check2FAStatus() {
         try {
+            // En modo demo, saltar verificación 2FA directamente
+            if (this.isDemoMode) {
+                console.log('Modo demo: saltando 2FA, completando login');
+                this.completeLogin();
+                return;
+            }
+            
             console.log('Checking 2FA status...');
             const response = await this.apiRequest('/api/2fa/status', { method: 'POST' });
             console.log('2FA status response:', response);
