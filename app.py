@@ -580,6 +580,10 @@ def validate_user():
             )
             logger.info(f"User created/updated: {created_user}")
             
+            if photo_url:
+                db_manager.update_user_profile(str(user_id), avatar_url=photo_url)
+                logger.info(f"Updated avatar_url for user {user_id}: {photo_url}")
+            
             if owner_status:
                 db_manager.initialize_bot_types()
                 db_manager.assign_owner_bots(user_id)
@@ -3816,15 +3820,26 @@ def get_feed():
         posts = db_manager.get_feed_posts(user_id, limit, offset)
         
         for post in posts:
+            if post.get('avatar_url'):
+                pass
+            elif post.get('user_id'):
+                avatar_data = db_manager.get_user_avatar_data(str(post.get('user_id')))
+                if avatar_data:
+                    post['avatar_url'] = f"/api/avatar/{post.get('user_id')}"
+            
             if post.get('is_encrypted') and post.get('caption') and post.get('encryption_key') and post.get('encryption_iv'):
                 try:
+                    logger.info(f"Attempting to decrypt post {post.get('id')}: key={post.get('encryption_key')[:20]}..., iv={post.get('encryption_iv')}")
                     decrypted = encryption_manager.decrypt_text(
                         post['caption'],
                         post['encryption_key'],
                         post['encryption_iv']
                     )
+                    logger.info(f"Decrypt result for post {post.get('id')}: success={decrypted.get('success')}, text={decrypted.get('text', '')[:50] if decrypted.get('text') else 'None'}")
                     if decrypted.get('success'):
                         post['caption'] = decrypted.get('text', post['caption'])
+                    else:
+                        logger.warning(f"Decryption failed for post {post.get('id')}: {decrypted.get('error')}")
                 except Exception as decrypt_error:
                     logger.warning(f"Could not decrypt caption for post {post.get('id')}: {decrypt_error}")
         
