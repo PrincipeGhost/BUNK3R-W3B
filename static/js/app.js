@@ -1998,7 +1998,14 @@ const App = {
     initTonConnect() {
         const initializeSDK = () => {
             try {
-                this.tonConnectUI = new TonConnectUI({
+                const TonConnectUIClass = window.TON_CONNECT_UI?.TonConnectUI || window.TonConnectUI;
+                
+                if (!TonConnectUIClass) {
+                    console.error('TON Connect UI class not found');
+                    return;
+                }
+                
+                this.tonConnectUI = new TonConnectUIClass({
                     manifestUrl: window.location.origin + '/static/tonconnect-manifest.json'
                 });
 
@@ -2014,19 +2021,23 @@ const App = {
                 });
 
                 this.setupTonConnectListeners();
-                console.log('TON Connect initialized');
+                console.log('TON Connect initialized successfully');
             } catch (error) {
                 console.error('Error initializing TON Connect:', error);
             }
         };
 
-        if (typeof TonConnectUI !== 'undefined') {
+        const checkTonConnect = () => {
+            return window.TON_CONNECT_UI?.TonConnectUI || window.TonConnectUI;
+        };
+
+        if (checkTonConnect()) {
             initializeSDK();
         } else {
             let attempts = 0;
             const checkInterval = setInterval(() => {
                 attempts++;
-                if (typeof TonConnectUI !== 'undefined') {
+                if (checkTonConnect()) {
                     clearInterval(checkInterval);
                     initializeSDK();
                 } else if (attempts >= 20) {
