@@ -2002,10 +2002,11 @@ const App = {
                     manifestUrl: window.location.origin + '/static/tonconnect-manifest.json'
                 });
 
-                this.tonConnectUI.onStatusChange((wallet) => {
+                this.tonConnectUI.onStatusChange(async (wallet) => {
                     if (wallet) {
                         this.connectedWallet = wallet;
                         this.updateWalletUI(wallet);
+                        await this.saveWalletToBackend(wallet.account.address);
                     } else {
                         this.connectedWallet = null;
                         this.updateWalletUI(null);
@@ -2110,6 +2111,25 @@ const App = {
         } else {
             if (notConnected) notConnected.classList.remove('hidden');
             if (connected) connected.classList.add('hidden');
+        }
+    },
+
+    async saveWalletToBackend(address) {
+        try {
+            const response = await fetch('/api/wallet/connect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeaders()
+                },
+                body: JSON.stringify({ address })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log('Wallet guardada en el servidor:', address.slice(0, 10) + '...');
+            }
+        } catch (error) {
+            console.error('Error guardando wallet:', error);
         }
     },
 

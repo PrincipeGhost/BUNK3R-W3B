@@ -190,6 +190,7 @@ class User:
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     last_seen: Optional[datetime] = None
+    wallet_address: Optional[str] = None
     id: Optional[int] = None
 
 @dataclass

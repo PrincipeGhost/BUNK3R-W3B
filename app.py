@@ -2058,6 +2058,63 @@ def get_wallet_transactions():
         return jsonify({'success': True, 'transactions': []})
 
 
+@app.route('/api/wallet/connect', methods=['POST'])
+@require_telegram_user
+def save_wallet_address():
+    """Guardar la direccion de wallet TON del usuario."""
+    try:
+        data = request.get_json()
+        wallet_address = data.get('address', '')
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not wallet_address:
+            return jsonify({'success': False, 'error': 'Direccion de wallet requerida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': True, 'message': 'Demo mode'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET wallet_address = %s, updated_at = NOW()
+                    WHERE telegram_id = %s
+                """, (wallet_address, user_id))
+                conn.commit()
+                
+        logger.info(f"Wallet conectada para usuario {user_id}: {wallet_address[:10]}...")
+        return jsonify({'success': True, 'message': 'Wallet guardada correctamente'})
+        
+    except Exception as e:
+        logger.error(f"Error saving wallet address: {e}")
+        return jsonify({'success': False, 'error': 'Error al guardar wallet'}), 500
+
+
+@app.route('/api/wallet/address', methods=['GET'])
+@require_telegram_user
+def get_wallet_address():
+    """Obtener la direccion de wallet guardada del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': True, 'address': None})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT wallet_address FROM users WHERE telegram_id = %s
+                """, (user_id,))
+                result = cur.fetchone()
+                address = result[0] if result else None
+                
+        return jsonify({'success': True, 'address': address})
+        
+    except Exception as e:
+        logger.error(f"Error getting wallet address: {e}")
+        return jsonify({'success': True, 'address': None})
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
