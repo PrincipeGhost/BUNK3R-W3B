@@ -2578,6 +2578,13 @@ def verify_ton_payment(payment_id):
                             result = cur.fetchone()
                             new_balance = float(result['balance']) if result else credits
                             
+                            db_manager.create_transaction_notification(
+                                user_id=user_id,
+                                amount=credits,
+                                transaction_type='credit',
+                                new_balance=new_balance
+                            )
+                            
                             return jsonify({
                                 'success': True,
                                 'status': 'confirmed',
@@ -3162,6 +3169,13 @@ def debit_wallet():
                 conn.commit()
                 
                 new_balance = current_balance - amount
+        
+        db_manager.create_transaction_notification(
+            user_id=user_id,
+            amount=amount,
+            transaction_type='debit',
+            new_balance=new_balance
+        )
         
         if amount > 100 and security_manager:
             security_manager.send_telegram_notification(
@@ -4844,8 +4858,11 @@ def get_notifications():
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
         unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+        filter_type = request.args.get('filter', 'all')
         
-        notifications = db_manager.get_notifications(user_id, limit, offset, unread_only)
+        notifications = db_manager.get_notifications(
+            user_id, limit, offset, unread_only, filter_type
+        )
         
         return jsonify({
             'success': True,

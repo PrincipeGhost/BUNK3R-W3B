@@ -222,3 +222,22 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - Added `initialize_payments_tables()` method in DatabaseManager
 - Table initialization now happens at app startup
 - Added indexes for `user_id` and `status` columns on pending_payments table
+
+### Section 26 - Transaction Notifications System (Dec 2025)
+- Added `create_notification()` method in DatabaseManager for generic notification creation
+- Added `create_transaction_notification()` method for wallet transaction events:
+  - Supports credit, debit, and general transaction types
+  - Auto-generates localized messages with amounts and new balance
+  - Types: `transaction_credit`, `transaction_debit`, `transaction`
+- Integrated transaction notifications into payment flows:
+  - Notifications created on successful TON payment verification (credits)
+  - Notifications created on wallet debits (purchases)
+- Enhanced notification filtering in backend:
+  - Added `filter_type` parameter to `get_notifications()` method
+  - Supports filters: all, unread, transactions, likes, comments, follows, mentions
+- Enhanced frontend notification rendering:
+  - Transaction notifications display wallet icon (coin emoji) instead of user avatar
+  - Special styling for transaction notifications (gradient background)
+  - Transaction click navigates to wallet screen
+- Added "Transacciones" filter button to notifications screen in HTML
+- Added CSS for transaction notification types with credit/debit color coding

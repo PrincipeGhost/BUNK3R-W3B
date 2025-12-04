@@ -2416,8 +2416,9 @@ class DatabaseManager:
             logger.error(f"Error updating report: {e}")
             return False
     
-    def get_notifications(self, user_id: str, limit: int = 50, offset: int = 0, unread_only: bool = False) -> List[dict]:
-        """Obtener notificaciones de un usuario"""
+    def get_notifications(self, user_id: str, limit: int = 50, offset: int = 0, 
+                          unread_only: bool = False, filter_type: str = 'all') -> List[dict]:
+        """Obtener notificaciones de un usuario con filtros"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -2427,8 +2428,19 @@ class DatabaseManager:
                                WHERE n.user_id = %s"""
                     params = [user_id]
                     
-                    if unread_only:
+                    if unread_only or filter_type == 'unread':
                         query += " AND n.is_read = FALSE"
+                    
+                    if filter_type == 'transactions':
+                        query += " AND n.type IN ('transaction', 'transaction_credit', 'transaction_debit')"
+                    elif filter_type == 'likes':
+                        query += " AND n.type = 'like'"
+                    elif filter_type == 'comments':
+                        query += " AND n.type = 'comment'"
+                    elif filter_type == 'follows':
+                        query += " AND n.type = 'follow'"
+                    elif filter_type == 'mentions':
+                        query += " AND n.type = 'mention'"
                     
                     query += " ORDER BY n.created_at DESC LIMIT %s OFFSET %s"
                     params.extend([limit, offset])
@@ -2474,6 +2486,54 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error getting unread count: {e}")
             return 0
+    
+    def create_notification(self, user_id: str, notif_type: str, message: str,
+                           actor_id: str = None, reference_type: str = None,
+                           reference_id: int = None) -> Optional[int]:
+        """Crear una notificación genérica"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO notifications 
+                           (user_id, type, actor_id, reference_type, reference_id, message)
+                           VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+                        (user_id, notif_type, actor_id, reference_type, reference_id, message)
+                    )
+                    result = cur.fetchone()
+                    conn.commit()
+                    return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error creating notification: {e}")
+            return None
+    
+    def create_transaction_notification(self, user_id: str, amount: float, 
+                                        transaction_type: str, new_balance: float = None) -> Optional[int]:
+        """Crear notificación de transacción de wallet"""
+        try:
+            safe_amount = float(amount) if amount else 0.0
+            safe_balance = float(new_balance) if new_balance is not None else safe_amount
+            
+            if transaction_type in ['credit', 'deposit', 'recharge']:
+                notif_type = 'transaction_credit'
+                message = f"Recarga de +{safe_amount:.2f} BUNK3RCO1N completada. Nuevo saldo: {safe_balance:.2f}"
+            elif transaction_type in ['debit', 'purchase', 'bot_purchase']:
+                notif_type = 'transaction_debit'
+                message = f"Gasto de -{safe_amount:.2f} BUNK3RCO1N procesado. Saldo restante: {safe_balance:.2f}"
+            else:
+                notif_type = 'transaction'
+                message = f"Movimiento de {safe_amount:.2f} BUNK3RCO1N. Saldo: {safe_balance:.2f}"
+            
+            return self.create_notification(
+                user_id=user_id,
+                notif_type=notif_type,
+                message=message,
+                reference_type='wallet',
+                reference_id=None
+            )
+        except Exception as e:
+            logger.error(f"Error creating transaction notification: {e}")
+            return None
     
     def share_post(self, user_id: str, post_id: int, share_type: str = 'repost', 
                    quote_text: str = None, recipient_id: str = None) -> Optional[int]:

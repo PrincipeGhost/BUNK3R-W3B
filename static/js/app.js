@@ -5181,22 +5181,39 @@ const App = {
             'comment': { icon: '💬', class: 'comment' },
             'follow': { icon: '👤', class: 'follow' },
             'mention': { icon: '@', class: 'mention' },
-            'share': { icon: '🔄', class: 'share' }
+            'share': { icon: '🔄', class: 'share' },
+            'transaction_credit': { icon: '💰', class: 'transaction credit' },
+            'transaction_debit': { icon: '💸', class: 'transaction debit' },
+            'transaction': { icon: '🪙', class: 'transaction' },
+            'story_reply': { icon: '💬', class: 'story' },
+            'story_reaction': { icon: '😍', class: 'story' }
         };
         
         const typeInfo = typeIcons[notif.type] || { icon: '🔔', class: '' };
         const isUnread = !notif.is_read;
-        const actorName = notif.actor_first_name || notif.actor_username || 'Alguien';
-        const avatarContent = notif.actor_avatar 
-            ? `<img src="${this.escapeAttribute(notif.actor_avatar)}" alt="">`
-            : `<span class="notification-avatar-initial">${this.escapeHtml(actorName[0].toUpperCase())}</span>`;
+        
+        const isTransactionNotif = notif.type && (notif.type.startsWith('transaction') || notif.type === 'wallet' || notif.type.includes('credit') || notif.type.includes('debit'));
+        const actorName = isTransactionNotif ? 'BUNK3RCO1N' : (notif.actor_first_name || notif.actor_username || 'Alguien');
+        
+        let avatarContent;
+        if (isTransactionNotif) {
+            avatarContent = `<span class="notification-avatar-initial" style="background: linear-gradient(135deg, #f6ad55, #48bb78); color: white; font-size: 20px;">🪙</span>`;
+        } else if (notif.actor_avatar) {
+            avatarContent = `<img src="${this.escapeAttribute(notif.actor_avatar)}" alt="">`;
+        } else {
+            avatarContent = `<span class="notification-avatar-initial">${this.escapeHtml(actorName[0].toUpperCase())}</span>`;
+        }
         
         const previewHtml = notif.preview_image 
             ? `<div class="notification-preview"><img src="${this.escapeAttribute(notif.preview_image)}" alt=""></div>`
             : '';
         
+        const textContent = isTransactionNotif 
+            ? this.escapeHtml(notif.message || 'Movimiento de wallet')
+            : `<strong>${this.escapeHtml(actorName)}</strong> ${this.escapeHtml(notif.message || this.getNotificationMessage(notif.type))}`;
+        
         return `
-            <div class="notification-item ${isUnread ? 'unread' : ''}" 
+            <div class="notification-item ${isUnread ? 'unread' : ''} ${isTransactionNotif ? 'transaction-type' : ''}" 
                  role="listitem"
                  data-notif-id="${notif.id}"
                  onclick="App.handleNotificationClick(${notif.id}, '${this.sanitizeForJs(notif.type)}', ${notif.reference_id || 'null'})">
@@ -5205,10 +5222,7 @@ const App = {
                 </div>
                 <span class="notification-icon ${typeInfo.class}">${typeInfo.icon}</span>
                 <div class="notification-content">
-                    <p class="notification-text">
-                        <strong>${this.escapeHtml(actorName)}</strong> 
-                        ${this.escapeHtml(notif.message || this.getNotificationMessage(notif.type))}
-                    </p>
+                    <p class="notification-text">${textContent}</p>
                     <span class="notification-time">${this.formatTimeAgo(notif.created_at)}</span>
                 </div>
                 ${previewHtml}
@@ -5222,7 +5236,12 @@ const App = {
             'comment': 'comento en tu publicacion',
             'follow': 'empezo a seguirte',
             'mention': 'te menciono',
-            'share': 'compartio tu publicacion'
+            'share': 'compartio tu publicacion',
+            'transaction_credit': '',
+            'transaction_debit': '',
+            'transaction': '',
+            'story_reply': 'respondio a tu historia',
+            'story_reaction': 'reacciono a tu historia'
         };
         return messages[type] || 'interactuo contigo';
     },
@@ -5254,10 +5273,14 @@ const App = {
             item.classList.remove('unread');
         }
         
-        if (type === 'follow' && referenceId) {
+        if (type && (type.startsWith('transaction') || type === 'wallet' || type.includes('credit') || type.includes('debit'))) {
+            this.showScreen('wallet-screen');
+        } else if ((type === 'follow' || type === 'new_follower') && referenceId) {
             this.showUserProfile(referenceId);
-        } else if (['like', 'comment', 'share', 'mention'].includes(type) && referenceId) {
+        } else if (['like', 'comment', 'share', 'mention', 'comment_reply', 'post_like'].includes(type) && referenceId) {
             Publications.showPostDetail(referenceId);
+        } else if ((type === 'story_reply' || type === 'story_reaction' || type === 'story_view') && referenceId) {
+            this.viewStory({ userId: referenceId });
         }
     },
 

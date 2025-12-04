@@ -8790,6 +8790,30 @@ select:focus-visible {
     background: var(--accent-warning);
 }
 
+.notification-icon.transaction {
+    background: linear-gradient(135deg, #f6ad55, #48bb78);
+}
+
+.notification-icon.transaction.credit {
+    background: var(--accent-success);
+}
+
+.notification-icon.transaction.debit {
+    background: var(--accent-warning);
+}
+
+.notification-icon.story {
+    background: linear-gradient(135deg, #9f7aea, #fc8181);
+}
+
+.notification-item.transaction-type {
+    border-left-color: var(--accent-warning);
+}
+
+.notification-item.transaction-type .notification-text {
+    font-size: 13px;
+}
+
 .notifications-empty {
     display: flex;
     flex-direction: column;
