@@ -4,6 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
+packages = ["freetype", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "tcl", "tk", "zlib"]
 
 [userenv]
 
@@ -48,12 +49,12 @@ localPort = 38709
 externalPort = 3000
 
 [[ports]]
-localPort = 41565
-externalPort = 3001
+localPort = 39139
+externalPort = 3002
 
 [[ports]]
-localPort = 45273
-externalPort = 3002
+localPort = 41565
+externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"

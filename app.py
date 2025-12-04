@@ -11,6 +11,7 @@ import json
 import logging
 import uuid
 import base64
+import io
 from datetime import datetime
 from functools import wraps
 from urllib.parse import parse_qs, unquote
@@ -19,6 +20,8 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
+import pyotp
+import qrcode
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -254,6 +257,234 @@ def health_check():
         'database': True,
         'timestamp': datetime.now().isoformat()
     })
+
+
+# ============================================================
+# ENDPOINTS PARA 2FA (Two-Factor Authentication)
+# ============================================================
+
+def ensure_user_exists(user_data, db_mgr):
+    """Asegura que el usuario exista en la base de datos"""
+    user_id = str(user_data.get('id'))
+    try:
+        db_mgr.get_or_create_user(
+            user_id=user_id,
+            username=user_data.get('username', 'demo_user'),
+            first_name=user_data.get('first_name', 'Demo'),
+            last_name=user_data.get('last_name', ''),
+            telegram_id=int(user_id) if user_id.isdigit() else 0
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error ensuring user exists: {e}")
+        return False
+
+
+@app.route('/api/2fa/status', methods=['POST'])
+@require_telegram_user
+def get_2fa_status():
+    """Obtener estado de 2FA del usuario"""
+    user_id = str(request.telegram_user.get('id'))
+    
+    if not db_manager:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    ensure_user_exists(request.telegram_user, db_manager)
+    
+    status = db_manager.get_user_2fa_status(user_id)
+    session_valid = False
+    
+    if status['enabled']:
+        session_valid = db_manager.check_2fa_session_valid(user_id, timeout_minutes=10)
+    
+    return jsonify({
+        'success': True,
+        'enabled': status['enabled'],
+        'configured': status['has_secret'],
+        'sessionValid': session_valid,
+        'requiresVerification': status['enabled'] and not session_valid
+    })
+
+
+@app.route('/api/2fa/setup', methods=['POST'])
+@require_telegram_user
+def setup_2fa():
+    """Configurar 2FA - genera secreto TOTP y código QR"""
+    user_id = str(request.telegram_user.get('id'))
+    username = request.telegram_user.get('username', 'user')
+    
+    if not db_manager:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    secret = pyotp.random_base32()
+    
+    if not db_manager.setup_2fa(user_id, secret):
+        return jsonify({'error': 'Failed to setup 2FA'}), 500
+    
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(
+        name=f"@{username}",
+        issuer_name="BUNK3R"
+    )
+    
+    img = qrcode.make(provisioning_uri)
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    qr_base64 = base64.b64encode(buffered.getvalue()).decode()
+    
+    return jsonify({
+        'success': True,
+        'secret': secret,
+        'qrCode': f"data:image/png;base64,{qr_base64}",
+        'message': 'Escanea el código QR con Google Authenticator'
+    })
+
+
+@app.route('/api/2fa/verify', methods=['POST'])
+@require_telegram_user
+def verify_2fa():
+    """Verificar código TOTP"""
+    user_id = str(request.telegram_user.get('id'))
+    data = request.get_json()
+    code = data.get('code', '').strip()
+    enable_2fa = data.get('enable', False)
+    
+    if not code or len(code) != 6:
+        return jsonify({
+            'success': False,
+            'error': 'Código inválido. Debe ser de 6 dígitos.'
+        }), 400
+    
+    if not db_manager:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    secret = db_manager.get_user_totp_secret(user_id)
+    
+    if not secret:
+        return jsonify({
+            'success': False,
+            'error': '2FA no está configurado. Configure primero.'
+        }), 400
+    
+    totp = pyotp.TOTP(secret)
+    is_valid = totp.verify(code, valid_window=1)
+    
+    if not is_valid:
+        return jsonify({
+            'success': False,
+            'error': 'Código incorrecto. Intenta de nuevo.'
+        }), 401
+    
+    if enable_2fa:
+        db_manager.enable_2fa(user_id)
+    else:
+        db_manager.update_2fa_verified_time(user_id)
+    
+    return jsonify({
+        'success': True,
+        'message': '2FA habilitado correctamente' if enable_2fa else 'Verificación exitosa',
+        'verified': True
+    })
+
+
+@app.route('/api/2fa/session', methods=['POST'])
+@require_telegram_user
+def check_2fa_session():
+    """Verificar si la sesión 2FA sigue activa (para mantener sesión con actividad)"""
+    user_id = str(request.telegram_user.get('id'))
+    
+    if not db_manager:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    status = db_manager.get_user_2fa_status(user_id)
+    
+    if not status['enabled']:
+        return jsonify({
+            'success': True,
+            'sessionValid': True,
+            'requiresVerification': False
+        })
+    
+    session_valid = db_manager.check_2fa_session_valid(user_id, timeout_minutes=10)
+    
+    return jsonify({
+        'success': True,
+        'sessionValid': session_valid,
+        'requiresVerification': not session_valid
+    })
+
+
+@app.route('/api/2fa/refresh', methods=['POST'])
+@require_telegram_user
+def refresh_2fa_session():
+    """Actualizar timestamp de sesión 2FA (llamar con actividad del usuario)"""
+    user_id = str(request.telegram_user.get('id'))
+    
+    if not db_manager:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    status = db_manager.get_user_2fa_status(user_id)
+    
+    if not status['enabled']:
+        return jsonify({'success': True, 'message': '2FA not enabled'})
+    
+    session_valid = db_manager.check_2fa_session_valid(user_id, timeout_minutes=10)
+    
+    if session_valid:
+        db_manager.update_2fa_verified_time(user_id)
+        return jsonify({'success': True, 'sessionExtended': True})
+    
+    return jsonify({
+        'success': False,
+        'sessionExpired': True,
+        'requiresVerification': True
+    })
+
+
+@app.route('/api/2fa/disable', methods=['POST'])
+@require_telegram_user
+def disable_2fa():
+    """Desactivar 2FA (requiere código válido)"""
+    user_id = str(request.telegram_user.get('id'))
+    data = request.get_json()
+    code = data.get('code', '').strip()
+    
+    if not code or len(code) != 6:
+        return jsonify({
+            'success': False,
+            'error': 'Se requiere código de 6 dígitos para desactivar 2FA'
+        }), 400
+    
+    if not db_manager:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    secret = db_manager.get_user_totp_secret(user_id)
+    
+    if not secret:
+        return jsonify({
+            'success': False,
+            'error': '2FA no está configurado'
+        }), 400
+    
+    totp = pyotp.TOTP(secret)
+    is_valid = totp.verify(code, valid_window=1)
+    
+    if not is_valid:
+        return jsonify({
+            'success': False,
+            'error': 'Código incorrecto'
+        }), 401
+    
+    if db_manager.disable_2fa(user_id):
+        return jsonify({
+            'success': True,
+            'message': '2FA desactivado correctamente'
+        })
+    
+    return jsonify({
+        'success': False,
+        'error': 'Error al desactivar 2FA'
+    }), 500
 
 
 @app.route('/api/validate', methods=['POST'])

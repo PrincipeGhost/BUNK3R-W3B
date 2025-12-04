@@ -39,6 +39,56 @@
             <p id="denied-message">No tienes permiso para acceder a esta aplicación.</p>
         </div>
 
+        <!-- PANTALLA DE CONFIGURACION 2FA -->
+        <div id="setup-2fa-screen" class="auth-screen hidden">
+            <div class="auth-container">
+                <div class="auth-logo">BUNK<span class="red">3</span>R</div>
+                <div class="auth-icon">🔐</div>
+                <h2 class="auth-title">Configurar 2FA</h2>
+                <p class="auth-subtitle">Protege tu cuenta con Google Authenticator</p>
+                
+                <div class="qr-container" id="qr-container">
+                    <img id="qr-code-img" src="" alt="Codigo QR" class="qr-code-img">
+                </div>
+                
+                <div class="secret-container">
+                    <p class="secret-label">O ingresa este codigo manualmente:</p>
+                    <code class="secret-code" id="secret-code"></code>
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label">Codigo de 6 digitos</label>
+                    <input type="text" id="setup-2fa-code" class="auth-input" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="000000" autocomplete="off">
+                </div>
+                
+                <button class="auth-btn primary" id="verify-setup-2fa-btn">Verificar y Activar</button>
+                <button class="auth-btn secondary" id="skip-2fa-btn">Configurar despues</button>
+                
+                <p class="auth-hint">Escanea el codigo QR con Google Authenticator, Authy u otra app de autenticacion</p>
+            </div>
+        </div>
+
+        <!-- PANTALLA DE VERIFICACION 2FA -->
+        <div id="verify-2fa-screen" class="auth-screen hidden">
+            <div class="auth-container">
+                <div class="auth-logo">BUNK<span class="red">3</span>R</div>
+                <div class="auth-icon">🔒</div>
+                <h2 class="auth-title">Verificacion 2FA</h2>
+                <p class="auth-subtitle">Ingresa el codigo de tu app de autenticacion</p>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label">Codigo de 6 digitos</label>
+                    <input type="text" id="verify-2fa-code" class="auth-input" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="000000" autocomplete="off" autofocus>
+                </div>
+                
+                <p class="auth-error hidden" id="verify-2fa-error"></p>
+                
+                <button class="auth-btn primary" id="verify-2fa-btn">Verificar</button>
+                
+                <p class="auth-hint">Abre Google Authenticator y copia el codigo de BUNK3R</p>
+            </div>
+        </div>
+
         <div id="main-app" class="hidden">
             <!-- BARRA SUPERIOR -->
             <div class="top-bar">

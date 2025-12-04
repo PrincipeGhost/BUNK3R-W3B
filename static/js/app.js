@@ -11,6 +11,9 @@ const App = {
     statuses: [],
     userPhotoUrl: null,
     userInitials: 'U',
+    twoFactorEnabled: false,
+    sessionActivityInterval: null,
+    lastActivityTime: Date.now(),
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -49,10 +52,7 @@ const App = {
             
             this.userInitials = (response.user.firstName || response.user.username || 'U').charAt(0).toUpperCase();
             
-            this.showMainApp();
-            this.setupEventListeners();
-            this.updateAllAvatars();
-            await this.loadInitialData();
+            await this.check2FAStatus();
             
         } catch (error) {
             console.error('Validation error:', error);
@@ -74,11 +74,256 @@ const App = {
         this.userInitials = 'D';
         this.userPhotoUrl = null;
         
+        await this.check2FAStatus();
+    },
+    
+    async check2FAStatus() {
+        try {
+            console.log('Checking 2FA status...');
+            const response = await this.apiRequest('/api/2fa/status', { method: 'POST' });
+            console.log('2FA status response:', response);
+            
+            if (response.success) {
+                this.twoFactorEnabled = response.enabled;
+                
+                if (response.requiresVerification) {
+                    console.log('2FA requires verification, showing verify screen');
+                    this.show2FAVerifyScreen();
+                    return;
+                }
+                
+                if (!response.configured && this.isOwner) {
+                    console.log('2FA not configured, showing setup screen');
+                    this.show2FASetupScreen();
+                    return;
+                }
+                
+                console.log('2FA configured or not owner, completing login');
+                this.completeLogin();
+            } else {
+                console.log('2FA status failed, completing login');
+                this.completeLogin();
+            }
+        } catch (error) {
+            console.error('Error checking 2FA status:', error);
+            this.completeLogin();
+        }
+    },
+    
+    hidePreloadOverlay() {
+        const overlay = document.getElementById('preload-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => overlay.remove(), 300);
+        }
+    },
+    
+    async show2FASetupScreen() {
+        console.log('Showing 2FA setup screen');
+        this.hidePreloadOverlay();
+        document.getElementById('loading-screen').classList.add('hidden');
+        const setupScreen = document.getElementById('setup-2fa-screen');
+        setupScreen.classList.remove('hidden');
+        console.log('Setup screen visible:', !setupScreen.classList.contains('hidden'));
+        
+        try {
+            const response = await this.apiRequest('/api/2fa/setup', { method: 'POST' });
+            console.log('2FA setup response:', response.success ? 'success' : 'failed');
+            
+            if (response.success) {
+                document.getElementById('qr-code-img').src = response.qrCode;
+                document.getElementById('secret-code').textContent = response.secret;
+            }
+        } catch (error) {
+            console.error('Error setting up 2FA:', error);
+            this.showToast('Error al configurar 2FA', 'error');
+        }
+        
+        this.setup2FAEventListeners();
+    },
+    
+    show2FAVerifyScreen() {
+        this.hidePreloadOverlay();
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('verify-2fa-screen').classList.remove('hidden');
+        
+        const input = document.getElementById('verify-2fa-code');
+        if (input) {
+            input.focus();
+        }
+        
+        this.setup2FAEventListeners();
+    },
+    
+    setup2FAEventListeners() {
+        const setupCodeInput = document.getElementById('setup-2fa-code');
+        const verifyCodeInput = document.getElementById('verify-2fa-code');
+        const verifySetupBtn = document.getElementById('verify-setup-2fa-btn');
+        const skipBtn = document.getElementById('skip-2fa-btn');
+        const verifyBtn = document.getElementById('verify-2fa-btn');
+        
+        if (setupCodeInput) {
+            setupCodeInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+            });
+            
+            setupCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.value.length === 6) {
+                    this.verifyAndEnable2FA(e.target.value);
+                }
+            });
+        }
+        
+        if (verifyCodeInput) {
+            verifyCodeInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+            });
+            
+            verifyCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.value.length === 6) {
+                    this.verify2FACode(e.target.value);
+                }
+            });
+        }
+        
+        if (verifySetupBtn) {
+            verifySetupBtn.addEventListener('click', () => {
+                const code = document.getElementById('setup-2fa-code').value;
+                if (code.length === 6) {
+                    this.verifyAndEnable2FA(code);
+                } else {
+                    this.showToast('Ingresa un codigo de 6 digitos', 'error');
+                }
+            });
+        }
+        
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => {
+                this.skip2FASetup();
+            });
+        }
+        
+        if (verifyBtn) {
+            verifyBtn.addEventListener('click', () => {
+                const code = document.getElementById('verify-2fa-code').value;
+                if (code.length === 6) {
+                    this.verify2FACode(code);
+                } else {
+                    this.showToast('Ingresa un codigo de 6 digitos', 'error');
+                }
+            });
+        }
+    },
+    
+    async verifyAndEnable2FA(code) {
+        try {
+            const response = await this.apiRequest('/api/2fa/verify', {
+                method: 'POST',
+                body: JSON.stringify({ code: code, enable: true })
+            });
+            
+            if (response.success) {
+                this.twoFactorEnabled = true;
+                this.showToast('2FA activado correctamente', 'success');
+                document.getElementById('setup-2fa-screen').classList.add('hidden');
+                this.completeLogin();
+            } else {
+                this.showToast(response.error || 'Codigo incorrecto', 'error');
+                document.getElementById('setup-2fa-code').value = '';
+                document.getElementById('setup-2fa-code').focus();
+            }
+        } catch (error) {
+            console.error('Error verifying 2FA:', error);
+            this.showToast('Error al verificar codigo', 'error');
+        }
+    },
+    
+    async verify2FACode(code) {
+        const errorEl = document.getElementById('verify-2fa-error');
+        
+        try {
+            const response = await this.apiRequest('/api/2fa/verify', {
+                method: 'POST',
+                body: JSON.stringify({ code: code, enable: false })
+            });
+            
+            if (response.success) {
+                document.getElementById('verify-2fa-screen').classList.add('hidden');
+                this.completeLogin();
+            } else {
+                if (errorEl) {
+                    errorEl.textContent = response.error || 'Codigo incorrecto';
+                    errorEl.classList.remove('hidden');
+                }
+                document.getElementById('verify-2fa-code').value = '';
+                document.getElementById('verify-2fa-code').focus();
+            }
+        } catch (error) {
+            console.error('Error verifying 2FA:', error);
+            if (errorEl) {
+                errorEl.textContent = 'Error al verificar. Intenta de nuevo.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+    },
+    
+    skip2FASetup() {
+        document.getElementById('setup-2fa-screen').classList.add('hidden');
+        this.completeLogin();
+    },
+    
+    completeLogin() {
         this.showMainApp();
         this.setupEventListeners();
         this.updateAllAvatars();
+        this.loadInitialData();
+        this.startSessionActivityMonitor();
+    },
+    
+    startSessionActivityMonitor() {
+        if (this.sessionActivityInterval) {
+            clearInterval(this.sessionActivityInterval);
+        }
         
-        await this.loadInitialData();
+        this.lastActivityTime = Date.now();
+        
+        const activityEvents = ['click', 'touchstart', 'keypress', 'scroll'];
+        activityEvents.forEach(event => {
+            document.addEventListener(event, () => {
+                this.lastActivityTime = Date.now();
+            }, { passive: true });
+        });
+        
+        this.sessionActivityInterval = setInterval(() => {
+            this.checkSessionValidity();
+        }, 60000);
+    },
+    
+    async checkSessionValidity() {
+        if (!this.twoFactorEnabled) return;
+        
+        const inactiveTime = Date.now() - this.lastActivityTime;
+        const tenMinutes = 10 * 60 * 1000;
+        
+        if (inactiveTime >= tenMinutes) {
+            this.show2FAVerifyScreen();
+            document.getElementById('main-app').classList.add('hidden');
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/2fa/session', { method: 'POST' });
+            
+            if (response.requiresVerification) {
+                this.show2FAVerifyScreen();
+                document.getElementById('main-app').classList.add('hidden');
+            } else if (response.sessionValid) {
+                await this.apiRequest('/api/2fa/refresh', { method: 'POST' });
+            }
+        } catch (error) {
+            console.error('Error checking session:', error);
+        }
     },
     
     showDemoBanner() {

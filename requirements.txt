@@ -5,3 +5,6 @@ requests
 python-dotenv
 pytz
 werkzeug
+Pillow
+pyotp
+qrcode

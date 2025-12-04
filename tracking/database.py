@@ -930,6 +930,9 @@ class DatabaseManager:
     def get_or_create_user(self, user_id: str, username: str = None, first_name: str = None, 
                            last_name: str = None, telegram_id: int = None) -> Optional[dict]:
         """Obtener o crear un usuario"""
+        import hashlib
+        default_password = hashlib.sha256(f"telegram_{user_id}_{telegram_id}".encode()).hexdigest()
+        
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -952,13 +955,13 @@ class DatabaseManager:
                         return dict(user)
                     else:
                         cur.execute(
-                            """INSERT INTO users (id, username, first_name, last_name, telegram_id) 
-                               VALUES (%s, %s, %s, %s, %s)
+                            """INSERT INTO users (id, username, password, first_name, last_name, telegram_id) 
+                               VALUES (%s, %s, %s, %s, %s, %s)
                                ON CONFLICT (id) DO UPDATE SET 
                                    username = COALESCE(EXCLUDED.username, users.username),
                                    last_seen = CURRENT_TIMESTAMP
                                RETURNING *""",
-                            (user_id, username, first_name, last_name, telegram_id)
+                            (user_id, username, default_password, first_name, last_name, telegram_id)
                         )
                         new_user = cur.fetchone()
                         conn.commit()
@@ -1311,6 +1314,148 @@ class DatabaseManager:
                     return True
         except Exception as e:
             logger.error(f"Error assigning owner bots: {e}")
+            return False
+
+    # ============================================================
+    # FUNCIONES PARA 2FA (Two-Factor Authentication)
+    # ============================================================
+    
+    def get_user_2fa_status(self, user_id: str) -> dict:
+        """Obtener estado de 2FA de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT totp_secret, two_factor_enabled, last_2fa_verified_at
+                           FROM users WHERE telegram_id = %s""",
+                        (user_id,)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        return {
+                            'has_secret': row['totp_secret'] is not None,
+                            'enabled': row['two_factor_enabled'] or False,
+                            'last_verified': row['last_2fa_verified_at']
+                        }
+                    return {'has_secret': False, 'enabled': False, 'last_verified': None}
+        except Exception as e:
+            logger.error(f"Error getting 2FA status for user {user_id}: {e}")
+            return {'has_secret': False, 'enabled': False, 'last_verified': None}
+    
+    def setup_2fa(self, user_id: str, totp_secret: str) -> bool:
+        """Configurar secreto TOTP para un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE users SET totp_secret = %s WHERE telegram_id = %s""",
+                        (totp_secret, user_id)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"2FA secret configured for user {user_id}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error setting up 2FA for user {user_id}: {e}")
+            return False
+    
+    def enable_2fa(self, user_id: str) -> bool:
+        """Activar 2FA para un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE users SET two_factor_enabled = TRUE, 
+                           last_2fa_verified_at = NOW()
+                           WHERE telegram_id = %s AND totp_secret IS NOT NULL""",
+                        (user_id,)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"2FA enabled for user {user_id}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error enabling 2FA for user {user_id}: {e}")
+            return False
+    
+    def get_user_totp_secret(self, user_id: str) -> str:
+        """Obtener secreto TOTP de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT totp_secret FROM users WHERE telegram_id = %s",
+                        (user_id,)
+                    )
+                    row = cur.fetchone()
+                    return row[0] if row else None
+        except Exception as e:
+            logger.error(f"Error getting TOTP secret for user {user_id}: {e}")
+            return None
+    
+    def update_2fa_verified_time(self, user_id: str) -> bool:
+        """Actualizar timestamp de última verificación 2FA"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET last_2fa_verified_at = NOW() WHERE telegram_id = %s",
+                        (user_id,)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    return success
+        except Exception as e:
+            logger.error(f"Error updating 2FA verified time for user {user_id}: {e}")
+            return False
+    
+    def check_2fa_session_valid(self, user_id: str, timeout_minutes: int = 10) -> bool:
+        """Verificar si la sesión 2FA sigue siendo válida (no ha expirado)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT last_2fa_verified_at FROM users 
+                           WHERE telegram_id = %s AND two_factor_enabled = TRUE""",
+                        (user_id,)
+                    )
+                    row = cur.fetchone()
+                    if not row or not row[0]:
+                        return False
+                    
+                    last_verified = row[0]
+                    now = datetime.now()
+                    
+                    if last_verified.tzinfo:
+                        from datetime import timezone
+                        now = datetime.now(timezone.utc)
+                    
+                    diff = now - last_verified
+                    return diff.total_seconds() < (timeout_minutes * 60)
+        except Exception as e:
+            logger.error(f"Error checking 2FA session for user {user_id}: {e}")
+            return False
+    
+    def disable_2fa(self, user_id: str) -> bool:
+        """Desactivar 2FA para un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE users SET two_factor_enabled = FALSE, 
+                           totp_secret = NULL, last_2fa_verified_at = NULL
+                           WHERE telegram_id = %s""",
+                        (user_id,)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"2FA disabled for user {user_id}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error disabling 2FA for user {user_id}: {e}")
             return False
 
 
