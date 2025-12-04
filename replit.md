@@ -97,6 +97,16 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Implemented Trusted Devices System for Wallet Synchronization
+  - New database table `trusted_devices` for storing trusted device information per user
+  - API endpoints: /api/devices/trusted (list), /check (verify), /add, /remove
+  - Device fingerprinting using browser characteristics (user agent, screen size, timezone, etc.)
+  - Automatic device type detection (Telegram Android/iOS/Desktop, mobile browsers, desktop browsers)
+  - UI: Banner notification when wallet is synced but device is not trusted
+  - Modal for adding device as trusted with device info preview
+  - Security: Payment operations blocked on untrusted devices even if wallet is connected
+  - This allows users to sync their wallet across devices while maintaining security
+
 - 2024-12-04: Renombrado de creditos a BUNK3RCO1N
   - La sección "Billetera" ahora se llama "BUNK3RCO1N"
   - Todos los "creditos" en la UI ahora son "BUNK3RCO1N"
