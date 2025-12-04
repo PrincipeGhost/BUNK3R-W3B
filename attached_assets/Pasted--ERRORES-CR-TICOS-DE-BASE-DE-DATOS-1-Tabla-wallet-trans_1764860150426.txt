@@ -1,0 +1,64 @@
+❌ ERRORES CRÍTICOS DE BASE DE DATOS:
+1. Tabla wallet_transactions - Columna incorrecta type
+BD tiene: transaction_type
+Código usa: type
+Archivos afectados en app.py:
+Línea 2144: INSERT INTO wallet_transactions (user_id, amount, type, ...)
+Línea 2277: INSERT INTO wallet_transactions (user_id, amount, type, ...)
+Línea 2313: SELECT id, amount, type, description, created_at
+Línea 2726: (user_id, amount, type, description, reference_id, ...)
+2. Tabla wallet_transactions - Columna tx_hash NO EXISTE
+Columnas en BD: id, user_id, transaction_type, amount, description, reference_id, created_at
+El código intenta insertar en tx_hash que no existe:
+Línea 2144: INSERT INTO wallet_transactions (..., tx_hash, ...)
+Línea 2277: INSERT INTO wallet_transactions (..., tx_hash, ...)
+❌ ERRORES DE FRONTEND (JavaScript):
+3. loadTransactionHistory() NO se llama automáticamente
+En showPage('wallet') (línea 681-682), falta la llamada a loadTransactionHistory()
+El historial NO se carga cuando el usuario entra a la pantalla de wallet
+4. NO hay botón para abrir setupBackupWallet()
+La función showBackupWalletModal() existe pero NO hay ningún botón en el HTML que la llame
+Busqué onclick.*backup y setupBackupWallet en templates/index.html = 0 resultados
+5. QRCode library incluida pero NO usada
+Se agregó qrcodejs pero en showPaymentModal() NO genera QR code
+El modal de pago solo muestra texto, no usa la librería QR
+⚠️ ADVERTENCIAS / POSIBLES PROBLEMAS:
+6. BackButton no soportado en versión Telegram 6.0
+Console log muestra: [Telegram.WebApp] BackButton is not supported in version 6.0
+Esto aparece múltiples veces cuando se navega
+7. BOT_TOKEN configurado pero no verificado
+BOT_TOKEN existe en env vars pero las notificaciones de Telegram podrían fallar si el bot no está correctamente configurado
+📋 RESUMEN ACTUALIZADO DE ERRORES:
+#	Error	Ubicación	Severidad
+1	Columna type vs transaction_type	app.py (múltiples líneas)	🔴 CRÍTICO
+2	Columna tx_hash no existe	app.py (líneas 2144, 2277)	🔴 CRÍTICO
+3	loadTransactionHistory() no se llama	app.js línea 681-682	🟠 ALTO
+4	Sin botón para backup wallet modal	templates/index.html	🟠 ALTO
+5	QRCode library no usada	static/js/app.js	🟡 MEDIO
+6	BackButton warning	Telegram WebApp	🟡 BAJO
+📍 LÍNEAS EXACTAS A CORREGIR:
+app.py:
+
+Línea 2144: cambiar type → transaction_type, quitar tx_hash
+Línea 2277: cambiar type → transaction_type, quitar tx_hash
+Línea 2313: cambiar type → transaction_type
+Línea 2726: cambiar type → transaction_type
+static/js/app.js:
+
+Línea 681-682: agregar this.loadTransactionHistory(); después de showPage('wallet')
+templates/index.html:
+
+Agregar un botón que llame a App.setupBackupWallet() o App.showBackupWalletModal()
+showPaymentModal():
+
+Implementar generación de QR code usando la librería incluida
+Checkpoint made
+1 minute ago
+Saved progress at the end of the loop
+
+Rollback here
+
+Changes
+
+View preview
+2 minutes of work
