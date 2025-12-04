@@ -1106,9 +1106,17 @@ const PublicationsManager = {
     },
     
     getAuthHeaders() {
-        return {
-            'X-Demo-Mode': 'true'
-        };
+        const headers = {};
+        
+        if (typeof App !== 'undefined') {
+            if (App.isDemoMode) {
+                headers['X-Demo-Mode'] = 'true';
+            } else if (App.initData) {
+                headers['X-Telegram-Init-Data'] = App.initData;
+            }
+        }
+        
+        return headers;
     },
     
     showToast(message, type = 'info') {
