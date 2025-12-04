@@ -1,0 +1,112 @@
+PROMPT - PROBLEMAS Y MEJORAS DETECTADOS EN BUNK3R
+1. SISTEMA DE PUBLICACIONES (RED SOCIAL)
+PROBLEMAS CRÍTICOS:
+
+El feed NO se actualiza en tiempo real - hay que recargar la página para ver nuevas publicaciones, likes o comentarios
+loadFeed() se llama después de cada acción (publicar, eliminar, bloquear) causando recargas completas innecesarias en lugar de actualizar elementos individuales
+No hay paginación infinita/scroll infinito implementado - el feed carga todo de una vez
+Los posts eliminados requieren recarga manual del feed para desaparecer de la UI
+Las reacciones/likes no muestran animación de feedback visual inmediato
+El contador de comentarios no se actualiza en tiempo real cuando alguien comenta
+No hay sistema de notificaciones push para nuevos likes/comentarios/seguidores
+El sistema de menciones (@usuario) existe en backend pero no tiene autocompletado en frontend
+Los hashtags (#tema) no son clickeables para filtrar posts por hashtag
+Falta página de Explore funcional con búsqueda y hashtags trending
+STORIES:
+
+No hay funcionalidad para eliminar historias propias
+No hay reacciones a historias (responder con emoji)
+La expiración de 24h existe en backend pero no se muestra tiempo restante en UI
+El visor de stories no tiene swipe gesture en móvil
+No hay indicador de "visto por X personas" para historias propias
+2. NAVEGACIÓN Y UI
+PROBLEMAS:
+
+goToHome() tiene lista hardcodeada de pantallas a ocultar - si se añaden nuevas, no se ocultan
+Los items del sidebar con secciones genéricas solo muestran toast en lugar de navegar
+El botón atrás de Telegram no maneja todas las pantallas correctamente
+Falta animación de transición entre páginas/secciones
+La barra de navegación inferior no tiene badge de notificaciones
+Los modales a veces no cierran correctamente al hacer click fuera
+El sidebar overlay puede quedarse activo si la navegación falla
+No hay skeleton loaders mientras cargan datos
+3. SISTEMA DE WALLET/BUNK3RCOIN
+PROBLEMAS:
+
+El balance no se actualiza automáticamente después de transacciones
+La validación de direcciones TON es básica (solo formato, no validez real)
+Los pagos TON en estado "pending" pueden quedarse así si la API falla
+No hay historial de transacciones con filtros (fecha, tipo, monto)
+Falta confirmación visual clara cuando se completa una recarga
+El modo demo bypasea validaciones importantes
+No hay límite de intentos para verificación de pagos
+4. BASE DE DATOS Y RENDIMIENTO
+PROBLEMAS CRÍTICOS:
+
+Se crea nueva conexión para cada operación en lugar de usar connection pool
+Faltan índices en columnas frecuentemente consultadas: status, user_id, created_at
+get_tracking_history no tiene límite, puede ser muy lento con historial largo
+Las búsquedas de posts/usuarios no están optimizadas
+No hay caché para datos que cambian poco (estadísticas, configuraciones)
+5. PERFILES DE USUARIO
+PROBLEMAS:
+
+El perfil propio no muestra grid de publicaciones como Instagram
+No hay página de seguidores/siguiendo navegable
+El avatar no tiene cropping/ajuste antes de subir
+Falta edición de bio/descripción
+No hay verificación de usuarios (badge verificado)
+El contador de posts/seguidores/siguiendo puede desincronizarse
+6. COMENTARIOS
+PROBLEMAS:
+
+Los comentarios no cargan automáticamente al abrir un post
+No hay paginación de comentarios (load more)
+Las respuestas a comentarios no se muestran anidadas
+No se puede editar un comentario después de enviarlo
+No hay reacciones a comentarios individuales
+Falta indicador de "escribiendo..." en tiempo real
+7. NOTIFICACIONES
+PROBLEMAS:
+
+No existe sistema de notificaciones en la app principal
+No hay badge de notificaciones no leídas
+Las notificaciones de Telegram solo se envían para transacciones grandes
+Falta historial de notificaciones consultable
+No hay configuración de preferencias de notificaciones
+8. SEGURIDAD
+PROBLEMAS:
+
+El modo demo otorga is_owner = True sin verificación
+Algunas alertas de seguridad pueden quedarse sin resolver
+El sistema de dispositivos de confianza puede tener inconsistencias
+Falta rate limiting en endpoints críticos (login, pagos, publicaciones)
+Los logs de seguridad no tienen paginación
+9. MARKETPLACE Y BOTS
+PROBLEMAS:
+
+Los productos no tienen sistema de categorías
+No hay carrito de compras
+Los bots comprados no muestran estado de activación
+Falta panel de configuración de bots comprados
+No hay sistema de reviews/valoraciones
+10. NÚMEROS VIRTUALES (SMSPool)
+PROBLEMAS MENORES:
+
+El polling cada 5 segundos puede ser intensivo
+No hay notificación push cuando llega SMS
+El historial de órdenes no tiene filtros
+Falta indicador de "tiempo restante" para números activos
+11. INTERCAMBIO (ChangeNow)
+PROBLEMAS:
+
+Si la API key no está configurada, el módulo falla silenciosamente
+No hay caché de tasas de cambio
+Falta historial de intercambios realizados
+12. CSS/RESPONSIVE
+PROBLEMAS:
+
+Algunos modales no son scrolleables en pantallas pequeñas
+Los toasts pueden superponerse si aparecen múltiples
+El teclado en móvil puede tapar inputs
+Falta modo landscape optimizado
