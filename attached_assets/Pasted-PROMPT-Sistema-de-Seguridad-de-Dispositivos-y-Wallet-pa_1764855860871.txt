@@ -1,0 +1,70 @@
+PROMPT: Sistema de Seguridad de Dispositivos y Wallet para BUNK3RCO1N
+FUNCIONALIDAD PRINCIPAL:
+1. Bloquear sección BUNK3RCO1N en dispositivos no confiables
+
+Si el dispositivo NO es de confianza, el usuario NO puede entrar a la sección BUNK3RCO1N (billetera)
+Mostrar pantalla de bloqueo atractiva: "Para acceder a tu billetera, conecta tu wallet de Telegram"
+Opcionalmente mostrar preview del saldo sin poder interactuar (incentivo visual)
+2. Validación de wallet única por usuario
+
+Cuando un usuario conecta su wallet de Telegram por primera vez, se guarda esa dirección permanentemente
+En cualquier otro dispositivo, DEBE usar EXACTAMENTE la misma wallet
+Si intenta conectar una wallet diferente → Rechazar con mensaje: "Esta no es tu wallet registrada. Debes usar la wallet asociada a tu cuenta"
+3. Flujo para agregar dispositivo de confianza
+
+Requiere: Conectar wallet de Telegram + Verificación 2FA
+Sistema verifica que la wallet sea la misma registrada
+Si es correcta y pasa 2FA → Dispositivo agregado como confianza → Acceso completo
+Si wallet diferente → Rechazar
+SEGURIDAD:
+4. Límite de dispositivos
+
+Máximo 2 dispositivos de confianza por usuario
+Si quiere más → Debe contactar soporte o eliminar uno existente
+5. 2FA obligatorio para operaciones sensibles
+
+Agregar nuevo dispositivo de confianza
+Eliminar dispositivos
+Recargas grandes (opcional)
+6. Bloqueo por intentos fallidos
+
+3 intentos de wallet incorrecta → Bloquear 15 minutos
+Notificar al usuario: "Alguien intentó acceder a tu cuenta con una wallet diferente"
+7. Notificaciones por Telegram
+
+Cuando se agrega un nuevo dispositivo: "Se agregó un nuevo dispositivo: [Tipo] desde [IP]"
+Cuando hay intentos fallidos sospechosos
+8. Tiempo de expiración
+
+Dispositivos sin usar en 30-60 días se eliminan automáticamente de la lista de confianza
+EXPERIENCIA DE USUARIO:
+9. Gestión de dispositivos
+
+Sección en configuración para ver lista de dispositivos autorizados
+Mostrar: nombre personalizable, tipo, IP, fecha de registro, última vez usado
+Opción de eliminar dispositivos individualmente
+Botón "Cerrar sesión en todos los dispositivos" (excepto el actual)
+10. Modo solo lectura (opcional)
+
+Para dispositivos no confiables: poder ver saldo pero no gastar/recargar
+11. Widget de estado de seguridad
+
+En perfil mostrar: "Tu cuenta está protegida ✓"
+Indicadores: wallet conectada, dispositivos activos, última actividad
+12. Historial de actividad
+
+Log de eventos: dispositivos agregados/eliminados, intentos fallidos, recargas
+Usuario puede ver "Actividad reciente de seguridad"
+13. Wallet de respaldo
+
+Permitir registrar UNA wallet secundaria de emergencia
+Para usar si pierde acceso a la principal (con verificación extra)
+PANEL DE ADMINISTRADOR:
+14. Ver todos los usuarios y sus dispositivos
+15. Desautorizar dispositivos manualmente
+16. Estadísticas de dispositivos por usuario
+17. Alertas de comportamiento sospechoso (muchos intentos fallidos, IPs raras)
+
+RECUPERACIÓN DE CUENTA:
+Si usuario pierde acceso a todos sus dispositivos y wallet
+Proceso: contactar soporte + verificar identidad por Telegram + esperar 24-48 horas
