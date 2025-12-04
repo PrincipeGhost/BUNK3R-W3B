@@ -94,6 +94,105 @@ class SMSPoolService:
             return {'success': True, 'countries': countries}
         return result
     
+    def _get_service_name(self, service_id: str, provided_name: str = '') -> str:
+        """Get readable service name from ID or provided name"""
+        service_names = {
+            'pl': 'Plivo',
+            'am': 'Amazon',
+            'wa': 'WhatsApp',
+            'tg': 'Telegram',
+            'ig': 'Instagram',
+            'fb': 'Facebook',
+            'tw': 'Twitter / X',
+            'go': 'Google',
+            'gm': 'Gmail',
+            'ms': 'Microsoft',
+            'tk': 'TikTok',
+            'sc': 'Snapchat',
+            'ub': 'Uber',
+            'ly': 'Lyft',
+            'pp': 'PayPal',
+            'nf': 'Netflix',
+            'sp': 'Spotify',
+            'dc': 'Discord',
+            'st': 'Steam',
+            'tt': 'Twitch',
+            'li': 'LinkedIn',
+            'ap': 'Apple',
+            'yh': 'Yahoo',
+            'bn': 'Binance',
+            'cb': 'Coinbase',
+            'oa': 'OpenAI',
+            'cg': 'ChatGPT',
+            'td': 'Tinder',
+            'bb': 'Bumble',
+            'wc': 'WeChat',
+            'ln': 'Line',
+            'vb': 'Viber',
+            'sg': 'Signal',
+            'ab': 'Airbnb',
+            'eb': 'eBay',
+            'ae': 'AliExpress',
+            'ws': 'Wish',
+            'sh': 'Shopee',
+            'lz': 'Lazada',
+            'gb': 'Grab',
+            'bt': 'Bolt',
+            'dd': 'DoorDash',
+            'ue': 'Uber Eats',
+            'dl': 'Deliveroo',
+            'zl': 'Zalo',
+            'ka': 'Kakao',
+            'nt': 'Naver',
+            'ym': 'Yandex',
+            'vk': 'VKontakte',
+            'ok': 'Odnoklassniki',
+            'mg': 'Mercado Libre',
+            'ra': 'Rappi',
+            'gl': 'Gojek',
+            'to': 'Tokopedia',
+            'bl': 'Blizzard',
+            'ep': 'Epic Games',
+            'ri': 'Riot Games',
+            'mi': 'Mihoyo',
+            'gg': 'Garena',
+            'zo': 'Zoom',
+            'sl': 'Slack',
+            'te': 'Teams',
+            'sk': 'Skype',
+            'dr': 'Dropbox',
+            'bx': 'Box',
+            'gd': 'Google Drive',
+            'od': 'OneDrive',
+            'pm': 'Proton Mail',
+            'tu': 'Tutanota',
+            'ck': 'Crypto.com',
+            'kr': 'Kraken',
+            'ft': 'FTX',
+            'ge': 'Gemini',
+            'ki': 'KuCoin',
+            'hp': 'Huobi',
+            'ok': 'OKX',
+            'bg': 'Bybit',
+            'bm': 'BitMart',
+            'gt': 'Gate.io',
+            'any': 'Cualquier servicio',
+            'other': 'Otro servicio',
+        }
+        
+        if provided_name and len(provided_name) > 3:
+            return provided_name
+        
+        service_id_lower = service_id.lower() if service_id else ''
+        if service_id_lower in service_names:
+            return service_names[service_id_lower]
+        
+        for key, name in service_names.items():
+            if key in service_id_lower or service_id_lower in key:
+                return name
+        
+        return provided_name if provided_name else service_id
+    
     def get_services(self, country_id: Optional[str] = None) -> Dict:
         """Get list of available services/apps with prices for a country"""
         if not country_id:
@@ -101,28 +200,37 @@ class SMSPoolService:
             if result['success']:
                 services = []
                 data = result['data']
+                logger.info(f"SMSPool service/retrieve_all response type: {type(data)}")
                 if isinstance(data, list):
                     for service in data:
+                        service_id = service.get('ID') or service.get('id') or ''
+                        raw_name = service.get('name', '')
+                        name = self._get_service_name(service_id, raw_name)
                         services.append({
-                            'id': service.get('ID') or service.get('id'),
-                            'name': service.get('name', ''),
+                            'id': service_id,
+                            'name': name,
                             'short_name': service.get('short_name', ''),
                             'price': 0.0,
-                            'icon': self._get_service_icon(service.get('name', ''))
+                            'icon': self._get_service_icon(name)
                         })
                 return {'success': True, 'services': services}
             return result
         
         result = self._make_request('request/pricing', {'country': country_id})
+        logger.info(f"SMSPool request/pricing response for country {country_id}: success={result.get('success')}")
+        
         if result['success']:
             services = []
             data = result['data']
             
             if isinstance(data, dict):
+                logger.info(f"SMSPool pricing data (dict) sample keys: {list(data.keys())[:5]}")
                 for service_id, service_data in data.items():
                     if isinstance(service_data, dict):
                         price = float(service_data.get('price', service_data.get('low_price', 0)))
-                        name = service_data.get('name', service_data.get('short_name', service_id))
+                        raw_name = service_data.get('name', service_data.get('short_name', ''))
+                        name = self._get_service_name(service_id, raw_name)
+                        logger.debug(f"Service {service_id}: raw_name='{raw_name}', resolved_name='{name}'")
                         services.append({
                             'id': service_id,
                             'name': name,
@@ -131,19 +239,22 @@ class SMSPoolService:
                             'icon': self._get_service_icon(name)
                         })
                     elif isinstance(service_data, (int, float)):
+                        name = self._get_service_name(service_id, '')
                         services.append({
                             'id': service_id,
-                            'name': service_id,
+                            'name': name,
                             'short_name': '',
                             'price': float(service_data),
-                            'icon': self._get_service_icon(service_id)
+                            'icon': self._get_service_icon(name)
                         })
             elif isinstance(data, list):
+                logger.info(f"SMSPool pricing data (list) count: {len(data)}")
                 for item in data:
                     if isinstance(item, dict):
-                        service_id = item.get('ID') or item.get('id') or item.get('service')
+                        service_id = item.get('ID') or item.get('id') or item.get('service') or ''
                         price = float(item.get('price', item.get('low_price', 0)))
-                        name = item.get('name', item.get('short_name', str(service_id)))
+                        raw_name = item.get('name', item.get('short_name', ''))
+                        name = self._get_service_name(service_id, raw_name)
                         services.append({
                             'id': service_id,
                             'name': name,
@@ -154,6 +265,7 @@ class SMSPoolService:
             
             services = [s for s in services if s['price'] > 0]
             services.sort(key=lambda x: x['name'].lower())
+            logger.info(f"Returning {len(services)} services for country {country_id}")
             
             return {'success': True, 'services': services}
         return result
@@ -184,7 +296,7 @@ class SMSPoolService:
             'service': service_id
         }
         if pool:
-            params['pool'] = pool
+            params['pool'] = str(pool)
         
         result = self._make_request('purchase/sms', params)
         
