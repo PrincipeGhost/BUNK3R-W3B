@@ -2380,6 +2380,156 @@ def get_wallet_address():
         return jsonify({'success': True, 'address': None})
 
 
+@app.route('/api/devices/trusted', methods=['GET'])
+@require_telegram_user
+def get_trusted_devices():
+    """Obtener lista de dispositivos de confianza del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': True, 'devices': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, device_id, device_name, device_type, created_at, last_used_at, is_active
+                    FROM trusted_devices 
+                    WHERE user_id = %s AND is_active = TRUE
+                    ORDER BY last_used_at DESC
+                """, (user_id,))
+                rows = cur.fetchall()
+                devices = []
+                for row in rows:
+                    devices.append({
+                        'id': row[0],
+                        'deviceId': row[1],
+                        'deviceName': row[2],
+                        'deviceType': row[3],
+                        'createdAt': row[4].isoformat() if row[4] else None,
+                        'lastUsedAt': row[5].isoformat() if row[5] else None,
+                        'isActive': row[6]
+                    })
+                    
+        return jsonify({'success': True, 'devices': devices})
+        
+    except Exception as e:
+        logger.error(f"Error getting trusted devices: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener dispositivos'}), 500
+
+
+@app.route('/api/devices/trusted/check', methods=['POST'])
+@require_telegram_user
+def check_trusted_device():
+    """Verificar si el dispositivo actual es de confianza."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        
+        if not device_id or not db_manager:
+            return jsonify({'success': True, 'isTrusted': False})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, device_name FROM trusted_devices 
+                    WHERE user_id = %s AND device_id = %s AND is_active = TRUE
+                """, (user_id, device_id))
+                result = cur.fetchone()
+                
+                if result:
+                    cur.execute("""
+                        UPDATE trusted_devices SET last_used_at = NOW()
+                        WHERE id = %s
+                    """, (result[0],))
+                    conn.commit()
+                    return jsonify({
+                        'success': True, 
+                        'isTrusted': True,
+                        'deviceName': result[1]
+                    })
+                    
+        return jsonify({'success': True, 'isTrusted': False})
+        
+    except Exception as e:
+        logger.error(f"Error checking trusted device: {e}")
+        return jsonify({'success': True, 'isTrusted': False})
+
+
+@app.route('/api/devices/trusted/add', methods=['POST'])
+@require_telegram_user
+def add_trusted_device():
+    """Agregar un dispositivo de confianza."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        device_name = data.get('deviceName', 'Dispositivo desconocido')
+        device_type = data.get('deviceType', 'unknown')
+        user_agent = request.headers.get('User-Agent', '')[:500]
+        ip_address = request.remote_addr or ''
+        
+        if not device_id:
+            return jsonify({'success': False, 'error': 'ID de dispositivo requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO trusted_devices (user_id, device_id, device_name, device_type, user_agent, ip_address)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id, device_id) 
+                    DO UPDATE SET 
+                        device_name = EXCLUDED.device_name,
+                        is_active = TRUE,
+                        last_used_at = NOW()
+                    RETURNING id
+                """, (user_id, device_id, device_name, device_type, user_agent, ip_address))
+                result = cur.fetchone()
+                conn.commit()
+                
+        logger.info(f"Dispositivo de confianza agregado para usuario {user_id}: {device_name}")
+        return jsonify({'success': True, 'message': 'Dispositivo agregado correctamente', 'deviceId': result[0] if result else None})
+        
+    except Exception as e:
+        logger.error(f"Error adding trusted device: {e}")
+        return jsonify({'success': False, 'error': 'Error al agregar dispositivo'}), 500
+
+
+@app.route('/api/devices/trusted/remove', methods=['POST'])
+@require_telegram_user
+def remove_trusted_device():
+    """Eliminar un dispositivo de confianza."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        
+        if not device_id:
+            return jsonify({'success': False, 'error': 'ID de dispositivo requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE trusted_devices SET is_active = FALSE
+                    WHERE user_id = %s AND device_id = %s
+                """, (user_id, device_id))
+                conn.commit()
+                
+        logger.info(f"Dispositivo de confianza eliminado para usuario {user_id}")
+        return jsonify({'success': True, 'message': 'Dispositivo eliminado correctamente'})
+        
+    except Exception as e:
+        logger.error(f"Error removing trusted device: {e}")
+        return jsonify({'success': False, 'error': 'Error al eliminar dispositivo'}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
