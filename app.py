@@ -3699,17 +3699,26 @@ def create_publication():
             caption = request.form.get('caption', '')
             content_type = 'text'
             
-            encryption_meta = encryption_manager.generate_content_key()
             encrypted_caption = encryption_manager.encrypt_text(caption)
             
-            post_id = db_manager.create_encrypted_post(
-                user_id=user_id,
-                content_type=content_type,
-                caption=encrypted_caption.get('encrypted_data') if encrypted_caption['success'] else caption,
-                encryption_key=encryption_meta['key'],
-                encryption_iv=encryption_meta['iv'],
-                is_encrypted=True
-            )
+            if encrypted_caption['success']:
+                post_id = db_manager.create_encrypted_post(
+                    user_id=user_id,
+                    content_type=content_type,
+                    caption=encrypted_caption.get('encrypted_data'),
+                    encryption_key=encrypted_caption.get('key'),
+                    encryption_iv=encrypted_caption.get('nonce'),
+                    is_encrypted=True
+                )
+            else:
+                post_id = db_manager.create_encrypted_post(
+                    user_id=user_id,
+                    content_type=content_type,
+                    caption=caption,
+                    encryption_key=None,
+                    encryption_iv=None,
+                    is_encrypted=False
+                )
             
             if not post_id:
                 return jsonify({'success': False, 'error': 'Error creating post'}), 500
@@ -3798,13 +3807,26 @@ def create_publication():
 @app.route('/api/publications/feed', methods=['GET'])
 @require_telegram_auth
 def get_feed():
-    """Get user's feed with encrypted content"""
+    """Get user's feed with decrypted content for viewing"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
         limit = int(request.args.get('limit', 20))
         offset = int(request.args.get('offset', 0))
         
         posts = db_manager.get_feed_posts(user_id, limit, offset)
+        
+        for post in posts:
+            if post.get('is_encrypted') and post.get('caption') and post.get('encryption_key') and post.get('encryption_iv'):
+                try:
+                    decrypted = encryption_manager.decrypt_text(
+                        post['caption'],
+                        post['encryption_key'],
+                        post['encryption_iv']
+                    )
+                    if decrypted.get('success'):
+                        post['caption'] = decrypted.get('text', post['caption'])
+                except Exception as decrypt_error:
+                    logger.warning(f"Could not decrypt caption for post {post.get('id')}: {decrypt_error}")
         
         return jsonify({
             'success': True,

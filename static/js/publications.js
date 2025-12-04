@@ -114,6 +114,14 @@ const PublicationsManager = {
     
     REACTION_EMOJIS: ['❤️', '😂', '😮', '😢', '😡', '👏', '🔥', '💯'],
     
+    DEFAULT_AVATAR: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="50" fill="#1a2744"/>
+            <circle cx="50" cy="35" r="18" fill="#3b82f6"/>
+            <ellipse cx="50" cy="85" rx="30" ry="25" fill="#3b82f6"/>
+        </svg>
+    `.trim()),
+    
     init() {
         this.setupEventListeners();
         this.loadFeed();
@@ -245,13 +253,15 @@ const PublicationsManager = {
         const mediaHtml = this.renderPostMedia(post);
         const captionHtml = this.renderCaption(post.caption, post.username);
         const timeAgo = this.formatTimeAgo(post.created_at);
+        const avatarUrl = post.avatar_url || this.DEFAULT_AVATAR;
         
         return `
             <article class="publication-card" data-post-id="${post.id}">
                 <div class="publication-header">
                     <div class="publication-author">
-                        <img src="${post.avatar_url || '/static/images/default-avatar.png'}" 
-                             alt="${post.username}" class="publication-author-avatar">
+                        <img src="${avatarUrl}" 
+                             alt="${post.username}" class="publication-author-avatar"
+                             onerror="this.src='${this.DEFAULT_AVATAR}'">
                         <div class="publication-author-info">
                             <span class="publication-author-name">${post.first_name || post.username}</span>
                             <span class="publication-time">${timeAgo}</span>
@@ -375,7 +385,7 @@ const PublicationsManager = {
         const addStoryHtml = `
             <div class="story-item" onclick="PublicationsManager.createStory()">
                 <div class="story-avatar-wrapper add-story">
-                    <img src="/static/images/default-avatar.png" class="story-avatar" alt="Tu historia">
+                    <img src="${this.DEFAULT_AVATAR}" class="story-avatar" alt="Tu historia">
                     <span class="story-add-icon">+</span>
                 </div>
                 <span class="story-username">Tu historia</span>
@@ -385,8 +395,9 @@ const PublicationsManager = {
         const storiesHtml = stories.map(story => `
             <div class="story-item" onclick="PublicationsManager.viewStories('${story.user_id}')">
                 <div class="story-avatar-wrapper ${story.has_viewed ? 'viewed' : ''}">
-                    <img src="${story.avatar_url || '/static/images/default-avatar.png'}" 
-                         class="story-avatar" alt="${story.username}">
+                    <img src="${story.avatar_url || this.DEFAULT_AVATAR}" 
+                         class="story-avatar" alt="${story.username}"
+                         onerror="this.src='${this.DEFAULT_AVATAR}'">
                 </div>
                 <span class="story-username">${story.username || story.first_name}</span>
             </div>
