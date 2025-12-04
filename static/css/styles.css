@@ -3232,15 +3232,47 @@ body {
     font-size: 12px;
 }
 
+.ton-wallet-address-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
 .ton-wallet-address {
     color: #fff;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 500;
     font-family: monospace;
     background: rgba(255, 255, 255, 0.15);
-    padding: 4px 10px;
-    border-radius: 6px;
-    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    letter-spacing: 0.3px;
+    word-break: break-all;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.ton-copy-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.ton-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.ton-copy-btn:active {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .ton-disconnect-btn {

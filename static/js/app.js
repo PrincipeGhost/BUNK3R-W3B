@@ -2059,6 +2059,11 @@ const App = {
             disconnectBtn.addEventListener('click', () => this.disconnectWallet());
         }
 
+        const copyAddressBtn = document.getElementById('ton-copy-address');
+        if (copyAddressBtn) {
+            copyAddressBtn.addEventListener('click', () => this.copyWalletAddress());
+        }
+
         document.querySelectorAll('.recharge-option').forEach(option => {
             option.addEventListener('click', () => {
                 const amount = parseInt(option.dataset.amount);
@@ -2107,6 +2112,16 @@ const App = {
         }
     },
 
+    copyWalletAddress() {
+        if (this.currentWalletAddress) {
+            navigator.clipboard.writeText(this.currentWalletAddress).then(() => {
+                this.showToast('Direccion copiada', 'success');
+            }).catch(() => {
+                this.showToast('Error al copiar', 'error');
+            });
+        }
+    },
+
     updateWalletUI(wallet) {
         const notConnected = document.getElementById('ton-wallet-not-connected');
         const connected = document.getElementById('ton-wallet-connected');
@@ -2117,11 +2132,12 @@ const App = {
             if (connected) connected.classList.remove('hidden');
             
             const address = wallet.account.address;
-            const shortAddress = address.slice(0, 8) + '...' + address.slice(-6);
-            if (addressEl) addressEl.textContent = shortAddress;
+            this.currentWalletAddress = address;
+            if (addressEl) addressEl.textContent = address;
         } else {
             if (notConnected) notConnected.classList.remove('hidden');
             if (connected) connected.classList.add('hidden');
+            this.currentWalletAddress = null;
         }
     },
 
