@@ -191,10 +191,15 @@ const PublicationsManager = {
     
     async loadFeed() {
         try {
+            console.log('Loading feed...');
             const response = await this.apiRequest('/api/publications/feed');
+            console.log('Feed response:', response);
             if (response.success) {
                 this.feedPosts = response.posts;
+                console.log('Posts loaded:', this.feedPosts.length);
                 this.renderFeed();
+            } else {
+                console.error('Feed load failed:', response.error);
             }
         } catch (error) {
             console.error('Error loading feed:', error);
@@ -213,7 +218,9 @@ const PublicationsManager = {
     },
     
     renderFeed() {
+        console.log('renderFeed called, posts:', this.feedPosts.length);
         const feedContainer = document.getElementById('publications-feed');
+        console.log('Feed container found:', !!feedContainer);
         if (!feedContainer) return;
         
         if (this.feedPosts.length === 0) {
@@ -227,7 +234,10 @@ const PublicationsManager = {
             return;
         }
         
-        feedContainer.innerHTML = this.feedPosts.map(post => this.renderPost(post)).join('');
+        const postsHtml = this.feedPosts.map(post => this.renderPost(post)).join('');
+        console.log('Posts HTML length:', postsHtml.length);
+        feedContainer.innerHTML = postsHtml;
+        console.log('Feed container updated');
         this.setupPostInteractions();
     },
     
