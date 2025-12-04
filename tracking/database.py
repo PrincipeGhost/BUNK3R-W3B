@@ -1253,14 +1253,7 @@ class DatabaseManager:
                     
                     cur.execute("""
                         INSERT INTO bot_types (bot_type, bot_name, description, icon, price, is_available, owner_only) VALUES
-                        ('tracking_manager', 'Trackings Correos', 'Gestiona tus envíos y paquetes', '📦', 0, TRUE, TRUE),
-                        ('tracking', 'TrackingBot', 'Rastrea tus envíos automáticamente', '🤖', 0, TRUE, FALSE),
-                        ('notify', 'NotifyBot', 'Notificaciones de estado de paquetes', '📬', 0, TRUE, FALSE),
-                        ('payment', 'PaymentBot', 'Procesa pagos automáticamente', '💰', 300, TRUE, FALSE),
-                        ('analytics', 'AnalyticsBot', 'Estadísticas en tiempo real', '📊', 450, TRUE, FALSE),
-                        ('alert', 'AlertBot', 'Alertas personalizadas', '🔔', 200, TRUE, FALSE),
-                        ('support', 'SupportBot', 'Soporte al cliente 24/7', '💬', 500, TRUE, FALSE),
-                        ('auto_reply', 'AutoReplyBot', 'Respuestas automáticas', '⚡', 150, TRUE, FALSE)
+                        ('tracking_manager', 'Trackings Correos', 'Gestiona tus envios y paquetes', '📦', 0, TRUE, TRUE)
                         ON CONFLICT (bot_type) DO UPDATE SET
                             bot_name = EXCLUDED.bot_name,
                             description = EXCLUDED.description,
