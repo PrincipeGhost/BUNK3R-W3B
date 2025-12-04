@@ -1996,30 +1996,43 @@ const App = {
     },
 
     initTonConnect() {
-        try {
-            if (typeof TonConnectUI === 'undefined') {
-                console.log('TonConnectUI not loaded yet');
-                return;
+        const initializeSDK = () => {
+            try {
+                this.tonConnectUI = new TonConnectUI({
+                    manifestUrl: window.location.origin + '/static/tonconnect-manifest.json'
+                });
+
+                this.tonConnectUI.onStatusChange((wallet) => {
+                    if (wallet) {
+                        this.connectedWallet = wallet;
+                        this.updateWalletUI(wallet);
+                    } else {
+                        this.connectedWallet = null;
+                        this.updateWalletUI(null);
+                    }
+                });
+
+                this.setupTonConnectListeners();
+                console.log('TON Connect initialized');
+            } catch (error) {
+                console.error('Error initializing TON Connect:', error);
             }
+        };
 
-            this.tonConnectUI = new TonConnectUI({
-                manifestUrl: window.location.origin + '/static/tonconnect-manifest.json'
-            });
-
-            this.tonConnectUI.onStatusChange((wallet) => {
-                if (wallet) {
-                    this.connectedWallet = wallet;
-                    this.updateWalletUI(wallet);
-                } else {
-                    this.connectedWallet = null;
-                    this.updateWalletUI(null);
+        if (typeof TonConnectUI !== 'undefined') {
+            initializeSDK();
+        } else {
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                if (typeof TonConnectUI !== 'undefined') {
+                    clearInterval(checkInterval);
+                    initializeSDK();
+                } else if (attempts >= 20) {
+                    clearInterval(checkInterval);
+                    console.log('TonConnectUI failed to load after 10 seconds');
                 }
-            });
-
-            this.setupTonConnectListeners();
-            console.log('TON Connect initialized');
-        } catch (error) {
-            console.error('Error initializing TON Connect:', error);
+            }, 500);
         }
     },
 
