@@ -1,0 +1,237 @@
+PROMPT - PROBLEMAS Y MEJORAS DETECTADOS EN BUNK3R
+1. SISTEMA DE PUBLICACIONES (RED SOCIAL)
+PROBLEMAS CRÍTICOS:
+
+El feed NO se actualiza en tiempo real - hay que recargar la página para ver nuevas publicaciones, likes o comentarios
+loadFeed() se llama después de cada acción (publicar, eliminar, bloquear) causando recargas completas innecesarias en lugar de actualizar elementos individuales
+No hay paginación infinita/scroll infinito implementado - el feed carga todo de una vez
+Los posts eliminados requieren recarga manual del feed para desaparecer de la UI
+Las reacciones/likes no muestran animación de feedback visual inmediato
+El contador de comentarios no se actualiza en tiempo real cuando alguien comenta
+No hay sistema de notificaciones push para nuevos likes/comentarios/seguidores
+El sistema de menciones (@usuario) existe en backend pero no tiene autocompletado en frontend
+Los hashtags (#tema) no son clickeables para filtrar posts por hashtag
+Falta página de Explore funcional con búsqueda y hashtags trending
+STORIES:
+
+No hay funcionalidad para eliminar historias propias
+No hay reacciones a historias (responder con emoji)
+La expiración de 24h existe en backend pero no se muestra tiempo restante en UI
+El visor de stories no tiene swipe gesture en móvil
+No hay indicador de "visto por X personas" para historias propias
+2. NAVEGACIÓN Y UI
+PROBLEMAS:
+
+goToHome() tiene lista hardcodeada de pantallas a ocultar - si se añaden nuevas, no se ocultan
+Los items del sidebar con secciones genéricas solo muestran toast en lugar de navegar
+El botón atrás de Telegram no maneja todas las pantallas correctamente
+Falta animación de transición entre páginas/secciones
+La barra de navegación inferior no tiene badge de notificaciones
+Los modales a veces no cierran correctamente al hacer click fuera
+El sidebar overlay puede quedarse activo si la navegación falla
+No hay skeleton loaders mientras cargan datos
+3. SISTEMA DE WALLET/BUNK3RCOIN
+PROBLEMAS:
+
+El balance no se actualiza automáticamente después de transacciones
+La validación de direcciones TON es básica (solo formato, no validez real)
+Los pagos TON en estado "pending" pueden quedarse así si la API falla
+No hay historial de transacciones con filtros (fecha, tipo, monto)
+Falta confirmación visual clara cuando se completa una recarga
+El modo demo bypasea validaciones importantes
+No hay límite de intentos para verificación de pagos
+4. BASE DE DATOS Y RENDIMIENTO
+PROBLEMAS CRÍTICOS:
+
+Se crea nueva conexión para cada operación en lugar de usar connection pool
+Faltan índices en columnas frecuentemente consultadas: status, user_id, created_at
+get_tracking_history no tiene límite, puede ser muy lento con historial largo
+Las búsquedas de posts/usuarios no están optimizadas
+No hay caché para datos que cambian poco (estadísticas, configuraciones)
+5. PERFILES DE USUARIO
+PROBLEMAS:
+
+El perfil propio no muestra grid de publicaciones como Instagram
+No hay página de seguidores/siguiendo navegable
+El avatar no tiene cropping/ajuste antes de subir
+Falta edición de bio/descripción
+No hay verificación de usuarios (badge verificado)
+El contador de posts/seguidores/siguiendo puede desincronizarse
+6. COMENTARIOS
+PROBLEMAS:
+
+Los comentarios no cargan automáticamente al abrir un post
+No hay paginación de comentarios (load more)
+Las respuestas a comentarios no se muestran anidadas
+No se puede editar un comentario después de enviarlo
+No hay reacciones a comentarios individuales
+Falta indicador de "escribiendo..." en tiempo real
+7. NOTIFICACIONES
+PROBLEMAS:
+
+No existe sistema de notificaciones en la app principal
+No hay badge de notificaciones no leídas
+Las notificaciones de Telegram solo se envían para transacciones grandes
+Falta historial de notificaciones consultable
+No hay configuración de preferencias de notificaciones
+8. SEGURIDAD
+PROBLEMAS:
+
+El modo demo otorga is_owner = True sin verificación
+Algunas alertas de seguridad pueden quedarse sin resolver
+El sistema de dispositivos de confianza puede tener inconsistencias
+Falta rate limiting en endpoints críticos (login, pagos, publicaciones)
+Los logs de seguridad no tienen paginación
+9. MARKETPLACE Y BOTS
+PROBLEMAS:
+
+Los productos no tienen sistema de categorías
+No hay carrito de compras
+Los bots comprados no muestran estado de activación
+Falta panel de configuración de bots comprados
+No hay sistema de reviews/valoraciones
+10. NÚMEROS VIRTUALES (SMSPool)
+PROBLEMAS MENORES:
+
+El polling cada 5 segundos puede ser intensivo
+No hay notificación push cuando llega SMS
+El historial de órdenes no tiene filtros
+
+PROBLEMAS:
+
+Algunos modales no son scrolleables en pantallas pequeñas
+Los toasts pueden superponerse si aparecen múltiples
+El teclado en móvil puede tapar inputs
+Falta modo landscape optimizado
+
+
+PROMPT ADICIONAL - PROBLEMAS DETECTADOS (PARTE 2)
+13. MEMORY LEAKS Y RECURSOS NO LIBERADOS
+PROBLEMAS:
+
+Los addEventListener no se remueven al cambiar de pantalla (acumulan listeners)
+setInterval en virtual-numbers.js (polling SMS) no se limpia si el usuario navega fuera
+setInterval de sesión en app.js sigue corriendo aunque no sea necesario
+_storyTimeout en el visor de stories puede no limpiarse si se cierra abruptamente
+El intervalo de TON Connect (20 intentos cada 500ms) podría persistir
+Los timeouts de debounceEstimate en exchange no se cancelan al cerrar modal
+14. CONDICIONES DE CARRERA (RACE CONDITIONS)
+PROBLEMAS:
+
+loadFeed() llamado rápidamente múltiples veces puede sobreescribir datos más recientes con datos antiguos
+Las respuestas de API pueden llegar en orden diferente al que fueron enviadas
+No hay cancelación de requests pendientes al iniciar uno nuevo
+Múltiples clicks en botón de like/save pueden enviar requests duplicados
+La verificación de pagos TON puede llamarse múltiples veces concurrentemente
+15. CÓDIGO DUPLICADO (DRY VIOLATIONS)
+PROBLEMAS:
+
+apiRequest() está duplicado en app.js Y en publications.js con lógica similar
+showToast() está implementado DOS veces con estilos diferentes
+getDeviceIcon() está duplicado en líneas 1055-1065 y 4082-4092 de app.js
+getAuthHeaders() se reimplementa en varios lugares
+Patrones de modal/overlay repetidos sin abstracción
+Lógica de escape HTML repetida en vez de usar función centralizada
+16. VULNERABILIDADES XSS POTENCIALES
+PROBLEMAS:
+
+En virtual-numbers.js: country.name, service.name se insertan directamente en HTML sin sanitizar
+Tracking cards insertan t.recipientName, t.productName, t.deliveryAddress sin escape
+Los comentarios de posts podrían contener HTML malicioso
+c.ticker en lista de currencies no está escapado
+Los SMS recibidos (order.smsCode) se muestran sin sanitización
+Solo algunos lugares usan escapeHtml(), otros lo omiten
+17. MANEJO DE ERRORES DEFICIENTE
+PROBLEMAS:
+
+loadStories() tiene try-catch pero solo hace console.error, no muestra error al usuario
+loadFeed() falla silenciosamente sin feedback visual
+Errores de descifrado en CryptoModule.decryptMedia() retornan null sin notificar
+Muchas funciones async no tienen try-catch (promises sin manejar)
+Los errores de API se muestran con str(e) exponiendo detalles internos
+No hay fallback UI cuando componentes críticos fallan
+18. VALIDACIÓN DE INPUT EN BACKEND
+PROBLEMAS:
+
+/api/tracking acepta campos como recipientName, productName sin sanitizar antes de guardar
+/api/posts acepta caption y contentUrl sin validación profunda
+/api/tracking/<id> PUT construye SQL dinámico - aunque usa parameterized queries, el pattern es riesgoso
+download_telegram_photo() no valida rigurosamente la URL (posible SSRF)
+El avatar upload solo verifica extensión, no contenido real del archivo
+Campos de texto sin límite de longitud definido
+19. ACCESIBILIDAD (A11Y)
+PROBLEMAS:
+
+Faltan atributos aria-label en botones de iconos (❤️, 💬, ↗️)
+Los modales no tienen role="dialog" ni aria-modal="true"
+El foco no se atrapa dentro de los modales abiertos
+No hay navegación por teclado (Tab/Enter) en elementos interactivos custom
+Las imágenes de avatar solo tienen alt básico, no descriptivo
+El sidebar no tiene aria-expanded para indicar estado
+Los toasts no usan role="alert" para lectores de pantalla
+user-scalable=no impide zoom, problemático para accesibilidad
+20. GESTIÓN DE ESTADOS INCONSISTENTE
+PROBLEMAS:
+
+No hay estado global centralizado (cada módulo maneja su propio estado)
+PublicationsManager y App tienen estados separados que pueden desincronizarse
+El usuario actual se almacena en múltiples lugares
+No hay forma de saber si hay operaciones pendientes globalmente
+Los contadores (likes, follows, balance) se actualizan en distintos lugares
+El estado de autenticación puede quedar inconsistente entre módulos
+21. LOGS EXCESIVOS EN PRODUCCIÓN
+PROBLEMAS:
+
+console.log extensivo en todo el código (~116+ instancias)
+Logs de debug como "Loading feed...", "Feed response:" en producción
+No hay sistema para deshabilitar logs en producción
+Los logs pueden exponer datos sensibles (wallets, IDs)
+No hay niveles de log (debug, info, warn, error)
+22. ENDPOINTS SIN RATE LIMITING
+PROBLEMAS:
+
+/api/posts - crear publicaciones
+/api/posts/<id>/like - dar likes
+/api/comments - crear comentarios
+/api/users/<id>/follow - seguir usuarios
+/api/ton/payment/verify - verificar pagos
+/api/2fa/verify - verificación 2FA
+/api/vn/purchase - comprar números virtuales
+23. TIMEOUTS Y REINTENTOS
+PROBLEMAS:
+
+Las llamadas a API no tienen timeout configurado (pueden colgar indefinidamente)
+No hay lógica de retry para errores transitorios de red
+El polling de SMS es cada 5 segundos sin backoff exponencial
+La verificación de pagos TON cada 5 segundos puede ser muy intensiva
+No hay manejo de errores de red vs errores de servidor
+24. PROBLEMAS DE CLOUDINARY
+PROBLEMAS:
+
+Si falla la subida, el post queda en estado inconsistente
+No hay limpieza de archivos huérfanos en Cloudinary
+Las URLs encriptadas pueden expirar sin manejo
+No hay validación de tamaño máximo de archivo antes de cifrar
+El proceso de cifrado en cliente es lento para archivos grandes sin progress real
+25. MANEJO DE TOKENS/SESIONES
+PROBLEMAS:
+
+No hay refresh automático de la sesión de Telegram
+Si la sesión expira durante una operación, falla sin recuperación
+Los tokens de 2FA no tienen expiración clara en frontend
+El estado last_2fa_verified_at no se usa para re-validar periódicamente
+No hay logout automático por inactividad configurado correctamente
+26. PROBLEMAS EN CREACIÓN DE TABLAS
+PROBLEMAS:
+
+CREATE TABLE IF NOT EXISTS se ejecuta en endpoints de runtime (línea 2102)
+Esto debería ser solo en inicialización, no en cada request
+Las migraciones no están versionadas
+No hay rollback de esquema si algo falla
+PRIORIDAD DEL COMPLEMENTO:
+Vulnerabilidades XSS - Crítico, sanitizar todo HTML
+Race Conditions - Implementar cancelación de requests
+Memory Leaks - Limpiar listeners e intervals
+Rate Limiting - Proteger endpoints sensibles
+Manejo de Errores - Feedback consistente al usuario
+Código Duplicado - Refactorizar a funciones compartidas
