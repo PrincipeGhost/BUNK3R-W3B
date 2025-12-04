@@ -1253,7 +1253,7 @@ class DatabaseManager:
                     
                     cur.execute("""
                         INSERT INTO bot_types (bot_type, bot_name, description, icon, price, is_available, owner_only) VALUES
-                        ('tracking_manager', 'Tracking Manager', 'Gestiona tus envíos y paquetes', '📦', 0, TRUE, TRUE),
+                        ('tracking_manager', 'Trackings Correos', 'Gestiona tus envíos y paquetes', '📦', 0, TRUE, TRUE),
                         ('tracking', 'TrackingBot', 'Rastrea tus envíos automáticamente', '🤖', 0, TRUE, FALSE),
                         ('notify', 'NotifyBot', 'Notificaciones de estado de paquetes', '📬', 0, TRUE, FALSE),
                         ('payment', 'PaymentBot', 'Procesa pagos automáticamente', '💰', 300, TRUE, FALSE),
