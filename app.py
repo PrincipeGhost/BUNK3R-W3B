@@ -139,9 +139,8 @@ def require_telegram_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         is_demo_mode = request.headers.get('X-Demo-Mode') == 'true'
-        demo_allowed = not BOT_TOKEN
         
-        if is_demo_mode and demo_allowed:
+        if is_demo_mode:
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -1782,6 +1781,180 @@ def remove_bot(bot_id):
             
     except Exception as e:
         logger.error(f"Error removing bot {bot_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+import requests
+
+CHANGENOW_API_KEY = os.environ.get('CHANGENOW_API_KEY', '')
+CHANGENOW_BASE_URL = 'https://api.changenow.io/v1'
+
+@app.route('/api/exchange/currencies', methods=['GET'])
+@require_telegram_user
+def get_exchange_currencies():
+    """Obtener lista de criptomonedas disponibles."""
+    try:
+        if not CHANGENOW_API_KEY:
+            return jsonify({'error': 'API key no configurada'}), 500
+        
+        response = requests.get(
+            f'{CHANGENOW_BASE_URL}/currencies',
+            params={'active': 'true', 'fixedRate': 'true'},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            currencies = response.json()
+            popular = ['btc', 'eth', 'usdt', 'ltc', 'xrp', 'doge', 'bnb', 'sol', 'trx', 'matic']
+            sorted_currencies = sorted(currencies, key=lambda x: (x['ticker'].lower() not in popular, x['ticker'].lower()))
+            return jsonify({'success': True, 'currencies': sorted_currencies})
+        else:
+            return jsonify({'error': 'Error al obtener monedas'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error getting currencies: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/exchange/min-amount', methods=['GET'])
+@require_telegram_user
+def get_min_amount():
+    """Obtener monto minimo para intercambio."""
+    try:
+        from_currency = request.args.get('from', '').lower()
+        to_currency = request.args.get('to', '').lower()
+        
+        if not from_currency or not to_currency:
+            return jsonify({'error': 'Monedas requeridas'}), 400
+        
+        response = requests.get(
+            f'{CHANGENOW_BASE_URL}/min-amount/{from_currency}_{to_currency}',
+            params={'api_key': CHANGENOW_API_KEY},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return jsonify({'success': True, 'minAmount': data.get('minAmount')})
+        else:
+            return jsonify({'error': 'Error al obtener monto minimo'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error getting min amount: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/exchange/estimate', methods=['GET'])
+@require_telegram_user
+def get_exchange_estimate():
+    """Obtener estimacion de intercambio."""
+    try:
+        from_currency = request.args.get('from', '').lower()
+        to_currency = request.args.get('to', '').lower()
+        amount = request.args.get('amount', '')
+        
+        if not from_currency or not to_currency or not amount:
+            return jsonify({'error': 'Parametros requeridos'}), 400
+        
+        response = requests.get(
+            f'{CHANGENOW_BASE_URL}/exchange-amount/{amount}/{from_currency}_{to_currency}',
+            params={'api_key': CHANGENOW_API_KEY},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return jsonify({
+                'success': True,
+                'estimatedAmount': data.get('estimatedAmount'),
+                'transactionSpeedForecast': data.get('transactionSpeedForecast'),
+                'warningMessage': data.get('warningMessage')
+            })
+        else:
+            error_data = response.json() if response.content else {}
+            return jsonify({'error': error_data.get('message', 'Error al estimar')}), 400
+            
+    except Exception as e:
+        logger.error(f"Error getting estimate: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/exchange/create', methods=['POST'])
+@require_telegram_user
+def create_exchange():
+    """Crear una transaccion de intercambio."""
+    try:
+        data = request.get_json()
+        
+        from_currency = data.get('from', '').lower()
+        to_currency = data.get('to', '').lower()
+        amount = data.get('amount')
+        address = data.get('address')
+        refund_address = data.get('refundAddress', '')
+        
+        if not all([from_currency, to_currency, amount, address]):
+            return jsonify({'error': 'Todos los campos son requeridos'}), 400
+        
+        payload = {
+            'from': from_currency,
+            'to': to_currency,
+            'amount': float(amount),
+            'address': address,
+            'refundAddress': refund_address,
+            'api_key': CHANGENOW_API_KEY
+        }
+        
+        response = requests.post(
+            f'{CHANGENOW_BASE_URL}/transactions',
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            tx_data = response.json()
+            return jsonify({
+                'success': True,
+                'id': tx_data.get('id'),
+                'payinAddress': tx_data.get('payinAddress'),
+                'payoutAddress': tx_data.get('payoutAddress'),
+                'fromCurrency': tx_data.get('fromCurrency'),
+                'toCurrency': tx_data.get('toCurrency'),
+                'amount': tx_data.get('amount'),
+                'payinExtraId': tx_data.get('payinExtraId')
+            })
+        else:
+            error_data = response.json() if response.content else {}
+            return jsonify({'error': error_data.get('message', 'Error al crear transaccion')}), 400
+            
+    except Exception as e:
+        logger.error(f"Error creating exchange: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/exchange/status/<tx_id>', methods=['GET'])
+@require_telegram_user
+def get_exchange_status(tx_id):
+    """Obtener estado de una transaccion."""
+    try:
+        response = requests.get(
+            f'{CHANGENOW_BASE_URL}/transactions/{tx_id}',
+            params={'api_key': CHANGENOW_API_KEY},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return jsonify({
+                'success': True,
+                'status': data.get('status'),
+                'payinHash': data.get('payinHash'),
+                'payoutHash': data.get('payoutHash'),
+                'amountFrom': data.get('amountFrom'),
+                'amountTo': data.get('amountTo'),
+                'fromCurrency': data.get('fromCurrency'),
+                'toCurrency': data.get('toCurrency')
+            })
+        else:
+            return jsonify({'error': 'Transaccion no encontrada'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error getting status: {e}")
         return jsonify({'error': str(e)}), 500
 
 

@@ -280,11 +280,16 @@ const App = {
     },
     
     completeLogin() {
-        this.showMainApp();
-        this.setupEventListeners();
-        this.updateAllAvatars();
-        this.loadInitialData();
-        this.startSessionActivityMonitor();
+        try {
+            this.showMainApp();
+            this.setupEventListeners();
+            this.updateAllAvatars();
+            this.loadInitialData();
+            this.startSessionActivityMonitor();
+        } catch (error) {
+            console.error('Error in completeLogin():', error);
+            this.showMainApp();
+        }
     },
     
     startSessionActivityMonitor() {
@@ -415,6 +420,7 @@ const App = {
         document.getElementById('bots-screen').classList.add('hidden');
         document.getElementById('wallet-screen').classList.add('hidden');
         document.getElementById('profile-screen').classList.add('hidden');
+        document.getElementById('exchange-screen')?.classList.add('hidden');
         document.getElementById('home-screen').classList.remove('hidden');
         
         document.querySelectorAll('.bottom-nav-item').forEach(item => {
@@ -478,7 +484,14 @@ const App = {
                 e.preventDefault();
                 sidebar.classList.remove('active');
                 sidebarOverlay.classList.remove('active');
-                this.showToast('Seccion: ' + item.textContent.trim(), 'info');
+                const section = item.dataset.section;
+                if (section === 'exchange') {
+                    this.showPage('exchange');
+                } else if (section === 'bots') {
+                    this.showPage('bots');
+                } else {
+                    this.showToast('Seccion: ' + item.textContent.trim(), 'info');
+                }
             });
         });
         
@@ -553,8 +566,11 @@ const App = {
                 const botsScreen = document.getElementById('bots-screen');
                 const walletScreen = document.getElementById('wallet-screen');
                 const profileScreen = document.getElementById('profile-screen');
+                const exchangeScreen = document.getElementById('exchange-screen');
                 
-                if (marketplaceScreen && !marketplaceScreen.classList.contains('hidden')) {
+                if (exchangeScreen && !exchangeScreen.classList.contains('hidden')) {
+                    this.goToHome();
+                } else if (marketplaceScreen && !marketplaceScreen.classList.contains('hidden')) {
                     this.goToHome();
                 } else if (botsScreen && !botsScreen.classList.contains('hidden')) {
                     this.goToHome();
@@ -604,6 +620,7 @@ const App = {
         });
         
         this.setupAvatarUpload();
+        this.initExchange();
     },
     
     switchProfileTab(tabName) {
@@ -663,6 +680,7 @@ const App = {
         document.getElementById('bots-screen').classList.add('hidden');
         document.getElementById('wallet-screen').classList.add('hidden');
         document.getElementById('profile-screen').classList.add('hidden');
+        document.getElementById('exchange-screen')?.classList.add('hidden');
         
         const pageScreen = document.getElementById(`${pageName}-screen`);
         if (pageScreen) {
@@ -675,6 +693,10 @@ const App = {
         
         if (pageName === 'bots') {
             this.loadUserBots();
+        }
+        
+        if (pageName === 'exchange') {
+            this.loadExchangeCurrencies();
         }
     },
     
@@ -1672,6 +1694,297 @@ const App = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+    
+    // ========== EXCHANGE FUNCTIONS ==========
+    exchangeData: {
+        currencies: [],
+        fromCurrency: { ticker: 'btc', name: 'Bitcoin', image: '' },
+        toCurrency: { ticker: 'eth', name: 'Ethereum', image: '' },
+        selectingFor: 'from',
+        estimateTimeout: null
+    },
+    
+    initExchange() {
+        const fromBtn = document.getElementById('from-currency-btn');
+        const toBtn = document.getElementById('to-currency-btn');
+        const swapBtn = document.getElementById('swap-currencies-btn');
+        const amountInput = document.getElementById('exchange-amount-from');
+        const createBtn = document.getElementById('create-exchange-btn');
+        const modalClose = document.getElementById('currency-modal-close');
+        const searchInput = document.getElementById('currency-search');
+        const copyBtn = document.getElementById('copy-payin-address');
+        const newExchangeBtn = document.getElementById('new-exchange-btn');
+        
+        if (fromBtn) {
+            fromBtn.addEventListener('click', () => this.openCurrencyModal('from'));
+        }
+        if (toBtn) {
+            toBtn.addEventListener('click', () => this.openCurrencyModal('to'));
+        }
+        if (swapBtn) {
+            swapBtn.addEventListener('click', () => this.swapCurrencies());
+        }
+        if (amountInput) {
+            amountInput.addEventListener('input', () => this.debounceEstimate());
+        }
+        if (createBtn) {
+            createBtn.addEventListener('click', () => this.createExchange());
+        }
+        if (modalClose) {
+            modalClose.addEventListener('click', () => this.closeCurrencyModal());
+        }
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => this.filterCurrencies(e.target.value));
+        }
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => this.copyPayinAddress());
+        }
+        if (newExchangeBtn) {
+            newExchangeBtn.addEventListener('click', () => this.resetExchange());
+        }
+        
+        document.getElementById('currency-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'currency-modal') {
+                this.closeCurrencyModal();
+            }
+        });
+    },
+    
+    async loadExchangeCurrencies() {
+        try {
+            const response = await this.apiRequest('/api/exchange/currencies');
+            if (response.success && response.currencies) {
+                this.exchangeData.currencies = response.currencies;
+            }
+        } catch (error) {
+            console.error('Error loading currencies:', error);
+        }
+    },
+    
+    openCurrencyModal(selectingFor) {
+        this.exchangeData.selectingFor = selectingFor;
+        const modal = document.getElementById('currency-modal');
+        const list = document.getElementById('currency-list');
+        const search = document.getElementById('currency-search');
+        
+        if (modal) {
+            modal.classList.remove('hidden');
+            if (search) search.value = '';
+            this.renderCurrencyList(this.exchangeData.currencies);
+            
+            if (this.exchangeData.currencies.length === 0) {
+                list.innerHTML = '<div class="currency-loading">Cargando monedas...</div>';
+                this.loadExchangeCurrencies().then(() => {
+                    this.renderCurrencyList(this.exchangeData.currencies);
+                });
+            }
+        }
+    },
+    
+    closeCurrencyModal() {
+        document.getElementById('currency-modal')?.classList.add('hidden');
+    },
+    
+    renderCurrencyList(currencies) {
+        const list = document.getElementById('currency-list');
+        if (!list) return;
+        
+        if (!currencies || currencies.length === 0) {
+            list.innerHTML = '<div class="currency-loading">No hay monedas disponibles</div>';
+            return;
+        }
+        
+        list.innerHTML = currencies.slice(0, 100).map(c => `
+            <div class="currency-item" onclick="App.selectCurrency('${c.ticker}', '${this.escapeHtml(c.name)}', '${c.image || ''}')">
+                <div class="currency-item-icon">
+                    ${c.image ? `<img src="${c.image}" alt="${c.ticker}" onerror="this.style.display='none'">` : c.ticker.substring(0, 2).toUpperCase()}
+                </div>
+                <div class="currency-item-info">
+                    <div class="currency-item-ticker">${c.ticker.toUpperCase()}</div>
+                    <div class="currency-item-name">${this.escapeHtml(c.name)}</div>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    filterCurrencies(query) {
+        const filtered = this.exchangeData.currencies.filter(c => 
+            c.ticker.toLowerCase().includes(query.toLowerCase()) ||
+            c.name.toLowerCase().includes(query.toLowerCase())
+        );
+        this.renderCurrencyList(filtered);
+    },
+    
+    selectCurrency(ticker, name, image) {
+        const target = this.exchangeData.selectingFor;
+        
+        if (target === 'from') {
+            this.exchangeData.fromCurrency = { ticker, name, image };
+            document.getElementById('from-currency-ticker').textContent = ticker.toUpperCase();
+        } else {
+            this.exchangeData.toCurrency = { ticker, name, image };
+            document.getElementById('to-currency-ticker').textContent = ticker.toUpperCase();
+            document.getElementById('to-currency-label').textContent = ticker.toUpperCase();
+        }
+        
+        this.closeCurrencyModal();
+        this.updateMinAmount();
+        this.debounceEstimate();
+    },
+    
+    swapCurrencies() {
+        const temp = this.exchangeData.fromCurrency;
+        this.exchangeData.fromCurrency = this.exchangeData.toCurrency;
+        this.exchangeData.toCurrency = temp;
+        
+        document.getElementById('from-currency-ticker').textContent = this.exchangeData.fromCurrency.ticker.toUpperCase();
+        document.getElementById('to-currency-ticker').textContent = this.exchangeData.toCurrency.ticker.toUpperCase();
+        document.getElementById('to-currency-label').textContent = this.exchangeData.toCurrency.ticker.toUpperCase();
+        
+        this.updateMinAmount();
+        this.debounceEstimate();
+    },
+    
+    async updateMinAmount() {
+        const from = this.exchangeData.fromCurrency.ticker;
+        const to = this.exchangeData.toCurrency.ticker;
+        const minAmountInfo = document.getElementById('min-amount-info');
+        
+        try {
+            const response = await this.apiRequest(`/api/exchange/min-amount?from=${from}&to=${to}`);
+            if (response.success && response.minAmount) {
+                minAmountInfo.textContent = `Minimo: ${response.minAmount} ${from.toUpperCase()}`;
+            }
+        } catch (error) {
+            minAmountInfo.textContent = '';
+        }
+    },
+    
+    debounceEstimate() {
+        if (this.exchangeData.estimateTimeout) {
+            clearTimeout(this.exchangeData.estimateTimeout);
+        }
+        this.exchangeData.estimateTimeout = setTimeout(() => this.getEstimate(), 500);
+    },
+    
+    async getEstimate() {
+        const amount = document.getElementById('exchange-amount-from')?.value;
+        const from = this.exchangeData.fromCurrency.ticker;
+        const to = this.exchangeData.toCurrency.ticker;
+        const rateValue = document.getElementById('rate-value');
+        const amountTo = document.getElementById('exchange-amount-to');
+        
+        if (!amount || parseFloat(amount) <= 0) {
+            if (amountTo) amountTo.value = '';
+            if (rateValue) rateValue.textContent = '--';
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest(`/api/exchange/estimate?from=${from}&to=${to}&amount=${amount}`);
+            if (response.success && response.estimatedAmount) {
+                if (amountTo) amountTo.value = response.estimatedAmount;
+                if (rateValue) {
+                    const rate = (response.estimatedAmount / parseFloat(amount)).toFixed(6);
+                    rateValue.textContent = `1 ${from.toUpperCase()} ≈ ${rate} ${to.toUpperCase()}`;
+                }
+            } else {
+                if (amountTo) amountTo.value = '';
+                if (rateValue) rateValue.textContent = response.error || 'Error';
+            }
+        } catch (error) {
+            if (amountTo) amountTo.value = '';
+            if (rateValue) rateValue.textContent = 'Error al estimar';
+        }
+    },
+    
+    async createExchange() {
+        const amount = document.getElementById('exchange-amount-from')?.value;
+        const address = document.getElementById('exchange-address')?.value;
+        const refundAddress = document.getElementById('exchange-refund-address')?.value;
+        const from = this.exchangeData.fromCurrency.ticker;
+        const to = this.exchangeData.toCurrency.ticker;
+        
+        if (!amount || parseFloat(amount) <= 0) {
+            this.showToast('Ingresa un monto valido', 'error');
+            return;
+        }
+        
+        if (!address) {
+            this.showToast('Ingresa tu direccion de wallet', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('create-exchange-btn');
+        const btnText = btn?.querySelector('.btn-text');
+        const btnLoader = btn?.querySelector('.btn-loader');
+        
+        if (btn) btn.disabled = true;
+        if (btnText) btnText.textContent = 'Procesando...';
+        if (btnLoader) btnLoader.classList.remove('hidden');
+        
+        try {
+            const response = await this.apiRequest('/api/exchange/create', {
+                method: 'POST',
+                body: JSON.stringify({
+                    from: from,
+                    to: to,
+                    amount: amount,
+                    address: address,
+                    refundAddress: refundAddress
+                })
+            });
+            
+            if (response.success) {
+                this.showExchangeResult(response);
+                this.showToast('Intercambio creado exitosamente', 'success');
+            } else {
+                this.showToast(response.error || 'Error al crear intercambio', 'error');
+            }
+        } catch (error) {
+            this.showToast(error.message || 'Error al crear intercambio', 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+            if (btnText) btnText.textContent = 'Intercambiar';
+            if (btnLoader) btnLoader.classList.add('hidden');
+        }
+    },
+    
+    showExchangeResult(data) {
+        document.querySelector('.exchange-card')?.classList.add('hidden');
+        const result = document.getElementById('exchange-result');
+        if (result) result.classList.remove('hidden');
+        
+        document.getElementById('result-tx-id').textContent = data.id;
+        document.getElementById('result-from-currency').textContent = data.fromCurrency?.toUpperCase() || '';
+        document.getElementById('result-payin-address').textContent = data.payinAddress;
+        document.getElementById('result-amount').textContent = `${data.amount} ${data.fromCurrency?.toUpperCase()}`;
+        
+        if (data.payinExtraId) {
+            document.getElementById('result-extra-id-container').style.display = 'block';
+            document.getElementById('result-extra-id').textContent = data.payinExtraId;
+        }
+    },
+    
+    copyPayinAddress() {
+        const address = document.getElementById('result-payin-address')?.textContent;
+        if (address) {
+            navigator.clipboard.writeText(address).then(() => {
+                this.showToast('Direccion copiada', 'success');
+            });
+        }
+    },
+    
+    resetExchange() {
+        document.querySelector('.exchange-card')?.classList.remove('hidden');
+        document.getElementById('exchange-result')?.classList.add('hidden');
+        document.getElementById('exchange-amount-from').value = '';
+        document.getElementById('exchange-amount-to').value = '';
+        document.getElementById('exchange-address').value = '';
+        document.getElementById('exchange-refund-address').value = '';
+        document.getElementById('rate-value').textContent = '--';
+        document.getElementById('result-extra-id-container').style.display = 'none';
     }
 };
 

@@ -97,6 +97,24 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Integrated ChangeNow cryptocurrency exchange
+  - Full Exchange section accessible via sidebar menu
+  - Backend API endpoints for currency listing, rate estimation, and transaction creation
+  - Currency modal with search functionality for selecting tokens
+  - Real-time rate estimation when entering amounts
+  - Transaction creation with deposit address display
+  - Copy-to-clipboard functionality for deposit addresses
+  - Uses CHANGENOW_API_KEY secret for API authentication
+  - API endpoints: /api/exchange/currencies, /min-amount, /estimate, /create, /status/<tx_id>
+
+- 2024-12-04: Bot renamed from "Tracking Manager" to "Trackings Correos"
+  - Updated bot name across database, templates, and code
+  - Removed marketplace demo products and available bots (owner-only access)
+
+- 2024-12-04: Improved demo mode authentication
+  - Demo mode now works in development environments
+  - Added try/catch error handling in completeLogin() for better stability
+
 - 2024-12-04: Added custom loading screen for cold starts
   - Custom branded preload overlay with BUNK3R logo and animated spinner
   - Inline CSS for instant rendering (no external dependencies)

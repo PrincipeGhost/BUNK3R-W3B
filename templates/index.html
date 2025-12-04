@@ -203,6 +203,115 @@
                 </div>
             </div>
 
+            <!-- PAGINA EXCHANGE -->
+            <div id="exchange-screen" class="page-screen hidden">
+                <div class="page-header">
+                    <h1 class="page-title">Exchange</h1>
+                    <p class="page-subtitle">Intercambia criptomonedas al instante</p>
+                </div>
+                
+                <div class="exchange-container">
+                    <div class="exchange-card">
+                        <div class="exchange-form">
+                            <div class="exchange-input-group">
+                                <label class="exchange-label">Envias</label>
+                                <div class="exchange-input-row">
+                                    <input type="number" id="exchange-amount-from" class="exchange-input" placeholder="0.00" step="any">
+                                    <button class="currency-selector" id="from-currency-btn">
+                                        <span class="currency-icon">₿</span>
+                                        <span class="currency-ticker" id="from-currency-ticker">BTC</span>
+                                        <span class="dropdown-arrow">▼</span>
+                                    </button>
+                                </div>
+                                <span class="exchange-min-amount" id="min-amount-info"></span>
+                            </div>
+                            
+                            <div class="exchange-swap-btn" id="swap-currencies-btn">
+                                <span>⇅</span>
+                            </div>
+                            
+                            <div class="exchange-input-group">
+                                <label class="exchange-label">Recibes (estimado)</label>
+                                <div class="exchange-input-row">
+                                    <input type="text" id="exchange-amount-to" class="exchange-input" placeholder="0.00" readonly>
+                                    <button class="currency-selector" id="to-currency-btn">
+                                        <span class="currency-icon">Ξ</span>
+                                        <span class="currency-ticker" id="to-currency-ticker">ETH</span>
+                                        <span class="dropdown-arrow">▼</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="exchange-rate-info" id="exchange-rate-info">
+                                <span class="rate-label">Tasa:</span>
+                                <span class="rate-value" id="rate-value">--</span>
+                            </div>
+                            
+                            <div class="exchange-input-group">
+                                <label class="exchange-label">Tu direccion de <span id="to-currency-label">ETH</span></label>
+                                <input type="text" id="exchange-address" class="exchange-input address-input" placeholder="Ingresa tu direccion de wallet">
+                            </div>
+                            
+                            <div class="exchange-input-group">
+                                <label class="exchange-label">Direccion de reembolso (opcional)</label>
+                                <input type="text" id="exchange-refund-address" class="exchange-input address-input" placeholder="Direccion para reembolso en caso de error">
+                            </div>
+                            
+                            <button class="exchange-submit-btn" id="create-exchange-btn">
+                                <span class="btn-text">Intercambiar</span>
+                                <span class="btn-loader hidden"></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="exchange-result hidden" id="exchange-result">
+                        <div class="result-header">
+                            <span class="result-icon">✓</span>
+                            <h3>Intercambio Creado</h3>
+                        </div>
+                        <div class="result-details">
+                            <div class="result-item">
+                                <span class="result-label">ID de Transaccion:</span>
+                                <span class="result-value" id="result-tx-id">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Envia <span id="result-from-currency">BTC</span> a:</span>
+                                <div class="result-address-container">
+                                    <span class="result-address" id="result-payin-address">--</span>
+                                    <button class="copy-btn" id="copy-payin-address">Copiar</button>
+                                </div>
+                            </div>
+                            <div class="result-item" id="result-extra-id-container" style="display: none;">
+                                <span class="result-label">Memo/Tag:</span>
+                                <span class="result-value" id="result-extra-id">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Monto a enviar:</span>
+                                <span class="result-value" id="result-amount">--</span>
+                            </div>
+                            <div class="result-status">
+                                <span class="status-label">Estado:</span>
+                                <span class="status-badge" id="result-status">Esperando deposito</span>
+                            </div>
+                        </div>
+                        <button class="exchange-new-btn" id="new-exchange-btn">Nuevo Intercambio</button>
+                    </div>
+                </div>
+                
+                <div class="currency-modal hidden" id="currency-modal">
+                    <div class="currency-modal-content">
+                        <div class="currency-modal-header">
+                            <h3>Seleccionar Moneda</h3>
+                            <button class="currency-modal-close" id="currency-modal-close">&times;</button>
+                        </div>
+                        <input type="text" class="currency-search" id="currency-search" placeholder="Buscar moneda...">
+                        <div class="currency-list" id="currency-list">
+                            <div class="currency-loading">Cargando monedas...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- PAGINA BILLETERA -->
             <div id="wallet-screen" class="page-screen hidden">
                 <div class="page-header">

@@ -2700,3 +2700,447 @@ body {
     margin-top: 16px;
     line-height: 1.5;
 }
+
+/* ========== EXCHANGE STYLES ========== */
+.exchange-container {
+    padding: 16px;
+}
+
+.exchange-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.exchange-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.exchange-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.exchange-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.exchange-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.exchange-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-size: 18px;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+}
+
+.exchange-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+.exchange-input.address-input {
+    font-size: 14px;
+}
+
+.exchange-input::placeholder {
+    color: var(--text-muted);
+}
+
+.currency-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 120px;
+}
+
+.currency-selector:hover {
+    background: var(--bg-card);
+    border-color: var(--accent-primary);
+}
+
+.currency-icon {
+    font-size: 20px;
+}
+
+.currency-ticker {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.exchange-min-amount {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.exchange-swap-btn {
+    align-self: center;
+    width: 44px;
+    height: 44px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 20px;
+    color: white;
+}
+
+.exchange-swap-btn:hover {
+    transform: rotate(180deg);
+    background: #3182ce;
+}
+
+.exchange-rate-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+}
+
+.rate-label {
+    color: var(--text-secondary);
+}
+
+.rate-value {
+    color: var(--accent-success);
+    font-weight: 600;
+}
+
+.exchange-submit-btn {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple));
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.exchange-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
+}
+
+.exchange-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-loader {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Exchange Result */
+.exchange-result {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.result-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--accent-success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+}
+
+.result-header h3 {
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+.result-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.result-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.result-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.result-value {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+    word-break: break-all;
+}
+
+.result-address-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-input);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+}
+
+.result-address {
+    flex: 1;
+    font-size: 12px;
+    color: var(--accent-primary);
+    word-break: break-all;
+    font-family: monospace;
+}
+
+.copy-btn {
+    background: var(--accent-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: 12px;
+    color: white;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.copy-btn:hover {
+    background: #3182ce;
+}
+
+.result-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.status-badge {
+    background: var(--accent-warning);
+    color: #1a1a2e;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.exchange-new-btn {
+    width: 100%;
+    margin-top: 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 14px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.exchange-new-btn:hover {
+    background: var(--bg-card);
+    border-color: var(--accent-primary);
+}
+
+/* Currency Modal */
+.currency-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.currency-modal-content {
+    background: var(--bg-secondary);
+    border-radius: var(--radius) var(--radius) 0 0;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.currency-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.currency-modal-header h3 {
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+.currency-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.currency-search {
+    margin: 16px;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.currency-search:focus {
+    border-color: var(--accent-primary);
+}
+
+.currency-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px 16px;
+}
+
+.currency-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.currency-item:hover {
+    background: var(--bg-card);
+}
+
+.currency-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    overflow: hidden;
+}
+
+.currency-item-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.currency-item-info {
+    flex: 1;
+}
+
+.currency-item-ticker {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.currency-item-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.currency-loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.marketplace-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.marketplace-empty .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.marketplace-empty p {
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.marketplace-empty .empty-hint {
+    color: var(--text-muted);
+    font-size: 14px;
+}
