@@ -1963,7 +1963,7 @@ def get_exchange_status(tx_id):
 def get_wallet_balance():
     """Obtener el saldo de creditos del usuario."""
     try:
-        user_id = request.telegram_user.get('id') if hasattr(request, 'telegram_user') else 0
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         
         if not db_manager:
             return jsonify({'success': True, 'balance': 0})
@@ -1993,7 +1993,7 @@ def credit_wallet():
         credits = data.get('credits', 0)
         usdt_amount = data.get('usdtAmount', 0)
         transaction_boc = data.get('transactionBoc', '')
-        user_id = data.get('userId') or (request.telegram_user.get('id') if hasattr(request, 'telegram_user') else 0)
+        user_id = str(data.get('userId') or (request.telegram_user.get('id', 0) if hasattr(request, 'telegram_user') else 0))
         
         if not credits or credits <= 0:
             return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
@@ -2032,7 +2032,7 @@ def credit_wallet():
 def get_wallet_transactions():
     """Obtener historial de transacciones del usuario."""
     try:
-        user_id = request.telegram_user.get('id') if hasattr(request, 'telegram_user') else 0
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         
         if not db_manager:
             return jsonify({'success': True, 'transactions': []})
