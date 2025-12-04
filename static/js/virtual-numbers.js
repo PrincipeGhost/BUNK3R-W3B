@@ -17,6 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
         tg.MainButton.hide();
     }
     
+    if (!initData) {
+        const urlParams = new URLSearchParams(window.location.search);
+        initData = urlParams.get('initData') || '';
+    }
+    
+    if (!initData) {
+        console.error('No Telegram init data available');
+        showToast('Error de autenticacion', 'error');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 2000);
+        return;
+    }
+    
     initApp();
 });
 

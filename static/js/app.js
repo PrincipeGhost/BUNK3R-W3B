@@ -635,7 +635,8 @@ const App = {
                 } else if (section === 'settings') {
                     this.showSettingsScreen();
                 } else if (section === 'numeros') {
-                    window.location.href = '/virtual-numbers';
+                    const initDataParam = this.initData ? `?initData=${encodeURIComponent(this.initData)}` : '';
+                    window.location.href = '/virtual-numbers' + initDataParam;
                 } else {
                     this.showToast('Seccion: ' + item.textContent.trim(), 'info');
                 }
