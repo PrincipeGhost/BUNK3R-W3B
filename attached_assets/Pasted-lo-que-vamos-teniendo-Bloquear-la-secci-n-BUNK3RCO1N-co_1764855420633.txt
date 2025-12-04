@@ -1,0 +1,64 @@
+lo que vamos teniendo
+
+Bloquear la sección BUNK3RCO1N completa en dispositivos no confiables
+
+Actualmente solo bloqueo las transacciones de pago
+Quieres que si el dispositivo NO es de confianza, el usuario NO pueda ni siquiera entrar a ver la sección de BUNK3RCO1N (billetera)
+Debería mostrar un mensaje o modal pidiendo que agregue el dispositivo como confianza primero
+Permitir acceso completo solo después de agregar dispositivo de confianza
+
+Una vez que conecte su wallet de Telegram y agregue el dispositivo como confianza
+Entonces sí podrá entrar a BUNK3RCO1N, recargar, ver saldo, etc.
+Validar que la wallet sea SIEMPRE la misma para ese usuario
+
+Cuando un usuario conecta su wallet de Telegram por primera vez en el dispositivo 1, se guarda esa dirección
+Si luego conecta en el dispositivo 2, debe ser EXACTAMENTE la misma wallet (la de su Telegram)
+Si intenta conectar una wallet diferente → Rechazar y decir "Esta no es tu wallet registrada"
+Esto evita que alguien use diferentes wallets en diferentes dispositivos con la misma cuenta
+Resumen del flujo:
+
+Usuario nuevo → Conecta wallet de Telegram → Se guarda su dirección → Dispositivo queda como confianza
+Usuario en nuevo dispositivo → No puede entrar a BUNK3RCO1N hasta agregar dispositivo
+Para agregar dispositivo → Conecta wallet → Sistema verifica que sea la MISMA wallet registrada
+Si es la misma → Dispositivo agregado como confianza → Acceso completo
+Si es diferente → Rechazar → "Debes usar la wallet registrada en tu cuenta"
+
+Mejoras de seguridad:
+
+Límite de dispositivos de confianza
+
+Máximo 2- dispositivos por usuario si quiere usar mas cotactar con soporte
+Si quiere agregar uno nuevo y ya tiene el máximo, debe eliminar uno antiguo primero
+Notificación cuando se agrega nuevo dispositivo
+
+Enviar un mensaje de Telegram al usuario cuando se registre un nuevo dispositivo
+"Se agregó un nuevo dispositivo: Telegram Desktop desde [ubicación/IP]"
+Opción de "Cerrar sesión en todos los dispositivos"
+
+Botón para desautorizar todos los dispositivos de confianza excepto el actual
+Útil si pierde un dispositivo o sospecha de acceso no autorizado
+Mejoras de experiencia:
+
+Ver lista de dispositivos de confianza
+
+Sección en configuración para ver todos sus dispositivos autorizados
+Mostrar: nombre, tipo, fecha de registro, última vez usado
+Opción de eliminar dispositivos individualmente
+Nombre personalizado para dispositivos
+ver ip de donde ingresa ese dispositivo
+
+Permitir al usuario nombrar su dispositivo (ej: "Mi PC del trabajo", "Teléfono personal")
+Más fácil identificar cada uno
+Mejoras de flujo:
+
+Pantalla de bloqueo atractiva
+
+En lugar de solo bloquear BUNK3RCO1N, mostrar una pantalla bonita explicando:
+"Para acceder a tu billetera, conecta tu wallet de Telegram"
+Mostrar preview del saldo sin poder tocarlo (incentivo)
+Verificación periódica
+
+Cada X días, pedir re-confirmar el dispositivo
+O cuando detecte algo sospechoso (IP muy diferente)
+
+que mas podemos añadir

@@ -1,0 +1,51 @@
+Seguridad avanzada:
+
+Código de confirmación por Telegram
+
+Antes de agregar un dispositivo nuevo, enviar un código de 6 dígitos al chat privado del bot
+El usuario debe ingresarlo para confirmar que realmente es él
+Doble verificación: wallet correcta + código de Telegram
+Bloqueo temporal por intentos fallidos
+
+Si alguien intenta conectar una wallet incorrecta 3 veces → Bloquear intentos por 15 minutos
+Notificar al usuario: "Alguien intentó acceder a tu cuenta con una wallet diferente"
+Historial de actividad de seguridad
+
+Log de eventos: dispositivos agregados, eliminados, intentos fallidos, recargas
+El usuario puede ver "Actividad reciente" de su cuenta
+Funcionalidades de wallet:
+
+Verificación de propiedad de wallet
+
+Al conectar por primera vez, pedir una micro-transacción de verificación (0.001 TON)
+Esto confirma que el usuario realmente controla esa wallet
+Se devuelve como créditos de bienvenida
+Wallet de respaldo
+
+Permitir registrar UNA wallet secundaria de emergencia
+Si pierde acceso a la principal, puede usar la de respaldo (con verificación extra)
+Experiencia de usuario:
+
+Modo "solo lectura" para dispositivos no confiables
+
+Opción intermedia: ver saldo pero no poder gastar/recargar
+Útil si solo quiere consultar desde un dispositivo público
+Widget de estado de seguridad
+
+En el perfil mostrar: "Tu cuenta está protegida ✓"
+Indicadores: wallet conectada, dispositivos activos, última actividad
+Tutorial interactivo primera vez
+
+Cuando el usuario es nuevo, guiarlo paso a paso para configurar su wallet y dispositivo
+Explicar por qué es importante la seguridad
+Para el administrador (tú):
+
+Panel de administración de dispositivos
+
+Ver todos los usuarios y sus dispositivos
+Poder desautorizar dispositivos sospechosos manualmente
+Estadísticas: cuántos dispositivos por usuario en promedio
+Alertas de comportamiento sospechoso
+
+Notificarte cuando un usuario tenga muchos intentos fallidos
+O cuando haya patrones raros (muchas IPs diferentes)
