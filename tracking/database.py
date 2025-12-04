@@ -710,12 +710,17 @@ class DatabaseManager:
             return []
     
     def get_user_posts(self, user_id: str, limit: int = 20, offset: int = 0) -> List[dict]:
-        """Obtener publicaciones de un usuario específico"""
+        """Obtener publicaciones de un usuario específico con media"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
-                        """SELECT p.*, u.username, u.first_name, u.avatar_url
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT json_agg(json_build_object(
+                            'id', pm.id, 'media_type', pm.media_type,
+                            'media_url', pm.media_url, 'encrypted_url', pm.encrypted_url, 
+                            'thumbnail_url', pm.thumbnail_url, 'media_order', pm.media_order))
+                            FROM post_media pm WHERE pm.post_id = p.id) as media
                            FROM posts p
                            LEFT JOIN users u ON p.user_id = u.id
                            WHERE p.user_id = %s AND p.is_active = TRUE

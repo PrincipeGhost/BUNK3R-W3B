@@ -1342,6 +1342,19 @@ def get_user_posts(user_id):
         
         result = []
         for post in posts:
+            caption = post.get('caption')
+            if post.get('is_encrypted') and caption and post.get('encryption_key') and post.get('encryption_iv'):
+                try:
+                    decrypted = encryption_manager.decrypt_text(
+                        caption,
+                        post['encryption_key'],
+                        post['encryption_iv']
+                    )
+                    if decrypted.get('success'):
+                        caption = decrypted.get('text', caption)
+                except Exception as e:
+                    logger.warning(f"Failed to decrypt caption for post {post.get('id')}: {e}")
+            
             result.append({
                 'id': post.get('id'),
                 'userId': post.get('user_id'),
@@ -1350,7 +1363,8 @@ def get_user_posts(user_id):
                 'avatarUrl': post.get('avatar_url'),
                 'contentType': post.get('content_type'),
                 'contentUrl': post.get('content_url'),
-                'caption': post.get('caption'),
+                'caption': caption,
+                'media': post.get('media') or [],
                 'likesCount': post.get('likes_count', 0),
                 'commentsCount': post.get('comments_count', 0),
                 'sharesCount': post.get('shares_count', 0),

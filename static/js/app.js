@@ -1086,6 +1086,67 @@ const App = {
         }
         
         this.updateAllAvatars();
+        this.loadProfileGallery();
+    },
+    
+    async loadProfileGallery() {
+        const gallery = document.getElementById('profile-gallery');
+        const emptyGallery = document.getElementById('empty-gallery');
+        
+        if (!gallery) return;
+        
+        try {
+            const userId = this.user?.id || '0';
+            const response = await this.apiRequest(`/api/users/${userId}/posts`);
+            
+            if (response.success && response.posts && response.posts.length > 0) {
+                gallery.innerHTML = '';
+                emptyGallery?.classList.add('hidden');
+                
+                response.posts.forEach(post => {
+                    const item = document.createElement('div');
+                    item.className = 'gallery-item';
+                    item.dataset.postId = post.id;
+                    
+                    let thumbnail = '';
+                    if (post.media && post.media.length > 0) {
+                        const media = post.media[0];
+                        if (media.thumbnail_url) {
+                            thumbnail = `<img src="${media.thumbnail_url}" alt="" class="gallery-thumb">`;
+                        } else if (media.media_url) {
+                            thumbnail = `<img src="${media.media_url}" alt="" class="gallery-thumb">`;
+                        }
+                        if (post.media.length > 1) {
+                            thumbnail += '<span class="gallery-multi-icon">📷</span>';
+                        }
+                        if (media.media_type === 'video') {
+                            thumbnail += '<span class="gallery-video-icon">▶</span>';
+                        }
+                    } else if (post.contentType === 'text') {
+                        const captionPreview = post.caption?.substring(0, 50) || '';
+                        thumbnail = `<div class="gallery-text-preview">${captionPreview}</div>`;
+                    }
+                    
+                    item.innerHTML = thumbnail;
+                    item.addEventListener('click', () => this.openPostDetail(post.id));
+                    gallery.appendChild(item);
+                });
+            } else {
+                gallery.innerHTML = '';
+                emptyGallery?.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error loading profile gallery:', error);
+            gallery.innerHTML = '';
+            emptyGallery?.classList.remove('hidden');
+        }
+    },
+    
+    async openPostDetail(postId) {
+        if (window.BUNK3R_Publications && window.BUNK3R_Publications.loadSinglePost) {
+            await window.BUNK3R_Publications.loadSinglePost(postId);
+            this.showPage('home');
+        }
     },
     
     setupAvatarUpload() {
