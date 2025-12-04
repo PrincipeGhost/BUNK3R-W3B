@@ -1958,6 +1958,106 @@ def get_exchange_status(tx_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/wallet/balance', methods=['GET'])
+@require_telegram_user
+def get_wallet_balance():
+    """Obtener el saldo de creditos del usuario."""
+    try:
+        user_id = request.telegram_user.get('id') if hasattr(request, 'telegram_user') else 0
+        
+        if not db_manager:
+            return jsonify({'success': True, 'balance': 0})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as balance
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                """, (user_id,))
+                result = cur.fetchone()
+                balance = result[0] if result else 0
+                
+        return jsonify({'success': True, 'balance': float(balance)})
+        
+    except Exception as e:
+        logger.error(f"Error getting wallet balance: {e}")
+        return jsonify({'success': True, 'balance': 0})
+
+@app.route('/api/wallet/credit', methods=['POST'])
+@require_telegram_user
+def credit_wallet():
+    """Agregar creditos a la billetera del usuario."""
+    try:
+        data = request.get_json()
+        credits = data.get('credits', 0)
+        usdt_amount = data.get('usdtAmount', 0)
+        transaction_boc = data.get('transactionBoc', '')
+        user_id = data.get('userId') or (request.telegram_user.get('id') if hasattr(request, 'telegram_user') else 0)
+        
+        if not credits or credits <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': True, 'newBalance': credits, 'message': 'Demo mode'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO wallet_transactions (user_id, amount, type, description, tx_hash, created_at)
+                    VALUES (%s, %s, 'credit', %s, %s, NOW())
+                """, (user_id, credits, f'Recarga de {usdt_amount} USDT', transaction_boc))
+                conn.commit()
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as balance
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                """, (user_id,))
+                result = cur.fetchone()
+                new_balance = result[0] if result else credits
+                
+        return jsonify({
+            'success': True,
+            'newBalance': float(new_balance),
+            'creditsAdded': credits
+        })
+        
+    except Exception as e:
+        logger.error(f"Error crediting wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/wallet/transactions', methods=['GET'])
+@require_telegram_user
+def get_wallet_transactions():
+    """Obtener historial de transacciones del usuario."""
+    try:
+        user_id = request.telegram_user.get('id') if hasattr(request, 'telegram_user') else 0
+        
+        if not db_manager:
+            return jsonify({'success': True, 'transactions': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, amount, type, description, created_at
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                """, (user_id,))
+                transactions = cur.fetchall()
+                
+        return jsonify({
+            'success': True,
+            'transactions': [dict(t) for t in transactions] if transactions else []
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting transactions: {e}")
+        return jsonify({'success': True, 'transactions': []})
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)

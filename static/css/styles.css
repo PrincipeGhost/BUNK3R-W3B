@@ -3144,3 +3144,194 @@ body {
     color: var(--text-muted);
     font-size: 14px;
 }
+
+.ton-wallet-section {
+    padding: 0 20px;
+    margin-bottom: 20px;
+}
+
+.ton-wallet-card {
+    background: linear-gradient(135deg, #0098EA 0%, #0077B6 100%);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 152, 234, 0.3);
+}
+
+.ton-wallet-not-connected {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+}
+
+.ton-wallet-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ton-wallet-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 280px;
+}
+
+.ton-connect-btn {
+    background: #fff;
+    color: #0098EA;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ton-connect-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+}
+
+.ton-wallet-connected {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ton-wallet-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ton-wallet-icon-small {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    padding: 8px;
+}
+
+.ton-wallet-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.ton-wallet-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+}
+
+.ton-wallet-address {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.ton-disconnect-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+    align-self: flex-start;
+}
+
+.ton-disconnect-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.transactions-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.recharge-info {
+    color: var(--accent-success);
+    font-size: 14px;
+    margin-bottom: 16px;
+    padding: 0 20px;
+}
+
+.custom-recharge {
+    padding: 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    margin: 20px;
+}
+
+.custom-recharge-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.custom-recharge-input-row {
+    display: flex;
+    gap: 12px;
+}
+
+.custom-recharge-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.custom-recharge-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.custom-recharge-btn {
+    background: var(--accent-primary);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.custom-recharge-btn:hover {
+    background: #3182ce;
+}
+
+.custom-recharge-btn:disabled {
+    background: var(--border-color);
+    cursor: not-allowed;
+}
+
+.recharge-option {
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.recharge-option:hover {
+    transform: scale(1.02);
+    border-color: var(--accent-primary);
+}
+
+.recharge-option.selected {
+    border: 2px solid var(--accent-primary);
+    background: rgba(66, 153, 225, 0.1);
+}

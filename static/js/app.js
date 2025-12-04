@@ -14,6 +14,10 @@ const App = {
     twoFactorEnabled: false,
     sessionActivityInterval: null,
     lastActivityTime: Date.now(),
+    tonConnectUI: null,
+    connectedWallet: null,
+    USDT_MASTER_ADDRESS: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
+    MERCHANT_WALLET: 'UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck',
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -286,6 +290,8 @@ const App = {
             this.updateAllAvatars();
             this.loadInitialData();
             this.startSessionActivityMonitor();
+            this.initTonConnect();
+            this.loadWalletBalance();
         } catch (error) {
             console.error('Error in completeLogin():', error);
             this.showMainApp();
@@ -1987,6 +1993,212 @@ const App = {
         document.getElementById('exchange-refund-address').value = '';
         document.getElementById('rate-value').textContent = '--';
         document.getElementById('result-extra-id-container').style.display = 'none';
+    },
+
+    initTonConnect() {
+        try {
+            if (typeof TonConnectUI === 'undefined') {
+                console.log('TonConnectUI not loaded yet');
+                return;
+            }
+
+            this.tonConnectUI = new TonConnectUI({
+                manifestUrl: window.location.origin + '/static/tonconnect-manifest.json'
+            });
+
+            this.tonConnectUI.onStatusChange((wallet) => {
+                if (wallet) {
+                    this.connectedWallet = wallet;
+                    this.updateWalletUI(wallet);
+                } else {
+                    this.connectedWallet = null;
+                    this.updateWalletUI(null);
+                }
+            });
+
+            this.setupTonConnectListeners();
+            console.log('TON Connect initialized');
+        } catch (error) {
+            console.error('Error initializing TON Connect:', error);
+        }
+    },
+
+    setupTonConnectListeners() {
+        const connectBtn = document.getElementById('ton-connect-btn');
+        if (connectBtn) {
+            connectBtn.addEventListener('click', () => this.connectWallet());
+        }
+
+        const disconnectBtn = document.getElementById('ton-disconnect-btn');
+        if (disconnectBtn) {
+            disconnectBtn.addEventListener('click', () => this.disconnectWallet());
+        }
+
+        document.querySelectorAll('.recharge-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const amount = parseInt(option.dataset.amount);
+                const usdt = parseInt(option.dataset.usdt);
+                if (amount && usdt) {
+                    this.initiateUSDTPayment(amount, usdt);
+                }
+            });
+        });
+
+        const customRechargeBtn = document.getElementById('custom-recharge-btn');
+        if (customRechargeBtn) {
+            customRechargeBtn.addEventListener('click', () => {
+                const input = document.getElementById('custom-usdt-amount');
+                const amount = parseInt(input?.value);
+                if (amount && amount > 0) {
+                    this.initiateUSDTPayment(amount, amount);
+                } else {
+                    this.showToast('Ingresa una cantidad valida', 'error');
+                }
+            });
+        }
+    },
+
+    async connectWallet() {
+        try {
+            if (!this.tonConnectUI) {
+                this.showToast('TON Connect no disponible', 'error');
+                return;
+            }
+            await this.tonConnectUI.openModal();
+        } catch (error) {
+            console.error('Error connecting wallet:', error);
+            this.showToast('Error al conectar wallet', 'error');
+        }
+    },
+
+    async disconnectWallet() {
+        try {
+            if (this.tonConnectUI) {
+                await this.tonConnectUI.disconnect();
+                this.showToast('Wallet desconectada', 'info');
+            }
+        } catch (error) {
+            console.error('Error disconnecting wallet:', error);
+        }
+    },
+
+    updateWalletUI(wallet) {
+        const notConnected = document.getElementById('ton-wallet-not-connected');
+        const connected = document.getElementById('ton-wallet-connected');
+        const addressEl = document.getElementById('ton-wallet-address');
+
+        if (wallet) {
+            if (notConnected) notConnected.classList.add('hidden');
+            if (connected) connected.classList.remove('hidden');
+            
+            const address = wallet.account.address;
+            const shortAddress = address.slice(0, 4) + '...' + address.slice(-4);
+            if (addressEl) addressEl.textContent = shortAddress;
+        } else {
+            if (notConnected) notConnected.classList.remove('hidden');
+            if (connected) connected.classList.add('hidden');
+        }
+    },
+
+    async initiateUSDTPayment(credits, usdtAmount) {
+        if (!this.connectedWallet) {
+            this.showToast('Primero conecta tu wallet', 'error');
+            await this.connectWallet();
+            return;
+        }
+
+        try {
+            this.showToast(`Preparando pago de ${usdtAmount} USDT...`, 'info');
+            
+            const amountInNano = BigInt(usdtAmount * 1000000);
+            
+            const forwardPayload = this.buildJettonTransferPayload(
+                this.MERCHANT_WALLET,
+                amountInNano.toString(),
+                this.user?.id?.toString() || 'unknown'
+            );
+
+            const userJettonWallet = await this.getUserJettonWalletAddress(
+                this.connectedWallet.account.address
+            );
+
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [
+                    {
+                        address: userJettonWallet,
+                        amount: '100000000',
+                        payload: forwardPayload
+                    }
+                ]
+            };
+
+            const result = await this.tonConnectUI.sendTransaction(transaction);
+            
+            if (result) {
+                this.showToast('Transaccion enviada! Procesando...', 'success');
+                
+                await this.recordPayment(credits, usdtAmount, result.boc);
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            if (error.message?.includes('Canceled')) {
+                this.showToast('Pago cancelado', 'info');
+            } else {
+                this.showToast('Error al procesar pago: ' + (error.message || 'Intenta de nuevo'), 'error');
+            }
+        }
+    },
+
+    buildJettonTransferPayload(destination, amount, comment) {
+        return btoa(JSON.stringify({
+            op: 0xf8a7ea5,
+            queryId: Date.now(),
+            amount: amount,
+            destination: destination,
+            responseDestination: destination,
+            forwardAmount: '1',
+            forwardPayload: comment
+        }));
+    },
+
+    async getUserJettonWalletAddress(userAddress) {
+        return this.USDT_MASTER_ADDRESS;
+    },
+
+    async recordPayment(credits, usdtAmount, transactionBoc) {
+        try {
+            const response = await this.apiRequest('/api/wallet/credit', {
+                method: 'POST',
+                body: JSON.stringify({
+                    credits: credits,
+                    usdtAmount: usdtAmount,
+                    transactionBoc: transactionBoc,
+                    userId: this.user?.id
+                })
+            });
+
+            if (response.success) {
+                this.showToast(`+${credits} creditos agregados!`, 'success');
+                this.loadWalletBalance();
+            }
+        } catch (error) {
+            console.error('Error recording payment:', error);
+        }
+    },
+
+    async loadWalletBalance() {
+        try {
+            const response = await this.apiRequest('/api/wallet/balance', { method: 'GET' });
+            if (response.success) {
+                const balanceEl = document.getElementById('wallet-balance');
+                if (balanceEl) {
+                    balanceEl.textContent = response.balance.toLocaleString();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading wallet balance:', error);
+        }
     }
 };
 

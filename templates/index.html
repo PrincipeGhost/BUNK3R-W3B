@@ -19,6 +19,7 @@
         @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
     </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
@@ -318,6 +319,39 @@
                     <h1 class="page-title">Billetera</h1>
                     <p class="page-subtitle">Gestiona tus creditos</p>
                 </div>
+                
+                <div class="ton-wallet-section">
+                    <div class="ton-wallet-card" id="ton-wallet-card">
+                        <div class="ton-wallet-not-connected" id="ton-wallet-not-connected">
+                            <div class="ton-wallet-icon">
+                                <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" width="48" height="48">
+                                    <path d="M28 56C43.464 56 56 43.464 56 28C56 12.536 43.464 0 28 0C12.536 0 0 12.536 0 28C0 43.464 12.536 56 28 56Z" fill="#0098EA"/>
+                                    <path d="M37.5603 15.6277H18.4386C14.9228 15.6277 12.6944 19.4202 14.4632 22.4861L26.2644 42.9409C27.0345 44.2765 28.9644 44.2765 29.7345 42.9409L41.5765 22.4861C43.3045 19.4202 41.0761 15.6277 37.5765 15.6277H37.5603Z" fill="white"/>
+                                </svg>
+                            </div>
+                            <p class="ton-wallet-text">Conecta tu wallet de Telegram para recargar creditos con USDT</p>
+                            <button class="ton-connect-btn" id="ton-connect-btn">
+                                <span>Conectar Wallet</span>
+                            </button>
+                        </div>
+                        <div class="ton-wallet-connected hidden" id="ton-wallet-connected">
+                            <div class="ton-wallet-info">
+                                <div class="ton-wallet-icon-small">
+                                    <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+                                        <path d="M28 56C43.464 56 56 43.464 56 28C56 12.536 43.464 0 28 0C12.536 0 0 12.536 0 28C0 43.464 12.536 56 28 56Z" fill="#0098EA"/>
+                                        <path d="M37.5603 15.6277H18.4386C14.9228 15.6277 12.6944 19.4202 14.4632 22.4861L26.2644 42.9409C27.0345 44.2765 28.9644 44.2765 29.7345 42.9409L41.5765 22.4861C43.3045 19.4202 41.0761 15.6277 37.5765 15.6277H37.5603Z" fill="white"/>
+                                    </svg>
+                                </div>
+                                <div class="ton-wallet-details">
+                                    <span class="ton-wallet-label">Wallet conectada</span>
+                                    <span class="ton-wallet-address" id="ton-wallet-address">UQ...xxxx</span>
+                                </div>
+                            </div>
+                            <button class="ton-disconnect-btn" id="ton-disconnect-btn">Desconectar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="wallet-balance-card">
                     <div class="wallet-balance-header">
                         <span class="wallet-label">Saldo Disponible</span>
@@ -325,7 +359,7 @@
                     </div>
                     <div class="wallet-balance-amount">
                         <span class="wallet-currency">$</span>
-                        <span class="wallet-value" id="wallet-balance">1,250</span>
+                        <span class="wallet-value" id="wallet-balance">0</span>
                     </div>
                     <div class="wallet-actions-row">
                         <button class="wallet-action-btn primary" id="add-credits-btn">
@@ -347,60 +381,39 @@
                         <h2 class="section-title">Historial de Transacciones</h2>
                         <button class="see-all-btn">Ver todo</button>
                     </div>
-                    <div class="transactions-list">
-                        <div class="transaction-item">
-                            <div class="transaction-icon income">↓</div>
-                            <div class="transaction-info">
-                                <h4>Recarga de creditos</h4>
-                                <p>Hace 2 horas</p>
-                            </div>
-                            <span class="transaction-amount positive">+500</span>
-                        </div>
-                        <div class="transaction-item">
-                            <div class="transaction-icon expense">↑</div>
-                            <div class="transaction-info">
-                                <h4>Compra TrackingBot</h4>
-                                <p>Ayer</p>
-                            </div>
-                            <span class="transaction-amount negative">-200</span>
-                        </div>
-                        <div class="transaction-item">
-                            <div class="transaction-icon income">↓</div>
-                            <div class="transaction-info">
-                                <h4>Bono de bienvenida</h4>
-                                <p>Hace 3 dias</p>
-                            </div>
-                            <span class="transaction-amount positive">+100</span>
-                        </div>
-                        <div class="transaction-item">
-                            <div class="transaction-icon expense">↑</div>
-                            <div class="transaction-info">
-                                <h4>Compra Pack Basico</h4>
-                                <p>Hace 1 semana</p>
-                            </div>
-                            <span class="transaction-amount negative">-150</span>
+                    <div class="transactions-list" id="transactions-list">
+                        <div class="transactions-empty">
+                            <p>No hay transacciones aun</p>
                         </div>
                     </div>
                 </div>
                 <div class="wallet-section">
-                    <h2 class="section-title">Recargar Creditos</h2>
+                    <h2 class="section-title">Recargar Creditos con USDT</h2>
+                    <p class="recharge-info">1 Credito = 1 USDT</p>
                     <div class="recharge-options">
-                        <div class="recharge-option">
-                            <span class="recharge-amount">100</span>
-                            <span class="recharge-price">$5 USD</span>
+                        <div class="recharge-option" data-amount="5" data-usdt="5">
+                            <span class="recharge-amount">5</span>
+                            <span class="recharge-price">5 USDT</span>
                         </div>
-                        <div class="recharge-option popular">
+                        <div class="recharge-option popular" data-amount="20" data-usdt="20">
                             <span class="recharge-badge">Popular</span>
-                            <span class="recharge-amount">500</span>
-                            <span class="recharge-price">$20 USD</span>
+                            <span class="recharge-amount">20</span>
+                            <span class="recharge-price">20 USDT</span>
                         </div>
-                        <div class="recharge-option">
-                            <span class="recharge-amount">1000</span>
-                            <span class="recharge-price">$35 USD</span>
+                        <div class="recharge-option" data-amount="50" data-usdt="50">
+                            <span class="recharge-amount">50</span>
+                            <span class="recharge-price">50 USDT</span>
                         </div>
-                        <div class="recharge-option">
-                            <span class="recharge-amount">2500</span>
-                            <span class="recharge-price">$75 USD</span>
+                        <div class="recharge-option" data-amount="100" data-usdt="100">
+                            <span class="recharge-amount">100</span>
+                            <span class="recharge-price">100 USDT</span>
+                        </div>
+                    </div>
+                    <div class="custom-recharge">
+                        <label class="custom-recharge-label">Monto personalizado</label>
+                        <div class="custom-recharge-input-row">
+                            <input type="number" id="custom-usdt-amount" class="custom-recharge-input" placeholder="Cantidad en USDT" min="1">
+                            <button class="custom-recharge-btn" id="custom-recharge-btn">Recargar</button>
                         </div>
                     </div>
                 </div>
