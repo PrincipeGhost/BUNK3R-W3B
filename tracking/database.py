@@ -757,9 +757,12 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT id FROM posts WHERE id = %s AND is_active = TRUE", (post_id,))
-                    if not cur.fetchone():
+                    cur.execute("SELECT id, user_id FROM posts WHERE id = %s AND is_active = TRUE", (post_id,))
+                    post = cur.fetchone()
+                    if not post:
                         return {'success': False, 'error': 'post_not_found'}
+                    
+                    post_owner_id = post[1]
                     
                     cur.execute(
                         """INSERT INTO post_likes (post_id, user_id) 
@@ -771,6 +774,15 @@ class DatabaseManager:
                             "UPDATE posts SET likes_count = likes_count + 1 WHERE id = %s",
                             (post_id,)
                         )
+                        
+                        if post_owner_id and str(post_owner_id) != str(user_id):
+                            cur.execute(
+                                """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                                   VALUES (%s, 'like', %s, 'post', %s, 'le gustó tu publicación')
+                                   ON CONFLICT DO NOTHING""",
+                                (post_owner_id, user_id, post_id)
+                            )
+                        
                         conn.commit()
                         logger.info(f"User {user_id} liked post {post_id}")
                         return {'success': True, 'message': 'liked'}
@@ -827,6 +839,14 @@ class DatabaseManager:
                         (follower_id, following_id)
                     )
                     success = cur.rowcount > 0
+                    
+                    if success:
+                        cur.execute(
+                            """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                               VALUES (%s, 'follow', %s, 'user', %s, 'empezó a seguirte')""",
+                            (following_id, follower_id, follower_id)
+                        )
+                    
                     conn.commit()
                     if success:
                         logger.info(f"User {follower_id} now follows {following_id}")

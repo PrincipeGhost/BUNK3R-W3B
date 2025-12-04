@@ -241,3 +241,43 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
   - Transaction click navigates to wallet screen
 - Added "Transacciones" filter button to notifications screen in HTML
 - Added CSS for transaction notification types with credit/debit color coding
+
+### Section 27 - Feed & Wallet Improvements (Dec 2025)
+
+#### Infinite Scroll for Publications Feed
+- Added `feedOffset`, `feedLimit`, `hasMorePosts`, `isLoadingFeed`, `feedObserver` state to PublicationsManager
+- Implemented `setupInfiniteScroll()` with IntersectionObserver for automatic loading
+- Created `loadMorePosts()` for paginated feed loading (appends new posts)
+- Added `appendPostsToFeed()` for incremental feed updates
+- Updated `loadFeed()` to support refresh parameter and pagination state reset
+- Added CSS for `.feed-sentinel`, `.feed-loading-more`, `.feed-end` indicators
+
+#### Transaction History Filtering
+- Added filter buttons (All/Recargas/Gastos) to wallet screen
+- Created `initTransactionFilters()` function with event listeners
+- Updated `loadTransactionHistory()` to include filter parameter in API calls
+- Updated backend `/api/wallet/transactions` endpoint with filter support:
+  - Accepts `filter` parameter: 'all', 'credit', 'debit'
+  - Dynamic SQL query construction based on filter
+- Added CSS for `.transaction-filters`, `.tx-filter-btn` with active state styling
+
+#### Recharge Success Animation
+- Created `showRechargeSuccess(amount)` function with full-screen success overlay
+- Animated checkmark icon, amount display, and "Recarga exitosa" message
+- Haptic feedback on successful recharge
+- Auto-dismiss after 2 seconds with fade transition
+- Updated payment verification to use success animation instead of toast
+- Added CSS for `.recharge-success-animation` with keyframe animations
+
+#### Clickable Hashtags Enhancement
+- Improved `goToHashtag()` to navigate within SPA using App.showScreen()
+- Hashtags now open explore screen and auto-populate search input
+- Added CSS for `.hashtag`, `.mention` with hover styles
+
+#### Comment Pagination (Section 6)
+- Added `commentsState` object to track per-post comment pagination state
+- Updated `loadInlineComments()` to support append parameter for pagination
+- Added `loadMoreComments()` function for loading additional comments
+- Comments load 5 at a time with "Ver mas comentarios" button
+- State management includes: offset, hasMore, loading flags per post
+- Added CSS for `.load-more-comments-btn`, `.loading-comments`, `.no-comments`

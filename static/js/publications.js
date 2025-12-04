@@ -114,6 +114,11 @@ const PublicationsManager = {
     currentPostIndex: 0,
     isUploading: false,
     contentType: 'media',
+    feedOffset: 0,
+    feedLimit: 10,
+    hasMorePosts: true,
+    isLoadingFeed: false,
+    feedObserver: null,
     
     REACTION_EMOJIS: ['❤️', '😂', '😮', '😢', '😡', '👏', '🔥', '💯'],
     
@@ -129,6 +134,72 @@ const PublicationsManager = {
         this.setupEventListeners();
         this.loadFeed();
         this.loadStories();
+        this.setupInfiniteScroll();
+    },
+    
+    setupInfiniteScroll() {
+        const sentinel = document.createElement('div');
+        sentinel.id = 'feed-sentinel';
+        sentinel.className = 'feed-sentinel';
+        const feedContainer = document.getElementById('publications-feed');
+        if (feedContainer && feedContainer.parentNode) {
+            feedContainer.parentNode.appendChild(sentinel);
+        }
+        
+        this.feedObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && this.hasMorePosts && !this.isLoadingFeed) {
+                    this.loadMorePosts();
+                }
+            });
+        }, { rootMargin: '200px' });
+        
+        if (sentinel) {
+            this.feedObserver.observe(sentinel);
+        }
+    },
+    
+    async loadMorePosts() {
+        if (this.isLoadingFeed || !this.hasMorePosts) return;
+        
+        this.isLoadingFeed = true;
+        const sentinel = document.getElementById('feed-sentinel');
+        if (sentinel) {
+            sentinel.innerHTML = '<div class="feed-loading-more"><div class="spinner"></div></div>';
+        }
+        
+        try {
+            const response = await this.apiRequest(`/api/publications/feed?offset=${this.feedOffset}&limit=${this.feedLimit}`);
+            
+            if (response.success) {
+                const newPosts = response.posts || [];
+                this.hasMorePosts = response.has_more;
+                
+                if (newPosts.length > 0) {
+                    this.feedPosts = [...this.feedPosts, ...newPosts];
+                    this.feedOffset += newPosts.length;
+                    this.appendPostsToFeed(newPosts);
+                }
+            }
+        } catch (error) {
+            Logger?.error('Error loading more posts:', error);
+        } finally {
+            this.isLoadingFeed = false;
+            if (sentinel) {
+                sentinel.innerHTML = this.hasMorePosts ? '' : '<div class="feed-end">No hay mas publicaciones</div>';
+            }
+        }
+    },
+    
+    appendPostsToFeed(posts) {
+        const feedContainer = document.getElementById('publications-feed');
+        if (!feedContainer) return;
+        
+        posts.forEach(post => {
+            feedContainer.insertAdjacentHTML('beforeend', this.renderPost(post));
+        });
+        
+        this.setupPostInteractions();
     },
     
     setupEventListeners() {
@@ -200,21 +271,35 @@ const PublicationsManager = {
         }
     },
     
-    async loadFeed() {
+    async loadFeed(refresh = false) {
         const feedContainer = document.getElementById('publications-feed');
+        
+        if (refresh) {
+            this.feedOffset = 0;
+            this.hasMorePosts = true;
+            this.feedPosts = [];
+        }
+        
         try {
             if (typeof FallbackUI !== 'undefined' && feedContainer) {
                 FallbackUI.showSkeleton('publications-feed', 2);
             }
             
             Logger?.debug('Loading feed...');
-            const response = await this.apiRequest('/api/publications/feed');
+            const response = await this.apiRequest(`/api/publications/feed?offset=0&limit=${this.feedLimit}`);
             Logger?.debug('Feed response:', response);
             
             if (response.success) {
-                this.feedPosts = response.posts;
-                Logger?.info('Posts loaded:', this.feedPosts.length);
+                this.feedPosts = response.posts || [];
+                this.feedOffset = this.feedPosts.length;
+                this.hasMorePosts = response.has_more !== false && this.feedPosts.length === this.feedLimit;
+                Logger?.info('Posts loaded:', this.feedPosts.length, 'hasMore:', this.hasMorePosts);
                 this.renderFeed();
+                
+                const sentinel = document.getElementById('feed-sentinel');
+                if (sentinel) {
+                    sentinel.innerHTML = this.hasMorePosts ? '' : '<div class="feed-end">No hay mas publicaciones</div>';
+                }
             } else {
                 Logger?.error('Feed load failed:', response.error);
                 if (typeof FallbackUI !== 'undefined') {
@@ -873,27 +958,69 @@ const PublicationsManager = {
         }
     },
     
-    async loadInlineComments(postId) {
+    commentsState: {},
+    
+    async loadInlineComments(postId, append = false) {
         const container = document.getElementById(`comments-list-${postId}`);
         const viewBtn = document.querySelector(`[data-view-comments="${postId}"]`);
         
         if (!container) return;
         
-        container.innerHTML = '<div class="loading-comments">Cargando...</div>';
-        if (viewBtn) viewBtn.style.display = 'none';
+        if (!this.commentsState[postId]) {
+            this.commentsState[postId] = { offset: 0, hasMore: true, loading: false };
+        }
+        
+        const state = this.commentsState[postId];
+        
+        if (state.loading) return;
+        state.loading = true;
+        
+        if (!append) {
+            container.innerHTML = '<div class="loading-comments">Cargando...</div>';
+            state.offset = 0;
+            if (viewBtn) viewBtn.style.display = 'none';
+        }
         
         try {
-            const response = await this.apiRequest(`/api/publications/${postId}/comments?limit=10`);
+            const limit = 5;
+            const response = await this.apiRequest(`/api/publications/${postId}/comments?limit=${limit}&offset=${state.offset}`);
             
             if (response.success && response.comments) {
-                container.innerHTML = this.renderInlineComments(response.comments, postId);
-            } else {
+                const comments = response.comments;
+                state.hasMore = comments.length === limit;
+                
+                if (append) {
+                    const loadMoreBtn = container.querySelector('.load-more-comments-btn');
+                    if (loadMoreBtn) loadMoreBtn.remove();
+                    container.insertAdjacentHTML('beforeend', this.renderInlineComments(comments, postId));
+                } else {
+                    container.innerHTML = this.renderInlineComments(comments, postId);
+                }
+                
+                state.offset += comments.length;
+                
+                if (state.hasMore) {
+                    container.insertAdjacentHTML('beforeend', `
+                        <button class="load-more-comments-btn" onclick="PublicationsManager.loadMoreComments(${postId})">
+                            Ver mas comentarios
+                        </button>
+                    `);
+                }
+            } else if (!append) {
                 container.innerHTML = '<p class="no-comments">No hay comentarios</p>';
             }
         } catch (error) {
             console.error('Error loading comments:', error);
-            container.innerHTML = '<p class="no-comments">Error al cargar comentarios</p>';
+            if (!append) {
+                container.innerHTML = '<p class="no-comments">Error al cargar comentarios</p>';
+            }
+        } finally {
+            state.loading = false;
         }
+    },
+    
+    loadMoreComments(postId) {
+        this.loadInlineComments(postId, true);
     },
     
     renderInlineComments(comments, postId) {
@@ -1384,7 +1511,16 @@ const PublicationsManager = {
     },
     
     goToHashtag(tag) {
-        window.location.href = `/explore?hashtag=${tag}`;
+        if (typeof App !== 'undefined' && App.showScreen) {
+            App.showScreen('explore-screen');
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.value = `#${tag}`;
+                App.performSearch(`#${tag}`);
+            }
+        } else {
+            window.location.href = `/explore?hashtag=${tag}`;
+        }
     },
     
     goToProfile(username) {

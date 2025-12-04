@@ -429,6 +429,7 @@ const App = {
             await this.initSecuritySystem();
             
             this.initNotificationFilters();
+            this.initTransactionFilters();
             this.updateNotificationBadge();
             
             setInterval(() => this.updateNotificationBadge(), 60000);
@@ -2063,6 +2064,33 @@ const App = {
         
         return Toast.show(message, type, 3000);
     },
+
+    showRechargeSuccess(amount) {
+        const overlay = document.createElement('div');
+        overlay.className = 'recharge-success-animation';
+        overlay.innerHTML = `
+            <div class="recharge-success-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <div class="recharge-success-amount">+${amount} B3C</div>
+            <div class="recharge-success-text">Recarga exitosa</div>
+        `;
+        document.body.appendChild(overlay);
+        
+        if (this.tg && this.tg.HapticFeedback) {
+            try {
+                this.tg.HapticFeedback.notificationOccurred('success');
+            } catch (e) {}
+        }
+        
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => overlay.remove(), 300);
+        }, 2000);
+    },
     
     getAuthHeaders() {
         const headers = {
@@ -3048,6 +3076,18 @@ const App = {
     transactionOffset: 0,
     transactionLimit: 10,
     hasMoreTransactions: true,
+    currentTransactionFilter: 'all',
+
+    initTransactionFilters() {
+        document.querySelectorAll('.tx-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tx-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.currentTransactionFilter = btn.dataset.filter;
+                this.loadTransactionHistory(0, false);
+            });
+        });
+    },
 
     async loadTransactionHistory(offset = 0, append = false) {
         const container = document.getElementById('transactions-list');
@@ -3060,7 +3100,11 @@ const App = {
         }
         
         try {
-            const response = await this.apiRequest(`/api/wallet/transactions?offset=${offset}&limit=${this.transactionLimit}`);
+            let url = `/api/wallet/transactions?offset=${offset}&limit=${this.transactionLimit}`;
+            if (this.currentTransactionFilter && this.currentTransactionFilter !== 'all') {
+                url += `&filter=${this.currentTransactionFilter}`;
+            }
+            const response = await this.apiRequest(url);
             
             if (response.success) {
                 const transactions = response.transactions || [];
@@ -3643,8 +3687,9 @@ const App = {
                 
                 if (response.status === 'confirmed') {
                     this.closeModal();
-                    this.showToast(`+${response.creditsAdded} BUNK3RCO1N agregados!`, 'success');
+                    this.showRechargeSuccess(response.creditsAdded);
                     this.loadWalletBalance();
+                    this.loadTransactionHistory(0, false);
                     return true;
                 }
                 

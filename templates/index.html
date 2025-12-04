@@ -791,6 +791,11 @@
                         <h2 class="section-title">Historial de Transacciones</h2>
                         <button class="export-btn" id="export-history-btn" onclick="App.exportTransactionHistory()">Exportar</button>
                     </div>
+                    <div class="transaction-filters">
+                        <button class="tx-filter-btn active" data-filter="all">Todos</button>
+                        <button class="tx-filter-btn" data-filter="credit">Recargas</button>
+                        <button class="tx-filter-btn" data-filter="debit">Gastos</button>
+                    </div>
                     <div class="transactions-list transactions-container" id="transactions-list">
                         <div class="transactions-empty">
                             <div class="empty-icon">📋</div>

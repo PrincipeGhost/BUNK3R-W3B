@@ -2738,24 +2738,36 @@ def credit_wallet():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/wallet/transactions', methods=['GET'])
-@require_telegram_user
+@require_telegram_auth
 def get_wallet_transactions():
-    """Obtener historial de transacciones del usuario."""
+    """Obtener historial de transacciones del usuario con filtros."""
     try:
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        offset = request.args.get('offset', 0, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        filter_type = request.args.get('filter', 'all')
         
         if not db_manager:
             return jsonify({'success': True, 'transactions': []})
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("""
+                query = """
                     SELECT id, amount, transaction_type, description, created_at
                     FROM wallet_transactions
                     WHERE user_id = %s
-                    ORDER BY created_at DESC
-                    LIMIT 20
-                """, (user_id,))
+                """
+                params = [user_id]
+                
+                if filter_type == 'credit':
+                    query += " AND amount > 0"
+                elif filter_type == 'debit':
+                    query += " AND amount < 0"
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
                 transactions = cur.fetchall()
                 
         return jsonify({
