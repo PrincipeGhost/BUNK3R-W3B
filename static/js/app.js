@@ -713,6 +713,11 @@ const App = {
         if (pageName === 'exchange') {
             this.loadExchangeCurrencies();
         }
+        
+        if (pageName === 'wallet') {
+            this.loadTransactionHistory();
+            this.loadWalletBalance();
+        }
     },
     
     updateProfilePage() {

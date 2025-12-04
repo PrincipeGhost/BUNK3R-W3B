@@ -2141,7 +2141,7 @@ def verify_ton_payment(payment_id):
                             
                             credits = calculate_credits_from_ton(expected_amount)
                             cur.execute("""
-                                INSERT INTO wallet_transactions (user_id, amount, type, description, tx_hash, created_at)
+                                INSERT INTO wallet_transactions (user_id, amount, transaction_type, description, reference_id, created_at)
                                 VALUES (%s, %s, 'credit', %s, %s, NOW())
                             """, (user_id, credits, f'Recarga TON - {expected_amount} TON', tx_hash))
                             
@@ -2274,7 +2274,7 @@ def credit_wallet():
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO wallet_transactions (user_id, amount, type, description, tx_hash, created_at)
+                    INSERT INTO wallet_transactions (user_id, amount, transaction_type, description, reference_id, created_at)
                     VALUES (%s, %s, 'credit', %s, %s, NOW())
                 """, (user_id, credits, f'Recarga de {usdt_amount} USDT', transaction_boc))
                 conn.commit()
@@ -2310,7 +2310,7 @@ def get_wallet_transactions():
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT id, amount, type, description, created_at
+                    SELECT id, amount, transaction_type, description, created_at
                     FROM wallet_transactions
                     WHERE user_id = %s
                     ORDER BY created_at DESC
@@ -2723,7 +2723,7 @@ def debit_wallet():
                 
                 cur.execute("""
                     INSERT INTO wallet_transactions 
-                    (user_id, amount, type, description, reference_id, created_at)
+                    (user_id, amount, transaction_type, description, reference_id, created_at)
                     VALUES (%s, %s, %s, %s, %s, NOW())
                 """, (user_id, -amount, transaction_type, description, reference_id))
                 conn.commit()
