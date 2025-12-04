@@ -97,6 +97,13 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Renombrado de creditos a BUNK3RCO1N
+  - La sección "Billetera" ahora se llama "BUNK3RCO1N"
+  - Todos los "creditos" en la UI ahora son "BUNK3RCO1N"
+  - Actualizado en: templates/index.html, static/js/app.js, app.py
+  - El sistema de moneda interna ahora usa el nombre BUNK3RCO1N para distinguirse del dinero real
+  - Los precios de bots y recargas ahora se muestran en BUNK3RCO1N
+
 - 2024-12-04: Implemented secure TON payment verification system
   - New payment flow: Create pending payment -> User sends TON with comment -> Verify on blockchain
   - Server-side credit calculation (no client-controlled credits)
@@ -174,10 +181,10 @@ Configured for Replit deployment with:
   - Telegram back button properly handles profile screen navigation
 
 - 2024-12-03: Added new pages for Marketplace, Bots, and Wallet
-  - Redesigned bottom navigation: Home, Marketplace, Bots, Billetera (Wallet), Perfil (Profile)
-  - Created Marketplace page with product categories and item grid (prices in credits)
+  - Redesigned bottom navigation: Home, Marketplace, Bots, BUNK3RCO1N, Perfil (Profile)
+  - Created Marketplace page with product categories and item grid (prices in BUNK3RCO1N)
   - Created Bots page with active user bots and available bots for purchase
-  - Created Wallet page with credit balance, transaction history, and top-up options
+  - Created BUNK3RCO1N page with balance, transaction history, and top-up options
   - Fixed Telegram back button handler for all new pages
   - Updated navigation system with showPage() function
 
