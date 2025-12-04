@@ -316,10 +316,14 @@ def setup_2fa():
     if not db_manager:
         return jsonify({'error': 'Database not available'}), 500
     
-    secret = pyotp.random_base32()
+    existing_secret = db_manager.get_user_totp_secret(user_id)
     
-    if not db_manager.setup_2fa(user_id, secret):
-        return jsonify({'error': 'Failed to setup 2FA'}), 500
+    if existing_secret:
+        secret = existing_secret
+    else:
+        secret = pyotp.random_base32()
+        if not db_manager.setup_2fa(user_id, secret):
+            return jsonify({'error': 'Failed to setup 2FA'}), 500
     
     totp = pyotp.TOTP(secret)
     provisioning_uri = totp.provisioning_uri(

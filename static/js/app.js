@@ -98,6 +98,12 @@ const App = {
                     return;
                 }
                 
+                if (response.configured && !response.enabled && this.isOwner) {
+                    console.log('2FA configured but not enabled, showing setup screen to complete activation');
+                    this.show2FASetupScreen();
+                    return;
+                }
+                
                 console.log('2FA configured or not owner, completing login');
                 this.completeLogin();
             } else {
