@@ -2106,7 +2106,7 @@ const App = {
             if (connected) connected.classList.remove('hidden');
             
             const address = wallet.account.address;
-            const shortAddress = address.slice(0, 4) + '...' + address.slice(-4);
+            const shortAddress = address.slice(0, 8) + '...' + address.slice(-6);
             if (addressEl) addressEl.textContent = shortAddress;
         } else {
             if (notConnected) notConnected.classList.remove('hidden');

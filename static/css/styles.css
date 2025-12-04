@@ -3234,9 +3234,13 @@ body {
 
 .ton-wallet-address {
     color: #fff;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     font-family: monospace;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
 }
 
 .ton-disconnect-btn {
