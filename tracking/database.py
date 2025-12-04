@@ -1066,6 +1066,188 @@ class DatabaseManager:
             logger.error(f"Error getting avatar data for user {user_id}: {e}")
             return None
 
+    # ============================================================
+    # FUNCIONES PARA BOTS DE USUARIO
+    # ============================================================
+    
+    def get_user_bots(self, user_id: str) -> List[dict]:
+        """Obtener todos los bots activos de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT ub.id, ub.bot_name, ub.bot_type, ub.is_active, ub.config, ub.created_at,
+                                  bt.icon, bt.description, bt.price
+                           FROM user_bots ub
+                           LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                           WHERE ub.user_id = %s AND ub.is_active = TRUE
+                           ORDER BY ub.created_at DESC""",
+                        (user_id,)
+                    )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting user bots for {user_id}: {e}")
+            return []
+    
+    def get_available_bots(self, user_id: str) -> List[dict]:
+        """Obtener bots disponibles para comprar (que el usuario aún no tiene)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT bt.id, bt.bot_type, bt.bot_name, bt.description, bt.icon, bt.price, bt.is_available
+                           FROM bot_types bt
+                           WHERE bt.is_available = TRUE 
+                           AND bt.bot_type NOT IN (
+                               SELECT ub.bot_type FROM user_bots ub 
+                               WHERE ub.user_id = %s AND ub.is_active = TRUE
+                           )
+                           ORDER BY bt.price ASC""",
+                        (user_id,)
+                    )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting available bots for {user_id}: {e}")
+            return []
+    
+    def add_user_bot(self, user_id: str, bot_type: str, bot_name: str, config: str = None) -> bool:
+        """Agregar un bot al usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO user_bots (user_id, bot_name, bot_type, is_active, config)
+                           VALUES (%s, %s, %s, TRUE, %s)
+                           ON CONFLICT DO NOTHING""",
+                        (user_id, bot_name, bot_type, config)
+                    )
+                    conn.commit()
+                    logger.info(f"Added bot {bot_type} to user {user_id}")
+                    return True
+        except Exception as e:
+            logger.error(f"Error adding bot {bot_type} to user {user_id}: {e}")
+            return False
+    
+    def remove_user_bot(self, user_id: str, bot_id: int) -> bool:
+        """Desactivar un bot del usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE user_bots SET is_active = FALSE 
+                           WHERE id = %s AND user_id = %s""",
+                        (bot_id, user_id)
+                    )
+                    conn.commit()
+                    logger.info(f"Removed bot {bot_id} from user {user_id}")
+                    return True
+        except Exception as e:
+            logger.error(f"Error removing bot {bot_id} from user {user_id}: {e}")
+            return False
+    
+    def purchase_bot(self, user_id: str, bot_type: str) -> dict:
+        """Comprar un bot - verifica créditos, descuenta y activa el bot"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT credits FROM users WHERE id = %s",
+                        (user_id,)
+                    )
+                    user = cur.fetchone()
+                    if not user:
+                        return {'success': False, 'error': 'Usuario no encontrado'}
+                    
+                    user_credits = user['credits'] or 0
+                    
+                    cur.execute(
+                        "SELECT bot_name, price, icon FROM bot_types WHERE bot_type = %s AND is_available = TRUE",
+                        (bot_type,)
+                    )
+                    bot = cur.fetchone()
+                    if not bot:
+                        return {'success': False, 'error': 'Bot no disponible'}
+                    
+                    bot_price = bot['price'] or 0
+                    
+                    if user_credits < bot_price:
+                        return {'success': False, 'error': 'Créditos insuficientes', 'required': bot_price, 'current': user_credits}
+                    
+                    cur.execute(
+                        "SELECT id FROM user_bots WHERE user_id = %s AND bot_type = %s AND is_active = TRUE",
+                        (user_id, bot_type)
+                    )
+                    if cur.fetchone():
+                        return {'success': False, 'error': 'Ya tienes este bot activo'}
+                    
+                    cur.execute(
+                        "UPDATE users SET credits = credits - %s WHERE id = %s",
+                        (bot_price, user_id)
+                    )
+                    
+                    cur.execute(
+                        """INSERT INTO user_bots (user_id, bot_name, bot_type, is_active)
+                           VALUES (%s, %s, %s, TRUE)""",
+                        (user_id, bot['bot_name'], bot_type)
+                    )
+                    
+                    cur.execute(
+                        """INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id)
+                           VALUES (%s, 'purchase', %s, %s, %s)""",
+                        (user_id, -bot_price, f"Compra de bot: {bot['bot_name']}", bot_type)
+                    )
+                    
+                    conn.commit()
+                    logger.info(f"User {user_id} purchased bot {bot_type} for {bot_price} credits")
+                    return {
+                        'success': True, 
+                        'message': f'Bot {bot["bot_name"]} activado correctamente',
+                        'bot_name': bot['bot_name'],
+                        'credits_remaining': user_credits - bot_price
+                    }
+        except Exception as e:
+            logger.error(f"Error purchasing bot {bot_type} for user {user_id}: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def initialize_bot_types(self) -> bool:
+        """Inicializar tabla de tipos de bots disponibles"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS bot_types (
+                            id SERIAL PRIMARY KEY,
+                            bot_type VARCHAR(100) UNIQUE NOT NULL,
+                            bot_name VARCHAR(255) NOT NULL,
+                            description TEXT,
+                            icon VARCHAR(50),
+                            price INTEGER DEFAULT 0,
+                            is_available BOOLEAN DEFAULT TRUE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    
+                    cur.execute("""
+                        INSERT INTO bot_types (bot_type, bot_name, description, icon, price, is_available) VALUES
+                        ('tracking', 'TrackingBot', 'Rastrea tus envíos automáticamente', '🤖', 0, TRUE),
+                        ('notify', 'NotifyBot', 'Notificaciones de estado de paquetes', '📦', 0, TRUE),
+                        ('payment', 'PaymentBot', 'Procesa pagos automáticamente', '💰', 300, TRUE),
+                        ('analytics', 'AnalyticsBot', 'Estadísticas en tiempo real', '📊', 450, TRUE),
+                        ('alert', 'AlertBot', 'Alertas personalizadas', '🔔', 200, TRUE),
+                        ('support', 'SupportBot', 'Soporte al cliente 24/7', '💬', 500, TRUE),
+                        ('auto_reply', 'AutoReplyBot', 'Respuestas automáticas', '⚡', 150, TRUE)
+                        ON CONFLICT (bot_type) DO NOTHING
+                    """)
+                    
+                    conn.commit()
+                    logger.info("Bot types initialized successfully")
+                    return True
+        except Exception as e:
+            logger.error(f"Error initializing bot types: {e}")
+            return False
+
 
 # Global database manager instance
 db_manager = DatabaseManager()

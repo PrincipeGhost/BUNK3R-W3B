@@ -421,6 +421,10 @@ const App = {
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.show();
         }
+        
+        if (pageName === 'bots') {
+            this.loadUserBots();
+        }
     },
     
     updateProfilePage() {
@@ -1216,6 +1220,192 @@ const App = {
         }
         
         return data;
+    },
+    
+    async loadUserBots() {
+        const myBotsList = document.getElementById('my-bots-list');
+        const availableBotsList = document.getElementById('available-bots-list');
+        const myBotsEmpty = document.getElementById('my-bots-empty');
+        const availableBotsEmpty = document.getElementById('available-bots-empty');
+        
+        myBotsList.innerHTML = '<div class="bots-loading"><div class="loading-spinner"></div><p>Cargando tus bots...</p></div>';
+        availableBotsList.innerHTML = '<div class="bots-loading"><div class="loading-spinner"></div><p>Cargando bots disponibles...</p></div>';
+        myBotsEmpty.classList.add('hidden');
+        availableBotsEmpty.classList.add('hidden');
+        
+        try {
+            const [myBotsResponse, availableBotsResponse] = await Promise.all([
+                this.apiRequest('/api/bots/my'),
+                this.apiRequest('/api/bots/available')
+            ]);
+            
+            this.renderMyBots(myBotsResponse.bots || []);
+            this.renderAvailableBots(availableBotsResponse.bots || []);
+            
+        } catch (error) {
+            console.error('Error loading bots:', error);
+            myBotsList.innerHTML = '<div class="bots-empty"><div class="empty-icon">⚠️</div><p>Error al cargar bots</p></div>';
+            availableBotsList.innerHTML = '<div class="bots-empty"><div class="empty-icon">⚠️</div><p>Error al cargar bots</p></div>';
+        }
+    },
+    
+    renderMyBots(bots) {
+        const myBotsList = document.getElementById('my-bots-list');
+        const myBotsEmpty = document.getElementById('my-bots-empty');
+        
+        if (!bots || bots.length === 0) {
+            myBotsList.innerHTML = '';
+            myBotsEmpty.classList.remove('hidden');
+            return;
+        }
+        
+        myBotsEmpty.classList.add('hidden');
+        myBotsList.innerHTML = bots.map(bot => `
+            <div class="bot-card active-bot" data-bot-id="${bot.id}">
+                <div class="bot-avatar">${bot.icon || '🤖'}</div>
+                <div class="bot-info">
+                    <h3>${this.escapeHtml(bot.botName)}</h3>
+                    <p class="bot-status online">En linea</p>
+                    ${bot.description ? `<p class="bot-desc">${this.escapeHtml(bot.description)}</p>` : ''}
+                </div>
+                <div class="bot-actions">
+                    <button class="bot-action-btn" onclick="App.configureBot(${bot.id}, '${this.escapeHtml(bot.botType)}')">Configurar</button>
+                    <button class="bot-remove-btn" onclick="App.confirmRemoveBot(${bot.id}, '${this.escapeHtml(bot.botName)}')">Quitar</button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    renderAvailableBots(bots) {
+        const availableBotsList = document.getElementById('available-bots-list');
+        const availableBotsEmpty = document.getElementById('available-bots-empty');
+        
+        if (!bots || bots.length === 0) {
+            availableBotsList.innerHTML = '';
+            availableBotsEmpty.classList.remove('hidden');
+            return;
+        }
+        
+        availableBotsEmpty.classList.add('hidden');
+        availableBotsList.innerHTML = bots.map(bot => `
+            <div class="bot-card available-bot" data-bot-type="${bot.botType}">
+                <div class="bot-avatar">${bot.icon || '🤖'}</div>
+                <div class="bot-info">
+                    <h3>${this.escapeHtml(bot.botName)}</h3>
+                    <p class="bot-desc">${this.escapeHtml(bot.description || '')}</p>
+                    <span class="bot-price">${bot.price > 0 ? bot.price + ' creditos' : 'Gratis'}</span>
+                </div>
+                <div class="bot-actions">
+                    <button class="bot-buy-btn" onclick="App.purchaseBot('${this.escapeHtml(bot.botType)}', '${this.escapeHtml(bot.botName)}', ${bot.price})">
+                        ${bot.price > 0 ? 'Obtener' : 'Activar'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    configureBot(botId, botType) {
+        this.showToast('Configuracion de bot disponible proximamente', 'info');
+    },
+    
+    confirmRemoveBot(botId, botName) {
+        const modalContent = `
+            <div class="modal-header">
+                <h3>Desactivar Bot</h3>
+            </div>
+            <div class="modal-body">
+                <p style="text-align: center; margin-bottom: 16px;">
+                    Estas seguro que quieres desactivar <strong>${this.escapeHtml(botName)}</strong>?
+                </p>
+                <p style="text-align: center; color: var(--text-secondary); font-size: 12px;">
+                    Podras volver a activarlo desde los bots disponibles
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="App.closeModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="App.removeBot(${botId})">Desactivar</button>
+            </div>
+        `;
+        
+        this.showModal(modalContent);
+    },
+    
+    async removeBot(botId) {
+        try {
+            const response = await this.apiRequest(`/api/bots/${botId}/remove`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Bot desactivado correctamente', 'success');
+                this.closeModal();
+                await this.loadUserBots();
+            } else {
+                this.showToast(response.error || 'Error al desactivar bot', 'error');
+            }
+        } catch (error) {
+            console.error('Error removing bot:', error);
+            this.showToast('Error al desactivar bot', 'error');
+        }
+    },
+    
+    async purchaseBot(botType, botName, price) {
+        if (price > 0) {
+            const modalContent = `
+                <div class="modal-header">
+                    <h3>Confirmar Compra</h3>
+                </div>
+                <div class="modal-body">
+                    <p style="text-align: center; margin-bottom: 16px;">
+                        Quieres obtener <strong>${this.escapeHtml(botName)}</strong>?
+                    </p>
+                    <p style="text-align: center; font-size: 18px; font-weight: bold; color: var(--accent-warning);">
+                        ${price} creditos
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="App.closeModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="App.confirmPurchaseBot('${this.escapeHtml(botType)}')">Confirmar</button>
+                </div>
+            `;
+            this.showModal(modalContent);
+        } else {
+            await this.confirmPurchaseBot(botType);
+        }
+    },
+    
+    async confirmPurchaseBot(botType) {
+        try {
+            const response = await this.apiRequest('/api/bots/purchase', {
+                method: 'POST',
+                body: JSON.stringify({ botType: botType })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Bot activado correctamente', 'success');
+                this.closeModal();
+                await this.loadUserBots();
+                
+                if (response.creditsRemaining !== undefined) {
+                    const walletBalance = document.getElementById('wallet-balance');
+                    if (walletBalance) {
+                        walletBalance.textContent = response.creditsRemaining.toLocaleString();
+                    }
+                }
+            } else {
+                this.showToast(response.error || 'Error al obtener bot', 'error');
+            }
+        } catch (error) {
+            console.error('Error purchasing bot:', error);
+            this.showToast(error.message || 'Error al obtener bot', 'error');
+        }
+    },
+    
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 };
 

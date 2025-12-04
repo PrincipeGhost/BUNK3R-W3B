@@ -191,66 +191,31 @@
                 </div>
                 <div class="bots-section">
                     <h2 class="section-title">Tus Bots Activos</h2>
-                    <div class="bots-list">
-                        <div class="bot-card active-bot">
-                            <div class="bot-avatar">🤖</div>
-                            <div class="bot-info">
-                                <h3>TrackingBot</h3>
-                                <p class="bot-status online">En linea</p>
-                            </div>
-                            <div class="bot-actions">
-                                <button class="bot-action-btn">Configurar</button>
-                            </div>
+                    <div class="bots-list" id="my-bots-list">
+                        <div class="bots-loading">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando tus bots...</p>
                         </div>
-                        <div class="bot-card active-bot">
-                            <div class="bot-avatar">📦</div>
-                            <div class="bot-info">
-                                <h3>NotifyBot</h3>
-                                <p class="bot-status online">En linea</p>
-                            </div>
-                            <div class="bot-actions">
-                                <button class="bot-action-btn">Configurar</button>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="bots-empty hidden" id="my-bots-empty">
+                        <div class="empty-icon">🤖</div>
+                        <p>No tienes bots activos aun</p>
+                        <span class="empty-hint">Obtiene bots para automatizar tus tareas</span>
                     </div>
                 </div>
                 <div class="bots-section">
                     <h2 class="section-title">Bots Disponibles</h2>
                     <p class="section-subtitle">Agrega nuevos bots a tu cuenta</p>
-                    <div class="bots-list">
-                        <div class="bot-card available-bot">
-                            <div class="bot-avatar">💰</div>
-                            <div class="bot-info">
-                                <h3>PaymentBot</h3>
-                                <p class="bot-desc">Procesa pagos automaticamente</p>
-                                <span class="bot-price">300 creditos</span>
-                            </div>
-                            <div class="bot-actions">
-                                <button class="bot-buy-btn">Obtener</button>
-                            </div>
+                    <div class="bots-list" id="available-bots-list">
+                        <div class="bots-loading">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando bots disponibles...</p>
                         </div>
-                        <div class="bot-card available-bot">
-                            <div class="bot-avatar">📊</div>
-                            <div class="bot-info">
-                                <h3>AnalyticsBot</h3>
-                                <p class="bot-desc">Estadisticas en tiempo real</p>
-                                <span class="bot-price">450 creditos</span>
-                            </div>
-                            <div class="bot-actions">
-                                <button class="bot-buy-btn">Obtener</button>
-                            </div>
-                        </div>
-                        <div class="bot-card available-bot">
-                            <div class="bot-avatar">🔔</div>
-                            <div class="bot-info">
-                                <h3>AlertBot</h3>
-                                <p class="bot-desc">Alertas personalizadas</p>
-                                <span class="bot-price">200 creditos</span>
-                            </div>
-                            <div class="bot-actions">
-                                <button class="bot-buy-btn">Obtener</button>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="bots-empty hidden" id="available-bots-empty">
+                        <div class="empty-icon">🎉</div>
+                        <p>Ya tienes todos los bots!</p>
+                        <span class="empty-hint">No hay mas bots disponibles para obtener</span>
                     </div>
                 </div>
             </div>

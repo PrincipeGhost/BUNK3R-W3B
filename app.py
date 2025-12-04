@@ -1338,6 +1338,172 @@ def get_user_following(user_id):
         return jsonify({'error': str(e)}), 500
 
 
+# ============================================================
+# ENDPOINTS DE BOTS DE USUARIO
+# ============================================================
+
+@app.route('/api/bots/init', methods=['POST'])
+@require_telegram_auth
+def init_bots():
+    """Inicializar tabla de tipos de bots (solo owner)."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        success = db_manager.initialize_bot_types()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Tipos de bots inicializados correctamente'
+            })
+        else:
+            return jsonify({'error': 'Error al inicializar bots'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error initializing bots: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/bots/my', methods=['GET'])
+@require_telegram_user
+def get_my_bots():
+    """Obtener mis bots activos."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        bots = db_manager.get_user_bots(user_id)
+        
+        result = []
+        for bot in bots:
+            result.append({
+                'id': bot.get('id'),
+                'botName': bot.get('bot_name'),
+                'botType': bot.get('bot_type'),
+                'isActive': bot.get('is_active', True),
+                'icon': bot.get('icon', '🤖'),
+                'description': bot.get('description', ''),
+                'config': bot.get('config'),
+                'createdAt': bot.get('created_at').isoformat() if bot.get('created_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'bots': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user bots: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/bots/available', methods=['GET'])
+@require_telegram_user
+def get_available_bots():
+    """Obtener bots disponibles para comprar."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        bots = db_manager.get_available_bots(user_id)
+        
+        result = []
+        for bot in bots:
+            result.append({
+                'id': bot.get('id'),
+                'botName': bot.get('bot_name'),
+                'botType': bot.get('bot_type'),
+                'description': bot.get('description', ''),
+                'icon': bot.get('icon', '🤖'),
+                'price': bot.get('price', 0)
+            })
+        
+        return jsonify({
+            'success': True,
+            'bots': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting available bots: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/bots/purchase', methods=['POST'])
+@require_telegram_user
+def purchase_bot():
+    """Comprar un bot."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        data = request.get_json()
+        bot_type = data.get('botType')
+        
+        if not bot_type:
+            return jsonify({'error': 'Tipo de bot requerido'}), 400
+        
+        result = db_manager.purchase_bot(user_id, bot_type)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': result.get('message'),
+                'botName': result.get('bot_name'),
+                'creditsRemaining': result.get('credits_remaining')
+            })
+        else:
+            error = result.get('error', 'Error desconocido')
+            status_code = 400 if 'insuficientes' in error.lower() or 'ya tienes' in error.lower() else 500
+            return jsonify({
+                'success': False,
+                'error': error,
+                'required': result.get('required'),
+                'current': result.get('current')
+            }), status_code
+            
+    except Exception as e:
+        logger.error(f"Error purchasing bot: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/bots/<int:bot_id>/remove', methods=['POST'])
+@require_telegram_user
+def remove_bot(bot_id):
+    """Desactivar un bot."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        success = db_manager.remove_user_bot(user_id, bot_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Bot desactivado correctamente'
+            })
+        else:
+            return jsonify({'error': 'Error al desactivar bot'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error removing bot {bot_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
