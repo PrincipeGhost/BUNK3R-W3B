@@ -1090,22 +1090,36 @@ class DatabaseManager:
             logger.error(f"Error getting user bots for {user_id}: {e}")
             return []
     
-    def get_available_bots(self, user_id: str) -> List[dict]:
+    def get_available_bots(self, user_id: str, is_owner: bool = False) -> List[dict]:
         """Obtener bots disponibles para comprar (que el usuario aún no tiene)"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    cur.execute(
-                        """SELECT bt.id, bt.bot_type, bt.bot_name, bt.description, bt.icon, bt.price, bt.is_available
-                           FROM bot_types bt
-                           WHERE bt.is_available = TRUE 
-                           AND bt.bot_type NOT IN (
-                               SELECT ub.bot_type FROM user_bots ub 
-                               WHERE ub.user_id = %s AND ub.is_active = TRUE
-                           )
-                           ORDER BY bt.price ASC""",
-                        (user_id,)
-                    )
+                    if is_owner:
+                        cur.execute(
+                            """SELECT bt.id, bt.bot_type, bt.bot_name, bt.description, bt.icon, bt.price, bt.is_available
+                               FROM bot_types bt
+                               WHERE bt.is_available = TRUE 
+                               AND bt.bot_type NOT IN (
+                                   SELECT ub.bot_type FROM user_bots ub 
+                                   WHERE ub.user_id = %s AND ub.is_active = TRUE
+                               )
+                               ORDER BY bt.price ASC""",
+                            (user_id,)
+                        )
+                    else:
+                        cur.execute(
+                            """SELECT bt.id, bt.bot_type, bt.bot_name, bt.description, bt.icon, bt.price, bt.is_available
+                               FROM bot_types bt
+                               WHERE bt.is_available = TRUE 
+                               AND (bt.owner_only = FALSE OR bt.owner_only IS NULL)
+                               AND bt.bot_type NOT IN (
+                                   SELECT ub.bot_type FROM user_bots ub 
+                                   WHERE ub.user_id = %s AND ub.is_active = TRUE
+                               )
+                               ORDER BY bt.price ASC""",
+                            (user_id,)
+                        )
                     rows = cur.fetchall()
                     return [dict(row) for row in rows]
         except Exception as e:
@@ -1225,20 +1239,30 @@ class DatabaseManager:
                             icon VARCHAR(50),
                             price INTEGER DEFAULT 0,
                             is_available BOOLEAN DEFAULT TRUE,
+                            owner_only BOOLEAN DEFAULT FALSE,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     """)
                     
                     cur.execute("""
-                        INSERT INTO bot_types (bot_type, bot_name, description, icon, price, is_available) VALUES
-                        ('tracking', 'TrackingBot', 'Rastrea tus envíos automáticamente', '🤖', 0, TRUE),
-                        ('notify', 'NotifyBot', 'Notificaciones de estado de paquetes', '📦', 0, TRUE),
-                        ('payment', 'PaymentBot', 'Procesa pagos automáticamente', '💰', 300, TRUE),
-                        ('analytics', 'AnalyticsBot', 'Estadísticas en tiempo real', '📊', 450, TRUE),
-                        ('alert', 'AlertBot', 'Alertas personalizadas', '🔔', 200, TRUE),
-                        ('support', 'SupportBot', 'Soporte al cliente 24/7', '💬', 500, TRUE),
-                        ('auto_reply', 'AutoReplyBot', 'Respuestas automáticas', '⚡', 150, TRUE)
-                        ON CONFLICT (bot_type) DO NOTHING
+                        ALTER TABLE bot_types ADD COLUMN IF NOT EXISTS owner_only BOOLEAN DEFAULT FALSE
+                    """)
+                    
+                    cur.execute("""
+                        INSERT INTO bot_types (bot_type, bot_name, description, icon, price, is_available, owner_only) VALUES
+                        ('tracking_manager', 'Tracking Manager', 'Gestiona tus envíos y paquetes', '📦', 0, TRUE, TRUE),
+                        ('tracking', 'TrackingBot', 'Rastrea tus envíos automáticamente', '🤖', 0, TRUE, FALSE),
+                        ('notify', 'NotifyBot', 'Notificaciones de estado de paquetes', '📬', 0, TRUE, FALSE),
+                        ('payment', 'PaymentBot', 'Procesa pagos automáticamente', '💰', 300, TRUE, FALSE),
+                        ('analytics', 'AnalyticsBot', 'Estadísticas en tiempo real', '📊', 450, TRUE, FALSE),
+                        ('alert', 'AlertBot', 'Alertas personalizadas', '🔔', 200, TRUE, FALSE),
+                        ('support', 'SupportBot', 'Soporte al cliente 24/7', '💬', 500, TRUE, FALSE),
+                        ('auto_reply', 'AutoReplyBot', 'Respuestas automáticas', '⚡', 150, TRUE, FALSE)
+                        ON CONFLICT (bot_type) DO UPDATE SET
+                            bot_name = EXCLUDED.bot_name,
+                            description = EXCLUDED.description,
+                            icon = EXCLUDED.icon,
+                            owner_only = EXCLUDED.owner_only
                     """)
                     
                     conn.commit()
@@ -1246,6 +1270,47 @@ class DatabaseManager:
                     return True
         except Exception as e:
             logger.error(f"Error initializing bot types: {e}")
+            return False
+    
+    def assign_owner_bots(self, owner_telegram_id: int) -> bool:
+        """Asignar bots exclusivos del owner automáticamente"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT id FROM users WHERE telegram_id = %s",
+                        (owner_telegram_id,)
+                    )
+                    user_row = cur.fetchone()
+                    if not user_row:
+                        logger.warning(f"Owner user not found with telegram_id {owner_telegram_id}")
+                        return False
+                    
+                    user_id = user_row[0]
+                    
+                    cur.execute("""
+                        SELECT bot_type, bot_name FROM bot_types WHERE owner_only = TRUE
+                    """)
+                    owner_bots = cur.fetchall()
+                    
+                    for bot_type, bot_name in owner_bots:
+                        cur.execute(
+                            """SELECT id FROM user_bots 
+                               WHERE user_id = %s AND bot_type = %s""",
+                            (user_id, bot_type)
+                        )
+                        if not cur.fetchone():
+                            cur.execute(
+                                """INSERT INTO user_bots (user_id, bot_name, bot_type, is_active)
+                                   VALUES (%s, %s, %s, TRUE)""",
+                                (user_id, bot_name, bot_type)
+                            )
+                            logger.info(f"Assigned owner bot {bot_type} to user {user_id}")
+                    
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error assigning owner bots: {e}")
             return False
 
 

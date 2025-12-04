@@ -278,6 +278,11 @@ def validate_user():
                 telegram_id=user_id
             )
             logger.info(f"User created/updated: {created_user}")
+            
+            if owner_status:
+                db_manager.initialize_bot_types()
+                db_manager.assign_owner_bots(user_id)
+                logger.info(f"Assigned owner bots to user {user_id}")
         except Exception as e:
             logger.error(f"Error creating/updating user: {e}")
     
@@ -1412,8 +1417,9 @@ def get_available_bots():
         
         user = request.telegram_user
         user_id = str(user.get('id'))
+        user_is_owner = is_owner(user.get('id'))
         
-        bots = db_manager.get_available_bots(user_id)
+        bots = db_manager.get_available_bots(user_id, is_owner=user_is_owner)
         
         result = []
         for bot in bots:

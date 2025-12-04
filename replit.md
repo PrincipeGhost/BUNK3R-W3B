@@ -97,6 +97,14 @@ Configured for Replit deployment with:
 - Production-ready Gunicorn setup
 
 ## Recent Changes
+- 2024-12-04: Implemented dynamic bot validation system
+  - Bots are now loaded dynamically per user (only shows bots the user owns/purchased)
+  - Added bot_types table with owner_only flag for exclusive bots
+  - Tracking Manager bot is automatically assigned to the owner on login
+  - Users can only see and purchase bots available to their permission level
+  - Added purchase validation (credits check, duplicate prevention)
+  - API endpoints: /api/bots/my, /api/bots/available, /api/bots/purchase, /api/bots/{id}/remove
+
 - 2024-12-03: Added profile avatar upload functionality
   - Users can now upload their own profile photo by clicking on the avatar area
   - Backend endpoint `/api/users/me/avatar` handles file uploads (PNG, JPG, JPEG, GIF, WEBP)
