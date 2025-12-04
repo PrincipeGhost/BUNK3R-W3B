@@ -1996,7 +1996,7 @@ const App = {
     },
 
     initTonConnect() {
-        const initializeSDK = () => {
+        const initializeSDK = async () => {
             try {
                 const TonConnectUIClass = window.TON_CONNECT_UI?.TonConnectUI || window.TonConnectUI;
                 
@@ -2016,12 +2016,19 @@ const App = {
                         await this.saveWalletToBackend(wallet.account.address);
                     } else {
                         this.connectedWallet = null;
-                        this.updateWalletUI(null);
+                        const savedAddress = await this.loadSavedWallet();
+                        if (!savedAddress) {
+                            this.updateWalletUI(null);
+                        }
                     }
                 });
 
                 this.setupTonConnectListeners();
                 console.log('TON Connect initialized successfully');
+                
+                if (!this.tonConnectUI.wallet) {
+                    await this.loadSavedWallet();
+                }
             } catch (error) {
                 console.error('Error initializing TON Connect:', error);
             }
@@ -2122,38 +2129,133 @@ const App = {
         }
     },
 
+    rawAddressToUserFriendly(rawAddress) {
+        try {
+            if (!rawAddress || !rawAddress.includes(':')) {
+                return rawAddress;
+            }
+            
+            const [workchainStr, hexHash] = rawAddress.split(':');
+            const workchain = parseInt(workchainStr);
+            
+            const hashBytes = new Uint8Array(32);
+            for (let i = 0; i < 32; i++) {
+                hashBytes[i] = parseInt(hexHash.substr(i * 2, 2), 16);
+            }
+            
+            const addressBytes = new Uint8Array(34);
+            addressBytes[0] = 0x11;
+            addressBytes[1] = workchain === -1 ? 0xff : workchain;
+            addressBytes.set(hashBytes, 2);
+            
+            const crc = this.crc16(addressBytes);
+            
+            const fullAddress = new Uint8Array(36);
+            fullAddress.set(addressBytes);
+            fullAddress[34] = (crc >> 8) & 0xff;
+            fullAddress[35] = crc & 0xff;
+            
+            let base64 = btoa(String.fromCharCode.apply(null, fullAddress));
+            base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
+            
+            return base64;
+        } catch (error) {
+            console.error('Error converting address:', error);
+            return rawAddress;
+        }
+    },
+
+    crc16(data) {
+        const polynomial = 0x1021;
+        let crc = 0;
+        
+        for (let byte of data) {
+            crc ^= byte << 8;
+            for (let i = 0; i < 8; i++) {
+                if (crc & 0x8000) {
+                    crc = (crc << 1) ^ polynomial;
+                } else {
+                    crc <<= 1;
+                }
+                crc &= 0xffff;
+            }
+        }
+        return crc;
+    },
+
     updateWalletUI(wallet) {
         const notConnected = document.getElementById('ton-wallet-not-connected');
         const connected = document.getElementById('ton-wallet-connected');
         const addressEl = document.getElementById('ton-wallet-address');
 
+        let rawAddress = null;
         if (wallet) {
+            rawAddress = typeof wallet === 'string' ? wallet : wallet.account?.address;
+        }
+
+        if (rawAddress) {
             if (notConnected) notConnected.classList.add('hidden');
             if (connected) connected.classList.remove('hidden');
             
-            const address = wallet.account.address;
-            this.currentWalletAddress = address;
-            if (addressEl) addressEl.textContent = address;
+            const friendlyAddress = this.rawAddressToUserFriendly(rawAddress);
+            this.currentWalletAddress = friendlyAddress;
+            this.currentWalletRawAddress = rawAddress;
+            
+            if (addressEl) addressEl.textContent = friendlyAddress;
+            console.log('Wallet UI actualizada - Raw:', rawAddress.slice(0, 10) + '..., Friendly:', friendlyAddress);
         } else {
             if (notConnected) notConnected.classList.remove('hidden');
             if (connected) connected.classList.add('hidden');
             this.currentWalletAddress = null;
+            this.currentWalletRawAddress = null;
         }
     },
 
-    async saveWalletToBackend(address) {
+    async loadSavedWallet() {
         try {
+            console.log('Intentando cargar wallet guardada...');
+            const headers = this.getAuthHeaders();
+            console.log('Headers para wallet:', JSON.stringify(headers));
+            
+            const response = await fetch('/api/wallet/address', {
+                method: 'GET',
+                headers: headers
+            });
+            
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('Wallet response:', JSON.stringify(data));
+            
+            if (data.success && data.address) {
+                console.log('Wallet cargada del servidor:', data.address);
+                this.updateWalletUI(data.address);
+                return data.address;
+            } else {
+                console.log('No hay wallet guardada para este usuario');
+            }
+        } catch (error) {
+            console.error('Error cargando wallet guardada:', error.message || error);
+        }
+        return null;
+    },
+
+    async saveWalletToBackend(rawAddress) {
+        try {
+            const friendlyAddress = this.rawAddressToUserFriendly(rawAddress);
             const response = await fetch('/api/wallet/connect', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     ...this.getAuthHeaders()
                 },
-                body: JSON.stringify({ address })
+                body: JSON.stringify({ 
+                    address: friendlyAddress,
+                    rawAddress: rawAddress
+                })
             });
             const data = await response.json();
             if (data.success) {
-                console.log('Wallet guardada en el servidor:', address.slice(0, 10) + '...');
+                console.log('Wallet guardada en el servidor:', friendlyAddress);
             }
         } catch (error) {
             console.error('Error guardando wallet:', error);
