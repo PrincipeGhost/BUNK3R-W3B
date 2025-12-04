@@ -16,7 +16,13 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - **Package Tracking:** Management of tracking records, status history, and delivery estimations.
 - **Telegram Integration:** Authentication via Telegram Web App API, Telegram notifications, and owner-specific access controls.
 - **Security System:** A 17-point security system for wallet and device management including trusted devices, 2FA integration, lockout mechanisms, security activity logs, and administrative monitoring. This includes blocking BUNK3RCO1N access on untrusted devices and a dynamic device validation system.
-- **Monetary System (BUNK3RCO1N):** Internal currency for in-app purchases (bots, products), with a secure TON payment verification system for topping up, integrating with TonCenter API.
+- **Monetary System (BUNK3RCO1N):** Internal currency for in-app purchases (bots, products), with a secure TON payment verification system for topping up, integrating with TonCenter API. Features include:
+  - Auto-registration of first connected wallet as primary wallet for security
+  - TON wallet address validation (48 chars, EQ/UQ prefix)
+  - Backup wallet configuration via modal UI
+  - Transaction history with load more and CSV export
+  - Debit system for bot purchases with insufficient balance handling
+  - Telegram notifications for large transactions
 - **Social Features:** User profiles, posts, likes, follows, and avatar uploads.
 - **Marketplace:** Sections for products and dynamic bot management (purchase, ownership).
 - **External Exchange:** Integration with ChangeNow cryptocurrency exchange for in-app currency swapping.

@@ -2062,9 +2062,6 @@ const App = {
                 if (!this.tonConnectUI.wallet) {
                     await this.loadSavedWallet();
                 }
-                
-                await this.initDeviceTrust();
-                this.updateDeviceTrustUI();
             } catch (error) {
                 console.error('Error initializing TON Connect:', error);
             }
@@ -2315,9 +2312,294 @@ const App = {
             const data = await response.json();
             if (data.success) {
                 console.log('Wallet guardada en el servidor:', friendlyAddress);
+                
+                const checkResponse = await this.apiRequest('/api/security/wallet/primary/check');
+                
+                if (checkResponse.success && !checkResponse.hasPrimaryWallet) {
+                    await this.apiRequest('/api/security/wallet/primary/register', {
+                        method: 'POST',
+                        body: JSON.stringify({ walletAddress: friendlyAddress })
+                    });
+                    this.showToast('Wallet registrada como principal para seguridad', 'success');
+                }
             }
         } catch (error) {
             console.error('Error guardando wallet:', error);
+        }
+    },
+
+    validateTonWalletAddress(address) {
+        if (!address || typeof address !== 'string') {
+            return { valid: false, error: 'Direccion requerida' };
+        }
+        
+        address = address.trim();
+        
+        if (address.length !== 48) {
+            return { valid: false, error: 'La direccion debe tener 48 caracteres' };
+        }
+        
+        const validPrefixes = ['EQ', 'UQ'];
+        const prefix = address.substring(0, 2);
+        
+        if (!validPrefixes.includes(prefix)) {
+            return { valid: false, error: 'Direccion invalida. Debe empezar con EQ o UQ' };
+        }
+        
+        const base64Regex = /^[A-Za-z0-9_-]+$/;
+        if (!base64Regex.test(address)) {
+            return { valid: false, error: 'La direccion contiene caracteres invalidos' };
+        }
+        
+        return { valid: true, error: null };
+    },
+
+    showBackupWalletModal() {
+        const existingModal = document.getElementById('backup-wallet-modal');
+        if (existingModal) existingModal.remove();
+        
+        const modalHtml = `
+            <div id="backup-wallet-modal" class="modal-overlay" onclick="if(event.target === this) App.closeBackupWalletModal()">
+                <div class="modal-content backup-wallet-modal">
+                    <div class="modal-header">
+                        <h3>Configurar Wallet de Respaldo</h3>
+                        <button class="modal-close" onclick="App.closeBackupWalletModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="backup-wallet-info">
+                            <div class="info-icon">🔐</div>
+                            <p>Configura una wallet de respaldo para recuperar tu cuenta en caso de emergencia.</p>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Direccion de Wallet TON</label>
+                            <input type="text" id="backup-wallet-input" class="wallet-input" 
+                                   placeholder="UQ... o EQ..." maxlength="48">
+                            <span class="input-hint" id="backup-wallet-hint"></span>
+                        </div>
+                        
+                        <div class="wallet-requirements">
+                            <h4>Requisitos:</h4>
+                            <ul>
+                                <li>Debe empezar con UQ o EQ</li>
+                                <li>Debe tener 48 caracteres</li>
+                                <li>Debe ser diferente a tu wallet principal</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="App.closeBackupWalletModal()">Cancelar</button>
+                        <button class="btn btn-primary" id="save-backup-wallet-btn" onclick="App.saveBackupWallet()">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        const input = document.getElementById('backup-wallet-input');
+        const hint = document.getElementById('backup-wallet-hint');
+        
+        input.addEventListener('input', () => {
+            const validation = this.validateTonWalletAddress(input.value);
+            if (input.value.length > 0) {
+                hint.textContent = validation.valid ? '✓ Formato valido' : validation.error;
+                hint.className = `input-hint ${validation.valid ? 'valid' : 'invalid'}`;
+            } else {
+                hint.textContent = '';
+            }
+        });
+    },
+
+    closeBackupWalletModal() {
+        const modal = document.getElementById('backup-wallet-modal');
+        if (modal) modal.remove();
+    },
+
+    async saveBackupWallet() {
+        const input = document.getElementById('backup-wallet-input');
+        const btn = document.getElementById('save-backup-wallet-btn');
+        const address = input?.value?.trim();
+        
+        const validation = this.validateTonWalletAddress(address);
+        if (!validation.valid) {
+            this.showToast(validation.error, 'error');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        
+        try {
+            const response = await this.apiRequest('/api/security/wallet/backup', {
+                method: 'POST',
+                body: JSON.stringify({ backupWallet: address })
+            });
+            
+            if (response.success) {
+                this.showToast('Wallet de respaldo registrada correctamente', 'success');
+                this.closeBackupWalletModal();
+            } else {
+                this.showToast(response.error || 'Error al registrar wallet', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al registrar wallet de respaldo', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Guardar';
+        }
+    },
+
+    async setupBackupWallet() {
+        this.showBackupWalletModal();
+    },
+
+    transactionOffset: 0,
+    transactionLimit: 10,
+    hasMoreTransactions: true,
+
+    async loadTransactionHistory(offset = 0, append = false) {
+        const container = document.getElementById('transactions-list');
+        const loadMoreBtn = document.getElementById('load-more-transactions');
+        
+        if (!container) return;
+        
+        if (!append) {
+            container.innerHTML = '<div class="loading-transactions">Cargando transacciones...</div>';
+        }
+        
+        try {
+            const response = await this.apiRequest(`/api/wallet/transactions?offset=${offset}&limit=${this.transactionLimit}`);
+            
+            if (response.success) {
+                const transactions = response.transactions || [];
+                
+                if (!append) {
+                    container.innerHTML = '';
+                }
+                
+                if (transactions.length === 0 && offset === 0) {
+                    container.innerHTML = `
+                        <div class="transactions-empty">
+                            <div class="empty-icon">📋</div>
+                            <p>No hay transacciones aun</p>
+                            <span>Tus movimientos apareceran aqui</span>
+                        </div>
+                    `;
+                    if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+                    return;
+                }
+                
+                transactions.forEach(tx => {
+                    container.insertAdjacentHTML('beforeend', this.renderTransaction(tx));
+                });
+                
+                this.transactionOffset = offset + transactions.length;
+                this.hasMoreTransactions = transactions.length === this.transactionLimit;
+                
+                if (loadMoreBtn) {
+                    loadMoreBtn.classList.toggle('hidden', !this.hasMoreTransactions);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading transactions:', error);
+            if (!append) {
+                container.innerHTML = '<div class="transactions-error">Error al cargar transacciones</div>';
+            }
+        }
+    },
+
+    renderTransaction(tx) {
+        const isCredit = tx.amount > 0;
+        const dateStr = this.formatRelativeDate(tx.created_at);
+        
+        return `
+            <div class="transaction-item ${isCredit ? 'credit' : 'debit'}">
+                <div class="tx-icon">${isCredit ? '↑' : '↓'}</div>
+                <div class="tx-details">
+                    <span class="tx-description">${tx.description || (isCredit ? 'Recarga' : 'Gasto')}</span>
+                    <span class="tx-date">${dateStr}</span>
+                </div>
+                <div class="tx-amount ${isCredit ? 'positive' : 'negative'}">
+                    ${isCredit ? '+' : ''}${Math.abs(tx.amount).toFixed(2)} B3C
+                </div>
+            </div>
+        `;
+    },
+
+    formatRelativeDate(dateString) {
+        if (!dateString) return '';
+        
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffSecs < 60) return 'Hace un momento';
+        if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+        if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+        if (diffDays < 7) return `Hace ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
+        
+        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    },
+
+    loadMoreTransactions() {
+        if (this.hasMoreTransactions) {
+            this.loadTransactionHistory(this.transactionOffset, true);
+        }
+    },
+
+    async exportTransactionHistory() {
+        try {
+            const response = await this.apiRequest('/api/wallet/transactions?offset=0&limit=1000');
+            
+            if (response.success && response.transactions) {
+                let csv = 'Fecha,Tipo,Descripcion,Monto\n';
+                response.transactions.forEach(tx => {
+                    const date = new Date(tx.created_at).toISOString();
+                    const type = tx.amount > 0 ? 'Credito' : 'Debito';
+                    const desc = (tx.description || '').replace(/,/g, ';');
+                    csv += `${date},${type},"${desc}",${tx.amount}\n`;
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `transacciones_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                this.showToast('Historial exportado', 'success');
+            }
+        } catch (error) {
+            this.showToast('Error al exportar historial', 'error');
+        }
+    },
+
+    async purchaseBot(botId, price) {
+        const response = await this.apiRequest('/api/wallet/debit', {
+            method: 'POST',
+            body: JSON.stringify({
+                amount: price,
+                type: 'bot_purchase',
+                description: `Compra de Bot #${botId}`,
+                reference_id: botId
+            })
+        });
+        
+        if (response.success) {
+            await this.loadWalletBalance();
+            return true;
+        } else if (response.error === 'insufficient_balance') {
+            this.showToast('Saldo insuficiente. Recarga tu wallet.', 'error');
+            return false;
+        } else {
+            this.showToast(response.error || 'Error al procesar compra', 'error');
+            return false;
         }
     },
 

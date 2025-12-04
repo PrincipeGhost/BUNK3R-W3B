@@ -2591,17 +2591,163 @@ def register_backup_wallet():
         data = request.get_json() or {}
         backup_wallet = data.get('backupWallet', '')
         
-        if not backup_wallet:
-            return jsonify({'success': False, 'error': 'Direccion de wallet de respaldo requerida'}), 400
+        is_valid, error_msg = validate_ton_address(backup_wallet)
+        if not is_valid:
+            return jsonify({'success': False, 'error': error_msg}), 400
         
         if not security_manager:
             return jsonify({'success': False, 'error': 'Security manager not available'}), 500
         
-        result = security_manager.register_backup_wallet(user_id, backup_wallet)
+        result = security_manager.register_backup_wallet(user_id, backup_wallet.strip())
         return jsonify(result)
         
     except Exception as e:
         logger.error(f"Error registering backup wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/security/wallet/primary/check', methods=['GET'])
+@require_telegram_user
+def check_primary_wallet():
+    """Verificar si el usuario ya tiene wallet primaria registrada."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not security_manager:
+            return jsonify({'success': True, 'hasPrimaryWallet': False})
+        
+        wallet = security_manager.get_user_primary_wallet(user_id)
+        return jsonify({
+            'success': True,
+            'hasPrimaryWallet': wallet is not None,
+            'walletHint': f"{wallet[:8]}...{wallet[-4:]}" if wallet else None
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking primary wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def validate_ton_address(address):
+    """Validate TON wallet address format server-side."""
+    if not address or not isinstance(address, str):
+        return False, 'Direccion de wallet requerida'
+    
+    address = address.strip()
+    
+    if len(address) != 48:
+        return False, 'La direccion debe tener 48 caracteres'
+    
+    prefix = address[:2]
+    if prefix not in ['EQ', 'UQ']:
+        return False, 'Direccion invalida. Debe empezar con EQ o UQ'
+    
+    import re
+    if not re.match(r'^[A-Za-z0-9_-]+$', address):
+        return False, 'La direccion contiene caracteres invalidos'
+    
+    return True, None
+
+
+@app.route('/api/security/wallet/primary/register', methods=['POST'])
+@require_telegram_user
+def register_primary_wallet_endpoint():
+    """Registrar wallet como primaria (solo si no tiene una)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        wallet_address = data.get('walletAddress', '')
+        
+        is_valid, error_msg = validate_ton_address(wallet_address)
+        if not is_valid:
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        result = security_manager.register_primary_wallet(user_id, wallet_address.strip())
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error registering primary wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/wallet/debit', methods=['POST'])
+@require_telegram_user
+def debit_wallet():
+    """
+    Realizar un debito de BUNK3RCO1N.
+    
+    Request body:
+    {
+        "amount": 100,
+        "type": "bot_purchase",
+        "description": "Compra de Bot X",
+        "reference_id": "bot_123"
+    }
+    """
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        amount = data.get('amount', 0)
+        transaction_type = data.get('type', 'purchase')
+        description = data.get('description', 'Gasto')
+        reference_id = data.get('reference_id', '')
+        
+        if not amount or amount <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as balance
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                """, (user_id,))
+                result = cur.fetchone()
+                current_balance = float(result[0]) if result else 0
+                
+                if current_balance < amount:
+                    return jsonify({
+                        'success': False,
+                        'error': 'insufficient_balance',
+                        'message': 'Saldo insuficiente',
+                        'currentBalance': current_balance,
+                        'required': amount
+                    }), 402
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, amount, type, description, reference_id, created_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """, (user_id, -amount, transaction_type, description, reference_id))
+                conn.commit()
+                
+                new_balance = current_balance - amount
+        
+        if amount > 100 and security_manager:
+            security_manager.send_telegram_notification(
+                user_id,
+                f"💸 <b>Gasto registrado</b>\n\n"
+                f"📦 {description}\n"
+                f"💰 -{amount} BUNK3RCO1N\n"
+                f"📊 Saldo restante: {new_balance:.2f} B3C"
+            )
+        
+        logger.info(f"Debito de {amount} B3C para usuario {user_id}: {description}")
+        return jsonify({
+            'success': True,
+            'newBalance': new_balance,
+            'amountDebited': amount
+        })
+        
+    except Exception as e:
+        logger.error(f"Error debiting wallet: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

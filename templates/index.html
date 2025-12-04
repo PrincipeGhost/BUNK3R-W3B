@@ -20,6 +20,7 @@
     </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/dist/tonconnect-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
@@ -531,16 +532,21 @@
                         </button>
                     </div>
                 </div>
-                <div class="wallet-section">
+                <div class="wallet-section wallet-history-section">
                     <div class="wallet-section-header">
                         <h2 class="section-title">Historial de Transacciones</h2>
-                        <button class="see-all-btn">Ver todo</button>
+                        <button class="export-btn" id="export-history-btn" onclick="App.exportTransactionHistory()">Exportar</button>
                     </div>
-                    <div class="transactions-list" id="transactions-list">
+                    <div class="transactions-list transactions-container" id="transactions-list">
                         <div class="transactions-empty">
+                            <div class="empty-icon">📋</div>
                             <p>No hay transacciones aun</p>
+                            <span>Tus movimientos apareceran aqui</span>
                         </div>
                     </div>
+                    <button id="load-more-transactions" class="btn-load-more hidden" onclick="App.loadMoreTransactions()">
+                        Cargar mas
+                    </button>
                 </div>
                 <div class="wallet-section">
                     <h2 class="section-title">Recargar BUNK3RCO1N con USDT</h2>
