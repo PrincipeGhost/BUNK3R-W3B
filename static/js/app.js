@@ -23,6 +23,8 @@ const App = {
     trustedDeviceName: null,
     USDT_MASTER_ADDRESS: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
     MERCHANT_WALLET: 'UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck',
+    _initialDataLoaded: false,
+    _securityDataLoaded: false,
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -1135,7 +1137,11 @@ const App = {
         }
     },
     
-    async loadInitialData() {
+    async loadInitialData(force = false) {
+        if (this._initialDataLoaded && !force) {
+            return;
+        }
+        
         try {
             const [statsResponse, reasonsResponse, statusesResponse] = await Promise.all([
                 this.apiRequest('/api/stats'),
@@ -1154,6 +1160,8 @@ const App = {
             if (statusesResponse.success) {
                 this.statuses = statusesResponse.statuses;
             }
+            
+            this._initialDataLoaded = true;
             
         } catch (error) {
             console.error('Error loading initial data:', error);
@@ -1209,10 +1217,14 @@ const App = {
             this.loadInitialData();
         }
         
-        if (sectionId === 'profile') {
-            this.loadSecurityStatus();
-            this.loadTrustedDevices();
-            this.loadSecurityActivity();
+        if (sectionId === 'profile' && !this._securityDataLoaded) {
+            Promise.all([
+                this.loadSecurityStatus(),
+                this.loadTrustedDevices(),
+                this.loadSecurityActivity()
+            ]).then(() => {
+                this._securityDataLoaded = true;
+            });
         }
     },
     
@@ -4177,10 +4189,13 @@ const App = {
 
         this.setupSecurityEventListeners();
 
-        if (this.user) {
-            this.loadSecurityStatus();
-            this.loadTrustedDevices();
-            this.loadSecurityActivity();
+        if (this.user && !this._securityDataLoaded) {
+            await Promise.all([
+                this.loadSecurityStatus(),
+                this.loadTrustedDevices(),
+                this.loadSecurityActivity()
+            ]);
+            this._securityDataLoaded = true;
         }
 
         return true;
