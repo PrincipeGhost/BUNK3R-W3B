@@ -51,6 +51,21 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def download_telegram_photo(photo_url: str) -> str:
+    """Descarga la foto de Telegram y la convierte a base64."""
+    try:
+        import requests
+        response = requests.get(photo_url, timeout=10)
+        if response.status_code == 200:
+            content_type = response.headers.get('content-type', 'image/jpeg')
+            if 'image' in content_type:
+                image_data = base64.b64encode(response.content).decode('utf-8')
+                return f"data:{content_type};base64,{image_data}"
+        return None
+    except Exception as e:
+        logger.error(f"Error downloading Telegram photo: {e}")
+        return None
+
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
 CHANNEL_ID = os.environ.get('CHANNEL_ID', '')
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
@@ -581,8 +596,15 @@ def validate_user():
             logger.info(f"User created/updated: {created_user}")
             
             if photo_url:
-                db_manager.update_user_profile(str(user_id), avatar_url=photo_url)
-                logger.info(f"Updated avatar_url for user {user_id}: {photo_url}")
+                avatar_data = download_telegram_photo(photo_url)
+                if avatar_data:
+                    db_manager.update_user_avatar_data(str(user_id), avatar_data)
+                    local_avatar_url = f"/api/avatar/{user_id}"
+                    db_manager.update_user_profile(str(user_id), avatar_url=local_avatar_url)
+                    logger.info(f"Downloaded and saved Telegram photo for user {user_id}")
+                else:
+                    db_manager.update_user_profile(str(user_id), avatar_url=photo_url)
+                    logger.info(f"Using direct Telegram URL for user {user_id}: {photo_url}")
             
             if owner_status:
                 db_manager.initialize_bot_types()
@@ -3820,9 +3842,7 @@ def get_feed():
         posts = db_manager.get_feed_posts(user_id, limit, offset)
         
         for post in posts:
-            if post.get('avatar_url'):
-                pass
-            elif post.get('user_id'):
+            if not post.get('avatar_url') and post.get('user_id'):
                 avatar_data = db_manager.get_user_avatar_data(str(post.get('user_id')))
                 if avatar_data:
                     post['avatar_url'] = f"/api/avatar/{post.get('user_id')}"
