@@ -486,3 +486,318 @@ INSERT INTO achievement_types (type_code, title, description, icon, points) VALU
 ('bot_master', 'Bot Master', 'Activaste tu primer bot', '🤖', 60)
 ON CONFLICT (type_code) DO NOTHING;
 """
+
+CREATE_ENCRYPTED_POSTS_SQL = """
+-- ============================================================
+-- SISTEMA COMPLETO DE PUBLICACIONES ENCRIPTADAS
+-- ============================================================
+
+-- Agregar columnas de encriptación a posts existente
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='encryption_key') THEN
+        ALTER TABLE posts ADD COLUMN encryption_key TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='encryption_iv') THEN
+        ALTER TABLE posts ADD COLUMN encryption_iv TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='is_encrypted') THEN
+        ALTER TABLE posts ADD COLUMN is_encrypted BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='views_count') THEN
+        ALTER TABLE posts ADD COLUMN views_count INTEGER DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='is_repost') THEN
+        ALTER TABLE posts ADD COLUMN is_repost BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='original_post_id') THEN
+        ALTER TABLE posts ADD COLUMN original_post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='quote_text') THEN
+        ALTER TABLE posts ADD COLUMN quote_text TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='comments_enabled') THEN
+        ALTER TABLE posts ADD COLUMN comments_enabled BOOLEAN DEFAULT TRUE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='pinned_comment_id') THEN
+        ALTER TABLE posts ADD COLUMN pinned_comment_id INTEGER;
+    END IF;
+END $$;
+
+-- ============================================================
+-- MEDIA DE PUBLICACIONES (Carrusel de imágenes/videos)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_media (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    media_type VARCHAR(20) NOT NULL, -- image, video
+    media_url TEXT NOT NULL,
+    encrypted_url TEXT, -- URL encriptada en Cloudinary
+    encryption_key TEXT,
+    encryption_iv TEXT,
+    thumbnail_url TEXT, -- Miniatura para videos
+    media_order INTEGER DEFAULT 0, -- Orden en carrusel
+    width INTEGER,
+    height INTEGER,
+    duration_seconds INTEGER, -- Para videos
+    file_size INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_media_post_id ON post_media(post_id);
+
+-- ============================================================
+-- REACCIONES DE PUBLICACIONES (múltiples emojis)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_reactions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    reaction_type VARCHAR(20) NOT NULL, -- heart, laugh, wow, sad, fire, clap
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, post_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_reactions_post_id ON post_reactions(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_reactions_type ON post_reactions(reaction_type);
+
+-- ============================================================
+-- COMENTARIOS DE PUBLICACIONES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_comments (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    parent_comment_id INTEGER REFERENCES post_comments(id) ON DELETE CASCADE, -- Para hilos
+    content TEXT NOT NULL,
+    likes_count INTEGER DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_comments_post_id ON post_comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_comments_user_id ON post_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_comments_parent ON post_comments(parent_comment_id);
+
+-- ============================================================
+-- LIKES EN COMENTARIOS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS comment_likes (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    comment_id INTEGER REFERENCES post_comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, comment_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON comment_likes(comment_id);
+
+-- ============================================================
+-- HASHTAGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS hashtags (
+    id SERIAL PRIMARY KEY,
+    tag VARCHAR(100) UNIQUE NOT NULL,
+    posts_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_hashtags_tag ON hashtags(tag);
+CREATE INDEX IF NOT EXISTS idx_hashtags_count ON hashtags(posts_count DESC);
+
+-- ============================================================
+-- RELACIÓN POSTS-HASHTAGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_hashtags (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    hashtag_id INTEGER REFERENCES hashtags(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, hashtag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_hashtags_post ON post_hashtags(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_hashtags_hashtag ON post_hashtags(hashtag_id);
+
+-- ============================================================
+-- MENCIONES EN PUBLICACIONES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_mentions (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    mentioned_user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, mentioned_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_mentions_post ON post_mentions(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_mentions_user ON post_mentions(mentioned_user_id);
+
+-- ============================================================
+-- MENCIONES EN COMENTARIOS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS comment_mentions (
+    id SERIAL PRIMARY KEY,
+    comment_id INTEGER REFERENCES post_comments(id) ON DELETE CASCADE,
+    mentioned_user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(comment_id, mentioned_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_mentions_comment ON comment_mentions(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_mentions_user ON comment_mentions(mentioned_user_id);
+
+-- ============================================================
+-- PUBLICACIONES GUARDADAS (Favoritos)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_saves (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, post_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_saves_user ON post_saves(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_saves_post ON post_saves(post_id);
+
+-- ============================================================
+-- VISTAS DE PUBLICACIONES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_views (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_views_post ON post_views(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_views_user ON post_views(user_id);
+
+-- ============================================================
+-- HISTORIAS (24 horas)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS stories (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    media_type VARCHAR(20) NOT NULL, -- image, video
+    media_url TEXT NOT NULL,
+    encrypted_url TEXT,
+    encryption_key TEXT,
+    encryption_iv TEXT,
+    thumbnail_url TEXT,
+    duration_seconds INTEGER DEFAULT 15,
+    views_count INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_stories_user ON stories(user_id);
+CREATE INDEX IF NOT EXISTS idx_stories_expires ON stories(expires_at);
+CREATE INDEX IF NOT EXISTS idx_stories_active ON stories(is_active, expires_at);
+
+-- ============================================================
+-- VISTAS DE HISTORIAS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS story_views (
+    id SERIAL PRIMARY KEY,
+    story_id INTEGER REFERENCES stories(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(story_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_story_views_story ON story_views(story_id);
+CREATE INDEX IF NOT EXISTS idx_story_views_user ON story_views(user_id);
+
+-- ============================================================
+-- USUARIOS BLOQUEADOS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_blocks (
+    id SERIAL PRIMARY KEY,
+    blocker_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(blocker_id, blocked_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
+
+-- ============================================================
+-- REPORTES DE CONTENIDO
+-- ============================================================
+CREATE TABLE IF NOT EXISTS content_reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    content_type VARCHAR(20) NOT NULL, -- post, comment, story, user
+    content_id INTEGER NOT NULL,
+    reason VARCHAR(100) NOT NULL, -- spam, harassment, inappropriate, violence, other
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, reviewed, resolved, dismissed
+    admin_notes TEXT,
+    reviewed_by VARCHAR(255),
+    reviewed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_status ON content_reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_type ON content_reports(content_type);
+CREATE INDEX IF NOT EXISTS idx_reports_created ON content_reports(created_at DESC);
+
+-- ============================================================
+-- NOTIFICACIONES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- like, comment, follow, mention, share, story_reply
+    actor_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE, -- Quien generó la notificación
+    reference_type VARCHAR(20), -- post, comment, story
+    reference_id INTEGER,
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
+
+-- ============================================================
+-- COMPARTIDOS DE PUBLICACIONES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS post_shares (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    share_type VARCHAR(20) DEFAULT 'repost', -- repost, quote, dm
+    quote_text TEXT, -- Para citas
+    recipient_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL, -- Para DM
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_shares_user ON post_shares(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_shares_post ON post_shares(post_id);
+
+-- ============================================================
+-- CLAVES DE ENCRIPTACIÓN (para gestión segura)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS encryption_keys (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    key_type VARCHAR(20) NOT NULL, -- master, post, story
+    encrypted_key TEXT NOT NULL,
+    key_iv TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_encryption_keys_user ON encryption_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_encryption_keys_active ON encryption_keys(is_active);
+"""

@@ -17,7 +17,7 @@ try:
 except ImportError:
     SPAIN_TZ = None
 
-from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL
+from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL
 
 logger = logging.getLogger(__name__)
 
@@ -1450,6 +1450,1040 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error disabling 2FA for user {user_id}: {e}")
             return False
+
+    # ============================================================
+    # FUNCIONES PARA PUBLICACIONES ENCRIPTADAS
+    # ============================================================
+    
+    def initialize_encrypted_posts_tables(self):
+        """Inicializar tablas para publicaciones encriptadas"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(CREATE_ENCRYPTED_POSTS_SQL)
+                    conn.commit()
+            logger.info("Encrypted posts tables initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Error initializing encrypted posts tables: {e}")
+            return False
+    
+    def create_encrypted_post(self, user_id: str, content_type: str, caption: str = None,
+                             encryption_key: str = None, encryption_iv: str = None,
+                             is_encrypted: bool = True) -> Optional[int]:
+        """Crear una publicación encriptada"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO posts (user_id, content_type, caption, encryption_key, 
+                           encryption_iv, is_encrypted, views_count) 
+                           VALUES (%s, %s, %s, %s, %s, %s, 0) RETURNING id""",
+                        (user_id, content_type, caption, encryption_key, encryption_iv, is_encrypted)
+                    )
+                    result = cur.fetchone()
+                    conn.commit()
+                    post_id = result[0] if result else None
+                    logger.info(f"Encrypted post {post_id} created by user {user_id}")
+                    return post_id
+        except Exception as e:
+            logger.error(f"Error creating encrypted post: {e}")
+            return None
+    
+    def add_post_media(self, post_id: int, media_type: str, media_url: str,
+                       encrypted_url: str = None, encryption_key: str = None,
+                       encryption_iv: str = None, thumbnail_url: str = None,
+                       media_order: int = 0, width: int = None, height: int = None,
+                       duration_seconds: int = None, file_size: int = None) -> Optional[int]:
+        """Agregar media a una publicación (para carrusel)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO post_media (post_id, media_type, media_url, encrypted_url,
+                           encryption_key, encryption_iv, thumbnail_url, media_order, width, 
+                           height, duration_seconds, file_size) 
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                        (post_id, media_type, media_url, encrypted_url, encryption_key,
+                         encryption_iv, thumbnail_url, media_order, width, height, 
+                         duration_seconds, file_size)
+                    )
+                    result = cur.fetchone()
+                    conn.commit()
+                    return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error adding media to post {post_id}: {e}")
+            return None
+    
+    def get_post_with_media(self, post_id: int, viewer_id: str = None) -> Optional[dict]:
+        """Obtener publicación con todos sus medios"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as reactions_count,
+                           (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id AND is_active = TRUE) as comments_count,
+                           (SELECT COUNT(*) FROM post_views WHERE post_id = p.id) as views_count
+                           FROM posts p
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE p.id = %s AND p.is_active = TRUE""",
+                        (post_id,)
+                    )
+                    post = cur.fetchone()
+                    if not post:
+                        return None
+                    
+                    post_dict = dict(post)
+                    
+                    cur.execute(
+                        """SELECT * FROM post_media WHERE post_id = %s ORDER BY media_order""",
+                        (post_id,)
+                    )
+                    post_dict['media'] = [dict(m) for m in cur.fetchall()]
+                    
+                    if viewer_id:
+                        cur.execute(
+                            "SELECT reaction_type FROM post_reactions WHERE post_id = %s AND user_id = %s",
+                            (post_id, viewer_id)
+                        )
+                        reaction = cur.fetchone()
+                        post_dict['user_reaction'] = reaction['reaction_type'] if reaction else None
+                        
+                        cur.execute(
+                            "SELECT 1 FROM post_saves WHERE post_id = %s AND user_id = %s",
+                            (post_id, viewer_id)
+                        )
+                        post_dict['user_saved'] = cur.fetchone() is not None
+                    
+                    cur.execute(
+                        """SELECT reaction_type, COUNT(*) as count 
+                           FROM post_reactions WHERE post_id = %s GROUP BY reaction_type""",
+                        (post_id,)
+                    )
+                    post_dict['reactions_by_type'] = {r['reaction_type']: r['count'] for r in cur.fetchall()}
+                    
+                    return post_dict
+        except Exception as e:
+            logger.error(f"Error getting post {post_id}: {e}")
+            return None
+    
+    def get_feed_posts(self, user_id: str, limit: int = 20, offset: int = 0) -> List[dict]:
+        """Obtener feed de publicaciones (propias, seguidos, y populares)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as reactions_count,
+                           (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = %s) as user_reaction,
+                           EXISTS(SELECT 1 FROM post_saves WHERE post_id = p.id AND user_id = %s) as user_saved,
+                           (SELECT json_agg(json_build_object('id', pm.id, 'media_type', pm.media_type, 
+                            'media_url', pm.media_url, 'encrypted_url', pm.encrypted_url, 
+                            'thumbnail_url', pm.thumbnail_url, 'media_order', pm.media_order))
+                            FROM post_media pm WHERE pm.post_id = p.id) as media
+                           FROM posts p
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE p.is_active = TRUE 
+                           AND p.user_id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)
+                           AND p.user_id NOT IN (SELECT blocker_id FROM user_blocks WHERE blocked_id = %s)
+                           ORDER BY p.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (user_id, user_id, user_id, user_id, limit, offset)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting feed: {e}")
+            return []
+    
+    def get_user_gallery(self, user_id: str, viewer_id: str = None, limit: int = 30, offset: int = 0) -> List[dict]:
+        """Obtener galería de publicaciones de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    if viewer_id:
+                        cur.execute(
+                            "SELECT 1 FROM user_blocks WHERE (blocker_id = %s AND blocked_id = %s) OR (blocker_id = %s AND blocked_id = %s)",
+                            (user_id, viewer_id, viewer_id, user_id)
+                        )
+                        if cur.fetchone():
+                            return []
+                    
+                    cur.execute(
+                        """SELECT p.id, p.content_type, p.views_count,
+                           (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as reactions_count,
+                           (SELECT pm.thumbnail_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as thumbnail,
+                           (SELECT pm.media_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as first_media,
+                           (SELECT COUNT(*) FROM post_media pm WHERE pm.post_id = p.id) as media_count
+                           FROM posts p
+                           WHERE p.user_id = %s AND p.is_active = TRUE AND p.is_repost = FALSE
+                           ORDER BY p.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (user_id, limit, offset)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting user gallery: {e}")
+            return []
+    
+    def add_reaction(self, user_id: str, post_id: int, reaction_type: str) -> bool:
+        """Agregar o cambiar reacción a una publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO post_reactions (user_id, post_id, reaction_type)
+                           VALUES (%s, %s, %s)
+                           ON CONFLICT (user_id, post_id) 
+                           DO UPDATE SET reaction_type = EXCLUDED.reaction_type, created_at = NOW()""",
+                        (user_id, post_id, reaction_type)
+                    )
+                    
+                    cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                    post_owner = cur.fetchone()
+                    if post_owner and post_owner[0] != user_id:
+                        cur.execute(
+                            """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                               VALUES (%s, 'reaction', %s, 'post', %s, %s)
+                               ON CONFLICT DO NOTHING""",
+                            (post_owner[0], user_id, post_id, f"reaccionó a tu publicación")
+                        )
+                    
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error adding reaction: {e}")
+            return False
+    
+    def remove_reaction(self, user_id: str, post_id: int) -> bool:
+        """Quitar reacción de una publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM post_reactions WHERE user_id = %s AND post_id = %s",
+                        (user_id, post_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error removing reaction: {e}")
+            return False
+    
+    def add_comment(self, user_id: str, post_id: int, content: str, 
+                    parent_comment_id: int = None) -> Optional[int]:
+        """Agregar comentario a una publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO post_comments (post_id, user_id, content, parent_comment_id)
+                           VALUES (%s, %s, %s, %s) RETURNING id""",
+                        (post_id, user_id, content, parent_comment_id)
+                    )
+                    result = cur.fetchone()
+                    comment_id = result[0] if result else None
+                    
+                    cur.execute(
+                        "UPDATE posts SET comments_count = comments_count + 1 WHERE id = %s",
+                        (post_id,)
+                    )
+                    
+                    cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                    post_owner = cur.fetchone()
+                    if post_owner and post_owner[0] != user_id:
+                        cur.execute(
+                            """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                               VALUES (%s, 'comment', %s, 'post', %s, %s)""",
+                            (post_owner[0], user_id, post_id, "comentó en tu publicación")
+                        )
+                    
+                    conn.commit()
+                    return comment_id
+        except Exception as e:
+            logger.error(f"Error adding comment: {e}")
+            return None
+    
+    def get_post_comments(self, post_id: int, limit: int = 50, offset: int = 0) -> List[dict]:
+        """Obtener comentarios de una publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT c.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes_count
+                           FROM post_comments c
+                           LEFT JOIN users u ON c.user_id = u.id
+                           WHERE c.post_id = %s AND c.is_active = TRUE AND c.parent_comment_id IS NULL
+                           ORDER BY c.is_pinned DESC, c.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (post_id, limit, offset)
+                    )
+                    comments = [dict(row) for row in cur.fetchall()]
+                    
+                    for comment in comments:
+                        cur.execute(
+                            """SELECT c.*, u.username, u.first_name, u.avatar_url,
+                               (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes_count
+                               FROM post_comments c
+                               LEFT JOIN users u ON c.user_id = u.id
+                               WHERE c.parent_comment_id = %s AND c.is_active = TRUE
+                               ORDER BY c.created_at ASC""",
+                            (comment['id'],)
+                        )
+                        comment['replies'] = [dict(row) for row in cur.fetchall()]
+                    
+                    return comments
+        except Exception as e:
+            logger.error(f"Error getting comments: {e}")
+            return []
+    
+    def like_comment(self, user_id: str, comment_id: int) -> bool:
+        """Dar like a un comentario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO comment_likes (user_id, comment_id)
+                           VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                        (user_id, comment_id)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute(
+                            "UPDATE post_comments SET likes_count = likes_count + 1 WHERE id = %s",
+                            (comment_id,)
+                        )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error liking comment: {e}")
+            return False
+    
+    def unlike_comment(self, user_id: str, comment_id: int) -> bool:
+        """Quitar like de un comentario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM comment_likes WHERE user_id = %s AND comment_id = %s",
+                        (user_id, comment_id)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute(
+                            "UPDATE post_comments SET likes_count = GREATEST(0, likes_count - 1) WHERE id = %s",
+                            (comment_id,)
+                        )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error unliking comment: {e}")
+            return False
+    
+    def pin_comment(self, user_id: str, post_id: int, comment_id: int) -> bool:
+        """Fijar comentario (solo el dueño del post puede)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                    post = cur.fetchone()
+                    if not post or post[0] != user_id:
+                        return False
+                    
+                    cur.execute(
+                        "UPDATE post_comments SET is_pinned = FALSE WHERE post_id = %s",
+                        (post_id,)
+                    )
+                    cur.execute(
+                        "UPDATE post_comments SET is_pinned = TRUE WHERE id = %s AND post_id = %s",
+                        (comment_id, post_id)
+                    )
+                    cur.execute(
+                        "UPDATE posts SET pinned_comment_id = %s WHERE id = %s",
+                        (comment_id, post_id)
+                    )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error pinning comment: {e}")
+            return False
+    
+    def save_post(self, user_id: str, post_id: int) -> bool:
+        """Guardar publicación en favoritos"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO post_saves (user_id, post_id)
+                           VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                        (user_id, post_id)
+                    )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error saving post: {e}")
+            return False
+    
+    def unsave_post(self, user_id: str, post_id: int) -> bool:
+        """Quitar publicación de favoritos"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM post_saves WHERE user_id = %s AND post_id = %s",
+                        (user_id, post_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error unsaving post: {e}")
+            return False
+    
+    def get_saved_posts(self, user_id: str, limit: int = 30, offset: int = 0) -> List[dict]:
+        """Obtener publicaciones guardadas"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT pm.thumbnail_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as thumbnail,
+                           (SELECT pm.media_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as first_media
+                           FROM post_saves ps
+                           JOIN posts p ON ps.post_id = p.id
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE ps.user_id = %s AND p.is_active = TRUE
+                           ORDER BY ps.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (user_id, limit, offset)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting saved posts: {e}")
+            return []
+    
+    def record_post_view(self, post_id: int, user_id: str) -> bool:
+        """Registrar vista de publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO post_views (post_id, user_id)
+                           VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                        (post_id, user_id)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute(
+                            "UPDATE posts SET views_count = views_count + 1 WHERE id = %s",
+                            (post_id,)
+                        )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error recording view: {e}")
+            return False
+    
+    def process_hashtags(self, post_id: int, caption: str) -> List[str]:
+        """Procesar y guardar hashtags de una publicación"""
+        import re
+        hashtags = re.findall(r'#(\w+)', caption or '')
+        
+        if not hashtags:
+            return []
+        
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    for tag in hashtags:
+                        tag_lower = tag.lower()
+                        cur.execute(
+                            """INSERT INTO hashtags (tag) VALUES (%s)
+                               ON CONFLICT (tag) DO UPDATE SET posts_count = hashtags.posts_count + 1
+                               RETURNING id""",
+                            (tag_lower,)
+                        )
+                        hashtag_id = cur.fetchone()[0]
+                        
+                        cur.execute(
+                            """INSERT INTO post_hashtags (post_id, hashtag_id)
+                               VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                            (post_id, hashtag_id)
+                        )
+                    conn.commit()
+                    return hashtags
+        except Exception as e:
+            logger.error(f"Error processing hashtags: {e}")
+            return []
+    
+    def process_mentions(self, post_id: int, caption: str, mention_type: str = 'post') -> List[str]:
+        """Procesar y guardar menciones de una publicación o comentario"""
+        import re
+        mentions = re.findall(r'@(\w+)', caption or '')
+        
+        if not mentions:
+            return []
+        
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    for username in mentions:
+                        cur.execute(
+                            "SELECT id FROM users WHERE username = %s",
+                            (username,)
+                        )
+                        user = cur.fetchone()
+                        if user:
+                            if mention_type == 'post':
+                                cur.execute(
+                                    """INSERT INTO post_mentions (post_id, mentioned_user_id)
+                                       VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                                    (post_id, user[0])
+                                )
+                            
+                            cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                            post_owner = cur.fetchone()
+                            if post_owner:
+                                cur.execute(
+                                    """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                                       VALUES (%s, 'mention', %s, 'post', %s, %s)""",
+                                    (user[0], post_owner[0], post_id, "te mencionó en una publicación")
+                                )
+                    conn.commit()
+                    return mentions
+        except Exception as e:
+            logger.error(f"Error processing mentions: {e}")
+            return []
+    
+    def get_trending_hashtags(self, limit: int = 10) -> List[dict]:
+        """Obtener hashtags trending"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT tag, posts_count FROM hashtags
+                           ORDER BY posts_count DESC
+                           LIMIT %s""",
+                        (limit,)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting trending hashtags: {e}")
+            return []
+    
+    def get_posts_by_hashtag(self, hashtag: str, user_id: str = None, limit: int = 30, offset: int = 0) -> List[dict]:
+        """Obtener publicaciones por hashtag"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT pm.thumbnail_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as thumbnail,
+                           (SELECT pm.media_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as first_media
+                           FROM posts p
+                           JOIN post_hashtags ph ON p.id = ph.post_id
+                           JOIN hashtags h ON ph.hashtag_id = h.id
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE h.tag = %s AND p.is_active = TRUE
+                           ORDER BY p.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (hashtag.lower(), limit, offset)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting posts by hashtag: {e}")
+            return []
+    
+    def create_story(self, user_id: str, media_type: str, media_url: str,
+                     encrypted_url: str = None, encryption_key: str = None,
+                     encryption_iv: str = None, thumbnail_url: str = None,
+                     duration_seconds: int = 15) -> Optional[int]:
+        """Crear una historia (24 horas)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    expires_at = datetime.now() + timedelta(hours=24)
+                    cur.execute(
+                        """INSERT INTO stories (user_id, media_type, media_url, encrypted_url,
+                           encryption_key, encryption_iv, thumbnail_url, duration_seconds, expires_at)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                        (user_id, media_type, media_url, encrypted_url, encryption_key,
+                         encryption_iv, thumbnail_url, duration_seconds, expires_at)
+                    )
+                    result = cur.fetchone()
+                    conn.commit()
+                    return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error creating story: {e}")
+            return None
+    
+    def get_stories_feed(self, user_id: str) -> List[dict]:
+        """Obtener historias del feed (propias y de seguidos)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT DISTINCT ON (s.user_id) 
+                           s.user_id, u.username, u.first_name, u.avatar_url,
+                           (SELECT COUNT(*) FROM stories WHERE user_id = s.user_id AND is_active = TRUE AND expires_at > NOW()) as stories_count,
+                           EXISTS(SELECT 1 FROM story_views sv 
+                                  JOIN stories st ON sv.story_id = st.id 
+                                  WHERE st.user_id = s.user_id AND sv.user_id = %s 
+                                  AND st.is_active = TRUE AND st.expires_at > NOW()) as has_viewed
+                           FROM stories s
+                           LEFT JOIN users u ON s.user_id = u.id
+                           WHERE s.is_active = TRUE AND s.expires_at > NOW()
+                           AND (s.user_id = %s OR s.user_id IN (SELECT following_id FROM follows WHERE follower_id = %s))
+                           AND s.user_id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)
+                           ORDER BY s.user_id, s.created_at DESC""",
+                        (user_id, user_id, user_id, user_id)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting stories feed: {e}")
+            return []
+    
+    def get_user_stories(self, user_id: str, viewer_id: str = None) -> List[dict]:
+        """Obtener historias de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    if viewer_id:
+                        cur.execute(
+                            "SELECT 1 FROM user_blocks WHERE (blocker_id = %s AND blocked_id = %s) OR (blocker_id = %s AND blocked_id = %s)",
+                            (user_id, viewer_id, viewer_id, user_id)
+                        )
+                        if cur.fetchone():
+                            return []
+                    
+                    cur.execute(
+                        """SELECT s.*, 
+                           EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND user_id = %s) as viewed
+                           FROM stories s
+                           WHERE s.user_id = %s AND s.is_active = TRUE AND s.expires_at > NOW()
+                           ORDER BY s.created_at ASC""",
+                        (viewer_id or '', user_id)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting user stories: {e}")
+            return []
+    
+    def view_story(self, story_id: int, user_id: str) -> bool:
+        """Registrar vista de historia"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO story_views (story_id, user_id)
+                           VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                        (story_id, user_id)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute(
+                            "UPDATE stories SET views_count = views_count + 1 WHERE id = %s",
+                            (story_id,)
+                        )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error viewing story: {e}")
+            return False
+    
+    def get_story_viewers(self, story_id: int, user_id: str) -> List[dict]:
+        """Obtener lista de usuarios que vieron una historia (solo el dueño)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("SELECT user_id FROM stories WHERE id = %s", (story_id,))
+                    story = cur.fetchone()
+                    if not story or story['user_id'] != user_id:
+                        return []
+                    
+                    cur.execute(
+                        """SELECT u.id, u.username, u.first_name, u.avatar_url, sv.viewed_at
+                           FROM story_views sv
+                           JOIN users u ON sv.user_id = u.id
+                           WHERE sv.story_id = %s
+                           ORDER BY sv.viewed_at DESC""",
+                        (story_id,)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting story viewers: {e}")
+            return []
+    
+    def block_user(self, blocker_id: str, blocked_id: str) -> bool:
+        """Bloquear a un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO user_blocks (blocker_id, blocked_id)
+                           VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                        (blocker_id, blocked_id)
+                    )
+                    
+                    cur.execute(
+                        "DELETE FROM follows WHERE (follower_id = %s AND following_id = %s) OR (follower_id = %s AND following_id = %s)",
+                        (blocker_id, blocked_id, blocked_id, blocker_id)
+                    )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error blocking user: {e}")
+            return False
+    
+    def unblock_user(self, blocker_id: str, blocked_id: str) -> bool:
+        """Desbloquear a un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM user_blocks WHERE blocker_id = %s AND blocked_id = %s",
+                        (blocker_id, blocked_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error unblocking user: {e}")
+            return False
+    
+    def get_blocked_users(self, user_id: str) -> List[dict]:
+        """Obtener lista de usuarios bloqueados"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT u.id, u.username, u.first_name, u.avatar_url, ub.created_at as blocked_at
+                           FROM user_blocks ub
+                           JOIN users u ON ub.blocked_id = u.id
+                           WHERE ub.blocker_id = %s
+                           ORDER BY ub.created_at DESC""",
+                        (user_id,)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting blocked users: {e}")
+            return []
+    
+    def create_report(self, reporter_id: str, content_type: str, content_id: int, 
+                      reason: str, description: str = None) -> Optional[int]:
+        """Crear reporte de contenido"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO content_reports (reporter_id, content_type, content_id, reason, description)
+                           VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                        (reporter_id, content_type, content_id, reason, description)
+                    )
+                    result = cur.fetchone()
+                    conn.commit()
+                    return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error creating report: {e}")
+            return None
+    
+    def get_reports(self, status: str = 'pending', limit: int = 50, offset: int = 0) -> List[dict]:
+        """Obtener reportes (para admin)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT r.*, u.username as reporter_username
+                           FROM content_reports r
+                           LEFT JOIN users u ON r.reporter_id = u.id
+                           WHERE r.status = %s
+                           ORDER BY r.created_at DESC
+                           LIMIT %s OFFSET %s""",
+                        (status, limit, offset)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting reports: {e}")
+            return []
+    
+    def update_report_status(self, report_id: int, status: str, admin_id: str, notes: str = None) -> bool:
+        """Actualizar estado de un reporte (para admin)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE content_reports 
+                           SET status = %s, reviewed_by = %s, admin_notes = %s, reviewed_at = NOW()
+                           WHERE id = %s""",
+                        (status, admin_id, notes, report_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error updating report: {e}")
+            return False
+    
+    def get_notifications(self, user_id: str, limit: int = 50, offset: int = 0, unread_only: bool = False) -> List[dict]:
+        """Obtener notificaciones de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    query = """SELECT n.*, u.username as actor_username, u.first_name as actor_first_name, u.avatar_url as actor_avatar
+                               FROM notifications n
+                               LEFT JOIN users u ON n.actor_id = u.id
+                               WHERE n.user_id = %s"""
+                    params = [user_id]
+                    
+                    if unread_only:
+                        query += " AND n.is_read = FALSE"
+                    
+                    query += " ORDER BY n.created_at DESC LIMIT %s OFFSET %s"
+                    params.extend([limit, offset])
+                    
+                    cur.execute(query, params)
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting notifications: {e}")
+            return []
+    
+    def mark_notifications_read(self, user_id: str, notification_ids: List[int] = None) -> bool:
+        """Marcar notificaciones como leídas"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    if notification_ids:
+                        cur.execute(
+                            "UPDATE notifications SET is_read = TRUE WHERE user_id = %s AND id = ANY(%s)",
+                            (user_id, notification_ids)
+                        )
+                    else:
+                        cur.execute(
+                            "UPDATE notifications SET is_read = TRUE WHERE user_id = %s",
+                            (user_id,)
+                        )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error marking notifications read: {e}")
+            return False
+    
+    def get_unread_notifications_count(self, user_id: str) -> int:
+        """Obtener cantidad de notificaciones no leídas"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    return result[0] if result else 0
+        except Exception as e:
+            logger.error(f"Error getting unread count: {e}")
+            return 0
+    
+    def share_post(self, user_id: str, post_id: int, share_type: str = 'repost', 
+                   quote_text: str = None, recipient_id: str = None) -> Optional[int]:
+        """Compartir/repostear una publicación"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO post_shares (user_id, post_id, share_type, quote_text, recipient_id)
+                           VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                        (user_id, post_id, share_type, quote_text, recipient_id)
+                    )
+                    result = cur.fetchone()
+                    
+                    cur.execute(
+                        "UPDATE posts SET shares_count = shares_count + 1 WHERE id = %s",
+                        (post_id,)
+                    )
+                    
+                    if share_type == 'repost':
+                        cur.execute("SELECT content_type, caption FROM posts WHERE id = %s", (post_id,))
+                        original = cur.fetchone()
+                        if original:
+                            cur.execute(
+                                """INSERT INTO posts (user_id, content_type, caption, is_repost, original_post_id, quote_text)
+                                   VALUES (%s, %s, %s, TRUE, %s, %s) RETURNING id""",
+                                (user_id, original[0], original[1], post_id, quote_text)
+                            )
+                    
+                    cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                    post_owner = cur.fetchone()
+                    if post_owner and post_owner[0] != user_id:
+                        cur.execute(
+                            """INSERT INTO notifications (user_id, type, actor_id, reference_type, reference_id, message)
+                               VALUES (%s, 'share', %s, 'post', %s, %s)""",
+                            (post_owner[0], user_id, post_id, "compartió tu publicación")
+                        )
+                    
+                    conn.commit()
+                    return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error sharing post: {e}")
+            return None
+    
+    def delete_post(self, post_id: int, user_id: str) -> bool:
+        """Eliminar publicación (solo el dueño)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE posts SET is_active = FALSE WHERE id = %s AND user_id = %s",
+                        (post_id, user_id)
+                    )
+                    conn.commit()
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error deleting post: {e}")
+            return False
+    
+    def update_post(self, post_id: int, user_id: str, caption: str = None, 
+                    comments_enabled: bool = None) -> bool:
+        """Editar publicación (solo el dueño)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                    post = cur.fetchone()
+                    if not post or post[0] != user_id:
+                        return False
+                    
+                    updates = []
+                    params = []
+                    
+                    if caption is not None:
+                        updates.append("caption = %s")
+                        params.append(caption)
+                    
+                    if comments_enabled is not None:
+                        updates.append("comments_enabled = %s")
+                        params.append(comments_enabled)
+                    
+                    if updates:
+                        params.append(post_id)
+                        cur.execute(
+                            f"UPDATE posts SET {', '.join(updates)} WHERE id = %s",
+                            params
+                        )
+                        
+                        if caption:
+                            self.process_hashtags(post_id, caption)
+                            self.process_mentions(post_id, caption)
+                    
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error updating post: {e}")
+            return False
+    
+    def get_explore_posts(self, user_id: str = None, limit: int = 30, offset: int = 0) -> List[dict]:
+        """Obtener publicaciones para explorar (trending/populares)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    query = """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as reactions_count,
+                           (SELECT pm.thumbnail_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as thumbnail,
+                           (SELECT pm.media_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as first_media
+                           FROM posts p
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE p.is_active = TRUE AND p.is_repost = FALSE"""
+                    
+                    params = []
+                    if user_id:
+                        query += """ AND p.user_id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)
+                                    AND p.user_id NOT IN (SELECT blocker_id FROM user_blocks WHERE blocked_id = %s)"""
+                        params.extend([user_id, user_id])
+                    
+                    query += """ ORDER BY (
+                           (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) +
+                           p.comments_count * 2 +
+                           p.views_count * 0.1
+                           ) DESC, p.created_at DESC
+                           LIMIT %s OFFSET %s"""
+                    params.extend([limit, offset])
+                    
+                    cur.execute(query, params)
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting explore posts: {e}")
+            return []
+    
+    def search_posts(self, query: str, user_id: str = None, limit: int = 30, offset: int = 0) -> List[dict]:
+        """Buscar publicaciones por texto en caption"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    search_query = f"%{query}%"
+                    sql = """SELECT p.*, u.username, u.first_name, u.avatar_url,
+                           (SELECT pm.thumbnail_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as thumbnail,
+                           (SELECT pm.media_url FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order LIMIT 1) as first_media
+                           FROM posts p
+                           LEFT JOIN users u ON p.user_id = u.id
+                           WHERE p.is_active = TRUE AND p.caption ILIKE %s"""
+                    
+                    params = [search_query]
+                    if user_id:
+                        sql += """ AND p.user_id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)"""
+                        params.append(user_id)
+                    
+                    sql += " ORDER BY p.created_at DESC LIMIT %s OFFSET %s"
+                    params.extend([limit, offset])
+                    
+                    cur.execute(sql, params)
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error searching posts: {e}")
+            return []
+    
+    def get_suggested_users(self, user_id: str, limit: int = 10) -> List[dict]:
+        """Obtener sugerencias de usuarios para seguir"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT u.id, u.username, u.first_name, u.avatar_url, u.bio,
+                           (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count,
+                           (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND is_active = TRUE) as posts_count
+                           FROM users u
+                           WHERE u.id != %s
+                           AND u.id NOT IN (SELECT following_id FROM follows WHERE follower_id = %s)
+                           AND u.id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)
+                           AND u.id NOT IN (SELECT blocker_id FROM user_blocks WHERE blocked_id = %s)
+                           AND u.is_active = TRUE
+                           ORDER BY followers_count DESC, posts_count DESC
+                           LIMIT %s""",
+                        (user_id, user_id, user_id, user_id, limit)
+                    )
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting suggested users: {e}")
+            return []
+    
+    def search_users(self, query: str, user_id: str = None, limit: int = 20) -> List[dict]:
+        """Buscar usuarios por username o nombre"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    search_query = f"%{query}%"
+                    sql = """SELECT u.id, u.username, u.first_name, u.avatar_url,
+                           (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count
+                           FROM users u
+                           WHERE u.is_active = TRUE 
+                           AND (u.username ILIKE %s OR u.first_name ILIKE %s)"""
+                    
+                    params = [search_query, search_query]
+                    if user_id:
+                        sql += """ AND u.id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)
+                                  AND u.id NOT IN (SELECT blocker_id FROM user_blocks WHERE blocked_id = %s)"""
+                        params.extend([user_id, user_id])
+                    
+                    sql += " ORDER BY followers_count DESC LIMIT %s"
+                    params.append(limit)
+                    
+                    cur.execute(sql, params)
+                    return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error searching users: {e}")
+            return []
 
 
 # Global database manager instance

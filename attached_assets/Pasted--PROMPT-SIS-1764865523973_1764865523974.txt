@@ -1,0 +1,332 @@
+================================================================================
+       PROMPT: SISTEMA COMPLETO DE PUBLICACIONES ENCRIPTADAS
+================================================================================
+
+OBJETIVO GENERAL
+----------------
+Implementar un sistema completo de publicaciones (fotos, videos, texto) en el 
+perfil del usuario, usando almacenamiento externo (Cloudinary) con ENCRIPTACIÓN 
+DE EXTREMO A EXTREMO para todo el contenido. Todo público dentro de la app, 
+pero totalmente encriptado e inaccesible desde el exterior.
+
+================================================================================
+                        1. MODAL DE CREAR PUBLICACIÓN
+================================================================================
+
+ACTIVACIÓN: Al tocar el botón "+" en la pestaña de publicaciones del perfil.
+
+INTERFAZ DEL MODAL:
+- Selector de tipo de contenido: 📷 Foto | 🎬 Video | ✍️ Solo Texto
+- Botón para seleccionar archivo desde el dispositivo
+- Vista previa del contenido seleccionado
+- Campo de texto para descripción/caption (sin límite de caracteres)
+- Soporte para escribir @menciones (autocompletado de usuarios)
+- Soporte para #hashtags
+- Botón "Publicar" y botón "Cancelar"
+
+================================================================================
+                       2. ALMACENAMIENTO Y ENCRIPTACIÓN
+================================================================================
+
+FLUJO DE SUBIDA:
+1. Usuario selecciona foto/video
+2. El archivo se ENCRIPTA en el cliente antes de subir
+3. Se sube el archivo encriptado a Cloudinary
+4. Se guarda la URL encriptada en la base de datos
+5. Solo usuarios autenticados dentro de la app pueden desencriptar y ver
+
+ENCRIPTACIÓN:
+- Algoritmo: AES-256 para archivos
+- Clave de encriptación única por usuario o por publicación
+- Las claves se manejan de forma segura en el servidor
+- Nadie externo puede ver el contenido real (solo datos encriptados)
+
+================================================================================
+                      3. VISUALIZACIÓN DE PUBLICACIONES
+================================================================================
+
+LUGARES DONDE APARECEN:
+- En el perfil del usuario (galería en cuadrícula tipo Instagram)
+- Cuando otros usuarios visitan ese perfil
+- En el feed general de la comunidad
+
+CADA PUBLICACIÓN MUESTRA:
+- Contenido (imagen/video/texto) desencriptado para usuarios autenticados
+- Avatar y nombre del autor
+- Fecha de publicación
+- Caption/descripción
+- Contador de likes/reacciones
+- Contador de comentarios
+- Contador de vistas
+- Botones de interacción
+
+================================================================================
+                     4. INTERACCIONES EN PUBLICACIONES
+================================================================================
+
+❤️ LIKE/REACCIONES    → Dar/quitar. Múltiples emojis: ❤️ 😂 😮 😢 🔥 👏
+                        Ver lista de quién reaccionó por cada emoji
+💬 COMENTAR           → Agregar comentarios. Ver todos los comentarios.
+🔄 COMPARTIR          → Compartir publicación (genera link interno)
+✏️ EDITAR             → Solo el dueño puede editar su publicación
+🗑️ ELIMINAR           → Solo el dueño puede eliminar su publicación
+🔖 GUARDAR            → Guardar en colección privada de favoritos
+👁️ VISTAS             → Muestra cuántas personas vieron la publicación
+
+================================================================================
+                          5. MENCIONES (@usuario)
+================================================================================
+
+- Al escribir "@" aparece lista de usuarios para mencionar
+- Autocompletado mientras escribe
+- El usuario mencionado recibe notificación
+- Las menciones se destacan visualmente en el texto
+- Funciona en publicaciones Y en comentarios
+
+================================================================================
+                           6. HASHTAGS (#tema)
+================================================================================
+
+- Al escribir "#" se pueden crear etiquetas
+- Los hashtags son clickeables
+- Al tocar un hashtag muestra todas las publicaciones con esa etiqueta
+- Posibilidad de buscar por hashtag
+- Sección de "Hashtags Trending" con los más usados
+
+================================================================================
+                          7. GALERÍA EN EL PERFIL
+================================================================================
+
+- Vista en cuadrícula (3 columnas) con miniaturas
+- Al tocar una publicación se abre en pantalla completa
+- Scroll infinito para cargar más publicaciones
+- Indicador de tipo (icono de video si es video, carrusel si tiene múltiples)
+
+================================================================================
+                      8. VISTA DETALLE DE PUBLICACIÓN
+================================================================================
+
+Cuando se abre una publicación:
+- Imagen/video en tamaño grande (carrusel si son múltiples)
+- Caption completo con menciones y hashtags clickeables
+- Contador de vistas
+- Lista de comentarios con hilos de respuestas
+- Campo para agregar comentario
+- Botones de reacción/like/compartir/guardar
+- Menú de opciones (editar/eliminar si es el dueño, reportar/bloquear si no)
+
+================================================================================
+                         9. MEJORAS EN IMÁGENES
+================================================================================
+
+- MÚLTIPLES FOTOS (CARRUSEL): Hasta 10 fotos en una sola publicación
+- RECORTAR IMAGEN: Ajustar proporción antes de subir
+- COMPRESIÓN AUTOMÁTICA: Optimiza peso sin perder calidad visible
+
+================================================================================
+                          10. MEJORAS EN VIDEOS
+================================================================================
+
+- LÍMITE DE DURACIÓN: Máximo 1 minuto por video en publicaciones
+- REPRODUCCIÓN AUTOMÁTICA: Videos se reproducen solos en el feed (sin sonido)
+- MINIATURA AUTOMÁTICA: Se genera preview/thumbnail del video
+- BARRA DE PROGRESO: Muestra cuánto falta del video
+
+================================================================================
+                      11. SISTEMA DE NOTIFICACIONES
+================================================================================
+
+El usuario recibe notificación cuando:
+- 🔔 Alguien da like/reacción a su publicación
+- 💬 Alguien comenta en su publicación
+- 📣 Alguien lo menciona (@usuario)
+- 👤 Alguien comienza a seguirlo
+- 🔄 Alguien comparte su publicación
+- 📱 Alguien responde a su historia
+
+================================================================================
+                        12. GUARDADOS/FAVORITOS
+================================================================================
+
+- GUARDAR PUBLICACIÓN: Botón de bookmark en cada publicación
+- COLECCIÓN PRIVADA: Sección en el perfil para ver todas las guardadas
+- Solo el usuario ve sus publicaciones guardadas
+
+================================================================================
+                       13. COMENTARIOS AVANZADOS
+================================================================================
+
+- RESPONDER COMENTARIOS: Crear hilos de respuestas anidadas
+- LIKE EN COMENTARIOS: Dar like a un comentario específico
+- MENCIONES EN COMENTARIOS: @usuario dentro de comentarios
+- FIJAR COMENTARIO: El dueño puede fijar un comentario arriba
+
+================================================================================
+                      14. CONTROLES DE PRIVACIDAD
+================================================================================
+
+- REPORTAR PUBLICACIÓN: Botón para reportar contenido inapropiado
+  → Se crea sección "REPORTES" en el Panel de Administración
+  → Muestra lista de publicaciones reportadas para revisar
+  
+- BLOQUEAR USUARIO: 
+  → El bloqueado no puede ver tu contenido
+  → Tú no ves el contenido del bloqueado
+  → No pueden interactuar entre sí
+
+================================================================================
+                      15. DESCUBRIMIENTO Y EXPLORAR
+================================================================================
+
+- PÁGINA EXPLORAR: Sección con publicaciones populares/trending
+- HASHTAGS TRENDING: Los hashtags más usados del momento
+- BUSCAR POR TEXTO: Buscar palabras en captions de publicaciones
+- SUGERENCIAS DE USUARIOS: "Personas que quizás conozcas" basado en conexiones
+
+================================================================================
+                           16. ESTADÍSTICAS
+================================================================================
+
+- VISTAS EN PUBLICACIÓN: Cuántas personas la vieron
+- ALCANCE DEL PERFIL: Estadísticas generales (visitas al perfil, engagement)
+
+================================================================================
+                       17. HISTORIAS (24 HORAS)
+================================================================================
+
+- CREAR HISTORIA: Foto o video que desaparece en 24 horas
+- LÍMITE DE DURACIÓN: Máximo 15 segundos por historia (video)
+- VER QUIÉN VIO: Lista de usuarios que vieron tu historia
+- RESPONDER A HISTORIA: Envía mensaje directo al autor
+- Aparecen en círculos arriba del feed (estilo Instagram)
+
+================================================================================
+                        18. COMPARTIR AVANZADO
+================================================================================
+
+- REPOSTEAR: Republicar en tu perfil (como retweet), muestra original
+- COMPARTIR EN MENSAJE: Enviar publicación a un usuario específico (DM)
+- CITAR PUBLICACIÓN: Compartir añadiendo tu propio comentario encima
+
+================================================================================
+                          19. SEGURIDAD TOTAL
+================================================================================
+
+✅ Archivos encriptados ANTES de subir a Cloudinary (cliente)
+✅ URLs y contenido encriptado en la base de datos
+✅ Solo usuarios autenticados (vía Telegram) pueden ver contenido
+✅ Desencriptación solo ocurre dentro de la app
+✅ Nadie externo puede acceder a las publicaciones reales
+✅ Sistema de reportes para moderación
+✅ Sistema de bloqueo entre usuarios
+
+================================================================================
+                     20. COMPONENTES TÉCNICOS A CREAR
+================================================================================
+
+BACKEND (Python/Flask):
+- Endpoint para crear publicación con encriptación
+- Endpoint para obtener publicaciones (con desencriptación)
+- Endpoint para subir múltiples imágenes (carrusel)
+- Endpoints para likes/reacciones
+- Endpoints para comentarios (crear, responder, like, fijar)
+- Endpoints para compartir/repostear/citar
+- Endpoints para editar/eliminar
+- Endpoints para guardar/favoritos
+- Sistema de menciones y notificaciones
+- Sistema de hashtags y trending
+- Sistema de historias (crear, listar, marcar vistas)
+- Sistema de reportes (para admin)
+- Sistema de bloqueo de usuarios
+- Endpoints para explorar y buscar
+- Endpoints para estadísticas y vistas
+
+FRONTEND (JavaScript):
+- Modal de crear publicación (con selector múltiple de fotos)
+- Recortador de imágenes
+- Encriptación del lado del cliente (AES-256)
+- Galería de publicaciones (grid responsive)
+- Vista detalle de publicación (con carrusel)
+- Componentes de interacción (reacciones, comentarios con hilos)
+- Autocompletado de menciones y hashtags
+- Reproductor de video con autoplay y progreso
+- Sección de historias (crear y ver)
+- Página de explorar
+- Buscador
+- Sección de favoritos/guardados
+- Panel de notificaciones
+- Sistema de reportar/bloquear
+
+BASE DE DATOS (Tablas nuevas/modificadas):
+- posts (publicaciones)
+- post_media (para carrusel de imágenes)
+- post_reactions (likes con tipo de emoji)
+- post_comments (comentarios)
+- comment_likes (likes en comentarios)
+- post_hashtags (relación posts-hashtags)
+- hashtags (lista de hashtags)
+- post_mentions (menciones en posts)
+- post_saves (publicaciones guardadas)
+- post_shares (compartidos/reposts)
+- post_views (vistas de publicaciones)
+- stories (historias)
+- story_views (quién vio cada historia)
+- user_blocks (usuarios bloqueados)
+- reports (reportes para admin)
+- notifications (notificaciones)
+
+================================================================================
+                        21. RESUMEN VISUAL DEL FLUJO
+================================================================================
+
+Usuario toca "+" 
+       ↓
+Modal: Selecciona foto(s)/video/texto
+       ↓
+Recorta imágenes si es necesario
+       ↓
+Escribe caption + @menciones + #hashtags
+       ↓
+Vista previa del contenido
+       ↓
+Toca "Publicar"
+       ↓
+Archivo(s) se ENCRIPTAN (cliente)
+       ↓
+Sube a Cloudinary (encriptado)
+       ↓
+Guarda en base de datos
+       ↓
+Aparece en: Perfil + Feed + Explorar
+       ↓
+Otros usuarios ven (desencriptado dentro de la app)
+       ↓
+Pueden: Reaccionar, Comentar, Compartir, Guardar, Reportar
+
+================================================================================
+                         22. FLUJO DE HISTORIAS
+================================================================================
+
+Usuario toca "+" en sección historias
+       ↓
+Selecciona foto o video (máx 15 seg)
+       ↓
+Vista previa
+       ↓
+Publica historia
+       ↓
+Archivo se ENCRIPTA
+       ↓
+Sube a Cloudinary (encriptado)
+       ↓
+Aparece en círculo de historias (24 horas)
+       ↓
+Otros usuarios pueden ver y responder
+       ↓
+El autor ve quién la vio
+       ↓
+Se elimina automáticamente después de 24h
+
+================================================================================
+                              FIN DEL PROMPT
+================================================================================
