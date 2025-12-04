@@ -11,11 +11,11 @@ packages = ["freetype", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp
 [userenv.shared]
 DATABASE_URL = "postgresql://neondb_owner:npg_f6zHTucyam0Z@ep-small-heart-agjrcowk-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
 BOT_TOKEN = "8074878440:AAEgi61kaBrUlfyVksyQ_zZLBrONMhAf_rU"
-OWNER_TELEGRAM_ID = "7729022720"
+OWNER_TELEGRAM_ID = "8305740334"
 CHANNEL_ID = "-1002889052376"
 ADMIN_TOKEN = "110917"
 RESEND_API_KEY = "re_h4v6TkUk_NUoP1XUtvPknzphaU95vdX4N"
-TON_WALLET_ADDRESS = "UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck"
+TON_WALLET_ADDRESS = "UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59"
 
 [workflows]
 runButton = "Project"
@@ -50,6 +50,10 @@ localPort = 38709
 externalPort = 3000
 
 [[ports]]
+localPort = 38787
+externalPort = 5173
+
+[[ports]]
 localPort = 39139
 externalPort = 3002
 
@@ -64,10 +68,6 @@ externalPort = 3001
 [[ports]]
 localPort = 42673
 externalPort = 3003
-
-[[ports]]
-localPort = 44093
-externalPort = 5173
 
 [[ports]]
 localPort = 46435
