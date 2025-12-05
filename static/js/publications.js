@@ -1284,44 +1284,87 @@ const PublicationsManager = {
             return '<p class="no-comments">No hay comentarios aún</p>';
         }
         
+        const currentUserId = String(App?.user?.id || App?.user?.telegram_id || 0);
+        
         return comments.map(comment => {
             const safeAvatarUrl = escapeAttribute(comment.avatar_url || this.DEFAULT_AVATAR);
             const username = escapeHtml(comment.first_name || comment.username || 'Usuario');
             const safeUsernameForJs = sanitizeForJs(comment.first_name || comment.username || 'Usuario');
             const timeAgo = this.formatTimeAgo(comment.created_at);
+            const isOwner = String(comment.user_id) === currentUserId;
+            const isEditable = isOwner && this.isCommentEditable(comment.created_at);
+            const isEdited = comment.is_edited;
             
             return `
-                <div class="inline-comment" data-comment-id="${parseInt(comment.id)}">
+                <div class="inline-comment" data-comment-id="${parseInt(comment.id)}" data-post-id="${parseInt(postId)}">
                     <img src="${safeAvatarUrl}" class="inline-comment-avatar" alt="${username}" onerror="this.src='${this.DEFAULT_AVATAR}'">
                     <div class="inline-comment-body">
                         <div class="inline-comment-bubble">
                             <span class="inline-comment-name">${username}</span>
-                            <span class="inline-comment-text">${escapeHtml(comment.content || '')}</span>
+                            <span class="inline-comment-text" id="comment-text-${parseInt(comment.id)}">${escapeHtml(comment.content || '')}</span>
+                            ${isEdited ? '<span class="comment-edited-label">(editado)</span>' : ''}
                         </div>
                         <div class="inline-comment-meta">
                             <span class="inline-comment-time">${timeAgo}</span>
-                            <button class="inline-comment-like" onclick="PublicationsManager.likeComment(${parseInt(comment.id)})">
-                                Me gusta ${parseInt(comment.likes_count) > 0 ? '(' + parseInt(comment.likes_count) + ')' : ''}
-                            </button>
+                            <div class="comment-reaction-wrap" id="reaction-wrap-${parseInt(comment.id)}">
+                                <button class="comment-reaction-btn" onclick="PublicationsManager.toggleCommentReactions(${parseInt(comment.id)})">
+                                    ${this.getReactionEmoji(comment.user_reaction)} ${comment.reactions_count > 0 ? comment.reactions_count : ''}
+                                </button>
+                                <div class="comment-reactions-picker hidden" id="reactions-picker-${parseInt(comment.id)}">
+                                    <button onclick="PublicationsManager.reactToComment(${parseInt(comment.id)}, 'like')">👍</button>
+                                    <button onclick="PublicationsManager.reactToComment(${parseInt(comment.id)}, 'love')">❤️</button>
+                                    <button onclick="PublicationsManager.reactToComment(${parseInt(comment.id)}, 'laugh')">😂</button>
+                                    <button onclick="PublicationsManager.reactToComment(${parseInt(comment.id)}, 'wow')">😮</button>
+                                    <button onclick="PublicationsManager.reactToComment(${parseInt(comment.id)}, 'sad')">😢</button>
+                                    <button onclick="PublicationsManager.reactToComment(${parseInt(comment.id)}, 'angry')">😠</button>
+                                </div>
+                            </div>
                             <button class="inline-comment-reply" onclick="PublicationsManager.focusReply(${parseInt(postId)}, '${safeUsernameForJs}')">
                                 Responder
                             </button>
+                            ${isEditable ? `
+                                <button class="inline-comment-edit" onclick="PublicationsManager.startEditComment(${parseInt(comment.id)}, ${parseInt(postId)})">
+                                    Editar
+                                </button>
+                            ` : ''}
                         </div>
                         ${comment.replies && comment.replies.length > 0 ? `
                             <div class="inline-comment-replies">
                                 ${comment.replies.map(reply => {
                                     const safeReplyAvatar = escapeAttribute(reply.avatar_url || this.DEFAULT_AVATAR);
                                     const replyName = escapeHtml(reply.first_name || reply.username || 'Usuario');
+                                    const isReplyOwner = String(reply.user_id) === currentUserId;
+                                    const isReplyEditable = isReplyOwner && this.isCommentEditable(reply.created_at);
+                                    const isReplyEdited = reply.is_edited;
                                     return `
-                                        <div class="inline-comment inline-reply">
+                                        <div class="inline-comment inline-reply" data-comment-id="${parseInt(reply.id)}" data-post-id="${parseInt(postId)}">
                                             <img src="${safeReplyAvatar}" class="inline-comment-avatar small" alt="${replyName}" onerror="this.src='${this.DEFAULT_AVATAR}'">
                                             <div class="inline-comment-body">
                                                 <div class="inline-comment-bubble">
                                                     <span class="inline-comment-name">${replyName}</span>
-                                                    <span class="inline-comment-text">${escapeHtml(reply.content || '')}</span>
+                                                    <span class="inline-comment-text" id="comment-text-${parseInt(reply.id)}">${escapeHtml(reply.content || '')}</span>
+                                                    ${isReplyEdited ? '<span class="comment-edited-label">(editado)</span>' : ''}
                                                 </div>
                                                 <div class="inline-comment-meta">
                                                     <span class="inline-comment-time">${this.formatTimeAgo(reply.created_at)}</span>
+                                                    <div class="comment-reaction-wrap" id="reaction-wrap-${parseInt(reply.id)}">
+                                                        <button class="comment-reaction-btn small" onclick="PublicationsManager.toggleCommentReactions(${parseInt(reply.id)})">
+                                                            ${this.getReactionEmoji(reply.user_reaction)} ${reply.reactions_count > 0 ? reply.reactions_count : ''}
+                                                        </button>
+                                                        <div class="comment-reactions-picker hidden" id="reactions-picker-${parseInt(reply.id)}">
+                                                            <button onclick="PublicationsManager.reactToComment(${parseInt(reply.id)}, 'like')">👍</button>
+                                                            <button onclick="PublicationsManager.reactToComment(${parseInt(reply.id)}, 'love')">❤️</button>
+                                                            <button onclick="PublicationsManager.reactToComment(${parseInt(reply.id)}, 'laugh')">😂</button>
+                                                            <button onclick="PublicationsManager.reactToComment(${parseInt(reply.id)}, 'wow')">😮</button>
+                                                            <button onclick="PublicationsManager.reactToComment(${parseInt(reply.id)}, 'sad')">😢</button>
+                                                            <button onclick="PublicationsManager.reactToComment(${parseInt(reply.id)}, 'angry')">😠</button>
+                                                        </div>
+                                                    </div>
+                                                    ${isReplyEditable ? `
+                                                        <button class="inline-comment-edit" onclick="PublicationsManager.startEditComment(${parseInt(reply.id)}, ${parseInt(postId)})">
+                                                            Editar
+                                                        </button>
+                                                    ` : ''}
                                                 </div>
                                             </div>
                                         </div>
@@ -1333,6 +1376,127 @@ const PublicationsManager = {
                 </div>
             `;
         }).join('');
+    },
+    
+    isCommentEditable(createdAt) {
+        if (!createdAt) return false;
+        const created = new Date(createdAt);
+        const now = new Date();
+        const diffMinutes = (now - created) / (1000 * 60);
+        return diffMinutes <= 15;
+    },
+    
+    async startEditComment(commentId, postId) {
+        const textEl = document.getElementById(`comment-text-${commentId}`);
+        if (!textEl) return;
+        
+        const currentText = textEl.textContent;
+        const commentEl = textEl.closest('.inline-comment');
+        const bubble = textEl.closest('.inline-comment-bubble');
+        
+        if (!bubble) return;
+        
+        bubble.innerHTML = `
+            <textarea class="edit-comment-input" id="edit-comment-${commentId}" maxlength="2000">${escapeHtml(currentText)}</textarea>
+            <div class="edit-comment-actions">
+                <button class="edit-comment-cancel" onclick="PublicationsManager.cancelEditComment(${commentId}, ${postId})">Cancelar</button>
+                <button class="edit-comment-save" onclick="PublicationsManager.saveEditComment(${commentId}, ${postId})">Guardar</button>
+            </div>
+        `;
+        
+        const textarea = document.getElementById(`edit-comment-${commentId}`);
+        if (textarea) {
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
+    },
+    
+    cancelEditComment(commentId, postId) {
+        this.loadInlineComments(postId);
+    },
+    
+    async saveEditComment(commentId, postId) {
+        const textarea = document.getElementById(`edit-comment-${commentId}`);
+        if (!textarea) return;
+        
+        const newContent = textarea.value.trim();
+        if (!newContent) {
+            this.showToast('El comentario no puede estar vacío', 'error');
+            return;
+        }
+        
+        textarea.disabled = true;
+        
+        try {
+            const response = await this.apiRequest(`/api/comments/${commentId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ content: newContent })
+            });
+            
+            if (response.success) {
+                this.showToast('Comentario actualizado', 'success');
+                this.loadInlineComments(postId);
+            } else {
+                this.showToast(response.error || 'Error al actualizar', 'error');
+                textarea.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error editing comment:', error);
+            this.showToast('Error al actualizar comentario', 'error');
+            textarea.disabled = false;
+        }
+    },
+    
+    getReactionEmoji(reactionType) {
+        const emojis = {
+            'like': '👍',
+            'love': '❤️',
+            'laugh': '😂',
+            'wow': '😮',
+            'sad': '😢',
+            'angry': '😠'
+        };
+        return emojis[reactionType] || '😊';
+    },
+    
+    toggleCommentReactions(commentId) {
+        document.querySelectorAll('.comment-reactions-picker').forEach(picker => {
+            if (picker.id !== `reactions-picker-${commentId}`) {
+                picker.classList.add('hidden');
+            }
+        });
+        
+        const picker = document.getElementById(`reactions-picker-${commentId}`);
+        if (picker) {
+            picker.classList.toggle('hidden');
+        }
+    },
+    
+    async reactToComment(commentId, reactionType) {
+        const picker = document.getElementById(`reactions-picker-${commentId}`);
+        if (picker) picker.classList.add('hidden');
+        
+        try {
+            const response = await this.apiRequest(`/api/comments/${commentId}/react`, {
+                method: 'POST',
+                body: JSON.stringify({ reaction_type: reactionType })
+            });
+            
+            if (response.success) {
+                const btn = document.querySelector(`#reaction-wrap-${commentId} .comment-reaction-btn`);
+                if (btn) {
+                    const count = response.total > 0 ? response.total : '';
+                    btn.innerHTML = `${this.getReactionEmoji(response.user_reaction)} ${count}`;
+                }
+                
+                if (typeof App !== 'undefined' && App.tg && App.tg.HapticFeedback) {
+                    App.tg.HapticFeedback.impactOccurred('light');
+                }
+            }
+        } catch (error) {
+            console.error('Error reacting to comment:', error);
+            this.showToast('Error al reaccionar', 'error');
+        }
     },
     
     async sendInlineComment(postId) {

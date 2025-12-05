@@ -25,6 +25,40 @@ from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, C
 logger = logging.getLogger(__name__)
 
 
+class SimpleCache:
+    """Simple time-based cache for infrequently changing data"""
+    
+    def __init__(self):
+        self._cache = {}
+        self._lock = threading.Lock()
+    
+    def get(self, key: str, max_age_seconds: int = 300):
+        """Get cached value if not expired"""
+        with self._lock:
+            if key in self._cache:
+                value, timestamp = self._cache[key]
+                if datetime.now() - timestamp < timedelta(seconds=max_age_seconds):
+                    return value
+                del self._cache[key]
+        return None
+    
+    def set(self, key: str, value):
+        """Set cache value with current timestamp"""
+        with self._lock:
+            self._cache[key] = (value, datetime.now())
+    
+    def invalidate(self, key: str = None):
+        """Invalidate specific key or all cache"""
+        with self._lock:
+            if key:
+                self._cache.pop(key, None)
+            else:
+                self._cache.clear()
+
+
+_stats_cache = SimpleCache()
+
+
 class PooledConnection:
     """Wrapper for pooled connections that returns them to the pool on exit"""
     
@@ -539,26 +573,27 @@ class DatabaseManager:
             logger.error(f"Error generating route history: {e}")
             return False
     
-    def get_tracking_history(self, tracking_id: str, include_future: bool = False) -> List[StatusHistory]:
+    def get_tracking_history(self, tracking_id: str, include_future: bool = False, limit: int = 100) -> List[StatusHistory]:
         """Get status change history for tracking
         
         Args:
             tracking_id: Tracking ID
             include_future: If True, includes future scheduled events. 
                            If False (default), only shows events up to current time.
+            limit: Maximum number of history entries to return (default: 100)
         """
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     if include_future:
                         cur.execute(
-                            "SELECT * FROM status_history WHERE tracking_id = %s ORDER BY changed_at ASC, id ASC",
-                            (tracking_id,)
+                            "SELECT * FROM status_history WHERE tracking_id = %s ORDER BY changed_at ASC, id ASC LIMIT %s",
+                            (tracking_id, limit)
                         )
                     else:
                         cur.execute(
-                            "SELECT * FROM status_history WHERE tracking_id = %s AND (changed_at IS NULL OR changed_at <= NOW()) ORDER BY changed_at ASC, id ASC",
-                            (tracking_id,)
+                            "SELECT * FROM status_history WHERE tracking_id = %s AND (changed_at IS NULL OR changed_at <= NOW()) ORDER BY changed_at ASC, id ASC LIMIT %s",
+                            (tracking_id, limit)
                         )
                     rows = cur.fetchall()
                     return [StatusHistory(**dict(row)) for row in rows]
@@ -566,8 +601,21 @@ class DatabaseManager:
             logger.error(f"Error getting tracking history: {e}")
             return []
     
-    def get_statistics(self, admin_id: int, is_owner: bool = False) -> dict:
-        """Get tracking statistics, filtered by admin if not owner"""
+    def get_statistics(self, admin_id: int, is_owner: bool = False, use_cache: bool = True) -> dict:
+        """Get tracking statistics, filtered by admin if not owner
+        
+        Args:
+            admin_id: Admin ID to filter statistics
+            is_owner: If True, shows all statistics
+            use_cache: If True, uses cached results for 60 seconds
+        """
+        cache_key = f"stats_{admin_id}_{is_owner}"
+        
+        if use_cache:
+            cached = _stats_cache.get(cache_key, max_age_seconds=60)
+            if cached is not None:
+                return cached
+        
         try:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
@@ -612,6 +660,7 @@ class DatabaseManager:
                         today_result = cur.fetchone()
                         stats['today'] = today_result[0] if today_result else 0
                     
+                    _stats_cache.set(cache_key, stats)
                     return stats
         except Exception as e:
             logger.error(f"Error getting statistics: {e}")
@@ -2142,6 +2191,67 @@ class DatabaseManager:
             logger.error(f"Error getting comments: {e}")
             return []
     
+    def update_comment(self, user_id: str, comment_id: int, content: str, edit_time_limit_minutes: int = 15) -> dict:
+        """Actualizar un comentario - solo el autor puede editar dentro del límite de tiempo"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT id, user_id, content, created_at 
+                           FROM post_comments 
+                           WHERE id = %s AND is_active = TRUE""",
+                        (comment_id,)
+                    )
+                    comment = cur.fetchone()
+                    
+                    if not comment:
+                        return {'success': False, 'error': 'Comentario no encontrado'}
+                    
+                    if str(comment['user_id']) != str(user_id):
+                        return {'success': False, 'error': 'No tienes permiso para editar este comentario'}
+                    
+                    from datetime import datetime, timedelta, timezone
+                    created_at = comment['created_at']
+                    if created_at.tzinfo is None:
+                        created_at = created_at.replace(tzinfo=timezone.utc)
+                    
+                    time_limit = timedelta(minutes=edit_time_limit_minutes)
+                    now = datetime.now(timezone.utc)
+                    
+                    if now - created_at > time_limit:
+                        return {'success': False, 'error': f'Solo puedes editar comentarios dentro de los primeros {edit_time_limit_minutes} minutos'}
+                    
+                    cur.execute(
+                        """UPDATE post_comments 
+                           SET content = %s, updated_at = CURRENT_TIMESTAMP, is_edited = TRUE
+                           WHERE id = %s""",
+                        (content.strip(), comment_id)
+                    )
+                    conn.commit()
+                    
+                    return {'success': True, 'message': 'Comentario actualizado'}
+        except Exception as e:
+            logger.error(f"Error updating comment: {e}")
+            return {'success': False, 'error': 'Error al actualizar comentario'}
+    
+    def get_comment_by_id(self, comment_id: int) -> Optional[dict]:
+        """Obtener un comentario por ID"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT c.*, u.username, u.first_name, u.avatar_url
+                           FROM post_comments c
+                           LEFT JOIN users u ON c.user_id = u.id
+                           WHERE c.id = %s AND c.is_active = TRUE""",
+                        (comment_id,)
+                    )
+                    result = cur.fetchone()
+                    return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"Error getting comment: {e}")
+            return None
+    
     def like_comment(self, user_id: str, comment_id: int) -> bool:
         """Dar like a un comentario"""
         try:
@@ -2182,6 +2292,82 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error unliking comment: {e}")
             return False
+    
+    def add_comment_reaction(self, user_id: str, comment_id: int, reaction_type: str) -> dict:
+        """Agregar o actualizar reacción a un comentario"""
+        valid_reactions = ['like', 'love', 'laugh', 'wow', 'sad', 'angry']
+        if reaction_type not in valid_reactions:
+            return {'success': False, 'error': 'Tipo de reacción no válido'}
+        
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO comment_reactions (user_id, comment_id, reaction_type)
+                           VALUES (%s, %s, %s)
+                           ON CONFLICT (user_id, comment_id) 
+                           DO UPDATE SET reaction_type = EXCLUDED.reaction_type, created_at = NOW()""",
+                        (user_id, comment_id, reaction_type)
+                    )
+                    conn.commit()
+                    return {'success': True}
+        except Exception as e:
+            logger.error(f"Error adding comment reaction: {e}")
+            return {'success': False, 'error': 'Error al agregar reacción'}
+    
+    def remove_comment_reaction(self, user_id: str, comment_id: int) -> dict:
+        """Eliminar reacción de un comentario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM comment_reactions WHERE user_id = %s AND comment_id = %s",
+                        (user_id, comment_id)
+                    )
+                    conn.commit()
+                    return {'success': True}
+        except Exception as e:
+            logger.error(f"Error removing comment reaction: {e}")
+            return {'success': False, 'error': 'Error al eliminar reacción'}
+    
+    def get_comment_reactions(self, comment_id: int) -> dict:
+        """Obtener resumen de reacciones de un comentario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        """SELECT reaction_type, COUNT(*) as count 
+                           FROM comment_reactions WHERE comment_id = %s 
+                           GROUP BY reaction_type""",
+                        (comment_id,)
+                    )
+                    reactions = {r['reaction_type']: r['count'] for r in cur.fetchall()}
+                    
+                    cur.execute(
+                        "SELECT COUNT(*) FROM comment_reactions WHERE comment_id = %s",
+                        (comment_id,)
+                    )
+                    total = cur.fetchone()['count']
+                    
+                    return {'success': True, 'reactions': reactions, 'total': total}
+        except Exception as e:
+            logger.error(f"Error getting comment reactions: {e}")
+            return {'success': False, 'reactions': {}, 'total': 0}
+    
+    def get_user_comment_reaction(self, user_id: str, comment_id: int) -> Optional[str]:
+        """Obtener la reacción del usuario en un comentario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT reaction_type FROM comment_reactions WHERE user_id = %s AND comment_id = %s",
+                        (user_id, comment_id)
+                    )
+                    result = cur.fetchone()
+                    return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error getting user comment reaction: {e}")
+            return None
     
     def pin_comment(self, user_id: str, post_id: int, comment_id: int) -> bool:
         """Fijar comentario (solo el dueño del post puede)"""

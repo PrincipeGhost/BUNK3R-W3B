@@ -1062,6 +1062,11 @@ const App = {
             this.searchTimeout = null;
         }
         
+        if (this._exploreSearchController) {
+            this._exploreSearchController.abort();
+            this._exploreSearchController = null;
+        }
+        
         if (typeof PublicationsManager !== 'undefined' && PublicationsManager._storyTimeout) {
             clearTimeout(PublicationsManager._storyTimeout);
             PublicationsManager._storyTimeout = null;
@@ -1253,6 +1258,11 @@ const App = {
         const safeHashtag = this.sanitizeHashtag(hashtag);
         if (!safeHashtag) return;
         
+        if (this._exploreSearchController) {
+            this._exploreSearchController.abort();
+        }
+        this._exploreSearchController = new AbortController();
+        
         const resultsContainer = document.getElementById('explore-results');
         const trendingSection = document.getElementById('explore-trending');
         const hashtagHeader = document.getElementById('explore-hashtag-header');
@@ -1267,7 +1277,10 @@ const App = {
         if (searchInput) searchInput.value = `#${safeHashtag}`;
         
         try {
-            const response = await this.apiRequest(`/api/hashtag/${encodeURIComponent(safeHashtag)}?limit=30`);
+            const response = await this.apiRequest(
+                `/api/hashtag/${encodeURIComponent(safeHashtag)}?limit=30`,
+                { signal: this._exploreSearchController.signal }
+            );
             
             if (response.success) {
                 document.getElementById('explore-hashtag-count').textContent = 
@@ -1286,6 +1299,7 @@ const App = {
                 }
             }
         } catch (error) {
+            if (error.name === 'AbortError') return;
             console.error('Error searching hashtag:', error);
             resultsContainer.innerHTML = '<div class="explore-empty">Error al buscar</div>';
         }

@@ -4660,6 +4660,128 @@ def unlike_comment(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/comments/<int:comment_id>', methods=['PUT'])
+@require_telegram_auth
+@rate_limit('comments_create')
+def update_comment(comment_id):
+    """Update a comment - only author can edit within time limit"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        content = data.get('content', '').strip()
+        
+        if not content:
+            return jsonify({'success': False, 'error': 'Contenido requerido'}), 400
+        
+        if len(content) > 2000:
+            return jsonify({'success': False, 'error': 'Comentario muy largo (máximo 2000 caracteres)'}), 400
+        
+        result = db_manager.update_comment(user_id, comment_id, content)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+        
+    except Exception as e:
+        logger.error(f"Error updating comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>', methods=['GET'])
+@require_telegram_auth
+def get_comment(comment_id):
+    """Get a single comment by ID"""
+    try:
+        comment = db_manager.get_comment_by_id(comment_id)
+        
+        if comment:
+            return jsonify({'success': True, 'comment': comment})
+        else:
+            return jsonify({'success': False, 'error': 'Comentario no encontrado'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/react', methods=['POST'])
+@require_telegram_auth
+def add_comment_reaction(comment_id):
+    """Add or update reaction to a comment"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        reaction_type = data.get('reaction_type', '').strip()
+        
+        if not reaction_type:
+            return jsonify({'success': False, 'error': 'Tipo de reacción requerido'}), 400
+        
+        result = db_manager.add_comment_reaction(user_id, comment_id, reaction_type)
+        
+        if result.get('success'):
+            reactions = db_manager.get_comment_reactions(comment_id)
+            return jsonify({
+                'success': True,
+                'reactions': reactions.get('reactions', {}),
+                'total': reactions.get('total', 0),
+                'user_reaction': reaction_type
+            })
+        else:
+            return jsonify(result), 400
+        
+    except Exception as e:
+        logger.error(f"Error adding comment reaction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/react', methods=['DELETE'])
+@require_telegram_auth
+def remove_comment_reaction(comment_id):
+    """Remove reaction from a comment"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        result = db_manager.remove_comment_reaction(user_id, comment_id)
+        
+        if result.get('success'):
+            reactions = db_manager.get_comment_reactions(comment_id)
+            return jsonify({
+                'success': True,
+                'reactions': reactions.get('reactions', {}),
+                'total': reactions.get('total', 0),
+                'user_reaction': None
+            })
+        else:
+            return jsonify(result), 400
+        
+    except Exception as e:
+        logger.error(f"Error removing comment reaction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/reactions', methods=['GET'])
+@require_telegram_auth
+def get_comment_reactions_api(comment_id):
+    """Get reactions for a comment"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        reactions = db_manager.get_comment_reactions(comment_id)
+        user_reaction = db_manager.get_user_comment_reaction(user_id, comment_id)
+        
+        return jsonify({
+            'success': True,
+            'reactions': reactions.get('reactions', {}),
+            'total': reactions.get('total', 0),
+            'user_reaction': user_reaction
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting comment reactions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/publications/<int:post_id>/pin-comment', methods=['POST'])
 @require_telegram_auth
 def pin_comment(post_id):

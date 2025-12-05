@@ -11073,6 +11073,158 @@ select:focus-visible {
     color: var(--accent-danger);
 }
 
+.inline-comment-edit {
+    background: transparent;
+    border: none;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.inline-comment-edit:hover {
+    color: var(--accent-primary);
+}
+
+.comment-edited-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-left: 4px;
+}
+
+.edit-comment-input {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 14px;
+    resize: none;
+    font-family: inherit;
+}
+
+.edit-comment-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.edit-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.edit-comment-cancel,
+.edit-comment-save {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.edit-comment-cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.edit-comment-cancel:hover {
+    background: var(--bg-secondary);
+}
+
+.edit-comment-save {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.edit-comment-save:hover {
+    opacity: 0.9;
+}
+
+.edit-comment-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Comment Reactions */
+.comment-reaction-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.comment-reaction-btn {
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+.comment-reaction-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+.comment-reaction-btn.small {
+    font-size: 11px;
+    padding: 1px 4px;
+}
+
+.comment-reactions-picker {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 4px 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    animation: fadeInUp 0.15s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.comment-reactions-picker button {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 8px;
+    transition: all 0.15s;
+}
+
+.comment-reactions-picker button:hover {
+    background: var(--bg-tertiary);
+    transform: scale(1.2);
+}
+
+.comment-reactions-picker.hidden {
+    display: none;
+}
+
 /* Nested Replies */
 .inline-comment-replies {
     margin-top: 12px;

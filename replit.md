@@ -130,3 +130,44 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
     - `hide*Skeleton()` functions for clean data rendering
     - Wallet balance element protected from overwrites
     - Skeleton loaders for: transaction list, notifications list, profile grid
+
+### Social Features Completed (December 5, 2025):
+
+18. **User Profiles (Section 5)**:
+    - Profile grid with Instagram-style 3-column layout
+    - Followers/Following modal with navigation
+    - Avatar cropping with Cropper.js (already implemented)
+    - Verification badges for verified users (is_verified field)
+
+19. **Comments System (Section 6)**:
+    - Edit comments with 15-minute time limit
+    - `update_comment()` and `can_edit_comment()` in database.py
+    - `/api/comments/{id}` PUT endpoint for editing
+    - Inline edit UI with "(editado)" label when modified
+    - Comment reactions with emoji picker (❤️👍😂😮😢🔥)
+    - `comment_reactions` table with unique constraint per user/comment
+    - Compact reaction UI similar to Instagram stories
+
+### Database Optimizations (December 5, 2025):
+
+20. **Query Performance (Section 4)**:
+    - `get_tracking_history(limit=100)` - added LIMIT parameter
+    - `SimpleCache` class with time-based expiration (TTL)
+    - `get_statistics(use_cache=True)` - 60-second cache for statistics
+
+### Stability Improvements (December 5, 2025):
+
+21. **Memory Leak Prevention (Section 12)**:
+    - `cleanupCurrentScreen()` clears all timeouts/intervals
+    - Story timeouts, exchange estimate, search debounce all cleaned
+    - Virtual numbers `beforeunload` cleanup for polling interval
+
+22. **Race Condition Prevention (Section 13)**:
+    - AbortController in `searchHashtag()` cancels pending requests
+    - `_exploreSearchController` tracked and aborted on new searches
+    - AbortError silently ignored to prevent console errors
+
+23. **Code Architecture Review (Section 14)**:
+    - `apiRequest()` specialized per module (app.js/publications.js)
+    - publications.js supports `cancelKey` for request management
+    - `getAuthHeaders()` reads from App singleton - valid design pattern
