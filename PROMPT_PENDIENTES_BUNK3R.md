@@ -814,14 +814,106 @@ El header secundario con "BUNK3R", campana y avatar (el que está debajo del hea
 
 ---
 
-#### FASE 21.4: Bottom Navigation ⏳
+#### FASE 21.4: Menú Hamburguesa / Sidebar ⏳
+
+**PROBLEMAS ACTUALES:**
+1. Emojis en lugar de iconos profesionales (📱👤💳🤖💎🔄💬⚙️)
+2. "Métodos" lleva a la cartera (INCORRECTO) → Debe llevar a Marketplace filtro Métodos
+3. "Cuentas" lleva a lugar incorrecto → Debe llevar a Marketplace filtro Cuentas
+4. Sección "Foro" no debe existir (ELIMINAR)
+
+**REDISEÑO COMPLETO DEL SIDEBAR:**
+
+Estilo: Neo-banco profesional + red social (como Binance + Instagram)
+
+- [ ] 21.4.1 **Eliminar TODOS los emojis** y reemplazar por iconos SVG línea fina
+- [ ] 21.4.2 **Eliminar sección "Foro"** del menú completamente
+- [ ] 21.4.3 **Corregir navegación:**
+  - "Cuentas" → `App.goToMarketplace('cuentas')` 
+  - "Métodos" → `App.goToMarketplace('metodos')`
+  - NO deben llevar a la cartera
+
+**Nuevo diseño del sidebar:**
+```html
+<nav class="sidebar-menu">
+    <a href="#" class="sidebar-item" data-section="virtual-numbers">
+        <svg class="sidebar-icon"><!-- Phone icon SVG --></svg>
+        <span>Numeros Virtuales</span>
+    </a>
+    <a href="#" class="sidebar-item" data-section="marketplace" data-filter="cuentas">
+        <svg class="sidebar-icon"><!-- User icon SVG --></svg>
+        <span>Cuentas</span>
+    </a>
+    <a href="#" class="sidebar-item" data-section="marketplace" data-filter="metodos">
+        <svg class="sidebar-icon"><!-- Card icon SVG --></svg>
+        <span>Metodos</span>
+    </a>
+    <a href="#" class="sidebar-item" data-section="bots">
+        <svg class="sidebar-icon"><!-- Bot icon SVG --></svg>
+        <span>Bots</span>
+    </a>
+    <a href="#" class="sidebar-item" data-section="planes">
+        <svg class="sidebar-icon"><!-- Diamond icon SVG --></svg>
+        <span>Planes y Precios</span>
+    </a>
+    <a href="#" class="sidebar-item" data-section="exchange">
+        <svg class="sidebar-icon"><!-- Exchange icon SVG --></svg>
+        <span>Exchange</span>
+    </a>
+    <!-- ELIMINADO: Foro -->
+    <div class="sidebar-divider"></div>
+    <a href="#" class="sidebar-item" data-section="settings">
+        <svg class="sidebar-icon"><!-- Settings icon SVG --></svg>
+        <span>Configuracion</span>
+    </a>
+</nav>
+```
+
+**Estilos del nuevo sidebar:**
+```css
+.sidebar {
+    background: #0B0E11;
+    border-right: 1px solid #2B3139;
+}
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    color: #848E9C;
+    transition: all 0.2s;
+}
+.sidebar-item:hover {
+    background: #1E2329;
+    color: #EAECEF;
+}
+.sidebar-item.active {
+    color: #F0B90B;
+    border-left: 3px solid #F0B90B;
+}
+.sidebar-icon {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+}
+.sidebar-divider {
+    height: 1px;
+    background: #2B3139;
+    margin: 12px 0;
+}
+```
+
+---
+
+#### FASE 21.5: Bottom Navigation ⏳
 
 **Rediseño requerido:**
-- [ ] 21.4.1 Fondo: #12161C con blur
-- [ ] 21.4.2 Iconos: Línea fina (#848E9C)
-- [ ] 21.4.3 Icono activo: Dorado (#F0B90B)
-- [ ] 21.4.4 Sin labels de texto (solo iconos)
-- [ ] 21.4.5 Indicador activo: Línea dorada arriba del icono
+- [ ] 21.5.1 Fondo: #12161C con blur
+- [ ] 21.5.2 Iconos: Línea fina (#848E9C)
+- [ ] 21.5.3 Icono activo: Dorado (#F0B90B)
+- [ ] 21.5.4 Sin labels de texto (solo iconos)
+- [ ] 21.5.5 Indicador activo: Línea dorada arriba del icono
 
 ---
 
