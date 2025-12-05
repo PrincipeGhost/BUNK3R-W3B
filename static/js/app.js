@@ -1006,7 +1006,6 @@ const App = {
                 break;
             case 'cuentas':
                 this.showPage('marketplace');
-                this.showToast('Navega a Cuentas en la tienda', 'info');
                 break;
             case 'metodos':
                 this.showPage('wallet');
@@ -1021,13 +1020,13 @@ const App = {
                 this.showPage('exchange');
                 break;
             case 'foro':
-                this.showToast('Foro proximamente disponible', 'info');
+                this.goToHome();
                 break;
             case 'settings':
                 this.showSettingsScreen();
                 break;
             default:
-                this.showToast('Seccion en desarrollo', 'info');
+                this.goToHome();
         }
     },
     

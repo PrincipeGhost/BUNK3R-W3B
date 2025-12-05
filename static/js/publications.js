@@ -142,9 +142,31 @@ const PublicationsManager = {
         this.setupEventListeners();
         this.loadFeed();
         this.loadStories();
+        this.loadTrendingHashtags();
         this.setupInfiniteScroll();
         this.startFeedPolling();
         this.setupPullToRefresh();
+    },
+    
+    async loadTrendingHashtags() {
+        try {
+            const response = await this.apiRequest('/api/trending/hashtags?limit=10');
+            if (response.success && response.hashtags && response.hashtags.length > 0) {
+                const container = document.getElementById('trending-tags-list');
+                const bar = document.getElementById('trending-hashtags-bar');
+                if (container && bar) {
+                    container.innerHTML = response.hashtags.map(tag => `
+                        <button class="trending-tag" onclick="PublicationsManager.goToHashtag('${tag.tag}')">
+                            #${tag.tag}
+                            <span class="tag-count">${tag.posts_count}</span>
+                        </button>
+                    `).join('');
+                    bar.classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.log('Trending hashtags not available:', error.message);
+        }
     },
     
     setupPullToRefresh() {
@@ -1000,6 +1022,11 @@ const PublicationsManager = {
         const countEl = document.querySelector(`[data-reactions-count="${postId}"]`);
         const isLiked = btn?.classList.contains('liked');
         
+        if (btn) {
+            btn.classList.add('liking');
+            setTimeout(() => btn.classList.remove('liking'), 300);
+        }
+        
         try {
             const endpoint = isLiked 
                 ? `/api/publications/${postId}/unreact`
@@ -1011,8 +1038,16 @@ const PublicationsManager = {
             });
             
             if (response.success) {
+                if (!isLiked) {
+                    this.showFloatingHeart(btn);
+                }
+                
                 btn?.classList.toggle('liked');
                 btn.innerHTML = isLiked ? '🤍' : '❤️';
+                
+                if (typeof App !== 'undefined' && App.tg && App.tg.HapticFeedback) {
+                    App.tg.HapticFeedback.impactOccurred('light');
+                }
                 
                 const post = this.feedPosts.find(p => p.id === postId);
                 if (post) {
@@ -1023,6 +1058,8 @@ const PublicationsManager = {
                     post.user_reaction = isLiked ? null : 'like';
                     if (countEl) {
                         countEl.textContent = newCount === 1 ? '1 me gusta' : `${newCount} me gusta`;
+                        countEl.classList.add('count-updated');
+                        setTimeout(() => countEl.classList.remove('count-updated'), 300);
                     }
                 }
             }
@@ -1031,6 +1068,15 @@ const PublicationsManager = {
         } finally {
             this.pendingReactions[postId] = false;
         }
+    },
+    
+    showFloatingHeart(btn) {
+        if (!btn) return;
+        const heart = document.createElement('span');
+        heart.className = 'floating-heart';
+        heart.textContent = '❤️';
+        btn.appendChild(heart);
+        setTimeout(() => heart.remove(), 1000);
     },
     
     async toggleSave(postId) {
