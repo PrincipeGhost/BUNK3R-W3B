@@ -777,12 +777,40 @@ Rediseñar TODA la interfaz de usuario para que tenga un aspecto profesional de 
 
 #### FASE 21.3: Navbar y Header ⏳
 
-**Rediseño requerido:**
-- [ ] 21.3.1 Header fijo con fondo translúcido oscuro
-- [ ] 21.3.2 Logo pequeño a la izquierda
-- [ ] 21.3.3 Iconos minimalistas (línea fina, no relleno)
-- [ ] 21.3.4 Badge de notificaciones: Punto dorado pequeño
-- [ ] 21.3.5 Avatar con borde dorado sutil en estado verificado
+**ELIMINAR HEADER DUPLICADO:**
+El header secundario con "BUNK3R", campana y avatar (el que está debajo del header principal) debe ser ELIMINADO porque:
+- Las notificaciones ya están en la barra de navegación inferior
+- Es redundante y rompe la estética
+- Ocupa espacio innecesario
+
+**Buscar y eliminar en templates/index.html:**
+```html
+<!-- ELIMINAR ESTE BLOQUE COMPLETO -->
+<div class="sub-header">
+    <button class="sidebar-toggle">≡</button>
+    <span>BUNK3R</span>
+    <button class="notif-btn">🔔</button>
+    <div class="avatar">D</div>
+</div>
+```
+
+**Rediseño del header principal:**
+- [ ] 21.3.1 Solo UN header con fondo translúcido oscuro
+- [ ] 21.3.2 Logo BUNK3R a la izquierda (pequeño)
+- [ ] 21.3.3 Menú hamburguesa minimalista
+- [ ] 21.3.4 SIN campana de notificaciones (ya está abajo)
+- [ ] 21.3.5 Avatar solo si es necesario para acceso rápido al perfil
+
+**MOVER "Tu historia" A LA IZQUIERDA:**
+- [ ] 21.3.6 El icono de "Tu historia" debe estar pegado al borde izquierdo
+- [ ] 21.3.7 No centrado como está actualmente
+- [ ] 21.3.8 Modificar CSS:
+```css
+.stories-container {
+    justify-content: flex-start;  /* En lugar de center */
+    padding-left: 16px;
+}
+```
 
 ---
 
