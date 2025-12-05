@@ -4812,7 +4812,7 @@ const App = {
         });
     },
     
-    selectWalletForDeposit(type) {
+    async selectWalletForDeposit(type) {
         const syncedWallets = this.getSyncedWallets();
         this.selectedWalletType = type;
         
@@ -4821,8 +4821,21 @@ const App = {
             this.showDepositPackages(type);
         } else {
             if (type === 'telegram') {
-                this.connectTelegramWallet();
+                this.closeB3CModal('b3c-deposit-modal');
+                try {
+                    const walletAddress = await this.connectTelegramWallet();
+                    if (walletAddress) {
+                        this.saveSyncedWallet('telegram', walletAddress);
+                        this.showDepositPackages('telegram');
+                    } else {
+                        this.showToast('Conexion de wallet cancelada', 'info');
+                    }
+                } catch (error) {
+                    console.error('Error connecting telegram wallet:', error);
+                    this.showToast('Error al conectar wallet', 'error');
+                }
             } else if (type === 'binance') {
+                this.closeB3CModal('b3c-deposit-modal');
                 this.connectBinanceWallet();
             } else if (type === 'external') {
                 this.closeB3CModal('b3c-deposit-modal');
