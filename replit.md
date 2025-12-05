@@ -32,27 +32,38 @@ The application is built with a Flask (Python) backend, a PostgreSQL database, a
 - **Performance:** Database connection pooling, memory leak prevention mechanisms, and smart skeleton loaders for improved user experience.
 - **BUNK3RCO1N (B3C) Integration:** Dedicated service layer for TON blockchain interaction, real-time pricing via STON.fi DEX API, TON/USD conversion via CoinGecko, buy/sell/withdraw/deposit functionalities, and commission tracking.
 
-## B3C Token Configuration (Current: TESTNET)
+## B3C Token Configuration (Current: MAINNET - Fixed Price)
 
-**Modo actual:** TESTNET - Sistema configurado para pruebas antes de producción.
+**Modo actual:** MAINNET - Token real con precio fijo controlado (sin pool DEX).
+
+**Token creado:**
+- **Address:** `EQDQI0-UQ56AuBGTWNDgLPE6naQYFvrZTcRt-GI7jx6dwSmM`
+- **Symbol:** B3C (BUNK3RCO1N)
+- **Decimals:** 9
+- **Supply:** 1,000,000,000
 
 **Variables de entorno configuradas:**
-- `B3C_USE_TESTNET=true` - Usar red de prueba
-- `B3C_NETWORK=testnet` - Indicador de red
-
-**Variables pendientes de configurar (cuando se cree el token):**
+- `B3C_USE_TESTNET=false` - Usar mainnet
+- `B3C_NETWORK=mainnet` - Indicador de red
 - `B3C_TOKEN_ADDRESS` - Dirección del contrato Jetton
 - `B3C_HOT_WALLET` - Wallet para operaciones
-- `B3C_COMMISSION_WALLET` - Wallet para comisiones
+- `B3C_COMMISSION_WALLET` - Wallet para comisiones (5%)
+- `B3C_USE_FIXED_PRICE=true` - Usar precio fijo (sin DEX)
+- `B3C_FIXED_PRICE_USD=0.10` - Precio fijo: $0.10 USD por B3C
+
+**Sistema de precio fijo:**
+El usuario decidió NO usar pool de liquidez (DEX). En su lugar:
+1. **Compras en app:** Usuario paga TON -> Va a wallet del propietario -> Propietario envía B3C
+2. **Ventas/Retiros:** Usuario devuelve B3C -> Recibe TON (menos 5% comisión)
+3. **Precio controlado:** Fijado por el propietario (inicialmente $0.10 USD)
+4. **Sin riesgo de manipulación:** No hay pool que pueda ser atacado
 
 **Endpoints B3C disponibles:**
-- `GET /api/b3c/price` - Precio actual (simulado en testnet)
+- `GET /api/b3c/price` - Precio actual (fijo: $0.10 USD)
 - `GET /api/b3c/balance` - Balance del usuario
 - `GET /api/b3c/config` - Configuración del servicio
 - `GET /api/b3c/network` - Estado de la red
-- `GET /api/b3c/testnet/guide` - Guía de configuración testnet
-
-**Documentación:** Ver `docs/GUIA_TESTNET_B3C.md` para instrucciones paso a paso.
+- `POST /api/b3c/admin/price` - Actualizar precio fijo (admin)
 
 **Última actualización:** 5 Diciembre 2025
 
