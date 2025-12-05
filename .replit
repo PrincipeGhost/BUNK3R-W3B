@@ -10,7 +10,7 @@ packages = ["cargo", "freetype", "lcms2", "libiconv", "libimagequant", "libjpeg"
 
 [userenv.shared]
 DATABASE_URL = "postgresql://neondb_owner:npg_f6zHTucyam0Z@ep-small-heart-agjrcowk-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
-BOT_TOKEN = "8074878440:AAEgi61kaBrUlfyVksyQ_zZLBrONMhAf_rU"
+BOT_TOKEN = "7755508015:AAHADtYG925Q821oBCk_untY4O6LZcf39FY"
 OWNER_TELEGRAM_ID = "8305740334"
 CHANNEL_ID = "-1002889052376"
 ADMIN_TOKEN = "110917"
