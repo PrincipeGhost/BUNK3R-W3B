@@ -115,7 +115,7 @@ class WalletPoolService:
             logger.error(f"Error decrypting private key: {e}")
             raise
     
-    def generate_ton_wallet(self) -> Dict[str, str]:
+    def generate_ton_wallet(self) -> Dict[str, Any]:
         """
         Generar un nuevo par de llaves TON válido usando tonsdk.
         
@@ -127,7 +127,7 @@ class WalletPoolService:
         else:
             return self._generate_simulated_wallet()
     
-    def _generate_real_wallet(self) -> Dict[str, str]:
+    def _generate_real_wallet(self) -> Dict[str, Any]:
         """Generar wallet TON real usando tonsdk."""
         try:
             wallet_workchain = 0
@@ -155,7 +155,7 @@ class WalletPoolService:
             logger.error(f"Error generating real TON wallet: {e}")
             return self._generate_simulated_wallet()
     
-    def _generate_simulated_wallet(self) -> Dict[str, str]:
+    def _generate_simulated_wallet(self) -> Dict[str, Any]:
         """Generar wallet simulada para desarrollo/testeo."""
         try:
             seed = secrets.token_bytes(32)
@@ -451,29 +451,49 @@ class WalletPoolService:
             if self.toncenter_api_key:
                 headers['X-API-Key'] = self.toncenter_api_key
             
-            response = requests.get(
-                f'{self.TONCENTER_API_V3}/transactions',
-                params={
+            if self.use_testnet:
+                api_url = f'{self.TESTNET_API}/getTransactions'
+                params = {
+                    'address': wallet_address,
+                    'limit': 10
+                }
+            else:
+                api_url = f'{self.TONCENTER_API_V3}/transactions'
+                params = {
                     'account': wallet_address,
                     'limit': 10,
                     'sort': 'desc'
-                },
+                }
+            
+            response = requests.get(
+                api_url,
+                params=params,
                 headers=headers,
                 timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
-                transactions = data.get('transactions', [])
+                
+                if self.use_testnet:
+                    transactions = data.get('result', [])
+                else:
+                    transactions = data.get('transactions', [])
                 
                 for tx in transactions:
                     in_msg = tx.get('in_msg', {})
-                    value = int(in_msg.get('value', 0)) / 1e9
+                    value_raw = in_msg.get('value', 0)
+                    value = int(value_raw) / 1e9 if value_raw else 0
                     
                     if value >= expected_amount * 0.99:
+                        if self.use_testnet:
+                            tx_hash = tx.get('transaction_id', {}).get('hash', '')
+                        else:
+                            tx_hash = tx.get('hash', '')
+                        
                         return {
                             'found': True,
-                            'tx_hash': tx.get('hash', ''),
+                            'tx_hash': tx_hash,
                             'amount': value,
                             'from_address': in_msg.get('source', ''),
                             'timestamp': tx.get('utime', 0)
