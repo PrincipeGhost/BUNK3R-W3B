@@ -5017,7 +5017,118 @@ const App = {
         }
     },
 
+    toggleHistoryMenu() {
+        const dropdown = document.getElementById('history-dropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('hidden');
+            
+            const closeDropdown = (e) => {
+                if (!e.target.closest('.neo-history-menu-wrapper')) {
+                    dropdown.classList.add('hidden');
+                    document.removeEventListener('click', closeDropdown);
+                }
+            };
+            
+            setTimeout(() => {
+                document.addEventListener('click', closeDropdown);
+            }, 10);
+        }
+    },
+    
+    showFilterModal() {
+        const dropdown = document.getElementById('history-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+        
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'filter-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Filtrar transacciones</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('filter-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="filter-section">
+                        <label class="filter-label">Tipo de transaccion</label>
+                        <div class="filter-options">
+                            <button class="filter-option-btn ${this.currentTxFilter === 'all' ? 'active' : ''}" data-filter="all" onclick="App.setTxTypeFilter('all')">Todos</button>
+                            <button class="filter-option-btn ${this.currentTxFilter === 'credit' ? 'active' : ''}" data-filter="credit" onclick="App.setTxTypeFilter('credit')">Recargas</button>
+                            <button class="filter-option-btn ${this.currentTxFilter === 'debit' ? 'active' : ''}" data-filter="debit" onclick="App.setTxTypeFilter('debit')">Gastos</button>
+                        </div>
+                    </div>
+                    <div class="filter-section">
+                        <label class="filter-label">Periodo de tiempo</label>
+                        <div class="filter-options">
+                            <button class="filter-option-btn ${this.currentDateFilter === 'all' ? 'active' : ''}" data-date="all" onclick="App.setDateFilter('all')">Todo</button>
+                            <button class="filter-option-btn ${this.currentDateFilter === 'today' ? 'active' : ''}" data-date="today" onclick="App.setDateFilter('today')">Hoy</button>
+                            <button class="filter-option-btn ${this.currentDateFilter === 'week' ? 'active' : ''}" data-date="week" onclick="App.setDateFilter('week')">Semana</button>
+                            <button class="filter-option-btn ${this.currentDateFilter === 'month' ? 'active' : ''}" data-date="month" onclick="App.setDateFilter('month')">Mes</button>
+                        </div>
+                    </div>
+                    <button class="neo-apply-filter-btn" onclick="App.applyFilters()">Aplicar filtros</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('filter-modal');
+        });
+    },
+    
+    currentTxFilter: 'all',
+    currentDateFilter: 'all',
+    
+    setTxTypeFilter(filter) {
+        this.currentTxFilter = filter;
+        document.querySelectorAll('#filter-modal .filter-options:first-of-type .filter-option-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+    },
+    
+    setDateFilter(date) {
+        this.currentDateFilter = date;
+        document.querySelectorAll('#filter-modal .filter-section:last-of-type .filter-option-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.date === date);
+        });
+    },
+    
+    applyFilters() {
+        this.closeB3CModal('filter-modal');
+        const badge = document.getElementById('active-filter-badge');
+        const badgeText = document.getElementById('filter-badge-text');
+        
+        if (this.currentTxFilter !== 'all' || this.currentDateFilter !== 'all') {
+            let filterText = [];
+            if (this.currentTxFilter !== 'all') {
+                filterText.push(this.currentTxFilter === 'credit' ? 'Recargas' : 'Gastos');
+            }
+            if (this.currentDateFilter !== 'all') {
+                const dateLabels = { today: 'Hoy', week: 'Semana', month: 'Mes' };
+                filterText.push(dateLabels[this.currentDateFilter]);
+            }
+            badgeText.textContent = filterText.join(' - ');
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+        
+        this.transactionOffset = 0;
+        this.loadTransactionHistory(0, false);
+    },
+    
+    clearFilters() {
+        this.currentTxFilter = 'all';
+        this.currentDateFilter = 'all';
+        document.getElementById('active-filter-badge').classList.add('hidden');
+        this.transactionOffset = 0;
+        this.loadTransactionHistory(0, false);
+    },
+
     async exportTransactionHistory() {
+        const dropdown = document.getElementById('history-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+        
         try {
             const response = await this.apiRequest('/api/wallet/transactions?offset=0&limit=1000');
             

@@ -796,30 +796,50 @@
                     </div>
                 </div>
                 
-                <div class="wallet-section wallet-history-section">
-                    <div class="wallet-section-header">
-                        <h2 class="section-title">Historial de Transacciones</h2>
-                        <button class="export-btn" id="export-history-btn" onclick="App.exportTransactionHistory()">Exportar</button>
+                <div class="neo-history-section">
+                    <div class="neo-history-header">
+                        <h3 class="neo-history-title">Transacciones</h3>
+                        <div class="neo-history-menu-wrapper">
+                            <button class="neo-history-menu-btn" id="history-menu-btn" onclick="App.toggleHistoryMenu()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="5" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="12" cy="19" r="2"/>
+                                </svg>
+                            </button>
+                            <div class="neo-history-dropdown hidden" id="history-dropdown">
+                                <div class="neo-dropdown-item" onclick="App.showFilterModal()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                                    </svg>
+                                    Filtrar
+                                </div>
+                                <div class="neo-dropdown-item" onclick="App.exportTransactionHistory()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                    </svg>
+                                    Exportar
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="transaction-filters">
-                        <div class="tx-type-filters">
-                            <button class="tx-filter-btn active" data-filter="all">Todos</button>
-                            <button class="tx-filter-btn" data-filter="credit">Recargas</button>
-                            <button class="tx-filter-btn" data-filter="debit">Gastos</button>
-                        </div>
-                        <div class="tx-date-filter">
-                            <select id="tx-date-range" class="tx-date-select">
-                                <option value="all">Todo el tiempo</option>
-                                <option value="today">Hoy</option>
-                                <option value="week">Esta semana</option>
-                                <option value="month">Este mes</option>
-                            </select>
-                        </div>
+                    <div class="neo-filter-badge hidden" id="active-filter-badge">
+                        <span id="filter-badge-text">Todos</span>
+                        <button onclick="App.clearFilters()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="transactions-list transactions-container" id="transactions-list">
                         <div class="transactions-empty">
-                            <div class="empty-icon">📋</div>
-                            <p>No hay transacciones aun</p>
+                            <div class="empty-icon-neo">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    <path d="M3 9h18M9 21V9"/>
+                                </svg>
+                            </div>
+                            <p>Sin transacciones</p>
                             <span>Tus movimientos apareceran aqui</span>
                         </div>
                     </div>
