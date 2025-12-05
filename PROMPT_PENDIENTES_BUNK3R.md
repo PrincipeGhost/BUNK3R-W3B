@@ -22,9 +22,9 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 5 Diciembre 2025 |
-| Sección actual | 25 |
-| Total secciones | 25 |
-| Completadas | 25 ✅ |
+| Sección actual | 26 |
+| Total secciones | 26 |
+| Completadas | 26 ✅ |
 | Pendientes | 0 ⏳ |
 | En progreso | 0 🔄 |
 | Crítico | 0 🟢 |
@@ -32,6 +32,23 @@ Esperando tu respuesta...
 ---
 
 ## RESUMEN EJECUTIVO - ÚLTIMAS ACTUALIZACIONES
+
+### ✅ SECCIÓN 26: CONSOLIDACIÓN REAL DE WALLETS - COMPLETADO (5 Diciembre 2025)
+**Problema resuelto:** Los fondos depositados en wallets únicas NO se transferían automáticamente a la hot wallet (solo simulación).
+
+**Correcciones realizadas:**
+1. **Transferencia real implementada:** Función `_send_ton_transfer()` usa tonsdk para crear y enviar transacciones reales
+2. **API TonCenter v2 sendBoc:** Transacciones se envían correctamente con header `X-API-Key`
+3. **Re-encriptación de mnemonics:** Wallets anteriores usaban clave fallback, migradas a `ENCRYPTION_MASTER_KEY`
+4. **Verificación blockchain:** Confirmado que 0.49 TON llegaron a hot wallet
+
+**Transacción de consolidación confirmada:**
+- Wallet origen: `UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd`
+- Wallet destino (hot): `UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59`
+- TON transferidos: 0.49 TON (0.5 - 0.01 fee)
+- Estado: **CONSOLIDATED** en base de datos
+
+---
 
 ### ✅ SECCIÓN 25: VERIFICACIÓN DE DEPÓSITOS B3C - COMPLETADO (5 Diciembre 2025)
 **Problema resuelto:** El sistema no detectaba depósitos debido a un error de lógica - verificaba expiración ANTES de verificar depósitos.

@@ -47,17 +47,17 @@ class WalletPoolService:
             master_key: Clave maestra para encriptar private keys (de env var)
         """
         self.db = db_manager
-        self.master_key = master_key or os.environ.get('WALLET_MASTER_KEY')
+        self.master_key = master_key or os.environ.get('WALLET_MASTER_KEY') or os.environ.get('ENCRYPTION_MASTER_KEY')
         self.hot_wallet = os.environ.get('B3C_HOT_WALLET', '')
         self.toncenter_api_key = os.environ.get('TONCENTER_API_KEY', '')
         self.use_testnet = os.environ.get('B3C_USE_TESTNET', 'true').lower() == 'true'
         
         if not self.master_key:
-            logger.error("WALLET_MASTER_KEY not set! Using fallback key - NOT SAFE FOR PRODUCTION!")
+            logger.error("WALLET_MASTER_KEY/ENCRYPTION_MASTER_KEY not set! Using fallback key - NOT SAFE FOR PRODUCTION!")
             self.master_key = 'FALLBACK_DEV_KEY_NOT_FOR_PRODUCTION_32B'
         
         self.encryption_key = self._derive_key(self.master_key)
-        logger.info(f"WalletPoolService initialized - TONSDK: {TONSDK_AVAILABLE}, Testnet: {self.use_testnet}")
+        logger.info(f"WalletPoolService initialized - TONSDK: {TONSDK_AVAILABLE}, Testnet: {self.use_testnet}, HotWallet: {self.hot_wallet[:20] if self.hot_wallet else 'NOT SET'}...")
     
     def _derive_key(self, master_key: str) -> bytes:
         """Derivar clave de 32 bytes (AES-256) del master key usando SHA-256."""
@@ -760,14 +760,115 @@ class WalletPoolService:
             logger.error(f"Error getting pool stats: {e}")
             return {'success': False, 'error': str(e)}
     
+    def _get_wallet_seqno(self, address: str) -> int:
+        """
+        Obtener el seqno (sequence number) de una wallet para la transacción.
+        
+        Args:
+            address: Dirección de la wallet
+            
+        Returns:
+            Seqno de la wallet (0 si es nueva o error)
+        """
+        try:
+            api_url = f"{self.TONCENTER_API_V3}/wallet"
+            params = {'address': address}
+            
+            if self.toncenter_api_key:
+                params['api_key'] = self.toncenter_api_key
+            
+            response = requests.get(api_url, params=params, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                seqno = data.get('seqno', 0)
+                logger.info(f"Got seqno {seqno} for wallet {address[:20]}...")
+                return seqno
+            else:
+                logger.warning(f"Failed to get seqno for {address[:20]}...: {response.status_code}")
+                return 0
+                
+        except Exception as e:
+            logger.error(f"Error getting wallet seqno: {e}")
+            return 0
+    
+    def _send_ton_transfer(self, mnemonic: str, to_address: str, amount_nano: int) -> Optional[str]:
+        """
+        Enviar TON desde una wallet a otra dirección.
+        
+        Args:
+            mnemonic: Mnemonic de 24 palabras de la wallet origen
+            to_address: Dirección destino
+            amount_nano: Cantidad en nanoTON
+            
+        Returns:
+            Hash de la transacción o None si falla
+        """
+        if not TONSDK_AVAILABLE:
+            logger.error("tonsdk not available - cannot send real transfers")
+            return None
+        
+        try:
+            from tonsdk.utils import bytes_to_b64str
+            
+            mnemonic_list = mnemonic.split(' ')
+            
+            _mnemonics, _pub_k, _priv_k, wallet = Wallets.from_mnemonics(
+                mnemonic_list, 
+                WalletVersionEnum.v4r2, 
+                0
+            )
+            
+            from_address = wallet.address.to_string(True, True, False)
+            logger.info(f"Sending {amount_nano} nanoTON from {from_address[:20]}... to {to_address[:20]}...")
+            
+            seqno = self._get_wallet_seqno(from_address)
+            
+            query = wallet.create_transfer_message(
+                to_addr=to_address,
+                amount=amount_nano,
+                seqno=seqno,
+                payload="B3C consolidation"
+            )
+            
+            boc = bytes_to_b64str(query["message"].to_boc(False))
+            
+            send_url = "https://toncenter.com/api/v2/sendBoc"
+            send_data = {'boc': boc}
+            
+            headers = {'Content-Type': 'application/json'}
+            if self.toncenter_api_key:
+                headers['X-API-Key'] = self.toncenter_api_key
+            
+            response = requests.post(send_url, json=send_data, headers=headers, timeout=30)
+            result = response.json()
+            
+            if result.get('ok'):
+                tx_hash = result.get('result', {}).get('hash', f"tx_{seqno}")
+                logger.info(f"Transaction sent successfully! Hash: {tx_hash}")
+                return tx_hash
+            else:
+                error_msg = result.get('error', 'Unknown error')
+                logger.error(f"Transaction failed: {error_msg}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error sending TON transfer: {e}")
+            return None
+    
     def consolidate_confirmed_deposits(self) -> int:
         """
         Consolidar fondos de wallets con depósitos confirmados a la hot wallet.
+        Realiza transferencias reales de TON.
         
         Returns:
             Número de wallets consolidadas
         """
         consolidated = 0
+        
+        if not self.hot_wallet:
+            logger.error("B3C_HOT_WALLET not configured - cannot consolidate")
+            return 0
         
         try:
             with self.db.get_connection() as conn:
@@ -782,18 +883,43 @@ class WalletPoolService:
                     
                     wallets = cur.fetchall()
                     
+                    if not wallets:
+                        logger.info("No wallets pending consolidation")
+                        return 0
+                    
+                    logger.info(f"Found {len(wallets)} wallets to consolidate")
+                    
                     for wallet in wallets:
                         wallet_id, address, encrypted_key, amount = wallet
                         
                         try:
-                            cur.execute("""
-                                UPDATE deposit_wallets 
-                                SET status = 'consolidated',
-                                    consolidation_tx_hash = %s,
-                                    consolidated_at = NOW()
-                                WHERE id = %s
-                            """, (f"simulated_tx_{wallet_id}", wallet_id))
-                            consolidated += 1
+                            mnemonic = self.decrypt_private_key(encrypted_key)
+                            
+                            amount_nano = int(Decimal(str(amount)) * Decimal('1000000000'))
+                            
+                            fee_nano = int(self.CONSOLIDATION_FEE * Decimal('1000000000'))
+                            send_amount = amount_nano - fee_nano
+                            
+                            if send_amount <= 0:
+                                logger.warning(f"Wallet {wallet_id} has insufficient funds after fee")
+                                continue
+                            
+                            logger.info(f"Consolidating wallet {wallet_id}: {amount} TON -> {self.hot_wallet[:20]}...")
+                            
+                            tx_hash = self._send_ton_transfer(mnemonic, self.hot_wallet, send_amount)
+                            
+                            if tx_hash:
+                                cur.execute("""
+                                    UPDATE deposit_wallets 
+                                    SET status = 'consolidated',
+                                        consolidation_tx_hash = %s,
+                                        consolidated_at = NOW()
+                                    WHERE id = %s
+                                """, (tx_hash, wallet_id))
+                                consolidated += 1
+                                logger.info(f"Wallet {wallet_id} consolidated successfully. TX: {tx_hash}")
+                            else:
+                                logger.error(f"Failed to consolidate wallet {wallet_id}")
                             
                         except Exception as e:
                             logger.error(f"Error consolidating wallet {wallet_id}: {e}")
@@ -802,7 +928,7 @@ class WalletPoolService:
                     conn.commit()
                     
             if consolidated > 0:
-                logger.info(f"Consolidated {consolidated} wallets to hot wallet")
+                logger.info(f"Successfully consolidated {consolidated} wallets to hot wallet")
                 
             return consolidated
             
