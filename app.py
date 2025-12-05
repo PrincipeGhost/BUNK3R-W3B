@@ -3519,10 +3519,12 @@ def sell_b3c():
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                conn.set_session(isolation_level='SERIALIZABLE')
+                
                 cur.execute("""
                     SELECT COALESCE(
                         (SELECT SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) 
-                         FROM wallet_transactions WHERE user_id = %s), 0
+                         FROM wallet_transactions WHERE user_id = %s FOR UPDATE), 0
                     ) as balance
                 """, (user_id,))
                 result = cur.fetchone()
@@ -3596,10 +3598,12 @@ def withdraw_b3c():
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                conn.set_session(isolation_level='SERIALIZABLE')
+                
                 cur.execute("""
                     SELECT COALESCE(
                         (SELECT SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) 
-                         FROM wallet_transactions WHERE user_id = %s), 0
+                         FROM wallet_transactions WHERE user_id = %s FOR UPDATE), 0
                     ) as balance
                 """, (user_id,))
                 result = cur.fetchone()
