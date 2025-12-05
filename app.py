@@ -4259,6 +4259,83 @@ def get_pending_deposits():
         return jsonify({'success': False, 'error': 'Error al obtener pendientes'}), 500
 
 
+@app.route('/api/b3c/last-purchase', methods=['GET'])
+def get_last_b3c_purchase():
+    """Obtener logs de la última compra de B3C con información del usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        bp.purchase_id,
+                        bp.user_id,
+                        bp.ton_amount,
+                        bp.b3c_amount,
+                        bp.commission_ton,
+                        bp.status,
+                        bp.tx_hash,
+                        bp.created_at,
+                        bp.confirmed_at,
+                        u.username,
+                        u.first_name,
+                        u.last_name,
+                        u.avatar_url
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id = u.id
+                    ORDER BY bp.created_at DESC
+                    LIMIT 1
+                """)
+                last_purchase = cur.fetchone()
+                
+                if not last_purchase:
+                    logger.info("[B3C LOGS] No hay compras registradas en el sistema")
+                    return jsonify({
+                        'success': True,
+                        'message': 'No hay compras registradas',
+                        'lastPurchase': None
+                    })
+                
+                logger.info(f"[B3C LOGS] ========== ÚLTIMA COMPRA DE B3C ==========")
+                logger.info(f"[B3C LOGS] ID de Compra: {last_purchase['purchase_id']}")
+                logger.info(f"[B3C LOGS] Usuario ID: {last_purchase['user_id']}")
+                logger.info(f"[B3C LOGS] Username: @{last_purchase['username'] or 'N/A'}")
+                logger.info(f"[B3C LOGS] Nombre: {last_purchase['first_name'] or 'N/A'} {last_purchase['last_name'] or ''}")
+                logger.info(f"[B3C LOGS] TON enviados: {float(last_purchase['ton_amount']):.4f} TON")
+                logger.info(f"[B3C LOGS] B3C recibidos: {float(last_purchase['b3c_amount']):.4f} B3C")
+                logger.info(f"[B3C LOGS] Comisión: {float(last_purchase['commission_ton']):.4f} TON")
+                logger.info(f"[B3C LOGS] Estado: {last_purchase['status']}")
+                logger.info(f"[B3C LOGS] Fecha: {last_purchase['created_at']}")
+                if last_purchase['tx_hash']:
+                    logger.info(f"[B3C LOGS] TX Hash: {last_purchase['tx_hash']}")
+                logger.info(f"[B3C LOGS] =============================================")
+                
+        return jsonify({
+            'success': True,
+            'lastPurchase': {
+                'purchaseId': last_purchase['purchase_id'],
+                'userId': last_purchase['user_id'],
+                'username': last_purchase['username'],
+                'firstName': last_purchase['first_name'],
+                'lastName': last_purchase['last_name'],
+                'avatarUrl': last_purchase['avatar_url'],
+                'tonAmount': float(last_purchase['ton_amount']),
+                'b3cAmount': float(last_purchase['b3c_amount']),
+                'commissionTon': float(last_purchase['commission_ton']),
+                'status': last_purchase['status'],
+                'txHash': last_purchase['tx_hash'],
+                'createdAt': last_purchase['created_at'].isoformat() if last_purchase['created_at'] else None,
+                'confirmedAt': last_purchase['confirmed_at'].isoformat() if last_purchase.get('confirmed_at') else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting last B3C purchase: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener última compra'}), 500
+
+
 @app.route('/api/devices/trusted', methods=['GET'])
 @require_telegram_user
 def get_trusted_devices():
