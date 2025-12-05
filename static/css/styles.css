@@ -8669,13 +8669,29 @@ select:focus-visible {
 .publication-action-btn {
     background: none;
     border: none;
-    color: var(--text-primary);
-    font-size: 24px;
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 4px;
     display: flex;
     align-items: center;
-    transition: transform 0.2s;
+    justify-content: center;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.publication-action-btn .action-icon {
+    width: 24px;
+    height: 24px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: all 0.2s ease;
+}
+
+.publication-action-btn:hover {
+    color: var(--text-primary);
+}
+
+.publication-action-btn:hover .action-icon {
+    transform: scale(1.1);
 }
 
 .publication-action-btn:active {
@@ -8683,8 +8699,13 @@ select:focus-visible {
 }
 
 .publication-action-btn.liked {
-    color: #ed4956;
+    color: #F6465D;
     animation: like-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.publication-action-btn.liked .heart-icon {
+    fill: #F6465D;
+    stroke: #F6465D;
 }
 
 @keyframes like-pop {
@@ -8705,10 +8726,17 @@ select:focus-visible {
 
 .floating-heart {
     position: absolute;
-    font-size: 20px;
     animation: float-up 1s ease-out forwards;
     pointer-events: none;
     z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.floating-heart svg {
+    width: 20px;
+    height: 20px;
 }
 
 @keyframes float-up {
@@ -8733,6 +8761,11 @@ select:focus-visible {
 
 .publication-action-btn.saved {
     color: var(--accent-warning);
+}
+
+.publication-action-btn.saved .bookmark-icon {
+    fill: var(--accent-warning);
+    stroke: var(--accent-warning);
 }
 
 /* Reactions Counter */

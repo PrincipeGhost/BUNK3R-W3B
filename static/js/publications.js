@@ -629,17 +629,23 @@ const PublicationsManager = {
                                 data-reaction-btn="${parseInt(post.id)}"
                                 aria-label="${post.user_reaction ? 'Quitar me gusta' : 'Me gusta'}"
                                 aria-pressed="${post.user_reaction ? 'true' : 'false'}">
-                            ${post.user_reaction ? '❤️' : '🤍'}
+                            <svg class="action-icon heart-icon" viewBox="0 0 24 24" fill="${post.user_reaction ? '#F6465D' : 'none'}" stroke="${post.user_reaction ? '#F6465D' : 'currentColor'}" stroke-width="2">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
                         </button>
                         <button class="publication-action-btn" 
                                 onclick="document.getElementById('inline-comment-${parseInt(post.id)}').focus()"
                                 aria-label="Comentar">
-                            💬
+                            <svg class="action-icon comment-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
                         </button>
                         <button class="publication-action-btn" 
                                 onclick="PublicationsManager.sharePost(${parseInt(post.id)})"
                                 aria-label="Compartir">
-                            ↗️
+                            <svg class="action-icon share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                            </svg>
                         </button>
                     </div>
                     <button class="publication-action-btn ${post.user_saved ? 'saved' : ''}" 
@@ -647,7 +653,9 @@ const PublicationsManager = {
                             data-save-btn="${parseInt(post.id)}"
                             aria-label="${post.user_saved ? 'Quitar de guardados' : 'Guardar'}"
                             aria-pressed="${post.user_saved ? 'true' : 'false'}">
-                        ${post.user_saved ? '🔖' : '📑'}
+                        <svg class="action-icon bookmark-icon" viewBox="0 0 24 24" fill="${post.user_saved ? '#F0B90B' : 'none'}" stroke="${post.user_saved ? '#F0B90B' : 'currentColor'}" stroke-width="2">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
                     </button>
                 </div>
                 
@@ -1047,7 +1055,11 @@ const PublicationsManager = {
                 }
                 
                 btn?.classList.toggle('liked');
-                btn.innerHTML = isLiked ? '🤍' : '❤️';
+                const heartFill = isLiked ? 'none' : '#F6465D';
+                const heartStroke = isLiked ? 'currentColor' : '#F6465D';
+                btn.innerHTML = `<svg class="action-icon heart-icon" viewBox="0 0 24 24" fill="${heartFill}" stroke="${heartStroke}" stroke-width="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>`;
                 
                 if (typeof App !== 'undefined' && App.tg && App.tg.HapticFeedback) {
                     App.tg.HapticFeedback.impactOccurred('light');
@@ -1078,7 +1090,9 @@ const PublicationsManager = {
         if (!btn) return;
         const heart = document.createElement('span');
         heart.className = 'floating-heart';
-        heart.textContent = '❤️';
+        heart.innerHTML = `<svg viewBox="0 0 24 24" fill="#F6465D" stroke="#F6465D" stroke-width="2" width="20" height="20">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>`;
         btn.appendChild(heart);
         setTimeout(() => heart.remove(), 1000);
     },
@@ -1096,7 +1110,11 @@ const PublicationsManager = {
             
             if (response.success) {
                 btn?.classList.toggle('saved');
-                btn.innerHTML = isSaved ? '📑' : '🔖';
+                const bookmarkFill = isSaved ? 'none' : '#F0B90B';
+                const bookmarkStroke = isSaved ? 'currentColor' : '#F0B90B';
+                btn.innerHTML = `<svg class="action-icon bookmark-icon" viewBox="0 0 24 24" fill="${bookmarkFill}" stroke="${bookmarkStroke}" stroke-width="2">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>`;
                 this.showToast(isSaved ? 'Eliminado de guardados' : 'Guardado', 'success');
             }
         } catch (error) {
