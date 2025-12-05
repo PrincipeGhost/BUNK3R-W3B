@@ -22,12 +22,12 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 5 Diciembre 2025 |
-| Sección actual | SECCIÓN 23 |
-| Total secciones | 23 |
+| Sección actual | SECCIÓN 24 |
+| Total secciones | 24 |
 | Completadas | 21 ✅ |
-| Pendientes | 2 ⏳ |
+| Pendientes | 3 ⏳ |
 | En progreso | 0 🔄 |
-| Crítico | 1 🔴 |
+| Crítico | 3 🔴 (WALLET PRIORITARIO) |
 
 ---
 
@@ -60,11 +60,20 @@ Esperando tu respuesta...
 - Flujo de conexión/desconexión funcionando correctamente
 - Integración con sistema de dispositivos confiables verificada
 
-### 🔴 CRÍTICO:
-- **Sección 23:** Verificación de Pagos B3C y Acreditación Automática - CRÍTICO
+### 🔴 CRÍTICO - PRIORIDAD MÁXIMA (WALLET):
+- **Sección 24:** Sistema de Wallets Únicas por Compra - 🔴 NUEVO PRIORITARIO
+  - Objetivo: Generar wallet temporal única para cada compra
+  - Beneficio: Identificación 100% segura de pagos sin depender de memo
+  - Costo de gas incluido en comisión al usuario
+
+- **Sección 23:** Verificación de Pagos B3C y Acreditación Automática - 🔴 CRÍTICO
   - Problema: Transacciones TON sin comentario, verificación falla
   - API Key TonCenter: ✅ Configurada
-  - Causa raíz: `buildTextCommentPayload()` retorna undefined
+  - Solución: Implementar Sección 24 para resolver identificación
+
+- **Sección 20:** Conexión de Wallet y Sincronización - 🔴 PRIORITARIO
+  - Base para todo el sistema de pagos
+  - Debe funcionar perfectamente antes de Sección 23 y 24
 
 ### ⏳ PENDIENTES:
 - **Sección 22:** Auditoría de Seguridad y Vulnerabilidades (parcialmente completado)
@@ -1596,6 +1605,345 @@ return jsonify({
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 24: SISTEMA DE WALLETS ÚNICAS POR COMPRA 🔴 PRIORITARIO
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA - MÁXIMA  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Solución definitiva para identificar pagos sin depender de memo/comentario  
+**Estado:** PENDIENTE
+
+---
+
+### OBJETIVO PRINCIPAL:
+
+Implementar sistema donde cada compra de B3C genera una **wallet temporal única**. El usuario deposita en esa wallet específica, lo que permite identificación 100% segura del pago sin necesidad de memo/comentario en la transacción.
+
+### BENEFICIOS:
+- ✅ Identificación 100% segura de cada pago
+- ✅ No depende de memo/comentario (que causaba errores)
+- ✅ Compatible con todas las wallets TON
+- ✅ Costo de gas incluido en comisión al usuario
+- ✅ Más profesional y seguro
+
+---
+
+### PROMPT MAESTRO 24: WALLETS ÚNICAS POR COMPRA
+
+---
+
+#### FASE 24.1: Diseño de Base de Datos ⏳
+
+**Tarea 24.1.1:** Crear tabla `deposit_wallets`
+```sql
+CREATE TABLE deposit_wallets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_address VARCHAR(100) UNIQUE NOT NULL,
+    private_key_encrypted TEXT NOT NULL,  -- Encriptado con clave maestra
+    status VARCHAR(20) DEFAULT 'available', -- available, assigned, used, consolidating
+    assigned_to_user_id BIGINT REFERENCES users(user_id),
+    assigned_to_purchase_id VARCHAR(50),
+    assigned_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Tarea 24.1.2:** Crear tabla `wallet_pool_config`
+```sql
+CREATE TABLE wallet_pool_config (
+    id SERIAL PRIMARY KEY,
+    min_pool_size INT DEFAULT 10,
+    max_assignment_time_minutes INT DEFAULT 30,
+    auto_consolidate_threshold DECIMAL(20,9) DEFAULT 0.1,
+    consolidation_fee DECIMAL(20,9) DEFAULT 0.01,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Tarea 24.1.3:** Índices para performance
+```sql
+CREATE INDEX idx_deposit_wallets_status ON deposit_wallets(status);
+CREATE INDEX idx_deposit_wallets_assigned_user ON deposit_wallets(assigned_to_user_id);
+CREATE INDEX idx_deposit_wallets_expires ON deposit_wallets(expires_at);
+```
+
+---
+
+#### FASE 24.2: Generación de Wallets ⏳
+
+**Tarea 24.2.1:** Crear servicio `WalletPoolService`
+
+```python
+class WalletPoolService:
+    def __init__(self, master_key: str):
+        self.master_key = master_key  # Para encriptar/desencriptar private keys
+        
+    def generate_new_wallet(self) -> Dict[str, str]:
+        """Genera nuevo par de llaves TON"""
+        # Usar librería ton-crypto o toncenter
+        # Retorna: {address, private_key, public_key}
+        
+    def encrypt_private_key(self, private_key: str) -> str:
+        """Encripta private key con master key (AES-256)"""
+        
+    def decrypt_private_key(self, encrypted: str) -> str:
+        """Desencripta private key"""
+        
+    def add_wallet_to_pool(self) -> str:
+        """Genera wallet y la agrega al pool disponible"""
+```
+
+**Tarea 24.2.2:** Crear script para pre-generar pool inicial
+```python
+def initialize_wallet_pool(count: int = 20):
+    """Genera N wallets para el pool inicial"""
+    for i in range(count):
+        wallet_pool_service.add_wallet_to_pool()
+```
+
+---
+
+#### FASE 24.3: Asignación de Wallet para Compra ⏳
+
+**Tarea 24.3.1:** Endpoint `POST /api/b3c/get-deposit-address`
+
+```python
+@app.route('/api/b3c/get-deposit-address', methods=['POST'])
+def get_deposit_address():
+    """
+    Asigna wallet temporal única para esta compra.
+    
+    Request: {
+        "ton_amount": 5.0,
+        "user_id": 123456
+    }
+    
+    Response: {
+        "success": true,
+        "deposit_address": "UQB...xyz",
+        "amount_with_fee": 5.01,  # Incluye gas de consolidación
+        "expires_in_minutes": 30,
+        "purchase_id": "PUR-ABC123"
+    }
+    """
+```
+
+**Tarea 24.3.2:** Lógica de asignación
+```python
+def assign_wallet_for_purchase(user_id: int, ton_amount: float, purchase_id: str) -> Dict:
+    # 1. Buscar wallet disponible del pool
+    # 2. Si no hay, generar una nueva
+    # 3. Marcar como 'assigned' con user_id y purchase_id
+    # 4. Establecer tiempo de expiración (30 min)
+    # 5. Retornar dirección
+```
+
+**Tarea 24.3.3:** Liberar wallets expiradas
+```python
+def release_expired_wallets():
+    """Cron job cada 5 minutos - libera wallets no usadas"""
+    # UPDATE deposit_wallets SET status = 'available', assigned_to_user_id = NULL
+    # WHERE status = 'assigned' AND expires_at < NOW()
+```
+
+---
+
+#### FASE 24.4: Monitoreo de Depósitos ⏳
+
+**Tarea 24.4.1:** Servicio de monitoreo `DepositMonitorService`
+
+```python
+class DepositMonitorService:
+    def check_wallet_for_deposit(self, wallet_address: str, expected_amount: float) -> Dict:
+        """
+        Consulta TonCenter API para verificar si llegó depósito.
+        
+        Returns: {
+            "found": true/false,
+            "tx_hash": "...",
+            "amount": 5.0,
+            "from_address": "UQA..."
+        }
+        """
+        
+    def monitor_all_assigned_wallets(self):
+        """Revisa todas las wallets asignadas buscando depósitos"""
+```
+
+**Tarea 24.4.2:** Endpoint de verificación `POST /api/b3c/check-deposit`
+
+```python
+@app.route('/api/b3c/check-deposit', methods=['POST'])
+def check_deposit():
+    """
+    Frontend llama esto para verificar si el pago llegó.
+    
+    Request: {"purchase_id": "PUR-ABC123"}
+    
+    Response: {
+        "status": "pending" | "confirmed" | "expired",
+        "tx_hash": "...",
+        "b3c_credited": 500
+    }
+    """
+```
+
+---
+
+#### FASE 24.5: Consolidación de Fondos ⏳
+
+**Tarea 24.5.1:** Servicio de consolidación `ConsolidationService`
+
+```python
+class ConsolidationService:
+    def consolidate_wallet(self, deposit_wallet_id: UUID) -> str:
+        """
+        Mueve fondos de wallet temporal a hot wallet principal.
+        
+        1. Desencriptar private key
+        2. Construir transacción de envío
+        3. Firmar y enviar a hot wallet
+        4. Retornar tx_hash
+        5. Marcar wallet como 'used' o 'available' (reciclar)
+        """
+        
+    def consolidate_all_pending(self):
+        """Consolida todas las wallets con fondos pendientes"""
+```
+
+**Tarea 24.5.2:** Cálculo de fee de consolidación
+```python
+def calculate_total_fee(ton_amount: float) -> Dict:
+    """
+    Calcula monto total que usuario debe enviar.
+    
+    Returns: {
+        "base_amount": 5.0,
+        "consolidation_fee": 0.01,
+        "service_fee": 0.25,  # 5% ejemplo
+        "total_to_send": 5.26
+    }
+    """
+```
+
+---
+
+#### FASE 24.6: UI Frontend ⏳
+
+**Tarea 24.6.1:** Modificar flujo de compra B3C
+```javascript
+async function initiateBuyB3C(tonAmount) {
+    // 1. Llamar /api/b3c/get-deposit-address
+    // 2. Mostrar QR code con dirección única
+    // 3. Mostrar monto exacto a enviar (con fees)
+    // 4. Mostrar countdown de expiración
+    // 5. Polling cada 10s a /api/b3c/check-deposit
+}
+```
+
+**Tarea 24.6.2:** Modal de depósito con QR
+```html
+<div id="deposit-modal">
+    <h3>Deposita exactamente:</h3>
+    <div class="amount">5.26 TON</div>
+    <div class="qr-code"></div>
+    <div class="address">UQB...xyz</div>
+    <button onclick="copyAddress()">📋 Copiar</button>
+    <div class="countdown">Expira en: 29:45</div>
+    <div class="status">⏳ Esperando depósito...</div>
+</div>
+```
+
+**Tarea 24.6.3:** Estados del modal
+- ⏳ Esperando depósito...
+- 🔍 Verificando transacción...
+- ✅ ¡Pago confirmado! +500 B3C
+- ❌ Expirado - Solicitar nueva dirección
+
+---
+
+#### FASE 24.7: Seguridad ⏳
+
+**Tarea 24.7.1:** Encriptación de private keys
+- Usar AES-256-GCM para encriptar
+- Master key en variable de entorno `WALLET_MASTER_KEY`
+- Nunca loggear private keys
+
+**Tarea 24.7.2:** Rate limiting
+- Máximo 3 direcciones de depósito activas por usuario
+- Mínimo 1 minuto entre solicitudes de nueva dirección
+
+**Tarea 24.7.3:** Validaciones
+- Verificar que monto recibido coincide con esperado
+- Timeout de 30 minutos para depósitos
+- Alertas si wallet recibe monto diferente al esperado
+
+---
+
+#### FASE 24.8: Cron Jobs ⏳
+
+**Tarea 24.8.1:** Jobs programados
+```python
+# Cada 5 minutos
+schedule.every(5).minutes.do(release_expired_wallets)
+
+# Cada 2 minutos
+schedule.every(2).minutes.do(monitor_all_assigned_wallets)
+
+# Cada 10 minutos
+schedule.every(10).minutes.do(consolidate_all_pending)
+
+# Cada hora
+schedule.every().hour.do(ensure_pool_minimum_size)
+```
+
+---
+
+### CONFIGURACIÓN REQUERIDA:
+
+**Nuevas variables de entorno:**
+- `WALLET_MASTER_KEY` - Clave para encriptar private keys (AES-256)
+- `MIN_WALLET_POOL_SIZE` - Mínimo de wallets disponibles (default: 10)
+- `DEPOSIT_EXPIRATION_MINUTES` - Tiempo límite para depositar (default: 30)
+
+**Dependencias nuevas:**
+- `tonsdk` o `pytonlib` - Para generar wallets TON
+- `cryptography` - Para encriptación AES-256
+
+---
+
+### CRITERIOS DE ACEPTACIÓN:
+
+- [ ] 24.1 Pool de wallets se genera correctamente
+- [ ] 24.2 Cada compra recibe dirección única
+- [ ] 24.3 Depósitos se detectan automáticamente
+- [ ] 24.4 B3C se acredita tras confirmar depósito
+- [ ] 24.5 Fondos se consolidan a hot wallet
+- [ ] 24.6 UI muestra QR y countdown
+- [ ] 24.7 Wallets expiradas se reciclan
+- [ ] 24.8 Private keys encriptadas de forma segura
+- [ ] 24.9 Rate limiting funcionando
+- [ ] 24.10 Logs detallados para debugging
+
+---
+
+### ARCHIVOS A CREAR/MODIFICAR:
+
+**Nuevos archivos:**
+1. `tracking/wallet_pool_service.py` - Gestión del pool de wallets
+2. `tracking/deposit_monitor_service.py` - Monitoreo de depósitos
+3. `tracking/consolidation_service.py` - Consolidación de fondos
+
+**Archivos a modificar:**
+1. `app.py` - Nuevos endpoints de depósito
+2. `static/js/app.js` - UI de depósito con QR
+3. `templates/index.html` - Modal de depósito
+4. `static/css/styles.css` - Estilos del modal
+
+---
+
 ## SECCIONES ARCHIVADAS (COMPLETADAS)
 
 Las siguientes secciones han sido completadas y archivadas:
@@ -1625,13 +1973,14 @@ Las siguientes secciones han sido completadas y archivadas:
 | 1 | 05/12/2025 | Configuración inicial | Creado archivo PROMPT_PENDIENTES | ✅ |
 | 2 | 05/12/2025 | Token BUNK3RCO1N real | SECCIÓN 15 - Token MAINNET | ✅ |
 | 3 | 05/12/2025 | Botones de pago directo | SECCIÓN 16 - TON Connect | ✅ |
-| 4 | 05/12/2025 | Error TON_CONNECT_SDK_ERROR | SECCIÓN 17 - Auditoría pagos | ⏳ |
-| 5 | 05/12/2025 | Números virtuales sin servicio + botón atrás | SECCIÓN 18 - Auditoría VN | ⏳ |
-| 6 | 05/12/2025 | Transferencias entre usuarios | SECCIÓN 19 - Transferencias P2P | ⏳ |
-| 7 | 05/12/2025 | Conexión wallet completa | SECCIÓN 20 - Wallet Connect | ⏳ |
-| 8 | 05/12/2025 | Rediseño UI neo-banco estilo Binance | SECCIÓN 21 - UI Profesional | ⏳ |
+| 4 | 05/12/2025 | Error TON_CONNECT_SDK_ERROR | SECCIÓN 17 - Auditoría pagos | ✅ |
+| 5 | 05/12/2025 | Números virtuales sin servicio + botón atrás | SECCIÓN 18 - Auditoría VN | ✅ |
+| 6 | 05/12/2025 | Transferencias entre usuarios | SECCIÓN 19 - Transferencias P2P | ✅ |
+| 7 | 05/12/2025 | Conexión wallet completa | SECCIÓN 20 - Wallet Connect | 🔴 |
+| 8 | 05/12/2025 | Rediseño UI neo-banco estilo Binance | SECCIÓN 21 - UI Profesional | ✅ |
 | 9 | 05/12/2025 | Auditoría de vulnerabilidades | SECCIÓN 22 - Seguridad | ⏳ |
 | 10 | 05/12/2025 | Pagos B3C no se acreditan | SECCIÓN 23 - Verificación Pagos | 🔴 |
+| 11 | 05/12/2025 | Sistema de wallets únicas por compra | SECCIÓN 24 - Wallets Únicas | 🔴 |
 
 ---
 
@@ -1652,33 +2001,62 @@ Cuando el usuario diga "continúa", el agente DEBE:
 
 ## ORDEN DE EJECUCIÓN RECOMENDADO
 
-1. **SECCIÓN 17** - Corregir error de payload TON Connect (CRÍTICO)
-2. **SECCIÓN 20** - Verificar conexión de wallet (BASE)
-3. **SECCIÓN 18** - Arreglar números virtuales 
-4. **SECCIÓN 19** - Implementar transferencias P2P
-5. **SECCIÓN 21** - Rediseño UI neo-banco (VISUAL)
+### 🔴 PRIORIDAD MÁXIMA - SISTEMA DE WALLET:
+
+1. **SECCIÓN 20** - Conexión de Wallet y Sincronización (🔴 BASE OBLIGATORIA)
+2. **SECCIÓN 24** - Sistema de Wallets Únicas por Compra (🔴 NUEVO - CRÍTICO)
+3. **SECCIÓN 23** - Verificación de Pagos B3C (🔴 CRÍTICO)
+
+### ⏳ PRIORIDAD NORMAL:
+
+4. **SECCIÓN 22** - Auditoría de Seguridad
 
 ---
 
-## RESUMEN FINAL
+### FLUJO DE DEPENDENCIAS:
 
-### SECCIONES ACTIVAS:
-- 🔴 **Sección 17** - Auditoría de Pagos B3C (0%) - CRÍTICO
-- ⏳ **Sección 18** - Auditoría Números Virtuales (0%)
-- ⏳ **Sección 19** - Transferencias entre Usuarios (0%)
-- ⏳ **Sección 20** - Conexión de Wallet (0%)
-- ⏳ **Sección 21** - Rediseño UI Neo-Banco (0%) - VISUAL
-- 🔴 **Sección 22** - Vulnerabilidades y Seguridad (0%) - CRÍTICO
+```
+SECCIÓN 20 (Wallet Connect)
+    ↓
+SECCIÓN 24 (Wallets Únicas)  ←  Soluciona problema de identificación
+    ↓
+SECCIÓN 23 (Verificación)    ←  Ahora puede verificar correctamente
+```
 
-### PROGRESO: 14/22 secciones (64%)
+---
 
-### ORDEN DE EJECUCIÓN RECOMENDADO:
+## RESUMEN FINAL ACTUALIZADO
 
-1. **SECCIÓN 17** - Error de payload TON Connect (CRÍTICO - Pagos no funcionan)
-2. **SECCIÓN 22** - Seguridad (CRÍTICO - Vulnerabilidades XSS, rate limiting)
-3. **SECCIÓN 20** - Conexión wallet (BASE para otras funciones)
-4. **SECCIÓN 18** - Números virtuales (Funcionalidad)
-5. **SECCIÓN 19** - Transferencias P2P (Funcionalidad)
-6. **SECCIÓN 21** - UI Neo-Banco (VISUAL - Al final)
+### SECCIONES CRÍTICAS (WALLET - PRIORIDAD MÁXIMA):
+- 🔴 **Sección 20** - Conexión de Wallet (BASE)
+- 🔴 **Sección 24** - Wallets Únicas por Compra (NUEVO)
+- 🔴 **Sección 23** - Verificación de Pagos B3C
 
-**Próximo paso:** Ejecutar SECCIÓN 17 para corregir el error de payload TON Connect.
+### SECCIONES PENDIENTES:
+- ⏳ **Sección 22** - Seguridad y Vulnerabilidades
+
+### PROGRESO: 21/24 secciones (87.5%)
+
+**Próximo paso:** Ejecutar SECCIÓN 20 → SECCIÓN 24 → SECCIÓN 23 (en ese orden)
+
+---
+
+## NOTA IMPORTANTE - SECCIÓN 24:
+
+La Sección 24 (Wallets Únicas) es la **solución definitiva** al problema de la Sección 23. En lugar de depender de memo/comentario en la transacción (que causaba errores), cada compra genera una wallet temporal única. Esto permite:
+
+- Identificación 100% segura del pago
+- Compatible con todas las wallets TON
+- Costo de gas incluido en comisión al usuario
+- No más errores de payload
+
+**Antiguo enfoque (Sección 23):**
+```
+Usuario → Envía TON con memo "B3C-12345" → Problema: memo no funciona
+```
+
+**Nuevo enfoque (Sección 24):**
+```
+Usuario → Recibe dirección única UQB...xyz → Deposita → Sistema detecta automáticamente
+```
+
