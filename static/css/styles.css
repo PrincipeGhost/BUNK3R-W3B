@@ -1104,6 +1104,12 @@ select:focus-visible {
     gap: 12px;
 }
 
+.top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .hamburger-menu {
     display: flex;
     flex-direction: column;
