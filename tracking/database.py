@@ -954,7 +954,7 @@ class DatabaseManager:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        "SELECT COUNT(*) FROM encrypted_publications WHERE user_id = %s",
+                        "SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_active = TRUE",
                         (user_id,)
                     )
                     result = cur.fetchone()
@@ -1257,12 +1257,21 @@ class DatabaseManager:
                     )
                     
                     conn.commit()
+                    
+                    new_balance = user_credits - bot_price
+                    self.create_transaction_notification(
+                        user_id=user_id,
+                        amount=bot_price,
+                        transaction_type='bot_purchase',
+                        new_balance=new_balance
+                    )
+                    
                     logger.info(f"User {user_id} purchased bot {bot_type} for {bot_price} credits")
                     return {
                         'success': True, 
                         'message': f'Bot {bot["bot_name"]} activado correctamente',
                         'bot_name': bot['bot_name'],
-                        'credits_remaining': user_credits - bot_price
+                        'credits_remaining': new_balance
                     }
         except Exception as e:
             logger.error(f"Error purchasing bot {bot_type} for user {user_id}: {e}")

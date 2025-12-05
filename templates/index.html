@@ -834,9 +834,19 @@
                         <button class="export-btn" id="export-history-btn" onclick="App.exportTransactionHistory()">Exportar</button>
                     </div>
                     <div class="transaction-filters">
-                        <button class="tx-filter-btn active" data-filter="all">Todos</button>
-                        <button class="tx-filter-btn" data-filter="credit">Recargas</button>
-                        <button class="tx-filter-btn" data-filter="debit">Gastos</button>
+                        <div class="tx-type-filters">
+                            <button class="tx-filter-btn active" data-filter="all">Todos</button>
+                            <button class="tx-filter-btn" data-filter="credit">Recargas</button>
+                            <button class="tx-filter-btn" data-filter="debit">Gastos</button>
+                        </div>
+                        <div class="tx-date-filter">
+                            <select id="tx-date-range" class="tx-date-select">
+                                <option value="all">Todo el tiempo</option>
+                                <option value="today">Hoy</option>
+                                <option value="week">Esta semana</option>
+                                <option value="month">Este mes</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="transactions-list transactions-container" id="transactions-list">
                         <div class="transactions-empty">
@@ -924,6 +934,38 @@
                     <div class="empty-icon">🔔</div>
                     <h3>Sin notificaciones</h3>
                     <p>Cuando alguien interactue contigo, aparecera aqui</p>
+                </div>
+            </div>
+
+            <!-- PAGINA EXPLORE -->
+            <div id="explore-screen" class="page-screen hidden">
+                <div class="page-header">
+                    <button class="back-btn" onclick="App.goToHome()" aria-label="Volver al inicio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h1 class="page-title">Explorar</h1>
+                </div>
+                <div class="explore-content">
+                    <div class="explore-search">
+                        <div class="search-input-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" id="explore-search-input" class="explore-search-input" placeholder="Buscar hashtags, usuarios...">
+                        </div>
+                    </div>
+                    <div class="explore-hashtag-header hidden" id="explore-hashtag-header">
+                        <span class="explore-hashtag-tag" id="explore-hashtag-tag">#hashtag</span>
+                        <span class="explore-hashtag-count" id="explore-hashtag-count">0 publicaciones</span>
+                    </div>
+                    <div class="explore-trending-section" id="explore-trending">
+                        <h3 class="explore-section-title">Hashtags Trending</h3>
+                        <div class="explore-trending-list" id="explore-trending-list"></div>
+                    </div>
+                    <div class="explore-results" id="explore-results"></div>
                 </div>
             </div>
 

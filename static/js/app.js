@@ -1083,6 +1083,15 @@ const App = {
             this.loadTransactionHistory();
             this.loadWalletBalance();
         }
+        
+        if (pageName === 'explore') {
+            this.initExplore();
+        }
+    },
+    
+    showScreen(screenId) {
+        const screenName = screenId.replace('-screen', '');
+        this.showPage(screenName);
     },
     
     updateBottomNavActive(pageName) {
@@ -1117,6 +1126,144 @@ const App = {
         
         this.loadSettingsSecurityStatus();
         this.loadSettingsDevices();
+    },
+    
+    async initExplore() {
+        this.loadExploreTrending();
+        
+        const searchInput = document.getElementById('explore-search-input');
+        if (searchInput && !searchInput._hasListener) {
+            searchInput._hasListener = true;
+            let debounceTimer;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    this.performExploreSearch(e.target.value);
+                }, 300);
+            });
+        }
+    },
+    
+    escapeHtmlForExplore(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    sanitizeHashtag(tag) {
+        return String(tag).replace(/[^a-zA-Z0-9_]/g, '');
+    },
+    
+    sanitizeUrl(url) {
+        if (!url) return '';
+        try {
+            const parsed = new URL(url, window.location.origin);
+            if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                return url;
+            }
+        } catch {
+            if (url.startsWith('/')) return url;
+        }
+        return '';
+    },
+    
+    async loadExploreTrending() {
+        try {
+            const response = await this.apiRequest('/api/trending/hashtags?limit=15');
+            const container = document.getElementById('explore-trending-list');
+            
+            if (response.success && response.hashtags && container) {
+                container.innerHTML = response.hashtags.map(tag => {
+                    const safeTag = this.sanitizeHashtag(tag.tag);
+                    const count = parseInt(tag.count) || 0;
+                    return `
+                    <div class="explore-trending-item" onclick="App.searchHashtag('${safeTag}')">
+                        <span class="explore-trending-tag">#${this.escapeHtmlForExplore(safeTag)}</span>
+                        <span class="explore-trending-count">${count} posts</span>
+                    </div>
+                `;}).join('');
+            }
+        } catch (error) {
+            console.error('Error loading trending:', error);
+        }
+    },
+    
+    async performExploreSearch(query) {
+        if (!query || query.length < 2) {
+            document.getElementById('explore-trending')?.classList.remove('hidden');
+            document.getElementById('explore-hashtag-header')?.classList.add('hidden');
+            document.getElementById('explore-results').innerHTML = '';
+            return;
+        }
+        
+        let hashtag = query.startsWith('#') ? query.substring(1) : query;
+        hashtag = this.sanitizeHashtag(hashtag);
+        if (hashtag) this.searchHashtag(hashtag);
+    },
+    
+    async searchHashtag(hashtag) {
+        const safeHashtag = this.sanitizeHashtag(hashtag);
+        if (!safeHashtag) return;
+        
+        const resultsContainer = document.getElementById('explore-results');
+        const trendingSection = document.getElementById('explore-trending');
+        const hashtagHeader = document.getElementById('explore-hashtag-header');
+        
+        trendingSection?.classList.add('hidden');
+        hashtagHeader?.classList.remove('hidden');
+        
+        document.getElementById('explore-hashtag-tag').textContent = `#${safeHashtag}`;
+        resultsContainer.innerHTML = '<div class="explore-loading"><div class="spinner"></div></div>';
+        
+        const searchInput = document.getElementById('explore-search-input');
+        if (searchInput) searchInput.value = `#${safeHashtag}`;
+        
+        try {
+            const response = await this.apiRequest(`/api/hashtag/${encodeURIComponent(safeHashtag)}?limit=30`);
+            
+            if (response.success) {
+                document.getElementById('explore-hashtag-count').textContent = 
+                    `${parseInt(response.total) || response.posts?.length || 0} publicaciones`;
+                
+                if (response.posts && response.posts.length > 0) {
+                    resultsContainer.innerHTML = response.posts.map(post => this.renderExplorePostThumb(post)).join('');
+                } else {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'explore-empty';
+                    const p = document.createElement('p');
+                    p.textContent = `No se encontraron publicaciones con #${safeHashtag}`;
+                    emptyDiv.appendChild(p);
+                    resultsContainer.innerHTML = '';
+                    resultsContainer.appendChild(emptyDiv);
+                }
+            }
+        } catch (error) {
+            console.error('Error searching hashtag:', error);
+            resultsContainer.innerHTML = '<div class="explore-empty">Error al buscar</div>';
+        }
+    },
+    
+    renderExplorePostThumb(post) {
+        const postId = parseInt(post.id) || 0;
+        let thumbContent = '';
+        
+        if (post.content_type === 'image' && post.content_url) {
+            const safeUrl = this.sanitizeUrl(post.content_url);
+            thumbContent = safeUrl ? `<img src="${this.escapeHtmlForExplore(safeUrl)}" alt="" loading="lazy">` : '';
+        } else if (post.content_type === 'video' && post.content_url) {
+            const safeUrl = this.sanitizeUrl(post.content_url.replace(/\.[^/.]+$/, '.jpg'));
+            thumbContent = safeUrl ? `<img src="${this.escapeHtmlForExplore(safeUrl)}" alt="" loading="lazy">
+                           <div class="video-indicator">▶</div>` : '';
+        } else {
+            const text = String(post.caption || post.text || '').substring(0, 60);
+            thumbContent = `<div class="text-thumb">${this.escapeHtmlForExplore(text)}${(post.caption || post.text || '').length > 60 ? '...' : ''}</div>`;
+        }
+        
+        return `
+            <div class="explore-post-thumb" onclick="PublicationsManager.showPostDetail(${postId})">
+                ${thumbContent}
+            </div>
+        `;
     },
     
     showAdminScreen() {
@@ -3550,6 +3697,8 @@ const App = {
         });
     },
 
+    currentDateRange: 'all',
+    
     initTransactionFilters() {
         document.querySelectorAll('.tx-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -3560,7 +3709,36 @@ const App = {
             });
         });
         
+        const dateRangeSelect = document.getElementById('tx-date-range');
+        if (dateRangeSelect) {
+            dateRangeSelect.addEventListener('change', (e) => {
+                this.currentDateRange = e.target.value;
+                this.loadTransactionHistory(0, false);
+            });
+        }
+        
         this.startWalletPolling();
+    },
+    
+    getDateRangeParams() {
+        const now = new Date();
+        let fromDate = null;
+        
+        switch (this.currentDateRange) {
+            case 'today':
+                fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                break;
+            case 'week':
+                fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                break;
+            case 'month':
+                fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                break;
+            default:
+                return '';
+        }
+        
+        return fromDate ? `&from_date=${fromDate.toISOString()}` : '';
     },
 
     async loadTransactionHistory(offset = 0, append = false) {
@@ -3578,6 +3756,7 @@ const App = {
             if (this.currentTransactionFilter && this.currentTransactionFilter !== 'all') {
                 url += `&filter=${this.currentTransactionFilter}`;
             }
+            url += this.getDateRangeParams();
             const response = await this.apiRequest(url);
             
             if (response.success) {

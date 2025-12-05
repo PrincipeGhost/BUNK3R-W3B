@@ -2830,6 +2830,13 @@ def credit_wallet():
                 """, (user_id,))
                 result = cur.fetchone()
                 new_balance = result[0] if result else credits
+        
+        db_manager.create_transaction_notification(
+            user_id=user_id,
+            amount=credits,
+            transaction_type='credit',
+            new_balance=float(new_balance)
+        )
                 
         return jsonify({
             'success': True,
@@ -2850,6 +2857,7 @@ def get_wallet_transactions():
         offset = request.args.get('offset', 0, type=int)
         limit = request.args.get('limit', 20, type=int)
         filter_type = request.args.get('filter', 'all')
+        from_date = request.args.get('from_date', None)
         
         if not db_manager:
             return jsonify({'success': True, 'transactions': []})
@@ -2867,6 +2875,10 @@ def get_wallet_transactions():
                     query += " AND amount > 0"
                 elif filter_type == 'debit':
                     query += " AND amount < 0"
+                
+                if from_date:
+                    query += " AND created_at >= %s"
+                    params.append(from_date)
                 
                 query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
                 params.extend([limit, offset])
