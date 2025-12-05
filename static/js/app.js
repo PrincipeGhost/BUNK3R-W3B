@@ -4697,6 +4697,75 @@ const App = {
     },
 
     showB3CDepositModal() {
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-deposit-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Depositar B3C</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="neo-wallets-section">
+                        <h3 class="neo-section-title">Selecciona tu wallet</h3>
+                        <div class="neo-wallet-options">
+                            <div class="neo-wallet-item" onclick="App.connectTelegramWallet()">
+                                <div class="neo-wallet-icon telegram">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.828.94z"/>
+                                    </svg>
+                                </div>
+                                <div class="neo-wallet-info">
+                                    <span class="neo-wallet-name">Telegram Wallet</span>
+                                    <span class="neo-wallet-desc">Conecta tu wallet de Telegram</span>
+                                </div>
+                                <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18l6-6-6-6"/>
+                                </svg>
+                            </div>
+                            <div class="neo-wallet-item" onclick="App.connectBinanceWallet()">
+                                <div class="neo-wallet-icon binance">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 0L7.172 4.828l1.768 1.768L12 3.536l3.06 3.06 1.768-1.768L12 0zM4.828 7.172L0 12l4.828 4.828 1.768-1.768L3.536 12l3.06-3.06-1.768-1.768zM19.172 7.172l-1.768 1.768L20.464 12l-3.06 3.06 1.768 1.768L24 12l-4.828-4.828zM12 8.464L8.464 12 12 15.536 15.536 12 12 8.464zM12 20.464l-3.06-3.06-1.768 1.768L12 24l4.828-4.828-1.768-1.768L12 20.464z"/>
+                                    </svg>
+                                </div>
+                                <div class="neo-wallet-info">
+                                    <span class="neo-wallet-name">Binance</span>
+                                    <span class="neo-wallet-desc">Conecta tu cuenta Binance</span>
+                                </div>
+                                <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18l6-6-6-6"/>
+                                </svg>
+                            </div>
+                            <div class="neo-wallet-item" onclick="App.showExternalDepositAddress()">
+                                <div class="neo-wallet-icon external">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="6" width="20" height="12" rx="2"/>
+                                        <path d="M22 10H2M7 15h4"/>
+                                    </svg>
+                                </div>
+                                <div class="neo-wallet-info">
+                                    <span class="neo-wallet-name">Wallet Externa</span>
+                                    <span class="neo-wallet-desc">TON, MetaMask, TrustWallet...</span>
+                                </div>
+                                <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18l6-6-6-6"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-deposit-modal');
+        });
+    },
+    
+    showExternalDepositAddress() {
+        this.closeB3CModal('b3c-deposit-modal');
         this.apiRequest('/api/b3c/deposit/address').then(response => {
             if (!response.success) {
                 this.showToast('Error al obtener direccion de deposito', 'error');
@@ -4705,12 +4774,12 @@ const App = {
             
             const modal = document.createElement('div');
             modal.className = 'b3c-modal modal-overlay';
-            modal.id = 'b3c-deposit-modal';
+            modal.id = 'b3c-deposit-address-modal';
             modal.innerHTML = `
                 <div class="modal-content b3c-modal-content">
                     <div class="modal-header">
-                        <h3>Depositar B3C</h3>
-                        <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-modal')">&times;</button>
+                        <h3>Depositar desde Wallet Externa</h3>
+                        <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-address-modal')">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="b3c-deposit-info">
@@ -4749,7 +4818,7 @@ const App = {
             `;
             document.body.appendChild(modal);
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) this.closeB3CModal('b3c-deposit-modal');
+                if (e.target === modal) this.closeB3CModal('b3c-deposit-address-modal');
             });
         }).catch(error => {
             console.error('Error getting deposit address:', error);
