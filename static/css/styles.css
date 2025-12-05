@@ -10587,3 +10587,77 @@ select:focus-visible {
     color: var(--text-muted);
     padding: 20px;
 }
+
+/* Page Transitions */
+.page-screen {
+    animation: pageSlideIn 0.25s ease-out;
+}
+
+.page-screen.page-exit {
+    animation: pageSlideOut 0.2s ease-in forwards;
+}
+
+@keyframes pageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pageSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+
+/* Bottom Navigation Active States */
+.bottom-nav-item.active {
+    color: var(--accent-primary);
+}
+
+.bottom-nav-item.active .bottom-nav-icon {
+    color: var(--accent-primary);
+}
+
+/* Sidebar Slide Animation */
+.sidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-overlay {
+    transition: opacity 0.3s ease;
+}
+
+/* Smooth Button Press Effects */
+.bottom-nav-item:active,
+.sidebar-item:active,
+.profile-page-btn:active {
+    transform: scale(0.95);
+}
+
+/* Navigation Indicator Dot */
+.nav-indicator {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.bottom-nav-item.active .nav-indicator {
+    opacity: 1;
+}

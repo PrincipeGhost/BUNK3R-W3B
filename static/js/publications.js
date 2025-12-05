@@ -222,6 +222,17 @@ const PublicationsManager = {
             this.feedObserver.disconnect();
             this.feedObserver = null;
         }
+        if (this._storyTimeout) {
+            clearTimeout(this._storyTimeout);
+            this._storyTimeout = null;
+        }
+        if (this._boundVisibilityHandler) {
+            document.removeEventListener('visibilitychange', this._boundVisibilityHandler);
+            this._boundVisibilityHandler = null;
+        }
+        this.closeStoryViewer();
+        const viewersModal = document.querySelector('.story-viewers-modal');
+        if (viewersModal) viewersModal.remove();
     },
     
     setupInfiniteScroll() {
@@ -425,6 +436,10 @@ const PublicationsManager = {
             clearInterval(this.feedPollingInterval);
         }
         
+        if (this._boundVisibilityHandler) {
+            document.removeEventListener('visibilitychange', this._boundVisibilityHandler);
+        }
+        
         this.POLLING_ACTIVE = true;
         this.lastFeedCheck = Date.now();
         
@@ -434,7 +449,8 @@ const PublicationsManager = {
             }
         }, this.POLLING_INTERVAL);
         
-        document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+        this._boundVisibilityHandler = this.handleVisibilityChange.bind(this);
+        document.addEventListener('visibilitychange', this._boundVisibilityHandler);
         
         Logger?.info('Feed polling started');
     },
@@ -443,6 +459,10 @@ const PublicationsManager = {
         if (this.feedPollingInterval) {
             clearInterval(this.feedPollingInterval);
             this.feedPollingInterval = null;
+        }
+        if (this._boundVisibilityHandler) {
+            document.removeEventListener('visibilitychange', this._boundVisibilityHandler);
+            this._boundVisibilityHandler = null;
         }
         this.POLLING_ACTIVE = false;
         Logger?.info('Feed polling stopped');

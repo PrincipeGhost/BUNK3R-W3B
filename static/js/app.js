@@ -1038,12 +1038,30 @@ const App = {
     },
     
     showPage(pageName) {
-        this.hideAllScreens();
+        const currentScreen = document.querySelector('.page-screen:not(.hidden)');
         
+        if (currentScreen && !currentScreen.id.includes(pageName)) {
+            currentScreen.classList.add('page-exit');
+            setTimeout(() => {
+                this.hideAllScreens();
+                this._showPageContent(pageName);
+            }, 150);
+        } else {
+            this.hideAllScreens();
+            this._showPageContent(pageName);
+        }
+    },
+    
+    _showPageContent(pageName) {
         const pageScreen = document.getElementById(`${pageName}-screen`);
         if (pageScreen) {
-            pageScreen.classList.remove('hidden');
+            pageScreen.classList.remove('hidden', 'page-exit');
+            pageScreen.style.animation = 'none';
+            pageScreen.offsetHeight;
+            pageScreen.style.animation = '';
         }
+        
+        this.updateBottomNavActive(pageName);
         
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.show();
@@ -1066,6 +1084,23 @@ const App = {
             this.loadTransactionHistory();
             this.loadWalletBalance();
         }
+    },
+    
+    updateBottomNavActive(pageName) {
+        const navMap = {
+            'home': 'home',
+            'explore': 'explore',
+            'notifications': 'notifications',
+            'profile': 'profile'
+        };
+        
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.classList.remove('active');
+            const navId = item.dataset.nav || item.id?.replace('nav-', '');
+            if (navMap[pageName] === navId) {
+                item.classList.add('active');
+            }
+        });
     },
     
     showSettingsScreen() {

@@ -314,9 +314,28 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - Added interval tracking for `notificationBadgeInterval` with proper cleanup
 - Interval is cleared before creating new ones to prevent memory leaks
 - `sessionActivityInterval` cleanup already implemented
+- Enhanced `PublicationsManager.cleanup()` to:
+  - Clear story timeout (`_storyTimeout`) on cleanup
+  - Remove visibility change event listener (`_boundVisibilityHandler`)
+  - Close story viewer and remove viewers modal
+- Updated `startFeedPolling()` to store bound handler for proper removal
+- Updated `stopFeedPolling()` to remove visibility change listener
+- App cleanup triggered on `beforeunload` and `pagehide` events
+
+#### Page Transition Animations
+- Added smooth page transitions with slide-in/slide-out animations
+- Created `showPage()` with exit animation before hiding current screen
+- Added `_showPageContent()` helper for proper animation sequencing
+- Added `updateBottomNavActive()` to highlight current nav item
+- CSS animations: `pageSlideIn`, `pageSlideOut` with 0.25s timing
+- Button press effects for nav items with `scale(0.95)` on active state
+- Navigation indicator dot for active bottom nav item
+- Respects `prefers-reduced-motion` media query
 
 #### CSS Additions
 - Added `.followers-modal` styles with tabs and user list
 - Added `.edit-profile-modal` styles with avatar section
 - Added `.follower-item`, `.follower-avatar`, `.follower-btn` styles
 - Made `.profile-page-stat` clickable with hover effects
+- Added page transition keyframes and bottom nav active states
+- Added sidebar slide animation with cubic-bezier timing
