@@ -84,6 +84,17 @@ El usuario decidió NO usar pool de liquidez (DEX). En su lugar:
 - Transacciones atómicas con nivel de aislamiento SERIALIZABLE
 - Bloqueo de filas con FOR UPDATE para prevenir doble gasto
 
+### SECCIÓN 20 - Conexión de Wallet y Sincronización (COMPLETADO)
+- Actualizado tonconnect-manifest.json con URL dinámica del entorno
+- Nueva sección de UI de Wallet TON en pantalla de wallet:
+  - Estado de conexión (conectada/desconectada)
+  - Botón para conectar wallet vía TON Connect
+  - Visualización de dirección con botón de copiar
+  - Botones para cambiar/desconectar wallet
+- Verificada sincronización de wallet con backend (saveWalletToBackend, loadSavedWallet)
+- Integración con sistema de dispositivos confiables funcionando
+- TON Connect SDK se inicializa correctamente con manejo de errores
+
 **Última actualización:** 5 Diciembre 2025
 
 ## External Dependencies

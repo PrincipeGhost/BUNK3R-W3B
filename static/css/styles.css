@@ -2296,6 +2296,183 @@ select:focus-visible {
     color: #48bb78;
 }
 
+/* Neo Wallet Connection Card */
+.neo-wallet-connection-card {
+    background: linear-gradient(145deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.neo-wallet-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.neo-wallet-connection-card .neo-wallet-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, rgba(66, 153, 225, 0.15), rgba(0, 136, 204, 0.15));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-primary);
+}
+
+.neo-wallet-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.neo-wallet-disconnected {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.neo-wallet-disconnected .neo-wallet-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.neo-wallet-connect-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, var(--accent-primary), #2c5282);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-wallet-connect-btn:hover {
+    background: linear-gradient(135deg, #5a9bd8, #3b6ea8);
+    transform: translateY(-1px);
+}
+
+.neo-wallet-connect-btn svg {
+    opacity: 0.9;
+}
+
+.neo-wallet-connected {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.neo-wallet-connected .neo-wallet-info {
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neo-wallet-status-label {
+    font-size: 12px;
+    color: #48bb78;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.neo-wallet-status-label::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #48bb78;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.neo-wallet-address-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 4px;
+}
+
+.neo-wallet-address {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.neo-wallet-copy-btn {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.neo-wallet-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--accent-primary);
+}
+
+.neo-wallet-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.neo-wallet-change-btn,
+.neo-wallet-disconnect-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-wallet-change-btn {
+    background: rgba(66, 153, 225, 0.15);
+    border: 1px solid rgba(66, 153, 225, 0.3);
+    color: var(--accent-primary);
+}
+
+.neo-wallet-change-btn:hover {
+    background: rgba(66, 153, 225, 0.25);
+}
+
+.neo-wallet-disconnect-btn {
+    background: rgba(245, 101, 101, 0.1);
+    border: 1px solid rgba(245, 101, 101, 0.2);
+    color: #fc8181;
+}
+
+.neo-wallet-disconnect-btn:hover {
+    background: rgba(245, 101, 101, 0.2);
+    border-color: rgba(245, 101, 101, 0.4);
+}
+
 /* Neo History Section */
 .neo-history-section {
     margin-top: 20px;

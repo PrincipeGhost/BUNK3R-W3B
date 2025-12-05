@@ -24,8 +24,8 @@ Esperando tu respuesta...
 | Última actualización | 5 Diciembre 2025 |
 | Sección actual | SECCIÓN 20-22 |
 | Total secciones | 22 |
-| Completadas | 19 ✅ |
-| Pendientes | 3 ⏳ |
+| Completadas | 20 ✅ |
+| Pendientes | 2 ⏳ |
 | En progreso | 0 |
 
 ---
@@ -49,8 +49,17 @@ Esperando tu respuesta...
 - Transacciones atómicas con `SERIALIZABLE` isolation
 - Bloqueo `SELECT ... FOR UPDATE` contra doble gasto
 
+### ✅ SECCIÓN 20: CONEXIÓN DE WALLET Y SINCRONIZACIÓN - COMPLETADO
+**Implementado:**
+- Actualizado tonconnect-manifest.json con URL dinámica del entorno actual
+- Nueva sección de UI de Wallet TON en pantalla de wallet (templates/index.html)
+- Estilos CSS para la tarjeta de conexión de wallet (static/css/styles.css)
+- Verificada inicialización de TON Connect SDK con manejo de errores
+- Sincronización de wallet con backend (saveWalletToBackend, loadSavedWallet)
+- Flujo de conexión/desconexión funcionando correctamente
+- Integración con sistema de dispositivos confiables verificada
+
 ### ⏳ PENDIENTES:
-- **Sección 20:** Conexión de Wallet y Sincronización
 - **Sección 21:** Rediseño UI Profesional (Neo-Banco)
 - **Sección 22:** Auditoría de Seguridad y Vulnerabilidades
 
