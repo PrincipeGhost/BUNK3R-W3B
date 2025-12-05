@@ -3120,6 +3120,21 @@ select:focus-visible {
     border-radius: 10px;
 }
 
+.recharge-badge.test-badge {
+    background: linear-gradient(135deg, #00d9ff, #00ff88);
+    color: #000;
+}
+
+.recharge-option.test-option {
+    border-color: #00d9ff;
+    background: linear-gradient(135deg, rgba(0, 217, 255, 0.05), rgba(0, 255, 136, 0.05));
+}
+
+.recharge-option.test-option:hover {
+    border-color: #00ff88;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
 .recharge-amount {
     font-size: 28px;
     font-weight: 700;

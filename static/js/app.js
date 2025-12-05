@@ -4106,9 +4106,10 @@ const App = {
     },
 
     updateB3CEstimates(priceData) {
-        const amounts = [1, 5, 10, 20];
+        const amounts = [0.5, 1, 5, 10, 20];
         amounts.forEach(ton => {
-            const estEl = document.getElementById(`b3c-est-${ton}`);
+            const estId = ton === 0.5 ? 'b3c-est-05' : `b3c-est-${ton}`;
+            const estEl = document.getElementById(estId);
             if (estEl && priceData.price_ton) {
                 const b3c = (ton * 0.95) / priceData.price_ton;
                 estEl.textContent = `~${Math.floor(b3c).toLocaleString()} B3C`;
