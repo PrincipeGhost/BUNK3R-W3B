@@ -4282,9 +4282,14 @@ def get_last_b3c_purchase():
                         u.username,
                         u.first_name,
                         u.last_name,
-                        u.avatar_url
+                        u.avatar_url,
+                        dw.wallet_address as deposit_wallet,
+                        dw.expected_amount as wallet_expected_amount,
+                        dw.status as wallet_status,
+                        dw.assigned_at as wallet_assigned_at
                     FROM b3c_purchases bp
                     LEFT JOIN users u ON bp.user_id = u.id
+                    LEFT JOIN deposit_wallets dw ON dw.assigned_to_purchase_id = bp.purchase_id
                     ORDER BY bp.created_at DESC
                     LIMIT 1
                 """)
@@ -4308,6 +4313,10 @@ def get_last_b3c_purchase():
                 logger.info(f"[B3C LOGS] Comisión: {float(last_purchase['commission_ton']):.4f} TON")
                 logger.info(f"[B3C LOGS] Estado: {last_purchase['status']}")
                 logger.info(f"[B3C LOGS] Fecha: {last_purchase['created_at']}")
+                if last_purchase.get('deposit_wallet'):
+                    logger.info(f"[B3C LOGS] Wallet de Depósito: {last_purchase['deposit_wallet']}")
+                    logger.info(f"[B3C LOGS] Monto Esperado: {float(last_purchase['wallet_expected_amount'] or 0):.4f} TON")
+                    logger.info(f"[B3C LOGS] Estado Wallet: {last_purchase['wallet_status']}")
                 if last_purchase['tx_hash']:
                     logger.info(f"[B3C LOGS] TX Hash: {last_purchase['tx_hash']}")
                 logger.info(f"[B3C LOGS] =============================================")
@@ -4326,6 +4335,9 @@ def get_last_b3c_purchase():
                 'commissionTon': float(last_purchase['commission_ton']),
                 'status': last_purchase['status'],
                 'txHash': last_purchase['tx_hash'],
+                'depositWallet': last_purchase.get('deposit_wallet'),
+                'walletExpectedAmount': float(last_purchase['wallet_expected_amount']) if last_purchase.get('wallet_expected_amount') else None,
+                'walletStatus': last_purchase.get('wallet_status'),
                 'createdAt': last_purchase['created_at'].isoformat() if last_purchase['created_at'] else None,
                 'confirmedAt': last_purchase['confirmed_at'].isoformat() if last_purchase.get('confirmed_at') else None
             }
