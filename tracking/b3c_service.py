@@ -35,6 +35,8 @@ class B3CTokenService:
     
     COMMISSION_RATE = Decimal('0.05')
     
+    DEFAULT_FIXED_PRICE_USD = Decimal('0.10')
+    
     def __init__(self, 
                  use_testnet: bool = True,
                  b3c_token_address: Optional[str] = None,
@@ -57,12 +59,16 @@ class B3CTokenService:
         self.hot_wallet: str = hot_wallet or os.environ.get('B3C_HOT_WALLET', '')
         self.toncenter_api_key: str = toncenter_api_key or os.environ.get('TONCENTER_API_KEY', '')
         
+        self.use_fixed_price: bool = os.environ.get('B3C_USE_FIXED_PRICE', 'false').lower() == 'true'
+        fixed_price_str = os.environ.get('B3C_FIXED_PRICE_USD', '0.10')
+        self.fixed_price_usd: Decimal = Decimal(fixed_price_str) if fixed_price_str else self.DEFAULT_FIXED_PRICE_USD
+        
         self.api_base = self.TESTNET_TONCENTER_API if use_testnet else self.MAINNET_TONCENTER_API
         
         self._price_cache = {}
         self._price_cache_ttl = 30
         
-        logger.info(f"B3C Service initialized - {'Testnet' if use_testnet else 'Mainnet'}")
+        logger.info(f"B3C Service initialized - {'Testnet' if use_testnet else 'Mainnet'} - Fixed Price: {self.use_fixed_price} ({self.fixed_price_usd} USD)")
         
     def _get_headers(self) -> Dict[str, str]:
         """Obtener headers para las peticiones API."""
@@ -74,6 +80,7 @@ class B3CTokenService:
     def get_b3c_price(self) -> Dict[str, Any]:
         """
         Obtener precio actual del token B3C.
+        Si B3C_USE_FIXED_PRICE=true, retorna el precio fijo configurado.
         
         Returns:
             Dict con precio en TON, USD, y metadata
@@ -85,6 +92,11 @@ class B3CTokenService:
             cached_data, cached_time = self._price_cache[cache_key]
             if now - cached_time < self._price_cache_ttl:
                 return cached_data
+        
+        if self.use_fixed_price:
+            fixed_price_data = self._get_fixed_price()
+            self._price_cache[cache_key] = (fixed_price_data, now)
+            return fixed_price_data
         
         try:
             if not self.b3c_token_address:
@@ -125,6 +137,56 @@ class B3CTokenService:
         except Exception as e:
             logger.error(f"Error fetching B3C price: {e}")
             return self._get_simulated_price()
+    
+    def _get_fixed_price(self) -> Dict[str, Any]:
+        """Precio fijo controlado por el administrador (sin pool de liquidez)."""
+        ton_usd = Decimal(str(self._get_ton_usd_price()))
+        price_ton = self.fixed_price_usd / ton_usd if ton_usd > 0 else Decimal('0.02')
+        
+        return {
+            'success': True,
+            'price_ton': float(price_ton),
+            'price_usd': float(self.fixed_price_usd),
+            'symbol': 'B3C',
+            'name': 'BUNK3R Coin',
+            'decimals': 9,
+            'total_supply': 1000000000,
+            'liquidity_usd': 0,
+            'change_24h': 0,
+            'volume_24h': 0,
+            'updated_at': datetime.utcnow().isoformat(),
+            'source': 'fixed_price',
+            'is_testnet': self.use_testnet,
+            'is_fixed_price': True,
+            'notice': f'Precio fijo: ${self.fixed_price_usd} USD por B3C'
+        }
+    
+    def update_fixed_price(self, new_price_usd: float) -> Dict[str, Any]:
+        """
+        Actualizar el precio fijo del token (solo para administradores).
+        
+        Args:
+            new_price_usd: Nuevo precio en USD
+            
+        Returns:
+            Dict con resultado de la operación
+        """
+        if new_price_usd <= 0:
+            return {'success': False, 'error': 'El precio debe ser mayor a 0'}
+        
+        old_price = self.fixed_price_usd
+        self.fixed_price_usd = Decimal(str(new_price_usd))
+        
+        self._price_cache.clear()
+        
+        logger.info(f"B3C fixed price updated: ${old_price} -> ${self.fixed_price_usd}")
+        
+        return {
+            'success': True,
+            'old_price': float(old_price),
+            'new_price': float(self.fixed_price_usd),
+            'message': f'Precio actualizado a ${self.fixed_price_usd} USD'
+        }
     
     def _get_simulated_price(self) -> Dict[str, Any]:
         """Precio simulado para testnet o cuando no hay datos reales."""
