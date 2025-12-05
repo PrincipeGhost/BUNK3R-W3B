@@ -5340,9 +5340,21 @@ const App = {
         this.closeB3CModal('b3c-deposit-modal');
         this.apiRequest('/api/b3c/deposit/address').then(response => {
             if (!response.success) {
-                this.showToast('Error al obtener direccion de deposito', 'error');
+                this.showToast(response.error || 'Error al obtener direccion de deposito', 'error');
                 return;
             }
+            
+            const expiresInfo = response.expiresInMinutes ? 
+                `<div class="b3c-expires-info">
+                    <span class="expires-icon">⏱️</span>
+                    <span>Expira en ${response.expiresInMinutes} minutos</span>
+                </div>` : '';
+            
+            const purchaseInfo = response.purchaseId ?
+                `<div class="b3c-purchase-id">
+                    <label>ID de Deposito</label>
+                    <code>${response.purchaseId}</code>
+                </div>` : '';
             
             const modal = document.createElement('div');
             modal.className = 'b3c-modal modal-overlay';
@@ -5354,23 +5366,18 @@ const App = {
                         <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-address-modal')">&times;</button>
                     </div>
                     <div class="modal-body">
+                        ${expiresInfo}
+                        ${purchaseInfo}
+                        
                         <div class="b3c-deposit-info">
-                            <p>Envia B3C tokens a la siguiente direccion:</p>
+                            <p>Envia TON a la siguiente direccion unica:</p>
                         </div>
                         
                         <div class="b3c-deposit-address">
-                            <label>Direccion de deposito</label>
+                            <label>Direccion de deposito (unica para ti)</label>
                             <div class="address-box">
                                 <code id="deposit-address">${response.depositAddress}</code>
                                 <button class="btn-copy" onclick="App.copyToClipboard('${response.depositAddress}')">Copiar</button>
-                            </div>
-                        </div>
-                        
-                        <div class="b3c-deposit-memo">
-                            <label>Memo/Comentario (OBLIGATORIO)</label>
-                            <div class="address-box memo-box">
-                                <code id="deposit-memo">${response.depositMemo}</code>
-                                <button class="btn-copy" onclick="App.copyToClipboard('${response.depositMemo}')">Copiar</button>
                             </div>
                         </div>
                         
@@ -5381,8 +5388,8 @@ const App = {
                             </ul>
                         </div>
                         
-                        <div class="b3c-warning">
-                            <span class="warning-icon">&#9888;</span>
+                        <div class="b3c-notice">
+                            <span class="notice-icon">✅</span>
                             <span>${response.notice}</span>
                         </div>
                     </div>

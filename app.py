@@ -3707,25 +3707,58 @@ def get_withdrawal_status(withdrawal_id):
 @app.route('/api/b3c/deposit/address', methods=['GET'])
 @require_telegram_user
 def get_deposit_address():
-    """Obtener direccion de deposito B3C del usuario."""
+    """Crear depósito externo con wallet única del pool (reemplaza wallet maestra)."""
     try:
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        purchase_id = str(uuid.uuid4())[:8].upper()
         
-        hot_wallet = os.environ.get('TON_WALLET_ADDRESS', '')
-        deposit_memo = f'DEP-{user_id[:8]}'
+        from tracking.wallet_pool_service import get_wallet_pool_service
+        
+        if not db_manager:
+            hot_wallet = os.environ.get('TON_WALLET_ADDRESS', '')
+            return jsonify({
+                'success': True,
+                'depositAddress': hot_wallet,
+                'depositMemo': f'DEP-{user_id[:8]}',
+                'instructions': ['Demo mode - deposito simulado'],
+                'minimumDeposit': 0.1,
+                'notice': 'Modo demo'
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO b3c_purchases (purchase_id, user_id, ton_amount, b3c_amount, 
+                                               commission_ton, status, created_at)
+                    VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
+                """, (purchase_id, user_id, 0, 0, 0))
+                conn.commit()
+        
+        wallet_pool = get_wallet_pool_service(db_manager)
+        wallet_assignment = wallet_pool.assign_wallet_for_purchase(user_id, 0, purchase_id)
+        
+        if not wallet_assignment or not wallet_assignment.get('success'):
+            return jsonify({
+                'success': False,
+                'error': 'No hay wallets disponibles. Intenta de nuevo.'
+            }), 503
         
         return jsonify({
             'success': True,
-            'depositAddress': hot_wallet,
-            'depositMemo': deposit_memo,
+            'depositAddress': wallet_assignment['deposit_address'],
+            'depositMemo': f'EXT-{purchase_id}',
+            'purchaseId': purchase_id,
+            'expiresAt': wallet_assignment['expires_at'],
+            'expiresInMinutes': wallet_assignment['expires_in_minutes'],
             'instructions': [
-                'Envia B3C tokens a la direccion indicada',
-                'Incluye el memo/comentario exacto en la transaccion',
-                'El deposito se acreditara en 5-10 minutos',
-                'Minimo: 100 B3C'
+                'Envia TON a la direccion indicada',
+                'Esta direccion es unica para este deposito',
+                f"Tienes {wallet_assignment['expires_in_minutes']} minutos para completar",
+                'El deposito se detectara automaticamente',
+                'Minimo: 0.1 TON'
             ],
-            'minimumDeposit': 100,
-            'notice': 'Asegurate de incluir el memo correcto para identificar tu deposito'
+            'minimumDeposit': 0.1,
+            'notice': 'Esta wallet es unica para ti. Los fondos se acreditaran automaticamente.'
         })
         
     except Exception as e:
