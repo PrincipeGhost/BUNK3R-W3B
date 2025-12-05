@@ -3887,6 +3887,85 @@ def consolidate_wallets():
         return jsonify({'success': False, 'error': 'Error en consolidación'}), 500
 
 
+@app.route('/api/b3c/admin/force-verify/<purchase_id>', methods=['POST'])
+@require_telegram_user
+def admin_force_verify_purchase(purchase_id):
+    """Forzar verificación de una compra específica (admin) - ignora expiración."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'BD no disponible'}), 500
+        
+        from tracking.wallet_pool_service import get_wallet_pool_service
+        wallet_pool = get_wallet_pool_service(db_manager)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT dw.id, dw.wallet_address, dw.expected_amount, dw.status,
+                           dw.assigned_to_user_id, bp.purchase_id
+                    FROM deposit_wallets dw
+                    JOIN b3c_purchases bp ON bp.purchase_id = dw.assigned_to_purchase_id
+                    WHERE bp.purchase_id = %s
+                """, (purchase_id,))
+                wallet_data = cur.fetchone()
+                
+                if not wallet_data:
+                    return jsonify({'success': False, 'error': 'Compra no encontrada'}), 404
+                
+                logger.info(f"[ADMIN FORCE VERIFY] Purchase {purchase_id}: wallet={wallet_data['wallet_address']}")
+                
+                deposit = wallet_pool._check_wallet_for_deposit(
+                    wallet_data['wallet_address'], 
+                    float(wallet_data['expected_amount'])
+                )
+                
+                if deposit.get('found'):
+                    cur.execute("""
+                        UPDATE deposit_wallets 
+                        SET status = 'deposit_confirmed',
+                            deposit_detected_at = NOW(),
+                            deposit_tx_hash = %s,
+                            deposit_amount = %s
+                        WHERE id = %s
+                    """, (deposit['tx_hash'], deposit['amount'], wallet_data['id']))
+                    
+                    wallet_pool._credit_b3c_to_user(
+                        wallet_data['assigned_to_user_id'], 
+                        float(wallet_data['expected_amount']), 
+                        purchase_id
+                    )
+                    
+                    conn.commit()
+                    
+                    return jsonify({
+                        'success': True,
+                        'status': 'confirmed',
+                        'tx_hash': deposit['tx_hash'],
+                        'amount_received': deposit['amount'],
+                        'purchase_id': purchase_id,
+                        'message': 'Depósito confirmado y B3C acreditados'
+                    })
+                
+                return jsonify({
+                    'success': False,
+                    'status': 'not_found',
+                    'message': 'No se encontró depósito en la blockchain',
+                    'wallet': wallet_data['wallet_address'],
+                    'expected': float(wallet_data['expected_amount']),
+                    'api_response': deposit
+                })
+        
+    except Exception as e:
+        logger.error(f"Error in admin force verify: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/b3c/deposits/check', methods=['POST'])
 @require_telegram_user
 def check_b3c_deposits():

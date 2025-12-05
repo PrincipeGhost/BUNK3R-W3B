@@ -371,7 +371,58 @@ class WalletPoolService:
                         }
                     
                     if status == 'assigned':
-                        if expires_at and datetime.now() > expires_at:
+                        is_expired = expires_at and datetime.now() > expires_at
+                        
+                        logger.info(f"[CHECK DEPOSIT] Purchase {purchase_id}: wallet={address[:20]}..., expired={is_expired}")
+                        
+                        deposit = self._check_wallet_for_deposit(address, float(expected_amount))
+                        
+                        if deposit.get('found'):
+                            try:
+                                cur.execute("""
+                                    UPDATE deposit_wallets 
+                                    SET status = 'deposit_confirmed',
+                                        deposit_detected_at = NOW(),
+                                        deposit_tx_hash = %s,
+                                        deposit_amount = %s
+                                    WHERE id = %s
+                                """, (deposit['tx_hash'], deposit['amount'], wallet_id))
+                                
+                                credit_result = self._credit_b3c_to_user_atomic(cur, user_id, float(expected_amount), purchase_id)
+                                
+                                if credit_result:
+                                    conn.commit()
+                                    logger.info(f"[CHECK DEPOSIT] ATOMIC: Deposit confirmed + B3C credited for purchase {purchase_id}")
+                                    
+                                    self._send_purchase_notifications(user_id, credit_result['b3c_amount'], float(expected_amount), purchase_id)
+                                else:
+                                    conn.rollback()
+                                    logger.error(f"[CHECK DEPOSIT] B3C credit failed, rolled back deposit for purchase {purchase_id}")
+                                    return {
+                                        'success': False,
+                                        'status': 'error',
+                                        'error': 'Failed to credit B3C, please contact support'
+                                    }
+                                
+                            except Exception as e:
+                                conn.rollback()
+                                logger.error(f"[CHECK DEPOSIT] Atomic transaction failed: {e}")
+                                return {
+                                    'success': False,
+                                    'status': 'error',
+                                    'error': 'Transaction failed, please try again'
+                                }
+                            
+                            return {
+                                'success': True,
+                                'status': 'confirmed',
+                                'tx_hash': deposit['tx_hash'],
+                                'amount_received': deposit['amount'],
+                                'purchase_id': purchase_id
+                            }
+                        
+                        if is_expired:
+                            logger.info(f"[CHECK DEPOSIT] No deposit found and wallet expired, releasing...")
                             cur.execute("""
                                 UPDATE deposit_wallets 
                                 SET status = 'available',
@@ -387,30 +438,7 @@ class WalletPoolService:
                             return {
                                 'success': True,
                                 'status': 'expired',
-                                'message': 'La dirección de depósito expiró'
-                            }
-                        
-                        deposit = self._check_wallet_for_deposit(address, float(expected_amount))
-                        
-                        if deposit.get('found'):
-                            cur.execute("""
-                                UPDATE deposit_wallets 
-                                SET status = 'deposit_confirmed',
-                                    deposit_detected_at = NOW(),
-                                    deposit_tx_hash = %s,
-                                    deposit_amount = %s
-                                WHERE id = %s
-                            """, (deposit['tx_hash'], deposit['amount'], wallet_id))
-                            conn.commit()
-                            
-                            self._credit_b3c_to_user(user_id, float(expected_amount), purchase_id)
-                            
-                            return {
-                                'success': True,
-                                'status': 'confirmed',
-                                'tx_hash': deposit['tx_hash'],
-                                'amount_received': deposit['amount'],
-                                'purchase_id': purchase_id
+                                'message': 'La dirección de depósito expiró sin recibir pago'
                             }
                         
                         return {
@@ -451,6 +479,9 @@ class WalletPoolService:
             if self.toncenter_api_key:
                 headers['X-API-Key'] = self.toncenter_api_key
             
+            logger.info(f"[DEPOSIT CHECK] Wallet: {wallet_address}, Expected: {expected_amount} TON")
+            logger.info(f"[DEPOSIT CHECK] API Key configured: {bool(self.toncenter_api_key)}, Testnet: {self.use_testnet}")
+            
             if self.use_testnet:
                 api_url = f'{self.TESTNET_API}/getTransactions'
                 params = {
@@ -465,12 +496,16 @@ class WalletPoolService:
                     'sort': 'desc'
                 }
             
+            logger.info(f"[DEPOSIT CHECK] Calling API: {api_url}")
+            
             response = requests.get(
                 api_url,
                 params=params,
                 headers=headers,
-                timeout=10
+                timeout=15
             )
+            
+            logger.info(f"[DEPOSIT CHECK] API Response status: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
@@ -480,10 +515,24 @@ class WalletPoolService:
                 else:
                     transactions = data.get('transactions', [])
                 
-                for tx in transactions:
+                logger.info(f"[DEPOSIT CHECK] Found {len(transactions)} transactions")
+                
+                for i, tx in enumerate(transactions):
                     in_msg = tx.get('in_msg', {})
+                    if not in_msg:
+                        logger.debug(f"[DEPOSIT CHECK] TX {i}: No in_msg, skipping")
+                        continue
+                    
                     value_raw = in_msg.get('value', 0)
-                    value = int(value_raw) / 1e9 if value_raw else 0
+                    source = in_msg.get('source', 'unknown')
+                    
+                    try:
+                        value = int(value_raw) / 1e9 if value_raw else 0
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"[DEPOSIT CHECK] TX {i}: Error parsing value '{value_raw}': {e}")
+                        continue
+                    
+                    logger.info(f"[DEPOSIT CHECK] TX {i}: value={value} TON, source={source[:20] if source else 'N/A'}...")
                     
                     if value >= expected_amount * 0.99:
                         if self.use_testnet:
@@ -491,21 +540,24 @@ class WalletPoolService:
                         else:
                             tx_hash = tx.get('hash', '')
                         
+                        logger.info(f"[DEPOSIT CHECK] FOUND! TX hash: {tx_hash}, Amount: {value} TON")
+                        
                         return {
                             'found': True,
                             'tx_hash': tx_hash,
                             'amount': value,
-                            'from_address': in_msg.get('source', ''),
-                            'timestamp': tx.get('utime', 0)
+                            'from_address': source,
+                            'timestamp': tx.get('utime', tx.get('now', 0))
                         }
                 
-                return {'found': False}
+                logger.info(f"[DEPOSIT CHECK] No matching transaction found (expected >= {expected_amount * 0.99} TON)")
+                return {'found': False, 'transactions_checked': len(transactions)}
             
-            logger.warning(f"TonCenter API error: {response.status_code}")
-            return {'found': False, 'error': 'API error'}
+            logger.warning(f"[DEPOSIT CHECK] TonCenter API error: {response.status_code} - {response.text[:200]}")
+            return {'found': False, 'error': f'API error: {response.status_code}'}
             
         except Exception as e:
-            logger.error(f"Error checking wallet for deposit: {e}")
+            logger.error(f"[DEPOSIT CHECK] Error checking wallet for deposit: {e}", exc_info=True)
             return {'found': False, 'error': str(e)}
     
     def _credit_b3c_to_user(self, user_id: str, ton_amount: float, purchase_id: str) -> bool:
@@ -555,9 +607,9 @@ class WalletPoolService:
                     """, (float(b3c_amount), float(commission), purchase_id))
                     
                     cur.execute("""
-                        INSERT INTO wallet_transactions (user_id, type, amount, description)
-                        VALUES (%s, 'credit', %s, %s)
-                    """, (user_id, float(b3c_amount), f'Compra B3C - {purchase_id}'))
+                        INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id)
+                        VALUES (%s, 'b3c_purchase', %s, %s, %s)
+                    """, (user_id, float(b3c_amount), f'Compra B3C - {purchase_id}', purchase_id))
                     
                     cur.execute("""
                         INSERT INTO b3c_commissions (transaction_type, reference_id, commission_ton)
@@ -566,12 +618,80 @@ class WalletPoolService:
                     
                     conn.commit()
                     
-            logger.info(f"Credited {b3c_amount} B3C to user {user_id} for purchase {purchase_id}")
+            logger.info(f"[B3C CREDIT] Credited {b3c_amount} B3C to user {user_id} for purchase {purchase_id}")
+            
+            self._send_purchase_notifications(user_id, float(b3c_amount), float(ton_amount), purchase_id)
+            
             return True
             
         except Exception as e:
             logger.error(f"Error crediting B3C: {e}")
             return False
+    
+    def _send_purchase_notifications(self, user_id: str, b3c_amount: float, ton_amount: float, purchase_id: str):
+        """
+        Enviar notificaciones de compra exitosa.
+        
+        Args:
+            user_id: ID del usuario
+            b3c_amount: Cantidad de B3C acreditados
+            ton_amount: Cantidad de TON pagados
+            purchase_id: ID de la compra
+        """
+        try:
+            bot_token = os.environ.get('BOT_TOKEN', '')
+            owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+            
+            if not bot_token:
+                logger.warning("[NOTIFICATION] BOT_TOKEN not configured, skipping notifications")
+                return
+            
+            api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            
+            user_message = (
+                f"Tu compra fue exitosa.\n\n"
+                f"+{b3c_amount:.2f} B3C acreditados a tu cuenta.\n"
+                f"Pagaste: {ton_amount} TON\n"
+                f"ID: {purchase_id}"
+            )
+            
+            try:
+                response = requests.post(api_url, json={
+                    'chat_id': user_id,
+                    'text': user_message,
+                    'parse_mode': 'HTML'
+                }, timeout=5)
+                if response.status_code == 200:
+                    logger.info(f"[NOTIFICATION] Sent purchase confirmation to user {user_id}")
+                else:
+                    logger.warning(f"[NOTIFICATION] Failed to notify user {user_id}: {response.text}")
+            except Exception as e:
+                logger.warning(f"[NOTIFICATION] Error sending to user {user_id}: {e}")
+            
+            if owner_id and owner_id != user_id:
+                owner_message = (
+                    f"Nueva compra B3C recibida\n\n"
+                    f"Usuario: {user_id}\n"
+                    f"B3C: +{b3c_amount:.2f}\n"
+                    f"TON: {ton_amount}\n"
+                    f"ID: {purchase_id}"
+                )
+                
+                try:
+                    response = requests.post(api_url, json={
+                        'chat_id': owner_id,
+                        'text': owner_message,
+                        'parse_mode': 'HTML'
+                    }, timeout=5)
+                    if response.status_code == 200:
+                        logger.info(f"[NOTIFICATION] Sent purchase alert to owner {owner_id}")
+                    else:
+                        logger.warning(f"[NOTIFICATION] Failed to notify owner: {response.text}")
+                except Exception as e:
+                    logger.warning(f"[NOTIFICATION] Error sending to owner: {e}")
+                    
+        except Exception as e:
+            logger.error(f"[NOTIFICATION] Error in send_purchase_notifications: {e}")
     
     def release_expired_wallets(self) -> int:
         """

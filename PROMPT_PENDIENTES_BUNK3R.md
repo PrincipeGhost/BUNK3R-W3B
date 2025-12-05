@@ -24,25 +24,31 @@ Esperando tu respuesta...
 | Última actualización | 5 Diciembre 2025 |
 | Sección actual | 25 |
 | Total secciones | 25 |
-| Completadas | 24 ✅ |
-| Pendientes | 1 ⏳ |
+| Completadas | 25 ✅ |
+| Pendientes | 0 ⏳ |
 | En progreso | 0 🔄 |
-| Crítico | 1 🔴 |
+| Crítico | 0 🟢 |
 
 ---
 
 ## RESUMEN EJECUTIVO - ÚLTIMAS ACTUALIZACIONES
 
-### 🔴 SECCIÓN 25: VERIFICACIÓN DE DEPÓSITOS B3C - CRÍTICO (PENDIENTE)
-**Problema detectado:** Usuario compró 0.5 TON desde PC, el pago llegó a la wallet de depósito única, pero:
-- El sistema NO detecta el depósito al verificar
-- El balance de B3C NO se actualiza
-- En móvil: Error `TON_CONNECT_SDK_ERROR Qr Transaction was not sent`
+### ✅ SECCIÓN 25: VERIFICACIÓN DE DEPÓSITOS B3C - COMPLETADO (5 Diciembre 2025)
+**Problema resuelto:** El sistema no detectaba depósitos debido a un error de lógica - verificaba expiración ANTES de verificar depósitos.
 
-**Evidencia:**
-- Wallet de depósito: `UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd`
-- Balance confirmado en TONScan: 0.5 TON recibidos
-- Tabla `deposit_wallets`: `deposit_detected_at = NULL` (no detectado)
+**Correcciones realizadas:**
+1. **Lógica de verificación invertida:** Ahora verifica depósitos PRIMERO, luego expiración
+2. **Column name fix:** `transaction_type` (no `type`) en tabla `wallet_transactions`
+3. **API TonCenter v3:** Estructura correcta `transactions[].in_msg.value`
+4. **Acreditación manual:** 7.41 B3C acreditados a usuario 8305740334 por compra 3269A28F
+5. **Notificaciones Telegram:** Implementadas para usuario y owner al detectar compra
+6. **Logging mejorado:** Logs detallados en cada paso del proceso
+
+**Transacción confirmada:**
+- Wallet: `UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd`
+- TON recibidos: 0.5 TON
+- B3C acreditados: 7.41 B3C
+- Usuario: 8305740334
 
 ### ✅ SECCIÓN 17: PAGOS TON CONNECT - COMPLETADO
 **Problema:** Error `TON_CONNECT_SDK_ERROR` al comprar B3C
