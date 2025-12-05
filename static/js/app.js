@@ -1806,6 +1806,8 @@ const App = {
     },
     
     _pendingAvatarFile: null,
+    _avatarCropper: null,
+    _pendingCropFile: null,
     
     handleAvatarSelect(event) {
         const file = event.target.files[0];
@@ -1821,22 +1823,122 @@ const App = {
             return;
         }
         
-        this._pendingAvatarFile = file;
+        this._pendingCropFile = file;
         
         const reader = new FileReader();
         reader.onload = (e) => {
+            this.showAvatarCropModal(e.target.result);
+        };
+        reader.readAsDataURL(file);
+    },
+    
+    showAvatarCropModal(imageSrc) {
+        const modal = document.getElementById('avatar-crop-modal');
+        const cropImage = document.getElementById('avatar-crop-image');
+        
+        if (!modal || !cropImage) return;
+        
+        if (this._avatarCropper) {
+            this._avatarCropper.destroy();
+            this._avatarCropper = null;
+        }
+        
+        cropImage.src = imageSrc;
+        modal.classList.remove('hidden');
+        
+        setTimeout(() => {
+            if (typeof Cropper !== 'undefined') {
+                this._avatarCropper = new Cropper(cropImage, {
+                    aspectRatio: 1,
+                    viewMode: 1,
+                    dragMode: 'move',
+                    guides: false,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                    minCropBoxWidth: 100,
+                    minCropBoxHeight: 100,
+                    background: false,
+                    responsive: true,
+                    autoCropArea: 0.9
+                });
+            } else {
+                console.error('Cropper.js not loaded');
+                this.showToast('Error al cargar editor', 'error');
+            }
+        }, 100);
+    },
+    
+    cancelAvatarCrop() {
+        const modal = document.getElementById('avatar-crop-modal');
+        if (modal) modal.classList.add('hidden');
+        
+        if (this._avatarCropper) {
+            this._avatarCropper.destroy();
+            this._avatarCropper = null;
+        }
+        
+        this._pendingCropFile = null;
+        const input = document.getElementById('avatar-input');
+        if (input) input.value = '';
+    },
+    
+    confirmAvatarCrop() {
+        if (!this._avatarCropper) {
+            this.showToast('Error al procesar imagen', 'error');
+            return;
+        }
+        
+        const canvas = this._avatarCropper.getCroppedCanvas({
+            width: 400,
+            height: 400,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+        });
+        
+        if (!canvas) {
+            this.showToast('Error al recortar imagen', 'error');
+            return;
+        }
+        
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                this.showToast('Error al procesar imagen', 'error');
+                return;
+            }
+            
+            const fileName = this._pendingCropFile?.name || 'avatar.jpg';
+            const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
+            this._pendingAvatarFile = croppedFile;
+            
             const avatarImg = document.getElementById('edit-profile-avatar-img');
             const avatarInitial = document.getElementById('edit-profile-avatar-initial');
             
             if (avatarImg) {
-                avatarImg.src = e.target.result;
+                avatarImg.src = canvas.toDataURL('image/jpeg');
                 avatarImg.classList.remove('hidden');
             }
             if (avatarInitial) {
                 avatarInitial.classList.add('hidden');
             }
-        };
-        reader.readAsDataURL(file);
+            
+            this.cancelAvatarCrop();
+            this.showToast('Foto ajustada', 'success');
+        }, 'image/jpeg', 0.9);
+    },
+    
+    rotateAvatarCrop(degrees) {
+        if (this._avatarCropper) {
+            this._avatarCropper.rotate(degrees);
+        }
+    },
+    
+    zoomAvatarCrop(ratio) {
+        if (this._avatarCropper) {
+            this._avatarCropper.zoom(ratio);
+        }
     },
     
     async saveProfile() {
