@@ -2048,6 +2048,38 @@ select:focus-visible {
     color: var(--text-secondary);
 }
 
+/* Wallet Header Neo Bank Style */
+.wallet-header-neo {
+    text-align: center;
+    margin-bottom: 28px;
+    padding: 8px 0;
+}
+
+.page-title-neo {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.token-badge-neo {
+    display: inline-block;
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent-primary);
+    background: rgba(66, 153, 225, 0.1);
+    border: 1px solid rgba(66, 153, 225, 0.3);
+    border-radius: 20px;
+}
+
 .section-title {
     font-size: 18px;
     font-weight: 600;
