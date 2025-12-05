@@ -1155,6 +1155,8 @@ const App = {
             this.showWalletSkeleton();
             this.loadTransactionHistory();
             this.loadWalletBalance();
+            this.startB3CPricePolling();
+            this.loadB3CBalance();
         }
         
         if (pageName === 'explore') {
@@ -4068,6 +4070,294 @@ const App = {
                 setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
             }
         });
+    },
+
+    b3cPriceData: null,
+    b3cPriceInterval: null,
+
+    async loadB3CPrice() {
+        try {
+            const response = await this.apiRequest('/api/b3c/price');
+            if (response.success) {
+                this.b3cPriceData = response;
+                this.updateB3CPriceUI(response);
+                this.updateB3CEstimates(response);
+            }
+        } catch (error) {
+            console.error('Error loading B3C price:', error);
+        }
+    },
+
+    updateB3CPriceUI(priceData) {
+        const priceTonEl = document.getElementById('b3c-price-ton');
+        const priceUsdEl = document.getElementById('b3c-price-usd');
+        const networkBadge = document.getElementById('b3c-network-badge');
+        
+        if (priceTonEl) {
+            priceTonEl.textContent = `${priceData.price_ton.toFixed(6)} TON`;
+        }
+        if (priceUsdEl) {
+            priceUsdEl.textContent = `~$${priceData.price_usd.toFixed(4)}`;
+        }
+        if (networkBadge) {
+            networkBadge.textContent = priceData.is_testnet ? 'TESTNET' : 'MAINNET';
+            networkBadge.classList.toggle('mainnet', !priceData.is_testnet);
+        }
+    },
+
+    updateB3CEstimates(priceData) {
+        const amounts = [1, 5, 10, 20];
+        amounts.forEach(ton => {
+            const estEl = document.getElementById(`b3c-est-${ton}`);
+            if (estEl && priceData.price_ton) {
+                const b3c = (ton * 0.95) / priceData.price_ton;
+                estEl.textContent = `~${Math.floor(b3c).toLocaleString()} B3C`;
+            }
+        });
+    },
+
+    async refreshB3CBalance() {
+        const refreshBtn = document.querySelector('.wallet-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.add('spinning');
+        }
+        
+        try {
+            await Promise.all([
+                this.loadB3CBalance(),
+                this.loadB3CPrice(),
+                this.loadTransactionHistory(0, false)
+            ]);
+        } finally {
+            if (refreshBtn) {
+                setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+            }
+        }
+    },
+
+    async loadB3CBalance() {
+        try {
+            const response = await this.apiRequest('/api/b3c/balance');
+            if (response.success) {
+                const balanceEl = document.getElementById('wallet-balance');
+                const valueTonEl = document.getElementById('b3c-value-ton');
+                const valueUsdEl = document.getElementById('b3c-value-usd');
+                
+                if (balanceEl) {
+                    balanceEl.textContent = response.balance_formatted || response.balance.toLocaleString();
+                }
+                if (valueTonEl) {
+                    valueTonEl.textContent = `~${response.value_ton.toFixed(4)} TON`;
+                }
+                if (valueUsdEl) {
+                    valueUsdEl.textContent = `(~$${response.value_usd.toFixed(2)})`;
+                }
+                
+                this.state.update('wallet.balance', response.balance);
+            }
+        } catch (error) {
+            console.error('Error loading B3C balance:', error);
+        }
+    },
+
+    async calculateB3CPreview() {
+        const tonInput = document.getElementById('custom-ton-amount');
+        const previewContainer = document.getElementById('b3c-preview');
+        
+        if (!tonInput || !previewContainer) return;
+        
+        const tonAmount = parseFloat(tonInput.value) || 0;
+        
+        if (tonAmount < 0.1) {
+            previewContainer.classList.add('hidden');
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/b3c/calculate/buy', {
+                method: 'POST',
+                body: JSON.stringify({ tonAmount })
+            });
+            
+            if (response.success) {
+                previewContainer.classList.remove('hidden');
+                
+                document.getElementById('b3c-preview-ton').textContent = `${response.ton_amount} TON`;
+                document.getElementById('b3c-preview-commission').textContent = `${response.commission_ton.toFixed(4)} TON`;
+                document.getElementById('b3c-preview-amount').textContent = `~${Math.floor(response.b3c_amount).toLocaleString()} B3C`;
+            }
+        } catch (error) {
+            console.error('Error calculating B3C preview:', error);
+        }
+    },
+
+    selectB3CAmount(tonAmount) {
+        document.querySelectorAll('.b3c-option').forEach(opt => opt.classList.remove('selected'));
+        const selectedOption = document.querySelector(`.b3c-option[data-ton="${tonAmount}"]`);
+        if (selectedOption) {
+            selectedOption.classList.add('selected');
+        }
+        
+        const tonInput = document.getElementById('custom-ton-amount');
+        if (tonInput) {
+            tonInput.value = tonAmount;
+        }
+        
+        this.calculateB3CPreview();
+    },
+
+    async buyB3CCustom() {
+        const tonInput = document.getElementById('custom-ton-amount');
+        const tonAmount = parseFloat(tonInput?.value) || 0;
+        
+        if (tonAmount < 0.1) {
+            this.showToast('Minimo 0.1 TON', 'error');
+            return;
+        }
+        
+        if (!this.connectedWallet) {
+            this.showToast('Conecta tu wallet primero', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/b3c/buy/create', {
+                method: 'POST',
+                body: JSON.stringify({ tonAmount })
+            });
+            
+            if (response.success) {
+                this.showB3CPaymentModal(response);
+            } else {
+                this.showToast(response.error || 'Error al crear compra', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating B3C purchase:', error);
+            this.showToast('Error al crear compra', 'error');
+        }
+    },
+
+    showB3CPaymentModal(purchaseData) {
+        const modal = document.createElement('div');
+        modal.className = 'b3c-payment-modal modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar Compra B3C</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="b3c-purchase-summary">
+                        <div class="summary-row">
+                            <span>Pagas:</span>
+                            <span class="summary-value">${purchaseData.calculation.ton_amount} TON</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Comision (5%):</span>
+                            <span class="summary-value">${purchaseData.calculation.commission_ton.toFixed(4)} TON</span>
+                        </div>
+                        <div class="summary-row highlight">
+                            <span>Recibiras:</span>
+                            <span class="summary-value success">~${Math.floor(purchaseData.calculation.b3c_amount).toLocaleString()} B3C</span>
+                        </div>
+                    </div>
+                    <div class="b3c-payment-info">
+                        <p class="payment-instruction">Envia exactamente <strong>${purchaseData.calculation.ton_amount} TON</strong> a:</p>
+                        <div class="payment-address">
+                            <code>${purchaseData.hotWallet}</code>
+                            <button class="copy-btn" onclick="navigator.clipboard.writeText('${purchaseData.hotWallet}'); App.showToast('Copiado!', 'success')">Copiar</button>
+                        </div>
+                        <p class="payment-memo">Memo/Comentario: <strong>${purchaseData.comment}</strong></p>
+                    </div>
+                    <div class="b3c-purchase-status" id="purchase-status-${purchaseData.purchaseId}">
+                        <div class="status-waiting">Esperando pago...</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-verify" onclick="App.verifyB3CPurchase('${purchaseData.purchaseId}')">Verificar Pago</button>
+                    <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    },
+
+    async verifyB3CPurchase(purchaseId) {
+        const statusEl = document.getElementById(`purchase-status-${purchaseId}`);
+        if (statusEl) {
+            statusEl.innerHTML = '<div class="status-checking">Verificando en blockchain...</div>';
+        }
+        
+        try {
+            const response = await this.apiRequest(`/api/b3c/buy/${purchaseId}/verify`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                if (response.status === 'confirmed') {
+                    if (statusEl) {
+                        statusEl.innerHTML = `<div class="status-success">Pago confirmado! +${response.b3c_credited.toLocaleString()} B3C</div>`;
+                    }
+                    this.showToast(`+${response.b3c_credited.toLocaleString()} B3C recibidos!`, 'success');
+                    this.showRechargeSuccess(response.b3c_credited);
+                    
+                    setTimeout(() => {
+                        document.querySelector('.b3c-payment-modal')?.remove();
+                        this.refreshB3CBalance();
+                    }, 2000);
+                } else {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<div class="status-waiting">Pago no detectado. Intenta de nuevo en unos segundos.</div>';
+                    }
+                }
+            } else {
+                if (statusEl) {
+                    statusEl.innerHTML = `<div class="status-error">${response.error || 'Error al verificar'}</div>`;
+                }
+            }
+        } catch (error) {
+            console.error('Error verifying B3C purchase:', error);
+            if (statusEl) {
+                statusEl.innerHTML = '<div class="status-error">Error de conexion</div>';
+            }
+        }
+    },
+
+    showB3CBuyModal() {
+        const tonInput = document.getElementById('custom-ton-amount');
+        if (tonInput && tonInput.value) {
+            this.buyB3CCustom();
+        } else {
+            this.showToast('Selecciona una cantidad de TON primero', 'info');
+            tonInput?.focus();
+        }
+    },
+
+    showB3CSellModal() {
+        this.showToast('Funcion de venta proximamente', 'info');
+    },
+
+    showB3CWithdrawModal() {
+        this.showToast('Funcion de retiro proximamente', 'info');
+    },
+
+    startB3CPricePolling() {
+        this.loadB3CPrice();
+        
+        if (this.b3cPriceInterval) {
+            clearInterval(this.b3cPriceInterval);
+        }
+        
+        this.b3cPriceInterval = setInterval(() => {
+            this.loadB3CPrice();
+        }, 30000);
+    },
+
+    stopB3CPricePolling() {
+        if (this.b3cPriceInterval) {
+            clearInterval(this.b3cPriceInterval);
+            this.b3cPriceInterval = null;
+        }
     },
 
     currentDateRange: 'all',

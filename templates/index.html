@@ -749,11 +749,22 @@
                 </div>
             </div>
 
-            <!-- PAGINA BUNK3RCO1N -->
+            <!-- PAGINA B3C TOKEN -->
             <div id="wallet-screen" class="page-screen hidden">
                 <div class="page-header">
-                    <h1 class="page-title">BUNK3RCO1N</h1>
-                    <p class="page-subtitle">Gestiona tus BUNK3RCO1N</p>
+                    <h1 class="page-title">B3C Token</h1>
+                    <p class="page-subtitle">BUNK3R Coin - Token Oficial</p>
+                </div>
+                
+                <div class="b3c-price-ticker" id="b3c-price-ticker">
+                    <div class="price-ticker-left">
+                        <span class="ticker-symbol">B3C</span>
+                        <span class="ticker-network" id="b3c-network-badge">TESTNET</span>
+                    </div>
+                    <div class="price-ticker-right">
+                        <span class="ticker-price" id="b3c-price-ton">0.001 TON</span>
+                        <span class="ticker-price-usd" id="b3c-price-usd">~$0.005</span>
+                    </div>
                 </div>
                 
                 <div class="ton-wallet-section">
@@ -765,7 +776,7 @@
                                     <path d="M37.5603 15.6277H18.4386C14.9228 15.6277 12.6944 19.4202 14.4632 22.4861L26.2644 42.9409C27.0345 44.2765 28.9644 44.2765 29.7345 42.9409L41.5765 22.4861C43.3045 19.4202 41.0761 15.6277 37.5765 15.6277H37.5603Z" fill="white"/>
                                 </svg>
                             </div>
-                            <p class="ton-wallet-text">Conecta tu wallet de Telegram para recargar BUNK3RCO1N con USDT</p>
+                            <p class="ton-wallet-text">Conecta tu wallet TON para comprar y gestionar B3C tokens</p>
                             <button class="ton-connect-btn" id="ton-connect-btn">
                                 <span>Conectar Wallet</span>
                             </button>
@@ -799,34 +810,39 @@
                     </div>
                 </div>
 
-                <div class="wallet-balance-card">
+                <div class="wallet-balance-card b3c-balance-card">
                     <div class="wallet-balance-header">
-                        <span class="wallet-label">Saldo Disponible</span>
+                        <span class="wallet-label">Tu Balance B3C</span>
                         <div class="wallet-header-actions">
-                            <button class="wallet-refresh-btn" onclick="App.refreshWallet()" title="Actualizar saldo">
+                            <button class="wallet-refresh-btn" onclick="App.refreshB3CBalance()" title="Actualizar saldo">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                                 </svg>
                             </button>
-                            <span class="wallet-badge">BUNK3RCO1N</span>
+                            <span class="wallet-badge b3c-badge">B3C</span>
                         </div>
                     </div>
                     <div class="wallet-balance-amount">
-                        <span class="wallet-currency">$</span>
                         <span class="wallet-value" id="wallet-balance">0</span>
+                        <span class="wallet-currency-small">B3C</span>
+                    </div>
+                    <div class="b3c-value-row">
+                        <span class="b3c-value-label">Valor aproximado:</span>
+                        <span class="b3c-value-ton" id="b3c-value-ton">~0 TON</span>
+                        <span class="b3c-value-usd" id="b3c-value-usd">(~$0.00)</span>
                     </div>
                     <div class="wallet-actions-row">
-                        <button class="wallet-action-btn primary" id="add-credits-btn">
+                        <button class="wallet-action-btn primary" id="add-credits-btn" onclick="App.showB3CBuyModal()">
                             <span class="wallet-action-icon">+</span>
-                            <span>Anadir</span>
+                            <span>Comprar</span>
                         </button>
-                        <button class="wallet-action-btn secondary">
-                            <span class="wallet-action-icon">↑</span>
-                            <span>Enviar</span>
-                        </button>
-                        <button class="wallet-action-btn secondary">
+                        <button class="wallet-action-btn secondary" onclick="App.showB3CSellModal()">
                             <span class="wallet-action-icon">↓</span>
-                            <span>Recibir</span>
+                            <span>Vender</span>
+                        </button>
+                        <button class="wallet-action-btn secondary" onclick="App.showB3CWithdrawModal()">
+                            <span class="wallet-action-icon">↑</span>
+                            <span>Retirar</span>
                         </button>
                     </div>
                 </div>
@@ -861,33 +877,47 @@
                         Cargar mas
                     </button>
                 </div>
-                <div class="wallet-section">
-                    <h2 class="section-title">Recargar BUNK3RCO1N con USDT</h2>
-                    <p class="recharge-info">1 BUNK3RCO1N = 1 USDT</p>
-                    <div class="recharge-options">
-                        <div class="recharge-option" data-amount="5" data-usdt="5">
-                            <span class="recharge-amount">5</span>
-                            <span class="recharge-price">5 USDT</span>
+                <div class="wallet-section b3c-buy-section">
+                    <h2 class="section-title">Comprar B3C con TON</h2>
+                    <p class="recharge-info">Comision: 5% - Precio actualizado en tiempo real</p>
+                    <div class="recharge-options b3c-buy-options">
+                        <div class="recharge-option b3c-option" data-ton="1" onclick="App.selectB3CAmount(1)">
+                            <span class="recharge-amount">1 TON</span>
+                            <span class="recharge-price b3c-estimate" id="b3c-est-1">~950 B3C</span>
                         </div>
-                        <div class="recharge-option popular" data-amount="20" data-usdt="20">
+                        <div class="recharge-option b3c-option popular" data-ton="5" onclick="App.selectB3CAmount(5)">
                             <span class="recharge-badge">Popular</span>
-                            <span class="recharge-amount">20</span>
-                            <span class="recharge-price">20 USDT</span>
+                            <span class="recharge-amount">5 TON</span>
+                            <span class="recharge-price b3c-estimate" id="b3c-est-5">~4,750 B3C</span>
                         </div>
-                        <div class="recharge-option" data-amount="50" data-usdt="50">
-                            <span class="recharge-amount">50</span>
-                            <span class="recharge-price">50 USDT</span>
+                        <div class="recharge-option b3c-option" data-ton="10" onclick="App.selectB3CAmount(10)">
+                            <span class="recharge-amount">10 TON</span>
+                            <span class="recharge-price b3c-estimate" id="b3c-est-10">~9,500 B3C</span>
                         </div>
-                        <div class="recharge-option" data-amount="100" data-usdt="100">
-                            <span class="recharge-amount">100</span>
-                            <span class="recharge-price">100 USDT</span>
+                        <div class="recharge-option b3c-option" data-ton="20" onclick="App.selectB3CAmount(20)">
+                            <span class="recharge-amount">20 TON</span>
+                            <span class="recharge-price b3c-estimate" id="b3c-est-20">~19,000 B3C</span>
                         </div>
                     </div>
-                    <div class="custom-recharge">
-                        <label class="custom-recharge-label">Monto personalizado</label>
+                    <div class="custom-recharge b3c-custom">
+                        <label class="custom-recharge-label">Monto personalizado en TON</label>
                         <div class="custom-recharge-input-row">
-                            <input type="number" id="custom-usdt-amount" class="custom-recharge-input" placeholder="Cantidad en USDT" min="1">
-                            <button class="custom-recharge-btn" id="custom-recharge-btn">Recargar</button>
+                            <input type="number" id="custom-ton-amount" class="custom-recharge-input" placeholder="Cantidad en TON" min="0.1" step="0.1" oninput="App.calculateB3CPreview()">
+                            <button class="custom-recharge-btn" id="custom-b3c-btn" onclick="App.buyB3CCustom()">Comprar B3C</button>
+                        </div>
+                        <div class="b3c-preview hidden" id="b3c-preview">
+                            <div class="b3c-preview-row">
+                                <span>Pagas:</span>
+                                <span id="b3c-preview-ton">0 TON</span>
+                            </div>
+                            <div class="b3c-preview-row">
+                                <span>Comision (5%):</span>
+                                <span id="b3c-preview-commission">0 TON</span>
+                            </div>
+                            <div class="b3c-preview-row b3c-preview-total">
+                                <span>Recibiras:</span>
+                                <span id="b3c-preview-amount">~0 B3C</span>
+                            </div>
                         </div>
                     </div>
                 </div>

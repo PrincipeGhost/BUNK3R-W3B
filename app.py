@@ -95,6 +95,8 @@ try:
     logger.info("Virtual numbers tables initialized")
     db_manager.initialize_payments_tables()
     logger.info("Payments tables initialized")
+    db_manager.initialize_b3c_tables()
+    logger.info("B3C tables initialized")
     vn_manager = VirtualNumbersManager(db_manager)
     logger.info("Virtual numbers manager initialized")
 except Exception as e:
@@ -3018,6 +3020,322 @@ def get_wallet_address():
     except Exception as e:
         logger.error(f"Error getting wallet address: {e}")
         return jsonify({'success': True, 'address': None})
+
+
+@app.route('/api/b3c/price', methods=['GET'])
+def get_b3c_price():
+    """Obtener precio actual del token B3C."""
+    try:
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        price_data = b3c.get_b3c_price()
+        return jsonify(price_data)
+    except Exception as e:
+        logger.error(f"Error getting B3C price: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener precio'}), 500
+
+
+@app.route('/api/b3c/calculate/buy', methods=['POST'])
+def calculate_b3c_buy():
+    """Calcular cuantos B3C recibe el usuario por X TON."""
+    try:
+        data = request.get_json()
+        ton_amount = float(data.get('tonAmount', 0))
+        
+        if ton_amount <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        if ton_amount < 0.1:
+            return jsonify({'success': False, 'error': 'Minimo 0.1 TON'}), 400
+        
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        result = b3c.calculate_b3c_from_ton(ton_amount)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error calculating B3C: {e}")
+        return jsonify({'success': False, 'error': 'Error en calculo'}), 500
+
+
+@app.route('/api/b3c/calculate/sell', methods=['POST'])
+def calculate_b3c_sell():
+    """Calcular cuantos TON recibe el usuario por X B3C."""
+    try:
+        data = request.get_json()
+        b3c_amount = float(data.get('b3cAmount', 0))
+        
+        if b3c_amount <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        result = b3c.calculate_ton_from_b3c(b3c_amount)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error calculating TON: {e}")
+        return jsonify({'success': False, 'error': 'Error en calculo'}), 500
+
+
+@app.route('/api/b3c/balance', methods=['GET'])
+def get_b3c_balance():
+    """Obtener balance de B3C del usuario desde compras confirmadas y retiros."""
+    try:
+        user_id = '0'
+        if hasattr(request, 'telegram_user') and request.telegram_user:
+            user_id = str(request.telegram_user.get('id', 0))
+        elif request.headers.get('X-Demo-Mode') == 'true':
+            user_id = '0'
+        else:
+            init_data = request.headers.get('X-Telegram-Init-Data', '')
+            if init_data:
+                from urllib.parse import parse_qs
+                parsed = parse_qs(init_data)
+                if 'user' in parsed:
+                    import json
+                    user_data = json.loads(parsed['user'][0])
+                    user_id = str(user_data.get('id', 0))
+        
+        b3c_balance = 0.0
+        if db_manager:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COALESCE(SUM(b3c_amount), 0) as total_purchased
+                        FROM b3c_purchases 
+                        WHERE user_id = %s AND status = 'confirmed'
+                    """, (user_id,))
+                    purchased = cur.fetchone()
+                    total_purchased = float(purchased[0]) if purchased and purchased[0] else 0
+                    
+                    cur.execute("""
+                        SELECT COALESCE(SUM(b3c_amount), 0) as total_withdrawn
+                        FROM b3c_withdrawals 
+                        WHERE user_id = %s AND status = 'completed'
+                    """, (user_id,))
+                    withdrawn = cur.fetchone()
+                    total_withdrawn = float(withdrawn[0]) if withdrawn and withdrawn[0] else 0
+                    
+                    b3c_balance = total_purchased - total_withdrawn
+        
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        price_data = b3c.get_b3c_price()
+        
+        price_ton = price_data.get('price_ton', 0.001)
+        price_usd = price_data.get('price_usd', 0.005)
+        
+        return jsonify({
+            'success': True,
+            'balance': b3c_balance,
+            'balance_formatted': f"{b3c_balance:,.2f}",
+            'value_ton': b3c_balance * price_ton,
+            'value_usd': b3c_balance * price_usd,
+            'price_per_b3c_ton': price_ton,
+            'price_per_b3c_usd': price_usd,
+            'is_testnet': b3c.use_testnet
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting B3C balance: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener balance', 'balance': 0}), 500
+
+
+@app.route('/api/b3c/config', methods=['GET'])
+def get_b3c_config():
+    """Obtener configuracion del servicio B3C."""
+    try:
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        return jsonify({
+            'success': True,
+            'config': b3c.get_service_config()
+        })
+    except Exception as e:
+        logger.error(f"Error getting B3C config: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener configuracion'}), 500
+
+
+@app.route('/api/b3c/network', methods=['GET'])
+def get_b3c_network_status():
+    """Verificar estado de la red TON."""
+    try:
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        return jsonify(b3c.get_network_status())
+    except Exception as e:
+        logger.error(f"Error getting network status: {e}")
+        return jsonify({'success': False, 'error': 'Error al verificar red'}), 500
+
+
+@app.route('/api/b3c/buy/create', methods=['POST'])
+@require_telegram_user
+def create_b3c_purchase():
+    """Crear solicitud de compra de B3C."""
+    try:
+        data = request.get_json()
+        ton_amount = float(data.get('tonAmount', 0))
+        
+        if ton_amount < 0.1:
+            return jsonify({'success': False, 'error': 'Minimo 0.1 TON'}), 400
+        if ton_amount > 1000:
+            return jsonify({'success': False, 'error': 'Maximo 1000 TON'}), 400
+        
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        purchase_id = str(uuid.uuid4())[:8].upper()
+        
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        calculation = b3c.calculate_b3c_from_ton(ton_amount)
+        
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'purchaseId': purchase_id,
+                'calculation': calculation,
+                'hotWallet': b3c.hot_wallet or 'TESTNET_WALLET',
+                'comment': f'B3C-{purchase_id}',
+                'message': 'Demo mode'
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO b3c_purchases (purchase_id, user_id, ton_amount, b3c_amount, 
+                                               commission_ton, status, created_at)
+                    VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
+                """, (purchase_id, user_id, ton_amount, calculation['b3c_amount'], 
+                      calculation['commission_ton']))
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'purchaseId': purchase_id,
+            'calculation': calculation,
+            'hotWallet': b3c.hot_wallet or os.environ.get('TON_WALLET_ADDRESS', ''),
+            'comment': f'B3C-{purchase_id}',
+            'expiresIn': 900
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating B3C purchase: {e}")
+        return jsonify({'success': False, 'error': 'Error al crear compra'}), 500
+
+
+@app.route('/api/b3c/buy/<purchase_id>/verify', methods=['POST'])
+@require_telegram_user
+@rate_limit('b3c_verify')
+def verify_b3c_purchase(purchase_id):
+    """Verificar si un pago de compra B3C fue recibido."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': True, 'status': 'confirmed', 'message': 'Demo mode'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM b3c_purchases 
+                    WHERE purchase_id = %s AND user_id = %s
+                """, (purchase_id, user_id))
+                purchase = cur.fetchone()
+                
+                if not purchase:
+                    return jsonify({'success': False, 'error': 'Compra no encontrada'}), 404
+                
+                if purchase['status'] == 'confirmed':
+                    return jsonify({'success': True, 'status': 'confirmed', 
+                                    'b3c_credited': float(purchase['b3c_amount'])})
+                
+                from tracking.b3c_service import get_b3c_service
+                b3c = get_b3c_service()
+                
+                verification = b3c.verify_ton_transaction(
+                    tx_hash='',
+                    expected_amount=float(purchase['ton_amount']),
+                    expected_comment=f'B3C-{purchase_id}'
+                )
+                
+                if verification.get('verified'):
+                    b3c_to_credit = float(purchase['b3c_amount'])
+                    
+                    cur.execute("""
+                        UPDATE b3c_purchases 
+                        SET status = 'confirmed', tx_hash = %s, confirmed_at = NOW()
+                        WHERE purchase_id = %s
+                    """, (verification.get('tx_hash', ''), purchase_id))
+                    
+                    cur.execute("""
+                        INSERT INTO wallet_transactions 
+                        (user_id, amount, transaction_type, description, reference_id, created_at)
+                        VALUES (%s, %s, 'credit', %s, %s, NOW())
+                    """, (user_id, b3c_to_credit, f'Compra B3C - {b3c_to_credit} tokens', purchase_id))
+                    
+                    conn.commit()
+                    
+                    return jsonify({
+                        'success': True,
+                        'status': 'confirmed',
+                        'b3c_credited': b3c_to_credit,
+                        'tx_hash': verification.get('tx_hash')
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'status': 'pending',
+                    'message': 'Esperando confirmacion en blockchain'
+                })
+                
+    except Exception as e:
+        logger.error(f"Error verifying B3C purchase: {e}")
+        return jsonify({'success': False, 'error': 'Error al verificar compra'}), 500
+
+
+@app.route('/api/b3c/transactions', methods=['GET'])
+@require_telegram_user
+def get_b3c_transactions():
+    """Obtener historial de transacciones B3C del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        limit = min(int(request.args.get('limit', 50)), 100)
+        offset = int(request.args.get('offset', 0))
+        
+        if not db_manager:
+            return jsonify({'success': True, 'transactions': [], 'total': 0})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, amount, transaction_type, description, reference_id, created_at
+                    FROM wallet_transactions 
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (user_id, limit, offset))
+                transactions = cur.fetchall()
+                
+                cur.execute("SELECT COUNT(*) FROM wallet_transactions WHERE user_id = %s", (user_id,))
+                total = cur.fetchone()['count']
+                
+        return jsonify({
+            'success': True,
+            'transactions': [{
+                'id': tx['id'],
+                'amount': float(tx['amount']),
+                'type': tx['transaction_type'],
+                'description': tx['description'],
+                'reference': tx['reference_id'],
+                'date': tx['created_at'].isoformat() if tx['created_at'] else None
+            } for tx in transactions],
+            'total': total,
+            'has_more': offset + limit < total
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting B3C transactions: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener transacciones'}), 500
 
 
 @app.route('/api/devices/trusted', methods=['GET'])

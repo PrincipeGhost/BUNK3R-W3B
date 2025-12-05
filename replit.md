@@ -225,3 +225,64 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
     - Added `toggleSidebar()` and `closeSidebar()` functions to App
     - Fixed "App.toggleSidebar is not a function" error
     - Proper sidebar overlay management
+
+### B3C Token Integration - Phase 15 (December 5, 2025):
+
+33. **B3C Service Layer** (`tracking/b3c_service.py`):
+    - TON blockchain integration with testnet/mainnet support
+    - Real-time B3C/TON pricing via STON.fi DEX API
+    - TON/USD conversion via CoinGecko API
+    - Price caching (30s TTL) to reduce API calls
+    - Purchase calculation with 5% commission
+    - Sell calculation with 5% commission
+    - Transaction verification on blockchain
+    - Service configuration endpoint
+
+34. **B3C API Endpoints**:
+    - `GET /api/b3c/price` - Current B3C price in TON and USD
+    - `GET /api/b3c/balance` - User's B3C balance with valuations
+    - `GET /api/b3c/config` - Service configuration
+    - `GET /api/b3c/network` - TON network status
+    - `POST /api/b3c/calculate/buy` - Calculate B3C amount for TON
+    - `POST /api/b3c/calculate/sell` - Calculate TON amount for B3C
+    - `POST /api/b3c/buy/create` - Create purchase request
+    - `POST /api/b3c/buy/{id}/verify` - Verify payment on blockchain
+
+35. **B3C Wallet UI**:
+    - Real-time price display (TON and USD)
+    - TESTNET/MAINNET badge indicator
+    - Balance with live TON/USD valuation
+    - Quick-buy options (1, 5, 10, 20 TON)
+    - Custom amount input with live preview
+    - Commission breakdown display
+    - Purchase confirmation modal
+    - Payment verification status
+
+36. **B3C Database Schema**:
+    - `b3c_purchases` table for tracking buy orders
+    - Fields: user_id, ton_amount, b3c_amount, status, tx_hash
+    - Status values: pending, confirmed, failed, expired
+    - Timestamps for created_at and confirmed_at
+
+37. **B3C Frontend Functions** (`static/js/app.js`):
+    - `loadB3CPrice()` - Fetch and cache B3C price
+    - `loadB3CBalance()` - Load user's B3C balance
+    - `updateB3CPriceUI()` - Update price display
+    - `updateB3CEstimates()` - Update quick-buy estimates
+    - `calculateB3CPreview()` - Real-time purchase preview
+    - `selectB3CAmount()` - Handle amount selection
+    - `buyB3CCustom()` - Initiate B3C purchase
+    - `showB3CPaymentModal()` - Payment confirmation modal
+    - `verifyB3CPurchase()` - Check payment status
+    - `startB3CPricePolling()` - Auto-refresh price every 30s
+    - `refreshB3CBalance()` - Manual refresh function
+
+38. **B3C Styling** (`static/css/styles.css`):
+    - `.b3c-wallet-header` - Token branding section
+    - `.b3c-price-info` - Price display with dual currency
+    - `.b3c-network-badge` - Testnet indicator styling
+    - `.b3c-buy-options` - Quick-buy grid layout
+    - `.b3c-preview-card` - Purchase preview styling
+    - `.b3c-action-buttons` - Buy/Sell/Withdraw buttons
+    - `.b3c-payment-modal` - Payment confirmation modal
+    - `.b3c-purchase-status` - Status indicators

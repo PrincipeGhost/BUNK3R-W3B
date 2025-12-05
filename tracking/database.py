@@ -1808,6 +1808,75 @@ class DatabaseManager:
             logger.error(f"Error initializing payments tables: {e}")
             return False
     
+    def initialize_b3c_tables(self):
+        """Inicializar tablas para sistema de token B3C"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS b3c_purchases (
+                            id SERIAL PRIMARY KEY,
+                            purchase_id VARCHAR(20) UNIQUE NOT NULL,
+                            user_id VARCHAR(50) NOT NULL,
+                            ton_amount DECIMAL(20, 9) NOT NULL,
+                            b3c_amount DECIMAL(20, 9) NOT NULL,
+                            commission_ton DECIMAL(20, 9) NOT NULL,
+                            status VARCHAR(20) DEFAULT 'pending',
+                            tx_hash VARCHAR(100),
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            confirmed_at TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_b3c_purchases_user 
+                            ON b3c_purchases(user_id);
+                        CREATE INDEX IF NOT EXISTS idx_b3c_purchases_status 
+                            ON b3c_purchases(status);
+                        
+                        CREATE TABLE IF NOT EXISTS b3c_withdrawals (
+                            id SERIAL PRIMARY KEY,
+                            withdrawal_id VARCHAR(20) UNIQUE NOT NULL,
+                            user_id VARCHAR(50) NOT NULL,
+                            b3c_amount DECIMAL(20, 9) NOT NULL,
+                            destination_wallet VARCHAR(100) NOT NULL,
+                            status VARCHAR(20) DEFAULT 'pending',
+                            tx_hash VARCHAR(100),
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            processed_at TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_b3c_withdrawals_user 
+                            ON b3c_withdrawals(user_id);
+                        
+                        CREATE TABLE IF NOT EXISTS b3c_deposits (
+                            id SERIAL PRIMARY KEY,
+                            deposit_id VARCHAR(20) UNIQUE NOT NULL,
+                            user_id VARCHAR(50) NOT NULL,
+                            b3c_amount DECIMAL(20, 9) NOT NULL,
+                            source_wallet VARCHAR(100),
+                            tx_hash VARCHAR(100),
+                            status VARCHAR(20) DEFAULT 'pending',
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            confirmed_at TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_b3c_deposits_user 
+                            ON b3c_deposits(user_id);
+                        
+                        CREATE TABLE IF NOT EXISTS b3c_commissions (
+                            id SERIAL PRIMARY KEY,
+                            transaction_type VARCHAR(20) NOT NULL,
+                            reference_id VARCHAR(20) NOT NULL,
+                            commission_ton DECIMAL(20, 9) NOT NULL,
+                            commission_usd DECIMAL(20, 9),
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_b3c_commissions_type 
+                            ON b3c_commissions(transaction_type);
+                    """)
+                    conn.commit()
+            logger.info("B3C tables initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Error initializing B3C tables: {e}")
+            return False
+    
     def get_virtual_number_setting(self, key: str, default: str = None) -> str:
         """Obtener configuracion de numeros virtuales"""
         try:
