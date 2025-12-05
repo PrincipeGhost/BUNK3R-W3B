@@ -7,7 +7,8 @@ BUNK3R is a Telegram Web App for comprehensive package tracking and shipment man
 - Language: Spanish (es)
 - Framework: Flask + Vanilla JS
 - Database: PostgreSQL
-- UI Style: Dark theme, Instagram-inspired design
+- UI Style: Neo-bank dark theme with Binance-style gold (#F0B90B) accents
+- Design Reference: Binance/Revolut/N26 - professional, minimalist, no emojis (use SVG icons)
 
 ## System Architecture
 The application is built with a Flask (Python) backend, a PostgreSQL database, and a vanilla JavaScript frontend. Telegram Web App API is used for authentication. The UI/UX is mobile-optimized with an Instagram-inspired dark theme, featuring a bottom navigation bar, a slide-up profile modal, and a sidebar menu.
@@ -94,6 +95,28 @@ El usuario decidió NO usar pool de liquidez (DEX). En su lugar:
 - Verificada sincronización de wallet con backend (saveWalletToBackend, loadSavedWallet)
 - Integración con sistema de dispositivos confiables funcionando
 - TON Connect SDK se inicializa correctamente con manejo de errores
+
+### SECCIÓN 21 - Neo-Bank UI Redesign (EN PROGRESO)
+Rediseño completo del UI al estilo neo-bank profesional (Binance/Revolut/N26):
+
+**Completado:**
+- Paleta de colores actualizada a Binance-style:
+  - Fondos ultra-oscuros: #0B0E11, #12161C, #1E2329
+  - Acento primario: #F0B90B (gold)
+  - Acento secundario: #FCD535 (light gold)
+  - Colores de estado: #02C076 (success), #F6465D (danger)
+- Bottom navigation con 4 iconos SVG (Home, Marketplace, Wallet, Profile)
+- Indicador de pestaña activa en dorado con línea superior
+- Story ring actualizado a gradiente dorado
+- Preload screen con colores gold
+- Botones primarios con fondo gold y texto oscuro
+- Toasts, loaders y modals actualizados
+- Token badge y wallet connect button con estilo gold
+- Formularios e inputs con focus state dorado
+
+**Pendiente:**
+- Reemplazar todos los emojis restantes por iconos SVG (Lucide)
+- Verificación final de todos los componentes
 
 **Última actualización:** 5 Diciembre 2025
 

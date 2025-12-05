@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>BUNK3R</title>
     <style>
-        body{margin:0;padding:0;background:#0d0d1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+        body{margin:0;padding:0;background:#0B0E11;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
         
         .preload-overlay{
             position:fixed;top:0;left:0;right:0;bottom:0;
-            background:linear-gradient(180deg, #0d0d1a 0%, #1a1a2e 50%, #0d0d1a 100%);
+            background:linear-gradient(180deg, #0B0E11 0%, #12161C 50%, #0B0E11 100%);
             display:flex;flex-direction:column;align-items:center;justify-content:center;
             z-index:99999;
             overflow:hidden;
@@ -36,13 +36,13 @@
         
         .preload-glow{
             position:absolute;width:300px;height:300px;
-            background:radial-gradient(circle, rgba(66,153,225,0.15) 0%, transparent 70%);
+            background:radial-gradient(circle, rgba(240,185,11,0.12) 0%, transparent 70%);
             animation:pulse-glow 3s ease-in-out infinite;
             filter:blur(60px);
         }
         
         .preload-glow.secondary{
-            background:radial-gradient(circle, rgba(252,129,129,0.1) 0%, transparent 70%);
+            background:radial-gradient(circle, rgba(240,185,11,0.08) 0%, transparent 70%);
             animation-delay:1.5s;
             transform:translateX(50px);
         }
@@ -58,51 +58,51 @@
         }
         
         .preload-logo{
-            font-size:52px;font-weight:900;color:#fff;
+            font-size:52px;font-weight:900;color:#EAECEF;
             letter-spacing:6px;
             text-shadow:
-                0 0 10px rgba(66,153,225,0.5),
-                0 0 30px rgba(66,153,225,0.3),
-                0 0 60px rgba(66,153,225,0.2),
-                2px 2px 0 #16213e,
-                4px 4px 0 #0d0d1a;
-            font-family:'Courier New',monospace;
+                0 0 10px rgba(240,185,11,0.4),
+                0 0 30px rgba(240,185,11,0.2),
+                0 0 60px rgba(240,185,11,0.1),
+                2px 2px 0 #12161C,
+                4px 4px 0 #0B0E11;
+            font-family:'Inter','Courier New',monospace;
             animation:logo-flicker 4s ease-in-out infinite;
             position:relative;
         }
         
         .preload-logo::before{
             content:'BUNK3R';position:absolute;top:0;left:0;
-            color:#4299e1;opacity:0;
+            color:#F0B90B;opacity:0;
             animation:glitch-1 3s linear infinite;
             clip-path:polygon(0 0, 100% 0, 100% 45%, 0 45%);
         }
         
         .preload-logo::after{
             content:'BUNK3R';position:absolute;top:0;left:0;
-            color:#fc8181;opacity:0;
+            color:#F0B90B;opacity:0;
             animation:glitch-2 3s linear infinite;
             clip-path:polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
         }
         
         .preload-logo .red{
-            color:#fc8181;
+            color:#F0B90B;
             text-shadow:
-                0 0 10px rgba(252,129,129,0.6),
-                0 0 30px rgba(252,129,129,0.4),
-                0 0 60px rgba(252,129,129,0.2),
-                2px 2px 0 #16213e,
-                4px 4px 0 #0d0d1a;
+                0 0 10px rgba(240,185,11,0.6),
+                0 0 30px rgba(240,185,11,0.4),
+                0 0 60px rgba(240,185,11,0.2),
+                2px 2px 0 #12161C,
+                4px 4px 0 #0B0E11;
             position:relative;
             display:inline-block;
             animation:number-pulse 2s ease-in-out infinite;
         }
         
         .preload-tagline{
-            font-size:11px;color:#4299e1;
+            font-size:11px;color:#F0B90B;
             letter-spacing:8px;text-transform:uppercase;
-            margin-top:8px;opacity:0.7;
-            font-family:'Courier New',monospace;
+            margin-top:8px;opacity:0.8;
+            font-family:'Inter','Courier New',monospace;
         }
         
         .preload-loader{
@@ -121,10 +121,10 @@
         
         .preload-bar{
             height:100%;width:0%;
-            background:linear-gradient(90deg, #4299e1 0%, #667eea 50%, #fc8181 100%);
+            background:linear-gradient(90deg, #C99D07 0%, #F0B90B 50%, #FCD535 100%);
             border-radius:3px;
             animation:loading-bar 2.5s ease-in-out forwards;
-            box-shadow:0 0 10px rgba(66,153,225,0.5);
+            box-shadow:0 0 10px rgba(240,185,11,0.5);
         }
         
         .preload-bar::after{
@@ -139,15 +139,15 @@
         
         .preload-pixel{
             width:8px;height:8px;
-            background:#4299e1;
+            background:#F0B90B;
             animation:pixel-dance 0.8s ease-in-out infinite;
         }
         
-        .preload-pixel:nth-child(1){animation-delay:0s;background:#4299e1}
-        .preload-pixel:nth-child(2){animation-delay:0.1s;background:#667eea}
-        .preload-pixel:nth-child(3){animation-delay:0.2s;background:#9f7aea}
-        .preload-pixel:nth-child(4){animation-delay:0.3s;background:#fc8181}
-        .preload-pixel:nth-child(5){animation-delay:0.4s;background:#f6ad55}
+        .preload-pixel:nth-child(1){animation-delay:0s;background:#C99D07}
+        .preload-pixel:nth-child(2){animation-delay:0.1s;background:#D4A50A}
+        .preload-pixel:nth-child(3){animation-delay:0.2s;background:#F0B90B}
+        .preload-pixel:nth-child(4){animation-delay:0.3s;background:#FCD535}
+        .preload-pixel:nth-child(5){animation-delay:0.4s;background:#FFE066}
         
         .preload-text{
             color:#a0aec0;font-size:12px;
@@ -488,36 +488,77 @@
                 </div>
                 <nav class="sidebar-nav">
                     <a href="#" class="sidebar-item" data-section="numeros">
-                        <span class="sidebar-icon">📱</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                                <line x1="12" y1="18" x2="12.01" y2="18"/>
+                            </svg>
+                        </span>
                         <span>Numeros Virtuales</span>
                     </a>
                     <a href="#" class="sidebar-item" data-section="cuentas">
-                        <span class="sidebar-icon">👤</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </span>
                         <span>Cuentas</span>
                     </a>
                     <a href="#" class="sidebar-item" data-section="metodos">
-                        <span class="sidebar-icon">💳</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                <line x1="1" y1="10" x2="23" y2="10"/>
+                            </svg>
+                        </span>
                         <span>Metodos</span>
                     </a>
                     <a href="#" class="sidebar-item" data-section="bots">
-                        <span class="sidebar-icon">🤖</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                <circle cx="12" cy="16" r="1"/>
+                            </svg>
+                        </span>
                         <span>Bots</span>
                     </a>
                     <a href="#" class="sidebar-item" data-section="planes">
-                        <span class="sidebar-icon">💎</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                        </span>
                         <span>Planes y Precios</span>
                     </a>
                     <a href="#" class="sidebar-item" data-section="exchange">
-                        <span class="sidebar-icon">🔄</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="17 1 21 5 17 9"/>
+                                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                                <polyline points="7 23 3 19 7 15"/>
+                                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                            </svg>
+                        </span>
                         <span>Exchange</span>
                     </a>
                     <a href="#" class="sidebar-item" data-section="foro">
-                        <span class="sidebar-icon">💬</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </span>
                         <span>Foro</span>
                     </a>
                     <div class="sidebar-divider"></div>
                     <a href="#" class="sidebar-item" data-section="settings">
-                        <span class="sidebar-icon">⚙️</span>
+                        <span class="sidebar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </span>
                         <span>Configuracion</span>
                     </a>
                 </nav>
@@ -2521,53 +2562,33 @@
         </div>
     </div>
 
-    <!-- BARRA DE NAVEGACION INFERIOR -->
+    <!-- BARRA DE NAVEGACION INFERIOR - NEO-BANK STYLE (4 iconos) -->
     <nav class="bottom-nav hidden" id="bottom-nav" role="navigation" aria-label="Navegacion principal">
         <button class="bottom-nav-item active" data-nav="home" aria-label="Inicio" aria-current="page">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
-            <span class="sr-only">Inicio</span>
         </button>
         <button class="bottom-nav-item" data-nav="marketplace" aria-label="Tienda">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <path d="M16 10a4 4 0 0 1-8 0"></path>
             </svg>
-            <span class="sr-only">Tienda</span>
-        </button>
-        <button class="bottom-nav-item" data-nav="bots" aria-label="Bots">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="3" y="11" width="18" height="10" rx="2"></rect>
-                <circle cx="12" cy="5" r="2"></circle>
-                <path d="M12 7v4"></path>
-                <line x1="8" y1="16" x2="8" y2="16"></line>
-                <line x1="16" y1="16" x2="16" y2="16"></line>
-            </svg>
-            <span class="sr-only">Bots</span>
-        </button>
-        <button class="bottom-nav-item" data-nav="notifications" aria-label="Notificaciones" id="nav-notifications-btn">
-            <div class="bottom-nav-icon-wrapper">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-                <span class="notification-badge hidden" id="notification-badge" aria-label="Notificaciones no leidas">0</span>
-            </div>
-            <span class="sr-only">Notificaciones</span>
         </button>
         <button class="bottom-nav-item" data-nav="wallet" aria-label="Billetera">
-            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                <line x1="1" y1="10" x2="23" y2="10"></line>
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+                <path d="M1 10h22"></path>
+                <circle cx="18" cy="14" r="2"></circle>
             </svg>
-            <span class="sr-only">Billetera</span>
         </button>
         <button class="bottom-nav-item" data-nav="profile" id="nav-profile-btn" aria-label="Mi perfil">
-            <div class="bottom-nav-avatar" id="bottom-nav-avatar" aria-hidden="true"></div>
-            <span class="sr-only">Mi perfil</span>
+            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
         </button>
     </nav>
 
