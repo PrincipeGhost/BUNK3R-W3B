@@ -313,7 +313,7 @@ Si se detecta vulnerabilidad → **DETENER TODO**
 **Prioridad:** ALTA  
 **Agregado:** 5 Diciembre 2025  
 **Actualizado:** 5 Diciembre 2025
-**Estado:** EN PROGRESO (70% - Software completo, pendiente despliegue blockchain)
+**Estado:** EN PROGRESO (85% - Software completo con polling de depósitos, pendiente despliegue blockchain)
 **Origen:** Prompt del usuario - Crear token real con liquidez automática
 
 ---
@@ -812,20 +812,31 @@ RESULTADO: El precio BAJA porque hay más B3C y menos TON en el pool
   - Instrucciones paso a paso
   - Aviso de memo obligatorio
 
+- [x] 15.5.3 Sistema de detección de depósitos (implementado 5 Dic 2025)
+  - POST /api/b3c/deposits/check - Polling blockchain para depósitos
+  - GET /api/b3c/deposits/history - Historial de depósitos del usuario
+  - GET /api/b3c/deposits/pending - Ver depósitos pendientes (admin)
+  - Funciones en b3c_service.py:
+    - poll_hot_wallet_deposits() - Consulta transacciones TON
+    - poll_jetton_deposits() - Consulta transferencias B3C
+    - validate_deposit_memo() - Valida formato DEP-{user_id}
+  - Transacciones SERIALIZABLE para evitar race conditions
+  - Constraint UNIQUE en tx_hash para evitar doble crédito
+  - Tabla b3c_deposit_cursor para tracking de última transacción
+
 **Pendiente para producción:**
-- [ ] Webhook o polling para detectar depósitos entrantes
-- [ ] Auto-acreditación del balance
+- [ ] Configurar B3C_HOT_WALLET y B3C_TOKEN_ADDRESS cuando se cree el token
 
 **Tareas originales:**
 - [x] 15.5.1 Generar dirección de depósito por usuario
   - Cada usuario tiene dirección única
   - O usar memo/comment para identificar
 
-- [ ] 15.5.2 Backend: Detectar depósitos entrantes (pendiente)
+- [x] 15.5.2 Backend: Detectar depósitos entrantes
   - Polling de transacciones a la wallet
-  - O usar webhooks de TON
-  - Identificar usuario por dirección/memo
-  - Acreditar balance interno
+  - Identificar usuario por memo DEP-{user_id}
+  - Acreditar balance interno automáticamente
+  - Protección contra race conditions y doble crédito
 
 - [x] 15.5.3 Frontend: UI de depósito
   - Mostrar dirección de depósito
@@ -833,8 +844,8 @@ RESULTADO: El precio BAJA porque hay más B3C y menos TON en el pool
 
 **Criterios de aceptación:**
 - [x] Usuario puede ver dirección y memo de depósito
-- [ ] Sistema detecta el depósito (pendiente webhook)
-- [ ] Balance se acredita automáticamente (pendiente webhook)
+- [x] Sistema detecta el depósito via polling
+- [x] Balance se acredita automáticamente con protección anti-duplicados
 
 ---
 
@@ -965,26 +976,34 @@ Requiere capital para operar (de las ganancias acumuladas).
 │                     RESUMEN DE IMPLEMENTACIÓN                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  SOFTWARE COMPLETADO (70%):                                              │
+│  SOFTWARE COMPLETADO (85%):                                              │
 │  ──────────────────────────                                              │
 │  ✅ 15.3 - Compra/Venta B3C (endpoints + UI + comisiones)               │
 │  ✅ 15.4 - Sistema de retiro (endpoints + UI + límites)                 │
 │  ✅ 15.5 - Sistema de depósito (dirección/memo + UI)                    │
+│  ✅ 15.5.2 - Polling depósitos blockchain (poll_hot_wallet_deposits,    │
+│              poll_jetton_deposits, validate_deposit_memo)               │
 │  ✅ 15.6 - Dashboard comisiones (tabla + endpoint admin)                │
 │  ✅ 15.7 - Precio en tiempo real (cache + polling)                      │
+│                                                                          │
+│  NUEVOS ENDPOINTS IMPLEMENTADOS (5 Dic 2025):                            │
+│  ─────────────────────────────────────────────                           │
+│  ✅ POST /api/b3c/deposits/check - Verificar y procesar depósitos       │
+│  ✅ GET /api/b3c/deposits/history - Historial de depósitos del usuario  │
+│  ✅ GET /api/b3c/deposits/pending - Ver depósitos pendientes (admin)    │
 │                                                                          │
 │  PENDIENTE - REQUIERE ACCIÓN MANUAL DEL USUARIO:                         │
 │  ───────────────────────────────────────────────                         │
 │  ⏳ 15.1 - Crear token en minter.ton.org                                │
 │  ⏳ 15.2 - Crear pool liquidez en STON.fi                               │
-│  ⏳ 15.5.2 - Configurar webhook/polling depósitos                       │
 │  ⏳ 15.8 - Bot estabilización (cuando llegue a ~$1)                     │
 │                                                                          │
 │  NOTAS IMPORTANTES:                                                      │
 │  ─────────────────                                                       │
 │  • El sistema usa precio SIMULADO hasta que exista el token real        │
 │  • Una vez creado el token, configurar B3C_TOKEN_ADDRESS                │
-│  • El webhook de depósitos se activa tras configurar B3C_TOKEN_ADDRESS  │
+│  • El polling detecta depósitos por memo (DEP-{user_id[:8]})            │
+│  • Se agregó tabla b3c_deposit_cursor para evitar reprocesamiento       │
 │  • Todas las transacciones se registran en b3c_commissions              │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘

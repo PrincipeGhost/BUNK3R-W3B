@@ -20,6 +20,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
+import psycopg2.extensions
 import pyotp
 import qrcode
 
@@ -3646,6 +3647,232 @@ def get_b3c_commissions():
     except Exception as e:
         logger.error(f"Error getting commissions: {e}")
         return jsonify({'success': False, 'error': 'Error al obtener comisiones'}), 500
+
+
+@app.route('/api/b3c/deposits/check', methods=['POST'])
+@require_telegram_user
+def check_b3c_deposits():
+    """Verificar y procesar depósitos B3C pendientes (admin)."""
+    try:
+        if not hasattr(request, 'telegram_user') or not request.telegram_user:
+            return jsonify({'success': False, 'error': 'Usuario no autenticado'}), 401
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if not owner_id or user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        from tracking.b3c_service import get_b3c_service
+        b3c_service = get_b3c_service()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(MAX(last_processed_lt), 0) as last_lt
+                    FROM b3c_deposit_cursor
+                    WHERE wallet_address = %s
+                """, (os.environ.get('TON_WALLET_ADDRESS', ''),))
+                cursor_result = cur.fetchone()
+                last_lt = int(cursor_result['last_lt']) if cursor_result and cursor_result['last_lt'] else 0
+        
+        token_configured = bool(os.environ.get('B3C_TOKEN_ADDRESS', ''))
+        
+        if token_configured:
+            poll_result = b3c_service.poll_jetton_deposits(last_lt)
+        else:
+            poll_result = b3c_service.poll_hot_wallet_deposits(last_lt)
+        
+        if not poll_result['success']:
+            return jsonify({
+                'success': False,
+                'error': poll_result.get('error', 'Error al consultar blockchain')
+            }), 500
+        
+        processed_deposits = []
+        new_deposits = poll_result.get('deposits', [])
+        
+        for deposit in new_deposits:
+            is_valid, user_prefix = b3c_service.validate_deposit_memo(deposit.get('memo', ''))
+            
+            if not is_valid or not user_prefix:
+                logger.warning(f"Depósito sin memo válido: {deposit.get('tx_hash')}")
+                continue
+            
+            tx_hash = deposit.get('tx_hash', '')
+            if not tx_hash:
+                logger.warning("Depósito sin tx_hash, omitiendo")
+                continue
+            
+            with db_manager.get_connection() as conn:
+                raw_conn = conn._conn if hasattr(conn, '_conn') else conn
+                try:
+                    raw_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+                    with raw_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                        cur.execute("""
+                            SELECT user_id FROM users 
+                            WHERE user_id LIKE %s
+                            LIMIT 1
+                        """, (user_prefix + '%',))
+                        user_match = cur.fetchone()
+                        
+                        if not user_match:
+                            logger.warning(f"Usuario no encontrado para prefix: {user_prefix}")
+                            raw_conn.rollback()
+                            continue
+                        
+                        target_user_id = user_match['user_id']
+                        deposit_id = f"DEP-{tx_hash[:16]}"
+                        
+                        cur.execute("""
+                            INSERT INTO b3c_deposits 
+                            (deposit_id, user_id, b3c_amount, source_wallet, tx_hash, status, created_at, confirmed_at)
+                            VALUES (%s, %s, %s, %s, %s, 'confirmed', NOW(), NOW())
+                            ON CONFLICT (tx_hash) DO NOTHING
+                        """, (
+                            deposit_id,
+                            target_user_id,
+                            deposit.get('amount', 0),
+                            deposit.get('source_wallet', ''),
+                            tx_hash
+                        ))
+                        
+                        if cur.rowcount == 1:
+                            cur.execute("""
+                                UPDATE users SET credits = credits + %s
+                                WHERE user_id = %s
+                            """, (deposit.get('amount', 0), target_user_id))
+                            
+                            processed_deposits.append({
+                                'depositId': deposit_id,
+                                'userId': target_user_id,
+                                'amount': deposit.get('amount', 0),
+                                'txHash': tx_hash
+                            })
+                            
+                            raw_conn.commit()
+                        else:
+                            logger.info(f"Depósito {tx_hash} ya procesado, omitiendo")
+                            raw_conn.rollback()
+                except Exception as tx_error:
+                    raw_conn.rollback()
+                    logger.error(f"Error procesando depósito {tx_hash}: {tx_error}")
+                finally:
+                    raw_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+        
+        if poll_result.get('latest_lt', 0) > last_lt:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO b3c_deposit_cursor (wallet_address, last_processed_lt, updated_at)
+                        VALUES (%s, %s, NOW())
+                        ON CONFLICT (wallet_address) 
+                        DO UPDATE SET last_processed_lt = %s, updated_at = NOW()
+                    """, (
+                        os.environ.get('TON_WALLET_ADDRESS', ''),
+                        poll_result['latest_lt'],
+                        poll_result['latest_lt']
+                    ))
+                    conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'checked': len(new_deposits),
+            'processed': len(processed_deposits),
+            'deposits': processed_deposits,
+            'lastLt': poll_result.get('latest_lt', 0),
+            'checkedAt': poll_result.get('checked_at')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking B3C deposits: {e}")
+        return jsonify({'success': False, 'error': 'Error al verificar depósitos'}), 500
+
+
+@app.route('/api/b3c/deposits/history', methods=['GET'])
+@require_telegram_user
+def get_b3c_deposit_history():
+    """Obtener historial de depósitos B3C del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': True, 'deposits': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM b3c_deposits 
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """, (user_id,))
+                deposits = cur.fetchall()
+                
+        return jsonify({
+            'success': True,
+            'deposits': [{
+                'id': d['deposit_id'],
+                'amount': float(d['b3c_amount']),
+                'status': d['status'],
+                'txHash': d.get('tx_hash'),
+                'sourceWallet': d.get('source_wallet'),
+                'createdAt': d['created_at'].isoformat() if d['created_at'] else None,
+                'confirmedAt': d['confirmed_at'].isoformat() if d.get('confirmed_at') else None
+            } for d in deposits]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting deposit history: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener historial'}), 500
+
+
+@app.route('/api/b3c/deposits/pending', methods=['GET'])
+@require_telegram_user
+def get_pending_deposits():
+    """Obtener depósitos pendientes (admin)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': True, 'deposits': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT d.*, u.username, u.first_name
+                    FROM b3c_deposits d
+                    LEFT JOIN users u ON d.user_id = u.user_id
+                    WHERE d.status = 'pending'
+                    ORDER BY d.created_at DESC
+                """)
+                deposits = cur.fetchall()
+                
+        return jsonify({
+            'success': True,
+            'deposits': [{
+                'id': d['deposit_id'],
+                'userId': d['user_id'],
+                'username': d.get('username'),
+                'firstName': d.get('first_name'),
+                'amount': float(d['b3c_amount']),
+                'status': d['status'],
+                'txHash': d.get('tx_hash'),
+                'sourceWallet': d.get('source_wallet'),
+                'createdAt': d['created_at'].isoformat() if d['created_at'] else None
+            } for d in deposits]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting pending deposits: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener pendientes'}), 500
 
 
 @app.route('/api/devices/trusted', methods=['GET'])

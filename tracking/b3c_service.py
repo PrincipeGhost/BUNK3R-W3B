@@ -164,10 +164,10 @@ class B3CTokenService:
         Returns:
             Dict con desglose de la transacción
         """
-        ton_amount = Decimal(str(ton_amount))
+        ton_decimal = Decimal(str(ton_amount))
         
-        commission = ton_amount * self.COMMISSION_RATE
-        ton_for_swap = ton_amount - commission
+        commission = ton_decimal * self.COMMISSION_RATE
+        ton_for_swap = ton_decimal - commission
         
         price_data = self.get_b3c_price()
         price_ton = Decimal(str(price_data.get('price_ton', 0.001)))
@@ -178,11 +178,11 @@ class B3CTokenService:
         b3c_amount = ton_for_swap / price_ton
         
         slippage = Decimal('0.01')
-        min_b3c = b3c_amount * (1 - slippage)
+        min_b3c = b3c_amount * (Decimal('1') - slippage)
         
         return {
             'success': True,
-            'ton_amount': float(ton_amount),
+            'ton_amount': float(ton_decimal),
             'commission_ton': float(commission),
             'commission_rate': float(self.COMMISSION_RATE * 100),
             'ton_for_swap': float(ton_for_swap),
@@ -203,7 +203,7 @@ class B3CTokenService:
         Returns:
             Dict con desglose de la transacción
         """
-        b3c_amount = Decimal(str(b3c_amount))
+        b3c_decimal = Decimal(str(b3c_amount))
         
         price_data = self.get_b3c_price()
         price_ton = Decimal(str(price_data.get('price_ton', 0.001)))
@@ -211,17 +211,17 @@ class B3CTokenService:
         if price_ton <= 0:
             price_ton = Decimal('0.001')
         
-        gross_ton = b3c_amount * price_ton
+        gross_ton = b3c_decimal * price_ton
         
         commission = gross_ton * self.COMMISSION_RATE
         net_ton = gross_ton - commission
         
         slippage = Decimal('0.01')
-        min_ton = net_ton * (1 - slippage)
+        min_ton = net_ton * (Decimal('1') - slippage)
         
         return {
             'success': True,
-            'b3c_amount': float(b3c_amount),
+            'b3c_amount': float(b3c_decimal),
             'gross_ton': float(gross_ton),
             'commission_ton': float(commission),
             'commission_rate': float(self.COMMISSION_RATE * 100),
@@ -450,6 +450,214 @@ class B3CTokenService:
                 'price_feed': True
             }
         }
+    
+    def poll_hot_wallet_deposits(self, last_processed_lt: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Consultar transacciones entrantes a la hot wallet para detectar depósitos.
+        
+        Args:
+            last_processed_lt: Logical time de la última transacción procesada
+            
+        Returns:
+            Dict con lista de nuevos depósitos detectados
+        """
+        if not self.hot_wallet:
+            return {
+                'success': False,
+                'error': 'Hot wallet no configurada',
+                'deposits': []
+            }
+        
+        try:
+            params = {
+                'account': self.hot_wallet,
+                'limit': 100,
+                'sort': 'desc'
+            }
+            
+            response = requests.get(
+                f'{self.api_base}/transactions',
+                params=params,
+                headers=self._get_headers(),
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                return {
+                    'success': False,
+                    'error': f'API error: {response.status_code}',
+                    'deposits': []
+                }
+            
+            data = response.json()
+            transactions = data.get('transactions', [])
+            new_deposits = []
+            latest_lt = last_processed_lt or 0
+            
+            for tx in transactions:
+                tx_lt = int(tx.get('lt', 0))
+                
+                if last_processed_lt and tx_lt <= last_processed_lt:
+                    continue
+                
+                in_msg = tx.get('in_msg', {})
+                value = int(in_msg.get('value', 0))
+                
+                if value <= 0:
+                    continue
+                
+                message = in_msg.get('message', '')
+                source = in_msg.get('source', '')
+                
+                if message.startswith('DEP-'):
+                    user_id_prefix = message.replace('DEP-', '')[:8]
+                    
+                    deposit = {
+                        'tx_hash': tx.get('hash', ''),
+                        'lt': tx_lt,
+                        'amount_nano': value,
+                        'amount': value / 1e9,
+                        'memo': message,
+                        'user_id_prefix': user_id_prefix,
+                        'source_wallet': source,
+                        'timestamp': tx.get('utime', 0),
+                        'status': 'detected'
+                    }
+                    new_deposits.append(deposit)
+                    
+                    if tx_lt > latest_lt:
+                        latest_lt = tx_lt
+            
+            return {
+                'success': True,
+                'deposits': new_deposits,
+                'count': len(new_deposits),
+                'latest_lt': latest_lt,
+                'checked_at': datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error polling deposits: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'deposits': []
+            }
+    
+    def poll_jetton_deposits(self, last_processed_lt: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Consultar transferencias de Jetton (B3C token) a la hot wallet.
+        Solo funciona si B3C_TOKEN_ADDRESS está configurado.
+        
+        Args:
+            last_processed_lt: Logical time de la última transacción procesada
+            
+        Returns:
+            Dict con lista de depósitos de B3C detectados
+        """
+        if not self.hot_wallet or not self.b3c_token_address:
+            return {
+                'success': False,
+                'error': 'Hot wallet o token B3C no configurado',
+                'deposits': []
+            }
+        
+        try:
+            response = requests.get(
+                f'{self.api_base}/jetton/transfers',
+                params={
+                    'account': self.hot_wallet,
+                    'jetton_master': self.b3c_token_address,
+                    'direction': 'in',
+                    'limit': 100,
+                    'sort': 'desc'
+                },
+                headers=self._get_headers(),
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                return {
+                    'success': False,
+                    'error': f'API error: {response.status_code}',
+                    'deposits': []
+                }
+            
+            data = response.json()
+            transfers = data.get('jetton_transfers', [])
+            new_deposits = []
+            latest_lt = last_processed_lt or 0
+            
+            for transfer in transfers:
+                tx_lt = int(transfer.get('transaction_lt', 0))
+                
+                if last_processed_lt and tx_lt <= last_processed_lt:
+                    continue
+                
+                amount = int(transfer.get('amount', 0))
+                if amount <= 0:
+                    continue
+                
+                comment = transfer.get('comment', '') or ''
+                source = transfer.get('source', {}).get('address', '')
+                
+                if comment.startswith('DEP-'):
+                    user_id_prefix = comment.replace('DEP-', '')[:8]
+                else:
+                    user_id_prefix = None
+                
+                deposit = {
+                    'tx_hash': transfer.get('transaction_hash', ''),
+                    'lt': tx_lt,
+                    'amount_nano': amount,
+                    'amount': amount / 1e9,
+                    'memo': comment,
+                    'user_id_prefix': user_id_prefix,
+                    'source_wallet': source,
+                    'timestamp': transfer.get('transaction_now', 0),
+                    'status': 'detected',
+                    'is_jetton': True
+                }
+                new_deposits.append(deposit)
+                
+                if tx_lt > latest_lt:
+                    latest_lt = tx_lt
+            
+            return {
+                'success': True,
+                'deposits': new_deposits,
+                'count': len(new_deposits),
+                'latest_lt': latest_lt,
+                'checked_at': datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error polling jetton deposits: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'deposits': []
+            }
+    
+    def validate_deposit_memo(self, memo: str) -> Tuple[bool, Optional[str]]:
+        """
+        Validar formato del memo de depósito y extraer user_id.
+        
+        Args:
+            memo: Memo/comentario de la transacción
+            
+        Returns:
+            Tuple (es_válido, user_id_prefix o None)
+        """
+        if not memo or not memo.startswith('DEP-'):
+            return False, None
+        
+        user_id_prefix = memo.replace('DEP-', '').strip()[:8]
+        
+        if len(user_id_prefix) < 4:
+            return False, None
+        
+        return True, user_id_prefix
 
 
 b3c_service = None
