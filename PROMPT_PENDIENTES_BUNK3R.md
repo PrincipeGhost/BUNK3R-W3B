@@ -47,33 +47,20 @@ Todo implementado:
 ---
 
 # SECCIÓN 3 - WALLET/BUNK3RCOIN
-## Estado: 40% | PENDIENTE
+## Estado: ✅ COMPLETADA (100%)
 
-### TAREAS PENDIENTES:
-```
-□ 3.1 - Auto-actualizar balance después de cada transacción
-      Archivo: static/js/app.js
-      Implementar: Llamar a loadWalletBalance() automáticamente después de:
-        - Completar una recarga
-        - Enviar/recibir BUNK3RCOIN
-        - Cualquier operación que modifique el balance
-
-□ 3.2 - Confirmación visual clara cuando se completa una recarga
-      Implementar: Modal o animación de éxito después de verificar pago TON
-      Incluir: Confetti, checkmark animado, o similar
-
-□ 3.3 - Límite de intentos para verificación de pagos
-      Archivo: static/js/app.js (función de verificación de pago)
-      Implementar: Máximo 10-15 intentos, luego mostrar mensaje de timeout
-      Evitar: Spam de requests al servidor
-
-□ 3.4 - Manejar pagos TON "pending" que pueden quedarse así
-      Implementar: Timeout de 10-15 minutos para pagos pending
-      UI: Mostrar estado al usuario y opción de reintentar
-```
-
-### YA IMPLEMENTADO:
+Todo implementado:
 - [x] Historial de transacciones con filtros por tipo
+- [x] Auto-actualizar balance después de cada transacción
+      → refreshBalanceAfterTransaction() con verificaciones a 0s, 2s y 5s
+- [x] Confirmación visual clara cuando se completa una recarga
+      → showRechargeSuccess() con animación confetti, checkmark animado, texto mejorado
+- [x] Límite de intentos para verificación de pagos
+      → MAX_VERIFICATION_ATTEMPTS: 5, barra de progreso visual, contador de intentos
+- [x] Manejar pagos TON "pending" con timeout
+      → Timeout de 15 minutos, UI con tiempo restante, mensajes claros al expirar
+
+**NADA PENDIENTE EN ESTA SECCIÓN**
 
 ---
 

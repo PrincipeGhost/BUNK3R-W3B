@@ -663,29 +663,43 @@ const App = {
         }
     },
     
-    goToHome() {
-        document.querySelectorAll('.page-screen, #tracking-module').forEach(screen => {
-            screen.classList.add('hidden');
-        });
-        document.getElementById('home-screen')?.classList.remove('hidden');
+    goToHome(animate = true) {
+        const activeScreens = document.querySelectorAll('.page-screen:not(.hidden), #tracking-module:not(.hidden)');
+        const homeScreen = document.getElementById('home-screen');
+        const isHomeAlreadyVisible = homeScreen && !homeScreen.classList.contains('hidden');
         
-        document.querySelectorAll('.bottom-nav-item').forEach(item => {
-            item.classList.remove('active');
-            item.removeAttribute('aria-current');
-        });
-        const homeBtn = document.querySelector('.bottom-nav-item[data-nav="home"]');
-        if (homeBtn) {
-            homeBtn.classList.add('active');
-            homeBtn.setAttribute('aria-current', 'page');
+        if (isHomeAlreadyVisible) {
+            this.updateBottomNavActive('home');
+            return;
         }
         
-        if (this.tg && this.tg.BackButton) {
-            this.tg.BackButton.hide();
-        }
+        document.querySelectorAll('.page-screen, #home-screen, #tracking-module').forEach(screen => {
+            screen.classList.remove('page-enter', 'page-exit');
+        });
         
-        this.currentSection = 'home';
-        if (typeof StateManager !== 'undefined') {
-            StateManager.setSection('home');
+        const showHome = () => {
+            this.hideAllScreens();
+            if (homeScreen) {
+                homeScreen.classList.remove('hidden');
+            }
+            
+            this.updateBottomNavActive('home');
+            
+            if (this.tg && this.tg.BackButton) {
+                this.tg.BackButton.hide();
+            }
+            
+            this.currentSection = 'home';
+            if (typeof StateManager !== 'undefined') {
+                StateManager.setSection('home');
+            }
+        };
+        
+        if (animate && activeScreens.length > 0) {
+            activeScreens.forEach(screen => screen.classList.add('page-exit'));
+            setTimeout(showHome, 150);
+        } else {
+            showHome();
         }
     },
     
@@ -1071,12 +1085,19 @@ const App = {
     
     _showPageContent(pageName) {
         const pageScreen = document.getElementById(`${pageName}-screen`);
-        if (pageScreen) {
-            pageScreen.classList.remove('hidden', 'page-exit');
-            pageScreen.style.animation = 'none';
-            pageScreen.offsetHeight;
-            pageScreen.style.animation = '';
+        if (!pageScreen) return;
+        
+        const isAlreadyVisible = !pageScreen.classList.contains('hidden');
+        if (isAlreadyVisible) {
+            this.updateBottomNavActive(pageName);
+            return;
         }
+        
+        document.querySelectorAll('.page-screen').forEach(screen => {
+            screen.classList.remove('page-enter', 'page-exit');
+        });
+        
+        pageScreen.classList.remove('hidden');
         
         this.updateBottomNavActive(pageName);
         
@@ -1098,12 +1119,21 @@ const App = {
         }
         
         if (pageName === 'wallet') {
+            this.showWalletSkeleton();
             this.loadTransactionHistory();
             this.loadWalletBalance();
         }
         
         if (pageName === 'explore') {
             this.initExplore();
+        }
+        
+        if (pageName === 'notifications') {
+            this.showNotificationsSkeleton();
+        }
+        
+        if (pageName === 'profile') {
+            this.showProfileSkeleton();
         }
     },
     
@@ -4325,6 +4355,75 @@ const App = {
         };
         
         requestAnimationFrame(animate);
+    },
+
+    showWalletSkeleton() {
+        const transactionList = document.getElementById('transaction-list');
+        if (!transactionList) return;
+        if (transactionList.querySelector('[data-skeleton]')) return;
+        if (transactionList.querySelector('.transaction-item')) return;
+        
+        const skeletonHtml = Array(4).fill().map(() => `
+            <div class="skeleton-transaction" data-skeleton="true">
+                <div class="skeleton-transaction-icon"></div>
+                <div class="skeleton-transaction-info">
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
+        `).join('');
+        transactionList.innerHTML = skeletonHtml;
+    },
+
+    hideWalletSkeleton() {
+        const transactionList = document.getElementById('transaction-list');
+        if (transactionList) {
+            transactionList.querySelectorAll('[data-skeleton]').forEach(s => s.remove());
+        }
+    },
+
+    showNotificationsSkeleton() {
+        const notificationsList = document.getElementById('notifications-list');
+        if (!notificationsList) return;
+        if (notificationsList.querySelector('[data-skeleton]')) return;
+        if (notificationsList.querySelector('.notification-item')) return;
+        
+        const skeletonHtml = Array(5).fill().map(() => `
+            <div class="skeleton-notification" data-skeleton="true">
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-transaction-info">
+                    <div class="skeleton-text" style="width: 80%"></div>
+                    <div class="skeleton-text" style="width: 50%"></div>
+                </div>
+            </div>
+        `).join('');
+        notificationsList.innerHTML = skeletonHtml;
+    },
+
+    hideNotificationsSkeleton() {
+        const notificationsList = document.getElementById('notifications-list');
+        if (notificationsList) {
+            notificationsList.querySelectorAll('[data-skeleton]').forEach(s => s.remove());
+        }
+    },
+
+    showProfileSkeleton() {
+        const profileGrid = document.getElementById('profile-posts-grid');
+        if (!profileGrid) return;
+        if (profileGrid.querySelector('[data-skeleton]')) return;
+        if (profileGrid.querySelector('.profile-grid-item')) return;
+        
+        const skeletonHtml = Array(6).fill().map(() => 
+            `<div class="skeleton-grid-item" data-skeleton="true"></div>`
+        ).join('');
+        profileGrid.innerHTML = skeletonHtml;
+    },
+
+    hideProfileSkeleton() {
+        const profileGrid = document.getElementById('profile-posts-grid');
+        if (profileGrid) {
+            profileGrid.querySelectorAll('[data-skeleton]').forEach(s => s.remove());
+        }
     },
 
     async initiateTONPayment(credits, tonAmount) {

@@ -89,3 +89,26 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
     - Sticky modal header/footer on mobile devices
     - Toast notifications use `column-reverse` layout to prevent overlap
     - CSS animations for toast slide-in/out
+
+### Wallet/BUNK3RCOIN Enhancements (December 5, 2025):
+
+11. **Auto-Refresh Balance System**:
+    - `refreshBalanceAfterTransaction()` centralizes balance updates
+    - Immediate update + delayed polls at 2s and 5s
+    - Automatic transaction history reload
+
+12. **Enhanced Recharge Success UI**:
+    - `launchConfetti()` with 50 colorful falling pieces
+    - Larger success icon with glow effect
+    - Improved confirmation text and subtitle
+
+13. **Payment Verification System**:
+    - `MAX_VERIFICATION_ATTEMPTS: 5` with visual counter
+    - Progress bar showing verification progress
+    - Clear exhaustion messaging when limits reached
+
+14. **Pending Payment Timeout Handling**:
+    - `PAYMENT_TIMEOUT_MS: 15 minutes` automatic expiration
+    - Live countdown showing time remaining
+    - `handlePaymentTimeout()` with support contact info
+    - Proper cleanup of timeout handlers to prevent memory leaks
