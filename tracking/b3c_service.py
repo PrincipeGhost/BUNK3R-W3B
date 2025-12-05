@@ -473,8 +473,9 @@ class B3CTokenService:
     def get_network_status(self) -> Dict[str, Any]:
         """Verificar estado de la red TON."""
         try:
+            endpoint = '/masterchainInfo' if 'v3' in self.api_base else '/getMasterchainInfo'
             response = requests.get(
-                f'{self.api_base}/getMasterchainInfo',
+                f'{self.api_base}{endpoint}',
                 headers=self._get_headers(),
                 timeout=5
             )
