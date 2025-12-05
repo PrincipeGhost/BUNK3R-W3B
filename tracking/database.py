@@ -1884,6 +1884,50 @@ class DatabaseManager:
                             ON b3c_transfers(from_user_id);
                         CREATE INDEX IF NOT EXISTS idx_b3c_transfers_to 
                             ON b3c_transfers(to_user_id);
+                        
+                        -- Deposit Wallets Pool (Sección 24)
+                        CREATE TABLE IF NOT EXISTS deposit_wallets (
+                            id SERIAL PRIMARY KEY,
+                            wallet_address VARCHAR(100) UNIQUE NOT NULL,
+                            private_key_encrypted TEXT NOT NULL,
+                            public_key VARCHAR(100),
+                            status VARCHAR(20) DEFAULT 'available',
+                            assigned_to_user_id VARCHAR(50),
+                            assigned_to_purchase_id VARCHAR(50),
+                            expected_amount DECIMAL(20, 9),
+                            assigned_at TIMESTAMP,
+                            expires_at TIMESTAMP,
+                            deposit_detected_at TIMESTAMP,
+                            deposit_tx_hash VARCHAR(100),
+                            deposit_amount DECIMAL(20, 9),
+                            consolidation_tx_hash VARCHAR(100),
+                            consolidated_at TIMESTAMP,
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_deposit_wallets_status 
+                            ON deposit_wallets(status);
+                        CREATE INDEX IF NOT EXISTS idx_deposit_wallets_user 
+                            ON deposit_wallets(assigned_to_user_id);
+                        CREATE INDEX IF NOT EXISTS idx_deposit_wallets_expires 
+                            ON deposit_wallets(expires_at);
+                        CREATE INDEX IF NOT EXISTS idx_deposit_wallets_purchase 
+                            ON deposit_wallets(assigned_to_purchase_id);
+                        
+                        -- Wallet Pool Config
+                        CREATE TABLE IF NOT EXISTS wallet_pool_config (
+                            id SERIAL PRIMARY KEY,
+                            config_key VARCHAR(50) UNIQUE NOT NULL,
+                            config_value VARCHAR(255) NOT NULL,
+                            updated_at TIMESTAMP DEFAULT NOW()
+                        );
+                        
+                        -- Insert default config if not exists
+                        INSERT INTO wallet_pool_config (config_key, config_value)
+                        VALUES 
+                            ('min_pool_size', '10'),
+                            ('max_assignment_minutes', '30'),
+                            ('consolidation_fee', '0.01')
+                        ON CONFLICT (config_key) DO NOTHING;
                     """)
                     conn.commit()
             logger.info("B3C tables initialized successfully")
