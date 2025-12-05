@@ -4751,26 +4751,73 @@ const App = {
         return address.substring(0, 6) + '...' + address.substring(address.length - 4);
     },
 
+    countSyncedWallets() {
+        const wallets = this.getSyncedWallets();
+        let count = 0;
+        if (wallets.telegram) count++;
+        if (wallets.binance) count++;
+        return count;
+    },
+    
+    getPrimaryWallet() {
+        const wallets = this.getSyncedWallets();
+        if (wallets.telegram) return { type: 'telegram', data: wallets.telegram };
+        if (wallets.binance) return { type: 'binance', data: wallets.binance };
+        return null;
+    },
+    
+    getSecondaryWallet() {
+        const wallets = this.getSyncedWallets();
+        const types = [];
+        if (wallets.telegram) types.push({ type: 'telegram', data: wallets.telegram });
+        if (wallets.binance) types.push({ type: 'binance', data: wallets.binance });
+        return types.length > 1 ? types[1] : null;
+    },
+    
+    getAvailableWalletToSync() {
+        const wallets = this.getSyncedWallets();
+        if (!wallets.telegram) return 'telegram';
+        if (!wallets.binance) return 'binance';
+        return null;
+    },
+
     showB3CDepositModal() {
-        const syncedWallets = this.getSyncedWallets();
-        const hasTelegram = syncedWallets.telegram;
-        const hasBinance = syncedWallets.binance;
-        const hasExternal = syncedWallets.external;
+        const syncedCount = this.countSyncedWallets();
         
+        if (syncedCount === 0) {
+            this.showWalletSyncModal();
+        } else if (syncedCount === 1) {
+            const primary = this.getPrimaryWallet();
+            this.selectedWalletType = primary.type;
+            this.showDepositPackages(primary.type);
+        } else if (syncedCount >= 2) {
+            this.showWalletSelectionModal();
+        }
+    },
+    
+    showWalletSyncModal() {
         const modal = document.createElement('div');
         modal.className = 'b3c-modal modal-overlay';
-        modal.id = 'b3c-deposit-modal';
+        modal.id = 'b3c-sync-modal';
         modal.innerHTML = `
             <div class="modal-content b3c-modal-content">
                 <div class="modal-header">
-                    <h3>Depositar B3C</h3>
-                    <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-modal')">&times;</button>
+                    <h3>Vincular Wallet</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-sync-modal')">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div class="neo-sync-intro">
+                        <div class="neo-sync-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5">
+                                <rect x="2" y="6" width="20" height="12" rx="2"/>
+                                <path d="M22 10H2M7 15h4"/>
+                            </svg>
+                        </div>
+                        <p class="neo-sync-text">Para depositar B3C necesitas vincular una wallet. Selecciona tu wallet preferida:</p>
+                    </div>
                     <div class="neo-wallets-section">
-                        <h3 class="neo-section-title">Selecciona tu wallet</h3>
                         <div class="neo-wallet-options">
-                            <div class="neo-wallet-item ${hasTelegram ? 'synced' : ''}" onclick="App.selectWalletForDeposit('telegram')">
+                            <div class="neo-wallet-item" onclick="App.syncWalletAndDeposit('telegram')">
                                 <div class="neo-wallet-icon telegram">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.828.94z"/>
@@ -4778,15 +4825,13 @@ const App = {
                                 </div>
                                 <div class="neo-wallet-info">
                                     <span class="neo-wallet-name">Telegram Wallet</span>
-                                    ${hasTelegram 
-                                        ? `<span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Sincronizada</span>` 
-                                        : `<span class="neo-wallet-desc">Conecta tu wallet de Telegram</span>`}
+                                    <span class="neo-wallet-desc">Wallet nativa de Telegram</span>
                                 </div>
                                 <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M9 18l6-6-6-6"/>
                                 </svg>
                             </div>
-                            <div class="neo-wallet-item ${hasBinance ? 'synced' : ''}" onclick="App.selectWalletForDeposit('binance')">
+                            <div class="neo-wallet-item" onclick="App.syncWalletAndDeposit('binance')">
                                 <div class="neo-wallet-icon binance">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 0L7.172 4.828l1.768 1.768L12 3.536l3.06 3.06 1.768-1.768L12 0zM4.828 7.172L0 12l4.828 4.828 1.768-1.768L3.536 12l3.06-3.06-1.768-1.768zM19.172 7.172l-1.768 1.768L20.464 12l-3.06 3.06 1.768 1.768L24 12l-4.828-4.828zM12 8.464L8.464 12 12 15.536 15.536 12 12 8.464zM12 20.464l-3.06-3.06-1.768 1.768L12 24l4.828-4.828-1.768-1.768L12 20.464z"/>
@@ -4794,26 +4839,7 @@ const App = {
                                 </div>
                                 <div class="neo-wallet-info">
                                     <span class="neo-wallet-name">Binance</span>
-                                    ${hasBinance 
-                                        ? `<span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Sincronizada</span>` 
-                                        : `<span class="neo-wallet-desc">Conecta tu cuenta Binance</span>`}
-                                </div>
-                                <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M9 18l6-6-6-6"/>
-                                </svg>
-                            </div>
-                            <div class="neo-wallet-item ${hasExternal ? 'synced' : ''}" onclick="App.selectWalletForDeposit('external')">
-                                <div class="neo-wallet-icon external">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="2" y="6" width="20" height="12" rx="2"/>
-                                        <path d="M22 10H2M7 15h4"/>
-                                    </svg>
-                                </div>
-                                <div class="neo-wallet-info">
-                                    <span class="neo-wallet-name">Wallet Externa</span>
-                                    ${hasExternal 
-                                        ? `<span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Sincronizada</span>` 
-                                        : `<span class="neo-wallet-desc">TON, MetaMask, TrustWallet...</span>`}
+                                    <span class="neo-wallet-desc">Conecta tu cuenta Binance</span>
                                 </div>
                                 <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M9 18l6-6-6-6"/>
@@ -4826,8 +4852,132 @@ const App = {
         `;
         document.body.appendChild(modal);
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.closeB3CModal('b3c-deposit-modal');
+            if (e.target === modal) this.closeB3CModal('b3c-sync-modal');
         });
+    },
+    
+    showWalletSelectionModal() {
+        const wallets = this.getSyncedWallets();
+        const walletNames = {
+            telegram: 'Telegram Wallet',
+            binance: 'Binance',
+            external: 'Wallet Externa'
+        };
+        
+        let walletsHtml = '';
+        
+        if (wallets.telegram) {
+            walletsHtml += `
+                <div class="neo-wallet-item synced" onclick="App.selectWalletAndShowPackages('telegram')">
+                    <div class="neo-wallet-icon telegram">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.828.94z"/>
+                        </svg>
+                    </div>
+                    <div class="neo-wallet-info">
+                        <span class="neo-wallet-name">Telegram Wallet</span>
+                        <span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Principal</span>
+                    </div>
+                    <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </div>
+            `;
+        }
+        
+        if (wallets.binance) {
+            const isSecondary = wallets.telegram ? true : false;
+            walletsHtml += `
+                <div class="neo-wallet-item synced" onclick="App.selectWalletAndShowPackages('binance')">
+                    <div class="neo-wallet-icon binance">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0L7.172 4.828l1.768 1.768L12 3.536l3.06 3.06 1.768-1.768L12 0zM4.828 7.172L0 12l4.828 4.828 1.768-1.768L3.536 12l3.06-3.06-1.768-1.768zM19.172 7.172l-1.768 1.768L20.464 12l-3.06 3.06 1.768 1.768L24 12l-4.828-4.828zM12 8.464L8.464 12 12 15.536 15.536 12 12 8.464zM12 20.464l-3.06-3.06-1.768 1.768L12 24l4.828-4.828-1.768-1.768L12 20.464z"/>
+                        </svg>
+                    </div>
+                    <div class="neo-wallet-info">
+                        <span class="neo-wallet-name">Binance</span>
+                        <span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> ${isSecondary ? 'Secundaria / Recuperacion' : 'Principal'}</span>
+                    </div>
+                    <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </div>
+            `;
+        }
+        
+        walletsHtml += `
+            <div class="neo-wallet-item external-option" onclick="App.selectWalletAndShowPackages('external')">
+                <div class="neo-wallet-icon external">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="6" width="20" height="12" rx="2"/>
+                        <path d="M22 10H2M7 15h4"/>
+                    </svg>
+                </div>
+                <div class="neo-wallet-info">
+                    <span class="neo-wallet-name">Cuenta Externa</span>
+                    <span class="neo-wallet-desc">Depositar desde otra wallet</span>
+                </div>
+                <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </div>
+        `;
+        
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-wallet-select-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Seleccionar Wallet</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-wallet-select-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="neo-select-wallet-text">Elige desde que wallet deseas depositar:</p>
+                    <div class="neo-wallets-section">
+                        <div class="neo-wallet-options">
+                            ${walletsHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-wallet-select-modal');
+        });
+    },
+    
+    selectWalletAndShowPackages(type) {
+        this.closeB3CModal('b3c-wallet-select-modal');
+        this.selectedWalletType = type;
+        if (type === 'external') {
+            this.showExternalDepositAddress();
+        } else {
+            this.showDepositPackages(type);
+        }
+    },
+    
+    async syncWalletAndDeposit(type) {
+        this.closeB3CModal('b3c-sync-modal');
+        this.selectedWalletType = type;
+        
+        if (type === 'telegram') {
+            try {
+                const walletAddress = await this.connectTelegramWallet();
+                if (walletAddress) {
+                    this.saveSyncedWallet('telegram', walletAddress);
+                    this.showDepositPackages('telegram');
+                } else {
+                    this.showToast('Conexion de wallet cancelada', 'info');
+                }
+            } catch (error) {
+                console.error('Error connecting telegram wallet:', error);
+                this.showToast('Error al conectar wallet', 'error');
+            }
+        } else if (type === 'binance') {
+            this.connectBinanceWallet();
+        }
     },
     
     async selectWalletForDeposit(type) {
@@ -4870,6 +5020,64 @@ const App = {
             external: 'Wallet Externa'
         };
         
+        const syncedWallets = this.getSyncedWallets();
+        const syncedCount = this.countSyncedWallets();
+        const availableToSync = this.getAvailableWalletToSync();
+        
+        let syncedWalletsHtml = '';
+        let addSecondaryHtml = '';
+        
+        if (syncedCount === 1 && availableToSync) {
+            const availableNames = {
+                telegram: 'Telegram Wallet',
+                binance: 'Binance'
+            };
+            const availableIcons = {
+                telegram: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.828.94z"/></svg>`,
+                binance: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L7.172 4.828l1.768 1.768L12 3.536l3.06 3.06 1.768-1.768L12 0zM4.828 7.172L0 12l4.828 4.828 1.768-1.768L3.536 12l3.06-3.06-1.768-1.768zM19.172 7.172l-1.768 1.768L20.464 12l-3.06 3.06 1.768 1.768L24 12l-4.828-4.828zM12 8.464L8.464 12 12 15.536 15.536 12 12 8.464zM12 20.464l-3.06-3.06-1.768 1.768L12 24l4.828-4.828-1.768-1.768L12 20.464z"/></svg>`
+            };
+            
+            syncedWalletsHtml = `
+                <div class="neo-synced-wallets-section">
+                    <h5 class="neo-synced-title">Wallets vinculadas</h5>
+                    <div class="neo-synced-wallet-item active">
+                        <span class="neo-synced-wallet-icon ${walletType}">${walletType === 'telegram' ? availableIcons.telegram : availableIcons.binance}</span>
+                        <span class="neo-synced-wallet-name">${walletNames[walletType]}</span>
+                        <span class="neo-synced-wallet-badge">En uso</span>
+                    </div>
+                    <div class="neo-add-secondary" onclick="App.addSecondaryWallet('${availableToSync}')">
+                        <span class="neo-add-icon">+</span>
+                        <div class="neo-add-info">
+                            <span class="neo-add-title">Agregar ${availableNames[availableToSync]}</span>
+                            <span class="neo-add-desc">Wallet secundaria / recuperacion</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (syncedCount === 2) {
+            const otherWallet = walletType === 'telegram' ? 'binance' : 'telegram';
+            const otherIcons = {
+                telegram: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.828.94z"/></svg>`,
+                binance: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L7.172 4.828l1.768 1.768L12 3.536l3.06 3.06 1.768-1.768L12 0zM4.828 7.172L0 12l4.828 4.828 1.768-1.768L3.536 12l3.06-3.06-1.768-1.768zM19.172 7.172l-1.768 1.768L20.464 12l-3.06 3.06 1.768 1.768L24 12l-4.828-4.828zM12 8.464L8.464 12 12 15.536 15.536 12 12 8.464zM12 20.464l-3.06-3.06-1.768 1.768L12 24l4.828-4.828-1.768-1.768L12 20.464z"/></svg>`
+            };
+            
+            syncedWalletsHtml = `
+                <div class="neo-synced-wallets-section">
+                    <h5 class="neo-synced-title">Wallets vinculadas</h5>
+                    <div class="neo-synced-wallet-item active">
+                        <span class="neo-synced-wallet-icon ${walletType}">${otherIcons[walletType]}</span>
+                        <span class="neo-synced-wallet-name">${walletNames[walletType]}</span>
+                        <span class="neo-synced-wallet-badge">En uso</span>
+                    </div>
+                    <div class="neo-synced-wallet-item" onclick="App.switchToWallet('${otherWallet}')">
+                        <span class="neo-synced-wallet-icon ${otherWallet}">${otherIcons[otherWallet]}</span>
+                        <span class="neo-synced-wallet-name">${walletNames[otherWallet]}</span>
+                        <span class="neo-synced-wallet-badge secondary">Secundaria</span>
+                    </div>
+                </div>
+            `;
+        }
+        
         const modal = document.createElement('div');
         modal.className = 'b3c-modal modal-overlay';
         modal.id = 'b3c-packages-modal';
@@ -4880,12 +5088,6 @@ const App = {
                     <button class="modal-close" onclick="App.closeB3CModal('b3c-packages-modal')">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div class="neo-wallet-selected">
-                        <span class="neo-wallet-selected-label">Wallet seleccionada</span>
-                        <span class="neo-wallet-selected-name">${walletNames[walletType]}</span>
-                        <button class="neo-change-wallet-btn" onclick="App.closeB3CModal('b3c-packages-modal'); App.showB3CDepositModal();">Cambiar</button>
-                    </div>
-                    
                     <div class="neo-packages-section">
                         <h4 class="neo-packages-title">Selecciona un paquete</h4>
                         <p class="neo-packages-info">Comision: 5% - Precio en tiempo real</p>
@@ -4924,6 +5126,8 @@ const App = {
                             <button class="neo-custom-btn" onclick="App.selectCustomPackage()">Depositar</button>
                         </div>
                     </div>
+                    
+                    ${syncedWalletsHtml}
                 </div>
             </div>
         `;
@@ -4933,6 +5137,32 @@ const App = {
         });
         
         this.updatePackageEstimates();
+    },
+    
+    async addSecondaryWallet(type) {
+        this.closeB3CModal('b3c-packages-modal');
+        
+        if (type === 'telegram') {
+            try {
+                const walletAddress = await this.connectTelegramWallet();
+                if (walletAddress) {
+                    this.saveSyncedWallet('telegram', walletAddress);
+                    this.showToast('Wallet secundaria vinculada', 'success');
+                    this.showDepositPackages('telegram');
+                }
+            } catch (error) {
+                console.error('Error connecting telegram wallet:', error);
+                this.showToast('Error al conectar wallet', 'error');
+            }
+        } else if (type === 'binance') {
+            this.connectBinanceWallet();
+        }
+    },
+    
+    switchToWallet(type) {
+        this.closeB3CModal('b3c-packages-modal');
+        this.selectedWalletType = type;
+        this.showDepositPackages(type);
     },
     
     updatePackageEstimates() {

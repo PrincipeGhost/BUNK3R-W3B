@@ -2658,6 +2658,163 @@ select:focus-visible {
     box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
 }
 
+.neo-sync-intro {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.neo-sync-icon {
+    margin-bottom: 16px;
+}
+
+.neo-sync-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.neo-select-wallet-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.neo-synced-wallets-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.neo-synced-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.neo-synced-wallet-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-synced-wallet-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.neo-synced-wallet-item.active {
+    border-color: var(--accent-success);
+    background: rgba(72, 187, 120, 0.1);
+}
+
+.neo-synced-wallet-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neo-synced-wallet-icon.telegram {
+    background: linear-gradient(135deg, #0088cc, #00a8e8);
+    color: white;
+}
+
+.neo-synced-wallet-icon.binance {
+    background: linear-gradient(135deg, #f0b90b, #f8d12f);
+    color: #1a1a2e;
+}
+
+.neo-synced-wallet-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.neo-synced-wallet-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--accent-success);
+    color: white;
+}
+
+.neo-synced-wallet-badge.secondary {
+    background: rgba(159, 122, 234, 0.2);
+    color: var(--accent-purple);
+}
+
+.neo-add-secondary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(66, 153, 225, 0.05);
+    border: 1px dashed rgba(66, 153, 225, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.neo-add-secondary:hover {
+    background: rgba(66, 153, 225, 0.1);
+    border-color: var(--accent-primary);
+}
+
+.neo-add-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(66, 153, 225, 0.2);
+    color: var(--accent-primary);
+    font-size: 20px;
+    font-weight: 300;
+}
+
+.neo-add-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neo-add-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent-primary);
+}
+
+.neo-add-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.neo-wallet-item.external-option {
+    border-style: dashed;
+    opacity: 0.85;
+}
+
+.neo-wallet-item.external-option:hover {
+    opacity: 1;
+}
+
 .section-title {
     font-size: 18px;
     font-weight: 600;
