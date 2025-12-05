@@ -10,3 +10,4 @@ pyotp
 qrcode
 cloudinary
 cryptography
+cryptography

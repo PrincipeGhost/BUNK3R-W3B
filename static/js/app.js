@@ -4267,26 +4267,33 @@ const App = {
                 return;
             }
 
-            if (!response.hotWallet) {
-                console.error('Missing hotWallet in response:', response);
-                this.showToast('Error: Wallet destino no configurada', 'error');
+            const depositAddress = response.depositAddress || response.hotWallet;
+            if (!depositAddress) {
+                console.error('Missing deposit address in response:', response);
+                this.showToast('Error: Direccion de deposito no disponible', 'error');
                 return;
             }
 
             const purchaseId = response.purchaseId;
-            const amountNano = Math.floor(tonAmount * 1e9).toString();
+            const amountToSend = response.amountToSend || tonAmount;
+            const amountNano = Math.floor(amountToSend * 1e9).toString();
 
-            console.log('Creating transaction:', {
-                address: response.hotWallet,
+            console.log('Creating transaction with unique wallet:', {
+                address: depositAddress,
                 amount: amountNano,
-                comment: response.comment
+                useUniqueWallet: response.useUniqueWallet,
+                expiresInMinutes: response.expiresInMinutes
             });
 
+            if (response.useUniqueWallet) {
+                this.showToast(`Direccion unica asignada. Tienes ${response.expiresInMinutes} min para pagar.`, 'info');
+            }
+
             const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 600,
+                validUntil: Math.floor(Date.now() / 1000) + (response.expiresInMinutes || 15) * 60,
                 messages: [
                     {
-                        address: response.hotWallet,
+                        address: depositAddress,
                         amount: amountNano
                     }
                 ]
@@ -4375,12 +4382,15 @@ const App = {
                         </div>
                     </div>
                     <div class="b3c-payment-info">
-                        <p class="payment-instruction">Envia exactamente <strong>${purchaseData.calculation.ton_amount} TON</strong> a:</p>
+                        <p class="payment-instruction">Envia exactamente <strong>${purchaseData.amountToSend || purchaseData.calculation.ton_amount} TON</strong> a:</p>
                         <div class="payment-address">
-                            <code>${purchaseData.hotWallet}</code>
-                            <button class="copy-btn" onclick="navigator.clipboard.writeText('${purchaseData.hotWallet}'); App.showToast('Copiado!', 'success')">Copiar</button>
+                            <code>${purchaseData.depositAddress || purchaseData.hotWallet}</code>
+                            <button class="copy-btn" onclick="navigator.clipboard.writeText('${purchaseData.depositAddress || purchaseData.hotWallet}'); App.showToast('Copiado!', 'success')">Copiar</button>
                         </div>
-                        <p class="payment-memo">Memo/Comentario: <strong>${purchaseData.comment}</strong></p>
+                        ${purchaseData.useUniqueWallet ? 
+                            `<p class="payment-unique-notice">Esta direccion es UNICA para esta compra. Tienes <strong>${purchaseData.expiresInMinutes} minutos</strong>.</p>` : 
+                            `<p class="payment-memo">Memo/Comentario: <strong>${purchaseData.comment}</strong></p>`
+                        }
                     </div>
                     <div class="b3c-purchase-status" id="purchase-status-${purchaseData.purchaseId}">
                         <div class="status-waiting">Esperando pago...</div>
