@@ -26,6 +26,68 @@ const App = {
     _initialDataLoaded: false,
     _securityDataLoaded: false,
     editModeActive: false,
+    _intervals: [],
+    _eventListeners: [],
+    _abortControllers: [],
+    
+    registerInterval(intervalId) {
+        this._intervals.push(intervalId);
+        return intervalId;
+    },
+    
+    registerEventListener(element, event, handler, options) {
+        if (element) {
+            element.addEventListener(event, handler, options);
+            this._eventListeners.push({ element, event, handler, options });
+        }
+    },
+    
+    registerAbortController(controller) {
+        this._abortControllers.push(controller);
+        return controller;
+    },
+    
+    cleanup() {
+        this._intervals.forEach(id => {
+            if (id) clearInterval(id);
+        });
+        this._intervals = [];
+        
+        if (this.notificationBadgeInterval) {
+            clearInterval(this.notificationBadgeInterval);
+            this.notificationBadgeInterval = null;
+        }
+        
+        if (this.sessionActivityInterval) {
+            clearInterval(this.sessionActivityInterval);
+            this.sessionActivityInterval = null;
+        }
+        
+        if (this.walletPollingInterval) {
+            clearInterval(this.walletPollingInterval);
+            this.walletPollingInterval = null;
+        }
+        
+        this._eventListeners.forEach(({ element, event, handler, options }) => {
+            if (element) {
+                element.removeEventListener(event, handler, options);
+            }
+        });
+        this._eventListeners = [];
+        
+        this._abortControllers.forEach(controller => {
+            if (controller && !controller.signal.aborted) {
+                controller.abort();
+            }
+        });
+        this._abortControllers = [];
+        
+        if (typeof PublicationsManager !== 'undefined' && PublicationsManager.cleanup) {
+            PublicationsManager.cleanup();
+        }
+        
+        console.log('App cleanup completed');
+    },
     
     async init() {
         this.tg = window.Telegram?.WebApp;
@@ -437,7 +499,7 @@ const App = {
             if (this.notificationBadgeInterval) {
                 clearInterval(this.notificationBadgeInterval);
             }
-            this.notificationBadgeInterval = setInterval(() => this.updateNotificationBadge(), 60000);
+            this.notificationBadgeInterval = setInterval(() => this.updateNotificationBadge(), 30000);
         } catch (error) {
             console.error('Error in completeLogin():', error);
             this.showMainApp();
@@ -1574,6 +1636,8 @@ const App = {
     updateAllAvatars() {
         const sidebarAvatar = document.getElementById('sidebar-avatar');
         const bottomNavAvatar = document.getElementById('bottom-nav-avatar');
+        const headerAvatar = document.getElementById('header-avatar');
+        const headerAvatarInitial = document.getElementById('header-avatar-initial');
         const profileAvatar = document.getElementById('profile-avatar');
         const profileAvatarImg = document.getElementById('profile-avatar-img');
         const profileAvatarInitial = document.getElementById('profile-avatar-initial');
@@ -1590,6 +1654,19 @@ const App = {
                 }
             });
             
+            if (headerAvatar) {
+                const existingImg = headerAvatar.querySelector('img');
+                if (existingImg) {
+                    existingImg.src = this.userPhotoUrl;
+                } else {
+                    const img = document.createElement('img');
+                    img.src = this.userPhotoUrl;
+                    img.alt = 'Avatar';
+                    headerAvatar.appendChild(img);
+                }
+                if (headerAvatarInitial) headerAvatarInitial.classList.add('hidden');
+            }
+            
             if (profileAvatarImg) {
                 profileAvatarImg.src = this.userPhotoUrl;
                 profileAvatarImg.classList.remove('hidden');
@@ -1604,6 +1681,15 @@ const App = {
                     el.textContent = this.userInitials;
                 }
             });
+            
+            if (headerAvatar) {
+                const existingImg = headerAvatar.querySelector('img');
+                if (existingImg) existingImg.remove();
+                if (headerAvatarInitial) {
+                    headerAvatarInitial.textContent = this.userInitials;
+                    headerAvatarInitial.classList.remove('hidden');
+                }
+            }
             
             if (profileAvatarImg) {
                 profileAvatarImg.classList.add('hidden');
@@ -3355,6 +3441,80 @@ const App = {
     transactionLimit: 10,
     hasMoreTransactions: true,
     currentTransactionFilter: 'all',
+    walletPollingInterval: null,
+    _lastKnownBalance: 0,
+    
+    startWalletPolling() {
+        if (this.walletPollingInterval) {
+            clearInterval(this.walletPollingInterval);
+        }
+        this.walletPollingInterval = setInterval(() => {
+            this.checkBalanceChange();
+        }, 45000);
+    },
+    
+    stopWalletPolling() {
+        if (this.walletPollingInterval) {
+            clearInterval(this.walletPollingInterval);
+            this.walletPollingInterval = null;
+        }
+    },
+    
+    async checkBalanceChange() {
+        try {
+            const response = await this.apiRequest('/api/wallet/balance', { method: 'GET' });
+            if (response.success) {
+                const newBalance = response.balance;
+                const oldBalance = this._lastKnownBalance;
+                
+                if (oldBalance !== 0 && newBalance !== oldBalance) {
+                    const diff = newBalance - oldBalance;
+                    this.onBalanceChanged(oldBalance, newBalance, diff);
+                }
+                
+                this._lastKnownBalance = newBalance;
+            }
+        } catch (error) {
+            console.error('Error checking balance:', error);
+        }
+    },
+    
+    onBalanceChanged(oldBalance, newBalance, diff) {
+        const balanceEl = document.getElementById('wallet-balance');
+        if (balanceEl) {
+            this.animateBalanceChange(balanceEl, oldBalance, newBalance);
+        }
+        
+        if (diff > 0) {
+            this.showToast(`+${diff.toLocaleString()} BUNK3RCO1N recibidos!`, 'success');
+            if (this.tg && this.tg.HapticFeedback) {
+                this.tg.HapticFeedback.notificationOccurred('success');
+            }
+        } else {
+            this.showToast(`${diff.toLocaleString()} BUNK3RCO1N gastados`, 'info');
+        }
+        
+        const walletScreen = document.getElementById('wallet-screen');
+        if (walletScreen && !walletScreen.classList.contains('hidden')) {
+            this.loadTransactionHistory(0, false);
+        }
+    },
+    
+    refreshWallet() {
+        const refreshBtn = document.querySelector('.wallet-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.add('spinning');
+        }
+        
+        Promise.all([
+            this.loadWalletBalance(true),
+            this.loadTransactionHistory(0, false)
+        ]).finally(() => {
+            if (refreshBtn) {
+                setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+            }
+        });
+    },
 
     initTransactionFilters() {
         document.querySelectorAll('.tx-filter-btn').forEach(btn => {
@@ -3365,6 +3525,8 @@ const App = {
                 this.loadTransactionHistory(0, false);
             });
         });
+        
+        this.startWalletPolling();
     },
 
     async loadTransactionHistory(offset = 0, append = false) {
@@ -3425,13 +3587,34 @@ const App = {
     renderTransaction(tx) {
         const isCredit = tx.amount > 0;
         const dateStr = this.formatRelativeDate(tx.created_at);
+        const status = tx.status || 'confirmed';
+        
+        const typeIcons = {
+            'purchase': '🛒',
+            'reward': '🎁',
+            'transfer_in': '📥',
+            'transfer_out': '📤',
+            'recharge': '💰',
+            'payment': '💳',
+            'refund': '↩️',
+            'bonus': '⭐'
+        };
+        
+        const icon = typeIcons[tx.type] || (isCredit ? '📥' : '📤');
+        
+        let statusBadge = '';
+        if (status === 'pending') {
+            statusBadge = '<span class="tx-status pending">Pendiente</span>';
+        } else if (status === 'cancelled') {
+            statusBadge = '<span class="tx-status cancelled">Cancelado</span>';
+        }
         
         return `
-            <div class="transaction-item ${isCredit ? 'credit' : 'debit'}">
-                <div class="tx-icon">${isCredit ? '↑' : '↓'}</div>
+            <div class="transaction-item ${isCredit ? 'credit' : 'debit'} ${status}">
+                <div class="tx-icon">${icon}</div>
                 <div class="tx-details">
                     <span class="tx-description">${tx.description || (isCredit ? 'Recarga' : 'Gasto')}</span>
-                    <span class="tx-date">${dateStr}</span>
+                    <span class="tx-date">${dateStr} ${statusBadge}</span>
                 </div>
                 <div class="tx-amount ${isCredit ? 'positive' : 'negative'}">
                     ${isCredit ? '+' : ''}${Math.abs(tx.amount).toFixed(2)} B3C
@@ -3841,6 +4024,8 @@ const App = {
                 if (balanceEl) {
                     const oldBalance = parseInt(balanceEl.textContent.replace(/,/g, '')) || 0;
                     const newBalance = response.balance;
+                    
+                    this._lastKnownBalance = newBalance;
                     
                     if (animate && oldBalance !== newBalance) {
                         this.animateBalanceChange(balanceEl, oldBalance, newBalance);
@@ -5704,22 +5889,85 @@ const App = {
         }
     },
 
+    _previousNotifCount: 0,
+    
     async updateNotificationBadge() {
         try {
             const response = await this.apiRequest('/api/notifications/unread-count');
+            const count = response.count || 0;
             
-            const badge = document.getElementById('notification-badge');
-            if (badge) {
-                const count = response.count || 0;
-                if (count > 0) {
-                    badge.textContent = count > 99 ? '99+' : count;
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
+            const bottomBadge = document.getElementById('notification-badge');
+            const headerBadge = document.getElementById('header-notif-badge');
+            
+            [bottomBadge, headerBadge].forEach(badge => {
+                if (badge) {
+                    if (count > 0) {
+                        badge.textContent = count > 99 ? '99+' : count;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
                 }
+            });
+            
+            if (count > this._previousNotifCount && this._previousNotifCount > 0) {
+                this.onNewNotificationReceived(count - this._previousNotifCount);
+            }
+            
+            this._previousNotifCount = count;
+            
+            if (typeof StateManager !== 'undefined') {
+                StateManager.set('unreadNotifications', count);
             }
         } catch (error) {
             console.error('Error updating notification badge:', error);
+        }
+    },
+    
+    onNewNotificationReceived(newCount) {
+        const headerBtn = document.getElementById('header-notif-btn');
+        if (headerBtn) {
+            headerBtn.classList.add('has-new');
+            setTimeout(() => headerBtn.classList.remove('has-new'), 600);
+        }
+        
+        if (this.tg && this.tg.HapticFeedback) {
+            this.tg.HapticFeedback.notificationOccurred('success');
+        }
+        
+        this.showNewNotificationToast(newCount);
+    },
+    
+    showNewNotificationToast(count) {
+        let toast = document.getElementById('new-notif-toast');
+        
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'new-notif-toast';
+            toast.className = 'new-notif-toast';
+            toast.onclick = () => {
+                this.handleBottomNav('notifications');
+                this.hideNewNotificationToast();
+            };
+            document.body.appendChild(toast);
+        }
+        
+        toast.innerHTML = `
+            <span class="new-notif-toast-icon">🔔</span>
+            <span class="new-notif-toast-text">${count} ${count === 1 ? 'nueva notificacion' : 'nuevas notificaciones'}</span>
+        `;
+        
+        requestAnimationFrame(() => {
+            toast.classList.add('visible');
+        });
+        
+        setTimeout(() => this.hideNewNotificationToast(), 4000);
+    },
+    
+    hideNewNotificationToast() {
+        const toast = document.getElementById('new-notif-toast');
+        if (toast) {
+            toast.classList.remove('visible');
         }
     },
 
@@ -5804,4 +6052,17 @@ const App = {
 
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
+});
+
+window.addEventListener('beforeunload', () => {
+    App.cleanup();
+});
+
+window.addEventListener('pagehide', () => {
+    App.cleanup();
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+    }
 });

@@ -123,8 +123,10 @@ const PublicationsManager = {
     feedPollingInterval: null,
     lastFeedCheck: null,
     newPostsCount: 0,
-    POLLING_INTERVAL: 60000,
+    POLLING_INTERVAL: 45000,
     POLLING_ACTIVE: false,
+    _isPullRefreshing: false,
+    _pullStartY: 0,
     
     REACTION_EMOJIS: ['❤️', '😂', '😮', '😢', '😡', '👏', '🔥', '💯'],
     
@@ -142,6 +144,76 @@ const PublicationsManager = {
         this.loadStories();
         this.setupInfiniteScroll();
         this.startFeedPolling();
+        this.setupPullToRefresh();
+    },
+    
+    setupPullToRefresh() {
+        const feedContainer = document.getElementById('publications-feed');
+        if (!feedContainer) return;
+        
+        let pullIndicator = document.getElementById('pull-refresh-indicator');
+        if (!pullIndicator) {
+            pullIndicator = document.createElement('div');
+            pullIndicator.id = 'pull-refresh-indicator';
+            pullIndicator.className = 'pull-refresh-indicator';
+            pullIndicator.innerHTML = '<div class="pull-spinner"></div><span>Suelta para actualizar</span>';
+            feedContainer.parentNode.insertBefore(pullIndicator, feedContainer);
+        }
+        
+        feedContainer.addEventListener('touchstart', (e) => {
+            if (window.scrollY <= 0) {
+                this._pullStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+        
+        feedContainer.addEventListener('touchmove', (e) => {
+            if (this._isPullRefreshing || window.scrollY > 0) return;
+            
+            const pullDistance = e.touches[0].clientY - this._pullStartY;
+            
+            if (pullDistance > 0 && pullDistance < 150) {
+                pullIndicator.style.transform = `translateY(${pullDistance - 60}px)`;
+                pullIndicator.style.opacity = Math.min(pullDistance / 60, 1);
+                
+                if (pullDistance > 60) {
+                    pullIndicator.classList.add('ready');
+                } else {
+                    pullIndicator.classList.remove('ready');
+                }
+            }
+        }, { passive: true });
+        
+        feedContainer.addEventListener('touchend', async () => {
+            const pullIndicator = document.getElementById('pull-refresh-indicator');
+            if (!pullIndicator) return;
+            
+            if (pullIndicator.classList.contains('ready') && !this._isPullRefreshing) {
+                this._isPullRefreshing = true;
+                pullIndicator.classList.add('refreshing');
+                pullIndicator.innerHTML = '<div class="pull-spinner spinning"></div><span>Actualizando...</span>';
+                
+                try {
+                    await this.loadFeed(true);
+                    if (typeof App !== 'undefined' && App.tg && App.tg.HapticFeedback) {
+                        App.tg.HapticFeedback.impactOccurred('light');
+                    }
+                } finally {
+                    setTimeout(() => {
+                        pullIndicator.style.transform = '';
+                        pullIndicator.style.opacity = '';
+                        pullIndicator.classList.remove('ready', 'refreshing');
+                        pullIndicator.innerHTML = '<div class="pull-spinner"></div><span>Suelta para actualizar</span>';
+                        this._isPullRefreshing = false;
+                    }, 300);
+                }
+            } else {
+                pullIndicator.style.transform = '';
+                pullIndicator.style.opacity = '';
+                pullIndicator.classList.remove('ready');
+            }
+            
+            this._pullStartY = 0;
+        }, { passive: true });
     },
 
     cleanup() {
@@ -420,8 +492,12 @@ const PublicationsManager = {
             }
         }
         
-        banner.innerHTML = `<span>↑</span> ${count} ${count === 1 ? 'nueva publicacion' : 'nuevas publicaciones'}`;
+        banner.innerHTML = `<span class="new-posts-arrow">↑</span> ${count} ${count === 1 ? 'nueva publicacion' : 'nuevas publicaciones'}`;
         banner.classList.add('visible');
+        
+        if (typeof App !== 'undefined' && App.tg && App.tg.HapticFeedback) {
+            App.tg.HapticFeedback.impactOccurred('light');
+        }
     },
 
     hideNewPostsBanner() {
