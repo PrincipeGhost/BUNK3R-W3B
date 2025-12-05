@@ -22,10 +22,10 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 5 Diciembre 2025 |
-| Sección actual | SECCIÓN 17 |
-| Total secciones | 17 |
+| Sección actual | SECCIÓN 17-20 |
+| Total secciones | 20 |
 | Completadas | 14 ✅ |
-| Pendientes | 1 ⏳ |
+| Pendientes | 4 ⏳ |
 | En progreso | 0 |
 
 ---
@@ -63,20 +63,7 @@ Actualizar replit.md con:
 - Nuevas dependencias
 - Cambios en arquitectura
 
-### 5. Normas de Análisis
-- Revisar estructura de carpetas
-- Detectar archivos o código muerto
-- Proponer mejoras de arquitectura
-- Evaluar rendimiento
-- Identificar redundancias
-
-### 6. Normas de Interacción
-- Pedir confirmación para cambios críticos
-- Explicar claramente cada modificación
-- No omitir detalles técnicos
-- Proponer alternativas cuando existan
-
-### 7. Normas de Seguridad
+### 5. Normas de Seguridad
 **NO HACER:**
 - Eliminar archivos sin confirmación
 - Cambios destructivos sin aprobación
@@ -87,44 +74,9 @@ Actualizar replit.md con:
 - Validar entradas del usuario
 - Mantener integridad del proyecto
 
-### 8. Actualización Continua
-- Leer siempre replit.md antes de empezar
-- Mantener sincronizados: código, documentación, progreso
-- Corregir inconsistencias
-- Registrar cada avance
-
-### 9. Detección de Vulnerabilidades
-Revisar cada cambio para detectar:
-- Inyección SQL/XSS/CSRF
-- Exposición de datos
-- Accesos sin autorización
-- Código inseguro o deprecated
-- Dependencias vulnerables
-
-### 10. Protocolo de Vulnerabilidad Detectada
-Si se detecta vulnerabilidad → **DETENER TODO**
-
-1. Explicar en chat:
-   - Qué es la vulnerabilidad
-   - Qué daño podría causar
-   - Cómo se previene
-
-2. Corregir inmediatamente
-
-3. Registrar en replit.md:
-```
-### Seguridad / Auditoría
-- Vulnerabilidad: [...]
-- Riesgos: [...]
-- Corrección: [...]
-- Fecha: [...]
-```
-
-4. Reanalizar funciones relacionadas
-
 ---
 
-## SECCIONES DE TRABAJO
+## SECCIONES DE TRABAJO PENDIENTES
 
 ### Leyenda de Estados:
 | Símbolo | Significado |
@@ -136,7 +88,10 @@ Si se detecta vulnerabilidad → **DETENER TODO**
 
 ---
 
-### SECCIÓN 17: AUDITORÍA COMPLETA DE PAGOS Y RETIROS B3C ⏳
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 17: AUDITORÍA COMPLETA DE PAGOS Y RETIROS B3C ⏳
+## ════════════════════════════════════════════════════════════════
+
 **Prioridad:** CRÍTICA  
 **Agregado:** 5 Diciembre 2025  
 **Origen:** Error TON_CONNECT_SDK_ERROR detectado por usuario
@@ -144,43 +99,27 @@ Si se detecta vulnerabilidad → **DETENER TODO**
 
 ---
 
-#### ERROR DETECTADO:
+### ERROR DETECTADO:
 ```
 Error: [TON_CONNECT_SDK_ERROR] z
 SendTransactionRequest validation failed:
 Invalid 'payload' in message at index 0
 ```
 
-**Ubicación:** Función `buildTextCommentPayload()` en `static/js/app.js`
+**Ubicación:** Función `buildTextCommentPayload()` en `static/js/app.js` (líneas 4318-4338)
 **Causa raíz:** El payload se construye de forma incorrecta para TON Connect SDK
 
 ---
 
-#### PROMPT MAESTRO - INVESTIGACIÓN PROFUNDA
+### PROMPT MAESTRO 17: SISTEMA DE PAGOS TON CONNECT
 
-**OBJETIVO:** Investigar a fondo, probar todos los botones y funciones del sistema de pagos/retiros B3C. Verificar que la imagen del error esté resuelta. Encontrar y corregir todos los puntos de quiebre. Que los pagos y retiros funcionen de forma REAL en blockchain TON.
+**OBJETIVO:** Corregir el error de payload y hacer que TODOS los pagos funcionen correctamente.
 
 ---
 
-##### FASE 17.1: Diagnóstico del Error de Payload ⏳
+#### FASE 17.1: Corregir buildTextCommentPayload() ⏳
 
-**Análisis requerido:**
-- [ ] 17.1.1 Revisar función `buildTextCommentPayload()` líneas 4318-4338
-  - El payload actual usa formato incorrecto
-  - TON Connect espera Cell serializado en Base64 (BOC)
-  - El código actual crea un array con prefijo de 4 bytes zeros + texto
-  
-- [ ] 17.1.2 Investigar formato correcto de payload TON Connect
-  - Usar web_search para documentación oficial
-  - El comment en TON debe ser una Cell con opcode 0 + texto
-  - Verificar si necesitamos librería @ton/ton o @ton/core
-  
-- [ ] 17.1.3 Corregir `buildTextCommentPayload()`
-  - Opción A: Usar stateInit/body vacío y solo enviar TON sin comment
-  - Opción B: Construir Cell correctamente con librería @ton/ton
-  - Opción C: Usar formato raw sin Cell (solo para mensajes simples)
-
-**Código actual problemático:**
+**Código actual problemático (líneas 4318-4338):**
 ```javascript
 buildTextCommentPayload(comment) {
     if (!comment) return undefined;
@@ -192,12 +131,11 @@ buildTextCommentPayload(comment) {
         payload[2] = 0;
         payload[3] = 0;
         payload.set(textBytes, 4);
-        
         let binary = '';
         for (let i = 0; i < payload.length; i++) {
             binary += String.fromCharCode(payload[i]);
         }
-        return btoa(binary); // Base64 pero no es BOC válido
+        return btoa(binary); // NO ES BOC VÁLIDO
     } catch (e) {
         console.error('Error building comment payload:', e);
         return undefined;
@@ -205,109 +143,73 @@ buildTextCommentPayload(comment) {
 }
 ```
 
-**Solución propuesta:**
+**PROBLEMA:** TON Connect espera un Cell serializado (BOC), no un array de bytes en base64.
+
+**TAREAS:**
+- [ ] 17.1.1 Investigar formato correcto de payload para TON Connect
+- [ ] 17.1.2 Opción A: Enviar transacción SIN payload (solo monto y destino)
+- [ ] 17.1.3 Opción B: Usar librería @ton/ton para construir Cell correctamente
+- [ ] 17.1.4 Probar que el modal de wallet se abra sin errores
+- [ ] 17.1.5 Verificar que la transacción se envíe correctamente
+
+**SOLUCIÓN PROPUESTA (sin payload):**
 ```javascript
-buildTextCommentPayload(comment) {
-    if (!comment) return undefined;
-    try {
-        // TON comment format: 0x00000000 (4 bytes) + UTF-8 text
-        const encoder = new TextEncoder();
-        const commentBytes = encoder.encode(comment);
-        const payload = new Uint8Array(4 + commentBytes.length);
-        // Opcode 0 para comentarios de texto (little-endian)
-        new DataView(payload.buffer).setUint32(0, 0, true);
-        payload.set(commentBytes, 4);
-        // Convertir a base64 de forma segura
-        return btoa(String.fromCharCode.apply(null, payload));
-    } catch (e) {
-        console.error('Error building comment payload:', e);
-        return undefined;
-    }
-}
+const transaction = {
+    validUntil: Math.floor(Date.now() / 1000) + 600,
+    messages: [
+        {
+            address: response.hotWallet,
+            amount: amountNano
+            // SIN payload - usar verificación por monto/timing
+        }
+    ]
+};
 ```
 
 ---
 
-##### FASE 17.2: Verificar Flujo Completo de Compra B3C ⏳
+#### FASE 17.2: Probar TODOS los Botones de Compra B3C ⏳
 
-**Botones a probar:**
+**Botones a probar uno por uno:**
 - [ ] 17.2.1 Botón "0.5 TON" (Prueba)
 - [ ] 17.2.2 Botón "1 TON"
 - [ ] 17.2.3 Botón "5 TON" (Popular)
 - [ ] 17.2.4 Botón "10 TON"
 - [ ] 17.2.5 Botón "20 TON"
-- [ ] 17.2.6 Input personalizado con monto custom
+- [ ] 17.2.6 Input personalizado (monto custom)
 
-**Para cada botón verificar:**
-1. ¿Se abre el modal de TON Connect?
-2. ¿Aparece la transacción pre-configurada en la wallet?
-3. ¿El monto es correcto?
-4. ¿La wallet destino es correcta (hotWallet)?
-5. ¿El comentario/memo se incluye?
-6. ¿La transacción se envía sin errores?
-7. ¿Se verifica automáticamente después del pago?
+**Checklist por cada botón:**
+1. ¿Se muestra toast "Preparando compra..."?
+2. ¿Se abre modal de TON Connect/Wallet?
+3. ¿El monto mostrado es correcto?
+4. ¿La wallet destino es la correcta (hotWallet)?
+5. ¿No hay error de payload?
+6. ¿Se puede confirmar la transacción?
+7. ¿Se verifica automáticamente después?
 8. ¿Se acreditan los B3C al balance?
 
-**Puntos de quiebre identificados:**
-- [ ] `buildTextCommentPayload()` - Payload inválido
-- [ ] `tonConnectUI.sendTransaction()` - Puede fallar si wallet no conectada
-- [ ] `/api/b3c/buy/create` - Si no retorna hotWallet
-- [ ] `/api/b3c/buy/{id}/verify` - Timeout o verificación fallida
-- [ ] Conexión de wallet - Si usuario cancela
-
 ---
 
-##### FASE 17.3: Verificar Flujo de Retiros B3C ⏳
+#### FASE 17.3: Verificar Sistema de Retiros ⏳
 
 **Endpoints a verificar:**
-- [ ] 17.3.1 `POST /api/b3c/withdraw` - Crear solicitud de retiro
-  - Validar que se descuente del balance interno
-  - Validar que se cree registro en base de datos
-  - Validar que se notifique al admin
+- [ ] 17.3.1 `POST /api/b3c/withdraw` - Crear solicitud
+- [ ] 17.3.2 `GET /api/b3c/withdraw/{id}/status` - Estado
+- [ ] 17.3.3 `GET /api/admin/b3c/withdrawals` - Lista admin
+- [ ] 17.3.4 `POST /api/admin/b3c/withdrawals/{id}/process` - Procesar
 
-- [ ] 17.3.2 `GET /api/b3c/withdraw/{id}/status` - Consultar estado
-  - Estados: pending, processing, completed, rejected
-  - Mostrar hash de transacción cuando completado
-
-- [ ] 17.3.3 `GET /api/admin/b3c/withdrawals` - Admin ve pendientes
-  - Listar todos los retiros por estado
-  - Mostrar información de usuario y monto
-
-- [ ] 17.3.4 `POST /api/admin/b3c/withdrawals/{id}/process` - Admin procesa
-  - Acción: complete o reject
-  - Incluir txHash para completados
-  - Actualizar estado en base de datos
-
-**Frontend a verificar:**
-- [ ] UI de solicitud de retiro en wallet
-- [ ] Input para wallet destino
-- [ ] Validación de dirección TON
-- [ ] Confirmación antes de enviar
-- [ ] Feedback visual de estado
+**UI a verificar:**
+- [ ] 17.3.5 Modal de retiro se abre correctamente
+- [ ] 17.3.6 Input de wallet destino funciona
+- [ ] 17.3.7 Validación de dirección TON
+- [ ] 17.3.8 Confirmación antes de enviar
+- [ ] 17.3.9 Feedback de estado (pending, completed)
 
 ---
 
-##### FASE 17.4: Verificar Depositos de B3C ⏳
+#### FASE 17.4: Verificar buildJettonTransferPayload() ⏳
 
-- [ ] 17.4.1 Función de depósito (usuario envía B3C a la app)
-  - ¿Existe endpoint?
-  - ¿Cómo se detectan depósitos entrantes?
-  - ¿Se actualiza balance automáticamente?
-
----
-
-##### FASE 17.5: Verificar Transferencias B3C entre Usuarios ⏳
-
-- [ ] 17.5.1 Funcionalidad "Transferir" en UI
-  - ¿Endpoint existe?
-  - ¿Se valida destinatario?
-  - ¿Se actualiza balance de ambos?
-
----
-
-##### FASE 17.6: Revisar buildJettonTransferPayload() ⏳
-
-**Código actual problemático:**
+**Código problemático (líneas 5897-5906):**
 ```javascript
 buildJettonTransferPayload(destination, amount, comment) {
     return btoa(JSON.stringify({
@@ -322,52 +224,399 @@ buildJettonTransferPayload(destination, amount, comment) {
 }
 ```
 
-**Problema:** Este formato JSON NO es válido para transferencias Jetton.
-Las transferencias Jetton requieren una Cell serializada con estructura específica.
+**PROBLEMA:** JSON stringificado NO es un formato válido para Jetton Transfer.
 
-**Solución:** Usar librería @ton/ton o construir Cell manualmente:
-- [ ] 17.6.1 Investigar formato correcto de Jetton Transfer
-- [ ] 17.6.2 Implementar construcción de Cell correcta
-- [ ] 17.6.3 Probar con transacción real
-
----
-
-##### FASE 17.7: Logs y Monitoreo ⏳
-
-- [ ] 17.7.1 Agregar logs detallados en cada paso de transacción
-- [ ] 17.7.2 Capturar y mostrar errores específicos al usuario
-- [ ] 17.7.3 Implementar retry automático para verificaciones
-- [ ] 17.7.4 Agregar timeouts apropiados
+**TAREAS:**
+- [ ] 17.4.1 Determinar si esta función se usa activamente
+- [ ] 17.4.2 Si se usa, implementar Cell construction correcta
+- [ ] 17.4.3 Si no se usa, marcar como deprecated o eliminar
 
 ---
 
-##### FASE 17.8: Testing End-to-End ⏳
-
-- [ ] 17.8.1 Probar compra B3C con wallet Telegram real
-- [ ] 17.8.2 Verificar que B3C se acreditan
-- [ ] 17.8.3 Probar retiro de B3C
-- [ ] 17.8.4 Verificar que admin puede procesar
-- [ ] 17.8.5 Verificar que tokens llegan a wallet del usuario
-
----
-
-#### CRITERIOS DE ACEPTACIÓN SECCIÓN 17
-
-Para marcar como COMPLETADA, se debe verificar:
-
-- [ ] Error TON_CONNECT_SDK_ERROR resuelto
-- [ ] Compras B3C funcionan sin errores
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 17:
+- [ ] Error TON_CONNECT_SDK_ERROR eliminado
 - [ ] Todos los botones de compra funcionan
-- [ ] Retiros se procesan correctamente
-- [ ] Balance se actualiza en tiempo real
 - [ ] No hay errores en consola del navegador
-- [ ] No hay errores en logs del servidor
-- [ ] Transacciones aparecen en historial
-- [ ] Usuario ve confirmación visual clara
+- [ ] Transacciones se envían correctamente
+- [ ] Balance se actualiza después de compra
 
 ---
 
-### SECCIONES ARCHIVADAS (COMPLETADAS)
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 18: AUDITORÍA DE NÚMEROS VIRTUALES ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** ALTA  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Usuario reporta "sin servicio" y botón atrás cierra app
+**Estado:** PENDIENTE
+
+---
+
+### ERRORES DETECTADOS:
+
+**Error 1: Botón "Atrás" cierra toda la app**
+- **Ubicación:** `static/js/virtual-numbers.js` líneas 624-630
+- **Código problemático:**
+```javascript
+function goBack() {
+    if (tg) {
+        tg.close(); // CIERRA TODA LA MINI APP!
+    } else {
+        window.location.href = '/';
+    }
+}
+```
+
+**Error 2: "Sin servicio" al cargar países/servicios**
+- **Posible causa:** API key de SMSPool no configurada
+- **Ubicación:** `tracking/smspool_service.py` líneas 19-22
+```python
+self.api_key = api_key or os.environ.get('SMSPOOL_API_KEY')
+if not self.api_key:
+    logger.warning("SMSPOOL_API_KEY not configured")
+```
+
+---
+
+### PROMPT MAESTRO 18: NÚMEROS VIRTUALES COMPLETO
+
+**OBJETIVO:** Hacer que toda la sección de números virtuales funcione perfectamente.
+
+---
+
+#### FASE 18.1: Corregir Botón "Atrás" ⏳
+
+**TAREAS:**
+- [ ] 18.1.1 Modificar `goBack()` para navegar en lugar de cerrar
+- [ ] 18.1.2 Implementar navegación a pantalla principal
+- [ ] 18.1.3 Probar en ambiente Telegram y fuera de Telegram
+
+**SOLUCIÓN PROPUESTA:**
+```javascript
+function goBack() {
+    // Navegar a la pantalla principal en lugar de cerrar
+    window.location.href = '/';
+}
+```
+
+---
+
+#### FASE 18.2: Verificar Carga de Países ⏳
+
+**Endpoint:** `/api/vn/countries?provider=smspool`
+
+**TAREAS:**
+- [ ] 18.2.1 Verificar que SMSPOOL_API_KEY esté configurada
+- [ ] 18.2.2 Probar endpoint en navegador/consola
+- [ ] 18.2.3 Verificar respuesta JSON válida
+- [ ] 18.2.4 Verificar que se renderizan los países
+- [ ] 18.2.5 Verificar banderas y nombres correctos
+
+**Checklist de respuesta esperada:**
+```json
+{
+  "success": true,
+  "countries": [
+    {"id": "1", "name": "United States", "flag": "🇺🇸"},
+    {"id": "7", "name": "Russia", "flag": "🇷🇺"},
+    ...
+  ]
+}
+```
+
+---
+
+#### FASE 18.3: Verificar Carga de Servicios ⏳
+
+**Endpoint:** `/api/vn/services?provider=smspool&country={countryId}`
+
+**TAREAS:**
+- [ ] 18.3.1 Seleccionar un país
+- [ ] 18.3.2 Verificar que servicios se carguen
+- [ ] 18.3.3 Verificar precios correctos en BUNK3RCO1N
+- [ ] 18.3.4 Verificar iconos de servicios
+- [ ] 18.3.5 Verificar que botones de servicio funcionen
+
+**Servicios esperados:**
+- WhatsApp, Telegram, Instagram, Facebook, TikTok
+- Google, Gmail, Microsoft, Apple
+- Netflix, Spotify, Discord, Steam
+- PayPal, Binance, Coinbase
+- Uber, Tinder, etc.
+
+---
+
+#### FASE 18.4: Verificar Compra de Número ⏳
+
+**Endpoint:** `POST /api/vn/purchase`
+
+**TAREAS:**
+- [ ] 18.4.1 Seleccionar país + servicio
+- [ ] 18.4.2 Verificar que balance sea suficiente
+- [ ] 18.4.3 Hacer clic en "Comprar"
+- [ ] 18.4.4 Verificar que se descuente del balance
+- [ ] 18.4.5 Verificar que aparezca número asignado
+- [ ] 18.4.6 Verificar indicador "Esperando SMS..."
+
+---
+
+#### FASE 18.5: Verificar Recepción de SMS ⏳
+
+**Endpoint:** `/api/vn/check/{orderId}`
+
+**TAREAS:**
+- [ ] 18.5.1 Verificar polling automático funciona
+- [ ] 18.5.2 Verificar backoff exponencial (2s→4s→8s...)
+- [ ] 18.5.3 Verificar botón "Verificar" manual
+- [ ] 18.5.4 Verificar que código SMS se muestre
+- [ ] 18.5.5 Verificar botón "Copiar" funciona
+
+---
+
+#### FASE 18.6: Verificar Cancelación ⏳
+
+**Endpoint:** `POST /api/vn/cancel/{orderId}`
+
+**TAREAS:**
+- [ ] 18.6.1 Verificar confirmación antes de cancelar
+- [ ] 18.6.2 Verificar reembolso parcial
+- [ ] 18.6.3 Verificar que balance se actualice
+- [ ] 18.6.4 Verificar que orden desaparezca de activos
+
+---
+
+#### FASE 18.7: Verificar Historial ⏳
+
+**Endpoint:** `/api/vn/history`
+
+**TAREAS:**
+- [ ] 18.7.1 Verificar que historial cargue
+- [ ] 18.7.2 Verificar filtro por estado
+- [ ] 18.7.3 Verificar filtro por servicio
+- [ ] 18.7.4 Verificar filtro por fecha
+- [ ] 18.7.5 Verificar información correcta en cada item
+
+---
+
+#### FASE 18.8: Verificar UI/UX Completo ⏳
+
+**TAREAS:**
+- [ ] 18.8.1 Pestañas funcionan (Comprar, Activos, Historial)
+- [ ] 18.8.2 Búsqueda de países funciona
+- [ ] 18.8.3 Búsqueda de servicios funciona
+- [ ] 18.8.4 Skeleton loaders mientras carga
+- [ ] 18.8.5 Toasts de éxito/error aparecen
+- [ ] 18.8.6 Loading overlay durante operaciones
+
+---
+
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 18:
+- [ ] Botón "Atrás" navega correctamente (no cierra app)
+- [ ] Países se cargan con banderas
+- [ ] Servicios se cargan con precios
+- [ ] Compra de número funciona
+- [ ] SMS se recibe y muestra
+- [ ] Cancelación funciona con reembolso
+- [ ] Historial muestra todas las órdenes
+- [ ] No hay errores en consola
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 19: TRANSFERENCIAS DE B3C ENTRE USUARIOS ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** ALTA  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Funcionalidad crítica para economía interna
+**Estado:** PENDIENTE
+
+---
+
+### PROMPT MAESTRO 19: TRANSFERENCIAS ENTRE USUARIOS
+
+**OBJETIVO:** Implementar y verificar sistema completo de transferencias P2P.
+
+---
+
+#### FASE 19.1: Verificar/Crear Endpoint de Transferencia ⏳
+
+**Endpoint esperado:** `POST /api/b3c/transfer`
+
+**TAREAS:**
+- [ ] 19.1.1 Buscar si existe endpoint de transferencia
+- [ ] 19.1.2 Si no existe, crear endpoint:
+```python
+@app.route('/api/b3c/transfer', methods=['POST'])
+def transfer_b3c():
+    # Validar usuario origen
+    # Validar usuario destino (por username o wallet)
+    # Validar monto suficiente
+    # Descontar de origen
+    # Acreditar a destino
+    # Registrar transacción
+    # Notificar a ambos usuarios
+```
+
+- [ ] 19.1.3 Implementar validaciones:
+  - Monto mínimo
+  - Monto máximo
+  - Usuario destino existe
+  - Balance suficiente
+  - No auto-transferencia
+
+---
+
+#### FASE 19.2: UI de Transferencia ⏳
+
+**TAREAS:**
+- [ ] 19.2.1 Verificar botón "Transferir" en wallet
+- [ ] 19.2.2 Modal de transferencia con:
+  - Input de destinatario (username o wallet)
+  - Input de monto
+  - Preview de comisión (si aplica)
+  - Botón confirmar
+  - Botón cancelar
+
+- [ ] 19.2.3 Validaciones en frontend:
+  - Formato de username/wallet
+  - Monto numérico positivo
+  - Balance suficiente
+
+---
+
+#### FASE 19.3: Búsqueda de Usuario Destino ⏳
+
+**TAREAS:**
+- [ ] 19.3.1 Endpoint para buscar usuario: `/api/users/search?q={query}`
+- [ ] 19.3.2 Autocompletado mientras escribe
+- [ ] 19.3.3 Mostrar avatar y username del destinatario
+- [ ] 19.3.4 Confirmar usuario correcto antes de enviar
+
+---
+
+#### FASE 19.4: Historial de Transferencias ⏳
+
+**TAREAS:**
+- [ ] 19.4.1 Mostrar transferencias en historial de transacciones
+- [ ] 19.4.2 Distinguir "Enviado a @usuario" vs "Recibido de @usuario"
+- [ ] 19.4.3 Filtrar por tipo: envíos, recibidos
+
+---
+
+#### FASE 19.5: Notificaciones ⏳
+
+**TAREAS:**
+- [ ] 19.5.1 Notificación al receptor: "Has recibido X B3C de @usuario"
+- [ ] 19.5.2 Notificación al emisor: "Transferencia exitosa a @usuario"
+- [ ] 19.5.3 Push notification si está habilitado
+
+---
+
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 19:
+- [ ] Botón "Transferir" funciona
+- [ ] Se puede buscar usuario destino
+- [ ] Transferencia se ejecuta correctamente
+- [ ] Balances se actualizan en tiempo real
+- [ ] Historial muestra transferencias
+- [ ] Notificaciones funcionan
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 20: CONEXIÓN DE WALLET Y SINCRONIZACIÓN ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** ALTA  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Funcionalidad base para todo el sistema de pagos
+**Estado:** PENDIENTE
+
+---
+
+### PROMPT MAESTRO 20: WALLET CONNECT Y SYNC
+
+**OBJETIVO:** Verificar que toda la conexión de wallet funcione perfectamente.
+
+---
+
+#### FASE 20.1: Verificar TON Connect Initialization ⏳
+
+**Ubicación:** `static/js/app.js` líneas 3587-3624
+
+**TAREAS:**
+- [ ] 20.1.1 Verificar que tonconnect-manifest.json esté accesible
+- [ ] 20.1.2 Verificar que TonConnectUI se inicialice
+- [ ] 20.1.3 Verificar `onStatusChange` callback
+- [ ] 20.1.4 Verificar reconexión automática de wallet guardada
+
+---
+
+#### FASE 20.2: Verificar Botón "Conectar Wallet" ⏳
+
+**TAREAS:**
+- [ ] 20.2.1 Verificar que botón sea visible cuando no hay wallet
+- [ ] 20.2.2 Verificar que se abra modal de TON Connect
+- [ ] 20.2.3 Verificar opciones: Telegram Wallet, Tonkeeper, etc.
+- [ ] 20.2.4 Verificar que al conectar, se guarde la wallet
+
+---
+
+#### FASE 20.3: Verificar Sincronización con Servidor ⏳
+
+**Endpoint:** `POST /api/wallet/address`
+
+**TAREAS:**
+- [ ] 20.3.1 Al conectar wallet, se sincroniza con servidor
+- [ ] 20.3.2 Wallet se guarda en base de datos
+- [ ] 20.3.3 Al reconectar, se verifica que sea la misma wallet
+- [ ] 20.3.4 Si es wallet diferente, manejar conflicto
+
+---
+
+#### FASE 20.4: Verificar Desconexión de Wallet ⏳
+
+**TAREAS:**
+- [ ] 20.4.1 Botón "Desconectar" funciona
+- [ ] 20.4.2 Se limpia estado local
+- [ ] 20.4.3 UI se actualiza (mostrar "Conectar Wallet")
+- [ ] 20.4.4 Se notifica al servidor
+
+---
+
+#### FASE 20.5: Verificar UI de Wallet ⏳
+
+**TAREAS:**
+- [ ] 20.5.1 Balance B3C se muestra correctamente
+- [ ] 20.5.2 Dirección de wallet truncada visible
+- [ ] 20.5.3 Botón copiar dirección funciona
+- [ ] 20.5.4 Historial de transacciones carga
+- [ ] 20.5.5 Botones: Depositar, Retirar, Transferir funcionan
+
+---
+
+#### FASE 20.6: Verificar Dispositivos Confiables ⏳
+
+**TAREAS:**
+- [ ] 20.6.1 Sistema de dispositivos confiables
+- [ ] 20.6.2 Agregar dispositivo actual como confiable
+- [ ] 20.6.3 Verificar dispositivo antes de transacciones
+- [ ] 20.6.4 UI de gestión de dispositivos
+
+---
+
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 20:
+- [ ] TON Connect se inicializa sin errores
+- [ ] Conexión de wallet funciona con todas las opciones
+- [ ] Wallet se sincroniza con servidor
+- [ ] Desconexión funciona correctamente
+- [ ] UI muestra estado correcto de wallet
+- [ ] Dispositivos confiables funcionan
+
+---
+
+## SECCIONES ARCHIVADAS (COMPLETADAS)
 
 Las siguientes secciones han sido completadas y archivadas:
 
@@ -393,10 +642,13 @@ Las siguientes secciones han sido completadas y archivadas:
 
 | # | Fecha | Prompt del Usuario | Acción Tomada | Estado |
 |---|-------|-------------------|---------------|--------|
-| 1 | 05/12/2025 | Configuración inicial del sistema de pendientes | Creado archivo PROMPT_PENDIENTES con estructura completa | ✅ |
-| 2 | 05/12/2025 | Crear token BUNK3RCO1N real en blockchain | Creada SECCIÓN 15 - Token creado en MAINNET | ✅ |
-| 3 | 05/12/2025 | Botones de pago directo y wallets reales | Creada SECCIÓN 16 - TON Connect pagos directos + Admin retiros | ✅ |
-| 4 | 05/12/2025 | Investigar error TON_CONNECT_SDK_ERROR y auditar todo el sistema de pagos | Creada SECCIÓN 17 - Auditoría completa de pagos y retiros | ⏳ |
+| 1 | 05/12/2025 | Configuración inicial | Creado archivo PROMPT_PENDIENTES | ✅ |
+| 2 | 05/12/2025 | Token BUNK3RCO1N real | SECCIÓN 15 - Token MAINNET | ✅ |
+| 3 | 05/12/2025 | Botones de pago directo | SECCIÓN 16 - TON Connect | ✅ |
+| 4 | 05/12/2025 | Error TON_CONNECT_SDK_ERROR | SECCIÓN 17 - Auditoría pagos | ⏳ |
+| 5 | 05/12/2025 | Números virtuales sin servicio + botón atrás | SECCIÓN 18 - Auditoría VN | ⏳ |
+| 6 | 05/12/2025 | Transferencias entre usuarios | SECCIÓN 19 - Transferencias P2P | ⏳ |
+| 7 | 05/12/2025 | Conexión wallet completa | SECCIÓN 20 - Wallet Connect | ⏳ |
 
 ---
 
@@ -406,59 +658,32 @@ Cuando el usuario diga "continúa", el agente DEBE:
 1. Leer este archivo completo
 2. Identificar la siguiente sección pendiente (⏳)
 3. Informar: "Comenzando sección [X]: [Nombre]"
-4. Ejecutar todas las tareas de esa sección
-5. Verificar funcionamiento
-6. Actualizar este archivo (marcar ✅, agregar notas)
-7. Actualizar replit.md
-8. Informar: "Completada sección [X]. ¿Continúo con la siguiente?"
+4. Ejecutar TODAS las tareas de esa sección
+5. Probar como usuario real
+6. Verificar logs y consola
+7. Actualizar este archivo (marcar ✅)
+8. Actualizar replit.md
+9. Informar: "Completada sección [X]. ¿Continúo con la siguiente?"
 
 ---
 
-## ➕ INSTRUCCIONES PARA NUEVO PROMPT
+## ORDEN DE EJECUCIÓN RECOMENDADO
 
-Cuando el usuario agregue una nueva tarea:
-1. Analizar el prompt del usuario
-2. Determinar si es nueva sección o tarea dentro de sección existente
-3. Agregar al archivo en el lugar correcto
-4. Registrar en historial de prompts
-5. Preguntar: "¿Ejecuto ahora o continúo con las secciones pendientes?"
-
----
-
-## INSTRUCCIONES PARA VER PROGRESO
-
-Cuando el usuario pida ver progreso, mostrar:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROGRESO DEL PROYECTO: BUNK3R-W3B
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Completadas: 15/17 secciones (88%)
-⏳ Pendiente: Sección 17 - Auditoría de Pagos
-Última actividad: 5 Dic 2025 - Error TON_CONNECT detectado
-¿Qué quieres hacer?
-1️⃣ Continuar trabajo
-2️⃣ Ver detalle de sección específica
-3️⃣ Agregar nueva tarea
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
-
-## NOTAS IMPORTANTES
-
-- Este archivo es la **fuente de verdad** del proyecto
-- El agente **SIEMPRE** debe leerlo al iniciar
-- Cualquier cambio importante debe quedar registrado aquí
-- El usuario puede modificar prioridades en cualquier momento
-- Las reglas base son **OBLIGATORIAS** y **PERMANENTES**
+1. **SECCIÓN 17** - Corregir error de payload TON Connect (CRÍTICO)
+2. **SECCIÓN 20** - Verificar conexión de wallet (BASE)
+3. **SECCIÓN 18** - Arreglar números virtuales 
+4. **SECCIÓN 19** - Implementar transferencias P2P
 
 ---
 
 ## RESUMEN FINAL
 
-### SECCIÓN ACTIVA:
-- ⏳ **Sección 17** - Auditoría Completa de Pagos y Retiros B3C (0%)
+### SECCIONES ACTIVAS:
+- ⏳ **Sección 17** - Auditoría de Pagos B3C (0%) - CRÍTICO
+- ⏳ **Sección 18** - Auditoría Números Virtuales (0%)
+- ⏳ **Sección 19** - Transferencias entre Usuarios (0%)
+- ⏳ **Sección 20** - Conexión de Wallet (0%)
 
-### PROGRESO: 15/17 secciones (88%)
+### PROGRESO: 15/20 secciones (75%)
 
-**Próximo paso:** Ejecutar SECCIÓN 17 para corregir el error de payload y verificar todo el sistema de pagos.
+**Próximo paso:** Ejecutar SECCIÓN 17 para corregir el error de payload TON Connect.
