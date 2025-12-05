@@ -286,3 +286,39 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
     - `.b3c-action-buttons` - Buy/Sell/Withdraw buttons
     - `.b3c-payment-modal` - Payment confirmation modal
     - `.b3c-purchase-status` - Status indicators
+
+39. **B3C Sell System** (December 5, 2025):
+    - `POST /api/b3c/sell` - Sell B3C for TON
+    - `POST /api/b3c/calculate/sell` - Calculate TON received
+    - 5% commission deducted from sale proceeds
+    - Slippage protection (1% default)
+    - Balance verification before sale
+    - `.b3c-sell-modal` - Sell modal UI with live preview
+
+40. **B3C Withdraw System** (December 5, 2025):
+    - `POST /api/b3c/withdraw` - Withdraw B3C to external wallet
+    - `GET /api/b3c/withdraw/{id}/status` - Check withdrawal status
+    - TON wallet address validation (EQ.../UQ... format)
+    - Limits: 100-100,000 B3C per withdrawal
+    - Cooldown: 3 withdrawals per hour
+    - Fee: 0.5 TON network fee
+    - `.b3c-withdraw-modal` - Withdraw modal with MAX button
+
+41. **B3C Deposit System** (December 5, 2025):
+    - `GET /api/b3c/deposit/address` - Get user's deposit address
+    - Unique memo per user (DEP-{user_id})
+    - Copy-to-clipboard for address and memo
+    - Minimum deposit: 100 B3C
+    - `.b3c-deposit-modal` - Deposit instructions modal
+
+42. **B3C Commission Tracking** (December 5, 2025):
+    - `b3c_commissions` table for commission tracking
+    - `GET /api/admin/commissions/stats` - Admin dashboard
+    - Tracks: buy, sell, withdraw commissions
+    - Fields: user_id, transaction_type, b3c_amount, ton_amount, commission_amount
+
+### Pending for Production:
+- **Phase 15.1**: Create B3C token on minter.ton.org (manual user action)
+- **Phase 15.2**: Create liquidity pool on STON.fi DEX (manual user action)
+- **Configure**: B3C_TOKEN_ADDRESS environment variable
+- **Deploy**: Webhook for deposit detection

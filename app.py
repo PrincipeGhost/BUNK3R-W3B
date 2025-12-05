@@ -3338,6 +3338,302 @@ def get_b3c_transactions():
         return jsonify({'success': False, 'error': 'Error al obtener transacciones'}), 500
 
 
+@app.route('/api/b3c/sell', methods=['POST'])
+@require_telegram_user
+@rate_limit('b3c_sell')
+def sell_b3c():
+    """Vender B3C por TON. El usuario recibe TON menos comision."""
+    try:
+        data = request.get_json()
+        b3c_amount = float(data.get('b3cAmount', 0))
+        destination_wallet = data.get('destinationWallet', '').strip()
+        
+        if b3c_amount < 100:
+            return jsonify({'success': False, 'error': 'Minimo 100 B3C para vender'}), 400
+        if b3c_amount > 1000000:
+            return jsonify({'success': False, 'error': 'Maximo 1,000,000 B3C por venta'}), 400
+        
+        if not destination_wallet or len(destination_wallet) < 40:
+            return jsonify({'success': False, 'error': 'Direccion de wallet TON invalida'}), 400
+        
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(
+                        (SELECT SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) 
+                         FROM wallet_transactions WHERE user_id = %s), 0
+                    ) as balance
+                """, (user_id,))
+                result = cur.fetchone()
+                current_balance = float(result['balance']) if result else 0
+                
+                if current_balance < b3c_amount:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Saldo insuficiente. Tienes {current_balance:.2f} B3C'
+                    }), 400
+                
+                from tracking.b3c_service import get_b3c_service
+                b3c = get_b3c_service()
+                calculation = b3c.calculate_ton_from_b3c(b3c_amount)
+                
+                sell_id = str(uuid.uuid4())[:8].upper()
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, amount, transaction_type, description, reference_id, created_at)
+                    VALUES (%s, %s, 'debit', %s, %s, NOW())
+                """, (user_id, b3c_amount, f'Venta B3C - {calculation["net_ton"]:.4f} TON', sell_id))
+                
+                cur.execute("""
+                    INSERT INTO b3c_commissions 
+                    (user_id, operation_type, b3c_amount, ton_amount, commission_ton, reference_id, created_at)
+                    VALUES (%s, 'sell', %s, %s, %s, %s, NOW())
+                """, (user_id, b3c_amount, calculation['net_ton'], calculation['commission_ton'], sell_id))
+                
+                conn.commit()
+                
+        return jsonify({
+            'success': True,
+            'sellId': sell_id,
+            'b3cSold': b3c_amount,
+            'tonReceived': calculation['net_ton'],
+            'commission': calculation['commission_ton'],
+            'destinationWallet': destination_wallet,
+            'status': 'processing',
+            'message': f'Venta procesada. Recibiras {calculation["net_ton"]:.4f} TON en tu wallet.'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error selling B3C: {e}")
+        return jsonify({'success': False, 'error': 'Error al procesar venta'}), 500
+
+
+@app.route('/api/b3c/withdraw', methods=['POST'])
+@require_telegram_user
+@rate_limit('b3c_withdraw')
+def withdraw_b3c():
+    """Retirar B3C a una wallet externa."""
+    try:
+        data = request.get_json()
+        b3c_amount = float(data.get('b3cAmount', 0))
+        destination_wallet = data.get('destinationWallet', '').strip()
+        
+        if b3c_amount < 100:
+            return jsonify({'success': False, 'error': 'Minimo 100 B3C para retirar'}), 400
+        if b3c_amount > 100000:
+            return jsonify({'success': False, 'error': 'Maximo 100,000 B3C por retiro diario'}), 400
+        
+        if not destination_wallet or len(destination_wallet) < 40:
+            return jsonify({'success': False, 'error': 'Direccion de wallet TON invalida'}), 400
+        
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(
+                        (SELECT SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) 
+                         FROM wallet_transactions WHERE user_id = %s), 0
+                    ) as balance
+                """, (user_id,))
+                result = cur.fetchone()
+                current_balance = float(result['balance']) if result else 0
+                
+                if current_balance < b3c_amount:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Saldo insuficiente. Tienes {current_balance:.2f} B3C'
+                    }), 400
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count FROM b3c_withdrawals 
+                    WHERE user_id = %s AND created_at > NOW() - INTERVAL '1 hour'
+                """, (user_id,))
+                recent = cur.fetchone()
+                if recent and recent['count'] >= 3:
+                    return jsonify({
+                        'success': False, 
+                        'error': 'Limite de retiros alcanzado. Espera 1 hora.'
+                    }), 429
+                
+                withdrawal_id = str(uuid.uuid4())[:8].upper()
+                withdrawal_fee = 0.5
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, amount, transaction_type, description, reference_id, created_at)
+                    VALUES (%s, %s, 'debit', %s, %s, NOW())
+                """, (user_id, b3c_amount, f'Retiro B3C a {destination_wallet[:8]}...', withdrawal_id))
+                
+                cur.execute("""
+                    INSERT INTO b3c_withdrawals 
+                    (withdrawal_id, user_id, b3c_amount, destination_wallet, status, created_at)
+                    VALUES (%s, %s, %s, %s, 'pending', NOW())
+                """, (withdrawal_id, user_id, b3c_amount, destination_wallet))
+                
+                conn.commit()
+                
+        return jsonify({
+            'success': True,
+            'withdrawalId': withdrawal_id,
+            'b3cAmount': b3c_amount,
+            'destinationWallet': destination_wallet,
+            'networkFee': withdrawal_fee,
+            'status': 'pending',
+            'estimatedTime': '5-15 minutos',
+            'message': f'Retiro de {b3c_amount:,.0f} B3C iniciado. Llegara a tu wallet en 5-15 minutos.'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error withdrawing B3C: {e}")
+        return jsonify({'success': False, 'error': 'Error al procesar retiro'}), 500
+
+
+@app.route('/api/b3c/withdraw/<withdrawal_id>/status', methods=['GET'])
+@require_telegram_user
+def get_withdrawal_status(withdrawal_id):
+    """Obtener estado de un retiro."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM b3c_withdrawals 
+                    WHERE withdrawal_id = %s AND user_id = %s
+                """, (withdrawal_id, user_id))
+                withdrawal = cur.fetchone()
+                
+                if not withdrawal:
+                    return jsonify({'success': False, 'error': 'Retiro no encontrado'}), 404
+                
+        return jsonify({
+            'success': True,
+            'withdrawal': {
+                'id': withdrawal['withdrawal_id'],
+                'amount': float(withdrawal['b3c_amount']),
+                'destination': withdrawal['destination_wallet'],
+                'status': withdrawal['status'],
+                'txHash': withdrawal.get('tx_hash'),
+                'createdAt': withdrawal['created_at'].isoformat() if withdrawal['created_at'] else None,
+                'processedAt': withdrawal['processed_at'].isoformat() if withdrawal.get('processed_at') else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting withdrawal status: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener estado'}), 500
+
+
+@app.route('/api/b3c/deposit/address', methods=['GET'])
+@require_telegram_user
+def get_deposit_address():
+    """Obtener direccion de deposito B3C del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        hot_wallet = os.environ.get('TON_WALLET_ADDRESS', '')
+        deposit_memo = f'DEP-{user_id[:8]}'
+        
+        return jsonify({
+            'success': True,
+            'depositAddress': hot_wallet,
+            'depositMemo': deposit_memo,
+            'instructions': [
+                'Envia B3C tokens a la direccion indicada',
+                'Incluye el memo/comentario exacto en la transaccion',
+                'El deposito se acreditara en 5-10 minutos',
+                'Minimo: 100 B3C'
+            ],
+            'minimumDeposit': 100,
+            'notice': 'Asegurate de incluir el memo correcto para identificar tu deposito'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting deposit address: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener direccion'}), 500
+
+
+@app.route('/api/b3c/commissions', methods=['GET'])
+@require_telegram_user
+def get_b3c_commissions():
+    """Obtener resumen de comisiones B3C (solo admin)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': True, 'commissions': [], 'totals': {}})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        operation_type,
+                        COUNT(*) as count,
+                        SUM(b3c_amount) as total_b3c,
+                        SUM(ton_amount) as total_ton,
+                        SUM(commission_ton) as total_commission
+                    FROM b3c_commissions
+                    GROUP BY operation_type
+                """)
+                by_type = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT SUM(commission_ton) as total FROM b3c_commissions
+                """)
+                total_result = cur.fetchone()
+                total_commissions = float(total_result['total']) if total_result and total_result['total'] else 0
+                
+                cur.execute("""
+                    SELECT * FROM b3c_commissions 
+                    ORDER BY created_at DESC LIMIT 50
+                """)
+                recent = cur.fetchall()
+                
+        return jsonify({
+            'success': True,
+            'totals': {
+                'totalCommissionsTon': total_commissions,
+                'byType': [{
+                    'type': row['operation_type'],
+                    'count': row['count'],
+                    'totalB3c': float(row['total_b3c']) if row['total_b3c'] else 0,
+                    'totalTon': float(row['total_ton']) if row['total_ton'] else 0,
+                    'totalCommission': float(row['total_commission']) if row['total_commission'] else 0
+                } for row in by_type]
+            },
+            'recentTransactions': [{
+                'id': row['id'],
+                'userId': row['user_id'],
+                'type': row['operation_type'],
+                'b3c': float(row['b3c_amount']) if row['b3c_amount'] else 0,
+                'ton': float(row['ton_amount']) if row['ton_amount'] else 0,
+                'commission': float(row['commission_ton']) if row['commission_ton'] else 0,
+                'date': row['created_at'].isoformat() if row['created_at'] else None
+            } for row in recent]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting commissions: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener comisiones'}), 500
+
+
 @app.route('/api/devices/trusted', methods=['GET'])
 @require_telegram_user
 def get_trusted_devices():

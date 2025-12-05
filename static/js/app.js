@@ -4334,11 +4334,323 @@ const App = {
     },
 
     showB3CSellModal() {
-        this.showToast('Funcion de venta proximamente', 'info');
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-sell-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Vender B3C</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-sell-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="b3c-sell-info">
+                        <p>Vende tus B3C y recibe TON en tu wallet.</p>
+                        <div class="b3c-current-price">
+                            <span>Precio actual:</span>
+                            <strong id="sell-price-display">${this.b3cPriceData ? this.b3cPriceData.price_ton.toFixed(6) : '0.001'} TON</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Cantidad de B3C a vender</label>
+                        <input type="number" id="sell-b3c-amount" placeholder="Minimo 100 B3C" min="100" step="100" oninput="App.calculateSellPreview()">
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Tu wallet TON (donde recibiras)</label>
+                        <input type="text" id="sell-destination-wallet" placeholder="UQ... o EQ..." value="${this._savedWalletAddress || ''}">
+                    </div>
+                    
+                    <div class="b3c-preview" id="sell-preview" style="display:none;">
+                        <div class="b3c-preview-row">
+                            <span>B3C a vender:</span>
+                            <span id="sell-preview-b3c">0 B3C</span>
+                        </div>
+                        <div class="b3c-preview-row">
+                            <span>TON bruto:</span>
+                            <span id="sell-preview-gross">0 TON</span>
+                        </div>
+                        <div class="b3c-preview-row">
+                            <span>Comision (5%):</span>
+                            <span id="sell-preview-commission">0 TON</span>
+                        </div>
+                        <div class="b3c-preview-row b3c-preview-total">
+                            <span>Recibiras:</span>
+                            <span id="sell-preview-net">0 TON</span>
+                        </div>
+                    </div>
+                    
+                    <div class="b3c-modal-actions">
+                        <button class="btn-secondary" onclick="App.closeB3CModal('b3c-sell-modal')">Cancelar</button>
+                        <button class="btn-primary" id="confirm-sell-btn" onclick="App.confirmSellB3C()">Confirmar Venta</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-sell-modal');
+        });
+    },
+
+    async calculateSellPreview() {
+        const amountInput = document.getElementById('sell-b3c-amount');
+        const preview = document.getElementById('sell-preview');
+        const amount = parseFloat(amountInput?.value) || 0;
+        
+        if (amount < 100) {
+            if (preview) preview.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/b3c/calculate/sell', {
+                method: 'POST',
+                body: JSON.stringify({ b3cAmount: amount })
+            });
+            
+            if (response.success) {
+                document.getElementById('sell-preview-b3c').textContent = `${amount.toLocaleString()} B3C`;
+                document.getElementById('sell-preview-gross').textContent = `${response.gross_ton.toFixed(4)} TON`;
+                document.getElementById('sell-preview-commission').textContent = `${response.commission_ton.toFixed(4)} TON`;
+                document.getElementById('sell-preview-net').textContent = `${response.net_ton.toFixed(4)} TON`;
+                preview.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error calculating sell:', error);
+        }
+    },
+
+    async confirmSellB3C() {
+        const amount = parseFloat(document.getElementById('sell-b3c-amount')?.value) || 0;
+        const wallet = document.getElementById('sell-destination-wallet')?.value?.trim();
+        
+        if (amount < 100) {
+            this.showToast('Minimo 100 B3C para vender', 'error');
+            return;
+        }
+        
+        if (!wallet || wallet.length < 40) {
+            this.showToast('Ingresa una direccion de wallet valida', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('confirm-sell-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/b3c/sell', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    b3cAmount: amount,
+                    destinationWallet: wallet
+                })
+            });
+            
+            if (response.success) {
+                this.closeB3CModal('b3c-sell-modal');
+                this.showToast(`Venta exitosa! Recibiras ${response.tonReceived.toFixed(4)} TON`, 'success');
+                this.refreshB3CBalance();
+            } else {
+                this.showToast(response.error || 'Error al procesar venta', 'error');
+            }
+        } catch (error) {
+            console.error('Error selling B3C:', error);
+            this.showToast('Error de conexion', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Confirmar Venta';
+            }
+        }
     },
 
     showB3CWithdrawModal() {
-        this.showToast('Funcion de retiro proximamente', 'info');
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-withdraw-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Retirar B3C</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-withdraw-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="b3c-withdraw-info">
+                        <p>Retira tus B3C a tu wallet personal.</p>
+                        <div class="b3c-limits">
+                            <span>Minimo: 100 B3C</span>
+                            <span>Maximo: 100,000 B3C/dia</span>
+                        </div>
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Cantidad de B3C a retirar</label>
+                        <input type="number" id="withdraw-b3c-amount" placeholder="Cantidad" min="100" max="100000" step="100">
+                        <button class="btn-max" onclick="App.setMaxWithdraw()">MAX</button>
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Wallet TON destino</label>
+                        <input type="text" id="withdraw-destination-wallet" placeholder="UQ... o EQ..." value="${this._savedWalletAddress || ''}">
+                    </div>
+                    
+                    <div class="b3c-fee-notice">
+                        <span class="fee-icon">&#9888;</span>
+                        <span>Fee de red: ~0.5 TON (pagado del retiro)</span>
+                    </div>
+                    
+                    <div class="b3c-modal-actions">
+                        <button class="btn-secondary" onclick="App.closeB3CModal('b3c-withdraw-modal')">Cancelar</button>
+                        <button class="btn-primary" id="confirm-withdraw-btn" onclick="App.confirmWithdrawB3C()">Retirar B3C</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-withdraw-modal');
+        });
+    },
+
+    setMaxWithdraw() {
+        const balanceEl = document.getElementById('wallet-balance');
+        if (balanceEl) {
+            const balance = parseFloat(balanceEl.textContent.replace(/,/g, '')) || 0;
+            const max = Math.min(balance, 100000);
+            document.getElementById('withdraw-b3c-amount').value = max;
+        }
+    },
+
+    async confirmWithdrawB3C() {
+        const amount = parseFloat(document.getElementById('withdraw-b3c-amount')?.value) || 0;
+        const wallet = document.getElementById('withdraw-destination-wallet')?.value?.trim();
+        
+        if (amount < 100) {
+            this.showToast('Minimo 100 B3C para retirar', 'error');
+            return;
+        }
+        
+        if (amount > 100000) {
+            this.showToast('Maximo 100,000 B3C por retiro', 'error');
+            return;
+        }
+        
+        if (!wallet || wallet.length < 40) {
+            this.showToast('Ingresa una direccion de wallet valida', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('confirm-withdraw-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/b3c/withdraw', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    b3cAmount: amount,
+                    destinationWallet: wallet
+                })
+            });
+            
+            if (response.success) {
+                this.closeB3CModal('b3c-withdraw-modal');
+                this.showToast(`Retiro iniciado! ${amount.toLocaleString()} B3C en camino`, 'success');
+                this.refreshB3CBalance();
+                this._savedWalletAddress = wallet;
+            } else {
+                this.showToast(response.error || 'Error al procesar retiro', 'error');
+            }
+        } catch (error) {
+            console.error('Error withdrawing B3C:', error);
+            this.showToast('Error de conexion', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Retirar B3C';
+            }
+        }
+    },
+
+    closeB3CModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.remove();
+    },
+
+    showB3CDepositModal() {
+        this.apiRequest('/api/b3c/deposit/address').then(response => {
+            if (!response.success) {
+                this.showToast('Error al obtener direccion de deposito', 'error');
+                return;
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'b3c-modal modal-overlay';
+            modal.id = 'b3c-deposit-modal';
+            modal.innerHTML = `
+                <div class="modal-content b3c-modal-content">
+                    <div class="modal-header">
+                        <h3>Depositar B3C</h3>
+                        <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="b3c-deposit-info">
+                            <p>Envia B3C tokens a la siguiente direccion:</p>
+                        </div>
+                        
+                        <div class="b3c-deposit-address">
+                            <label>Direccion de deposito</label>
+                            <div class="address-box">
+                                <code id="deposit-address">${response.depositAddress}</code>
+                                <button class="btn-copy" onclick="App.copyToClipboard('${response.depositAddress}')">Copiar</button>
+                            </div>
+                        </div>
+                        
+                        <div class="b3c-deposit-memo">
+                            <label>Memo/Comentario (OBLIGATORIO)</label>
+                            <div class="address-box memo-box">
+                                <code id="deposit-memo">${response.depositMemo}</code>
+                                <button class="btn-copy" onclick="App.copyToClipboard('${response.depositMemo}')">Copiar</button>
+                            </div>
+                        </div>
+                        
+                        <div class="b3c-deposit-instructions">
+                            <h4>Instrucciones:</h4>
+                            <ul>
+                                ${response.instructions.map(i => `<li>${i}</li>`).join('')}
+                            </ul>
+                        </div>
+                        
+                        <div class="b3c-warning">
+                            <span class="warning-icon">&#9888;</span>
+                            <span>${response.notice}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) this.closeB3CModal('b3c-deposit-modal');
+            });
+        }).catch(error => {
+            console.error('Error getting deposit address:', error);
+            this.showToast('Error de conexion', 'error');
+        });
+    },
+
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Copiado al portapapeles', 'success');
+        }).catch(() => {
+            this.showToast('Error al copiar', 'error');
+        });
     },
 
     startB3CPricePolling() {
