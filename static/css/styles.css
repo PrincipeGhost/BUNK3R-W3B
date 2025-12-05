@@ -2080,6 +2080,199 @@ select:focus-visible {
     border-radius: 20px;
 }
 
+/* Neo Balance Card */
+.neo-balance-card {
+    background: linear-gradient(145deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.neo-balance-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.neo-balance-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.neo-balance-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.neo-balance-amount {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.neo-balance-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.neo-balance-currency {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.neo-balance-usd {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.neo-refresh-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.neo-quick-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.neo-action-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    color: var(--accent-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-action-link:hover {
+    color: #63b3ed;
+}
+
+.neo-action-link svg {
+    opacity: 0.8;
+}
+
+.neo-action-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Neo Wallets Section */
+.neo-wallets-section {
+    margin-bottom: 20px;
+}
+
+.neo-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.neo-wallet-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.neo-wallet-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(30, 35, 50, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-wallet-item:hover {
+    background: rgba(40, 45, 60, 0.8);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.neo-wallet-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neo-wallet-icon.telegram {
+    background: linear-gradient(135deg, #0088cc, #00aaff);
+    color: white;
+}
+
+.neo-wallet-icon.binance {
+    background: linear-gradient(135deg, #f0b90b, #d4a50a);
+    color: #1e2026;
+}
+
+.neo-wallet-icon.external {
+    background: linear-gradient(135deg, rgba(66, 153, 225, 0.2), rgba(128, 90, 213, 0.2));
+    color: var(--accent-primary);
+}
+
+.neo-wallet-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.neo-wallet-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.neo-wallet-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.neo-wallet-arrow {
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.neo-wallet-item:hover .neo-wallet-arrow {
+    opacity: 1;
+    color: var(--accent-primary);
+}
+
 .section-title {
     font-size: 18px;
     font-weight: 600;
