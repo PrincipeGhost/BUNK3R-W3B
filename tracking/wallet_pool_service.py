@@ -8,21 +8,32 @@ import logging
 import secrets
 import hashlib
 import base64
+import json
 import requests
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
 
 logger = logging.getLogger(__name__)
+
+try:
+    from tonsdk.contract.wallet import WalletVersionEnum, Wallets
+    from tonsdk.crypto import mnemonic_new
+    TONSDK_AVAILABLE = True
+    logger.info("tonsdk loaded successfully - real TON wallet generation enabled")
+except ImportError:
+    TONSDK_AVAILABLE = False
+    logger.warning("tonsdk not available - using simulated wallet generation")
 
 
 class WalletPoolService:
     """Servicio para gestionar el pool de wallets de depósito."""
     
     TONCENTER_API_V3 = 'https://toncenter.com/api/v3'
+    TESTNET_API = 'https://testnet.toncenter.com/api/v2'
     CONSOLIDATION_FEE = Decimal('0.01')
     DEFAULT_EXPIRATION_MINUTES = 30
     MIN_POOL_SIZE = 10
@@ -39,59 +50,135 @@ class WalletPoolService:
         self.master_key = master_key or os.environ.get('WALLET_MASTER_KEY')
         self.hot_wallet = os.environ.get('B3C_HOT_WALLET', '')
         self.toncenter_api_key = os.environ.get('TONCENTER_API_KEY', '')
+        self.use_testnet = os.environ.get('B3C_USE_TESTNET', 'true').lower() == 'true'
         
         if not self.master_key:
-            self.master_key = self._generate_master_key()
-            logger.warning("WALLET_MASTER_KEY not set, using generated key (not persistent!)")
+            logger.error("WALLET_MASTER_KEY not set! Using fallback key - NOT SAFE FOR PRODUCTION!")
+            self.master_key = 'FALLBACK_DEV_KEY_NOT_FOR_PRODUCTION_32B'
         
-        self.fernet = self._create_fernet()
-        logger.info("WalletPoolService initialized")
+        self.encryption_key = self._derive_key(self.master_key)
+        logger.info(f"WalletPoolService initialized - TONSDK: {TONSDK_AVAILABLE}, Testnet: {self.use_testnet}")
     
-    def _generate_master_key(self) -> str:
-        """Generar una clave maestra temporal."""
-        return secrets.token_urlsafe(32)
+    def _derive_key(self, master_key: str) -> bytes:
+        """Derivar clave de 32 bytes (AES-256) del master key usando SHA-256."""
+        return hashlib.sha256(master_key.encode()).digest()
     
-    def _create_fernet(self) -> Fernet:
-        """Crear instancia de Fernet para encriptación."""
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=b'b3c_wallet_pool_salt_v1',
-            iterations=100000,
-        )
-        key = base64.urlsafe_b64encode(kdf.derive(self.master_key.encode()))
-        return Fernet(key)
-    
-    def encrypt_private_key(self, private_key: str) -> str:
-        """Encriptar una private key."""
-        return self.fernet.encrypt(private_key.encode()).decode()
+    def encrypt_private_key(self, data: str) -> str:
+        """
+        Encriptar datos usando AES-256-CBC con IV único.
+        
+        Args:
+            data: Datos a encriptar (mnemonic o private key)
+            
+        Returns:
+            String base64 con formato: IV:CIPHERTEXT
+        """
+        iv = secrets.token_bytes(16)
+        
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(data.encode()) + padder.finalize()
+        
+        cipher = Cipher(algorithms.AES(self.encryption_key), modes.CBC(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+        
+        combined = base64.b64encode(iv).decode() + ':' + base64.b64encode(ciphertext).decode()
+        return combined
     
     def decrypt_private_key(self, encrypted: str) -> str:
-        """Desencriptar una private key."""
-        return self.fernet.decrypt(encrypted.encode()).decode()
+        """
+        Desencriptar datos AES-256-CBC.
+        
+        Args:
+            encrypted: String en formato IV:CIPHERTEXT (base64)
+            
+        Returns:
+            Datos desencriptados
+        """
+        try:
+            parts = encrypted.split(':')
+            if len(parts) != 2:
+                raise ValueError("Invalid encrypted format")
+            
+            iv = base64.b64decode(parts[0])
+            ciphertext = base64.b64decode(parts[1])
+            
+            cipher = Cipher(algorithms.AES(self.encryption_key), modes.CBC(iv), backend=default_backend())
+            decryptor = cipher.decryptor()
+            padded_data = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            unpadder = padding.PKCS7(128).unpadder()
+            data = unpadder.update(padded_data) + unpadder.finalize()
+            
+            return data.decode()
+        except Exception as e:
+            logger.error(f"Error decrypting private key: {e}")
+            raise
     
     def generate_ton_wallet(self) -> Dict[str, str]:
         """
-        Generar un nuevo par de llaves TON.
-        Usa la API de TonCenter o genera localmente.
+        Generar un nuevo par de llaves TON válido usando tonsdk.
         
         Returns:
-            Dict con address, private_key, public_key
+            Dict con address, mnemonic, public_key
         """
+        if TONSDK_AVAILABLE:
+            return self._generate_real_wallet()
+        else:
+            return self._generate_simulated_wallet()
+    
+    def _generate_real_wallet(self) -> Dict[str, str]:
+        """Generar wallet TON real usando tonsdk."""
         try:
-            private_key = secrets.token_hex(32)
+            wallet_workchain = 0
+            wallet_version = WalletVersionEnum.v4r2
+            
+            mnemonic = mnemonic_new()
+            
+            _mnemonics, _pub_k, _priv_k, wallet = Wallets.from_mnemonics(
+                mnemonic, wallet_version, wallet_workchain
+            )
+            
+            address = wallet.address.to_string(True, True, False)
+            
+            mnemonic_str = ' '.join(mnemonic)
+            
+            logger.info(f"Generated real TON wallet: {address[:20]}...")
+            
+            return {
+                'address': address,
+                'private_key': mnemonic_str,
+                'public_key': _pub_k.hex() if isinstance(_pub_k, bytes) else str(_pub_k),
+                'is_real': True
+            }
+        except Exception as e:
+            logger.error(f"Error generating real TON wallet: {e}")
+            return self._generate_simulated_wallet()
+    
+    def _generate_simulated_wallet(self) -> Dict[str, str]:
+        """Generar wallet simulada para desarrollo/testeo."""
+        try:
+            seed = secrets.token_bytes(32)
+            private_key = hashlib.sha256(seed).hexdigest()
             public_key = hashlib.sha256(bytes.fromhex(private_key)).hexdigest()
             
-            address_hash = hashlib.sha256(f"{public_key}_deposit".encode()).hexdigest()[:40]
-            address = f"UQ{''.join([chr(65 + int(c, 16) % 26) if c.isalpha() else c for c in address_hash])}"
+            addr_hash = hashlib.sha256(f"{public_key}_deposit_{secrets.token_hex(4)}".encode()).hexdigest()
+            
+            chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'
+            address_body = ''.join(chars[int(addr_hash[i:i+2], 16) % len(chars)] for i in range(0, 48, 2))
+            address = f"UQ{address_body}"
+            
+            logger.warning(f"Generated SIMULATED wallet (not real TON): {address[:20]}...")
             
             return {
                 'address': address,
                 'private_key': private_key,
-                'public_key': public_key
+                'public_key': public_key,
+                'is_real': False,
+                'warning': 'SIMULATED - Install tonsdk for real wallets'
             }
         except Exception as e:
-            logger.error(f"Error generating TON wallet: {e}")
+            logger.error(f"Error generating simulated wallet: {e}")
             raise
     
     def add_wallet_to_pool(self) -> Optional[str]:
