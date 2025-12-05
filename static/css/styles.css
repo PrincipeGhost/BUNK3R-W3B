@@ -1560,10 +1560,23 @@ select:focus-visible {
     color: var(--text-primary);
 }
 
-.profile-verified-dot {
-    color: #ff0050;
-    font-size: 8px;
+.profile-verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, #4299e1, #667eea);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
     margin-left: 6px;
+    box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
+}
+
+.profile-verified-badge.hidden {
+    display: none;
 }
 
 .profile-page-menu-btn {
@@ -9798,16 +9811,48 @@ select:focus-visible {
 }
 
 .follower-name {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-weight: 600;
     color: var(--text-primary);
     font-size: 14px;
+}
+
+.follower-name .verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
 }
 
 .follower-username {
     display: block;
     color: var(--text-secondary);
     font-size: 13px;
+}
+
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, #4299e1, #667eea);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 4px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
 }
 
 .follower-btn {

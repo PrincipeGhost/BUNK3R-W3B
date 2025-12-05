@@ -3916,6 +3916,38 @@ def admin_toggle_user_status():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/user/verify', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_verify_user():
+    """Admin: Cambiar estado de verificación de un usuario."""
+    try:
+        data = request.get_json() or {}
+        user_id = data.get('userId')
+        is_verified = data.get('isVerified', False)
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'ID de usuario requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.set_user_verified(user_id, is_verified)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'isVerified': is_verified,
+                'message': 'Usuario verificado' if is_verified else 'Verificación removida'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error verifying user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/bots', methods=['GET', 'POST'])
 @require_telegram_auth
 @require_owner

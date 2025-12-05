@@ -1467,12 +1467,21 @@ const App = {
     updateProfilePage() {
         const username = document.getElementById('profile-page-username');
         const name = document.getElementById('profile-page-name');
+        const verifiedBadge = document.getElementById('profile-verified-badge');
         
         if (username && this.user) {
             username.textContent = this.user.username ? `@${this.user.username}` : '@demo_user';
         }
         if (name && this.user) {
             name.textContent = this.user.firstName || 'Demo';
+        }
+        
+        if (verifiedBadge) {
+            if (this.user?.isVerified || this.user?.is_verified) {
+                verifiedBadge.classList.remove('hidden');
+            } else {
+                verifiedBadge.classList.add('hidden');
+            }
         }
         
         this.updateAllAvatars();
@@ -1657,6 +1666,8 @@ const App = {
             list.innerHTML = '<div class="followers-loading"><div class="spinner"></div></div>';
         }
         
+        this._currentFollowersTab = type;
+        
         try {
             const userId = this.user?.id || '0';
             const endpoint = type === 'followers' 
@@ -1672,22 +1683,39 @@ const App = {
                         ${type === 'followers' ? 'Aun no tienes seguidores' : 'No sigues a nadie'}
                     </div>`;
                 } else {
-                    list.innerHTML = users.map(user => `
-                        <div class="follower-item" onclick="App.viewUserProfile('${this.sanitizeForJs(user.id)}')">
-                            <img src="${this.escapeAttribute(user.avatarUrl || user.avatar_url || '/static/images/default-avatar.png')}" 
-                                 class="follower-avatar" 
-                                 onerror="this.src='/static/images/default-avatar.png'">
-                            <div class="follower-info">
-                                <span class="follower-name">${this.escapeHtml(user.firstName || user.first_name || user.username || 'Usuario')}</span>
-                                <span class="follower-username">@${this.escapeHtml(user.username || 'usuario')}</span>
-                            </div>
-                            ${type === 'following' ? `
-                                <button class="follower-btn following" onclick="event.stopPropagation(); App.unfollowUser('${this.sanitizeForJs(user.id)}')">
+                    list.innerHTML = users.map(user => {
+                        const isVerified = user.isVerified || user.is_verified;
+                        const verifiedBadge = isVerified ? '<span class="verified-badge" title="Cuenta verificada">✓</span>' : '';
+                        const userName = this.escapeHtml(user.firstName || user.first_name || user.username || 'Usuario');
+                        
+                        let actionButton = '';
+                        if (type === 'following') {
+                            actionButton = `
+                                <button class="follower-btn following" onclick="event.stopPropagation(); App.toggleFollowFromList('${this.sanitizeForJs(user.id)}', true)">
                                     Siguiendo
                                 </button>
-                            ` : ''}
-                        </div>
-                    `).join('');
+                            `;
+                        } else {
+                            actionButton = `
+                                <button class="follower-btn follow" onclick="event.stopPropagation(); App.toggleFollowFromList('${this.sanitizeForJs(user.id)}', false)">
+                                    Seguir
+                                </button>
+                            `;
+                        }
+                        
+                        return `
+                            <div class="follower-item" onclick="App.viewUserProfile('${this.sanitizeForJs(user.id)}')">
+                                <img src="${this.escapeAttribute(user.avatarUrl || user.avatar_url || '/static/images/default-avatar.png')}" 
+                                     class="follower-avatar" 
+                                     onerror="this.src='/static/images/default-avatar.png'">
+                                <div class="follower-info">
+                                    <span class="follower-name">${userName}${verifiedBadge}</span>
+                                    <span class="follower-username">@${this.escapeHtml(user.username || 'usuario')}</span>
+                                </div>
+                                ${actionButton}
+                            </div>
+                        `;
+                    }).join('');
                 }
             }
         } catch (error) {
@@ -1695,6 +1723,24 @@ const App = {
             if (list) {
                 list.innerHTML = '<div class="followers-empty">Error al cargar</div>';
             }
+        }
+    },
+    
+    async toggleFollowFromList(userId, isCurrentlyFollowing) {
+        try {
+            const response = await this.apiRequest(`/api/users/${userId}/follow`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                const action = isCurrentlyFollowing ? 'dejado de seguir' : 'siguiendo';
+                this.showToast(`Usuario ${action}`, 'success');
+                this.switchFollowersTab(this._currentFollowersTab || 'followers');
+                this.loadProfileStats();
+            }
+        } catch (error) {
+            console.error('Toggle follow error:', error);
+            this.showToast('Error al procesar la solicitud', 'error');
         }
     },
     

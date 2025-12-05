@@ -1158,6 +1158,55 @@ class DatabaseManager:
             logger.error(f"Error updating user profile {user_id}: {e}")
             return False
 
+    def set_user_verified(self, user_id: str, is_verified: bool) -> bool:
+        """Establecer el estado de verificación de un usuario (solo admin)"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE users SET is_verified = %s, updated_at = CURRENT_TIMESTAMP 
+                           WHERE id = %s""",
+                        (is_verified, user_id)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    if success:
+                        logger.info(f"User {user_id} verification status set to {is_verified}")
+                    return success
+        except Exception as e:
+            logger.error(f"Error setting verification status for user {user_id}: {e}")
+            return False
+
+    def get_all_users_for_admin(self, limit: int = 100, offset: int = 0, search: str = None) -> List[dict]:
+        """Obtener lista de usuarios para panel de admin"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    if search:
+                        cur.execute(
+                            """SELECT id, username, first_name, last_name, avatar_url, bio,
+                                      is_verified, credits, created_at, last_seen
+                               FROM users 
+                               WHERE username ILIKE %s OR first_name ILIKE %s OR last_name ILIKE %s
+                               ORDER BY created_at DESC
+                               LIMIT %s OFFSET %s""",
+                            (f'%{search}%', f'%{search}%', f'%{search}%', limit, offset)
+                        )
+                    else:
+                        cur.execute(
+                            """SELECT id, username, first_name, last_name, avatar_url, bio,
+                                      is_verified, credits, created_at, last_seen
+                               FROM users 
+                               ORDER BY created_at DESC
+                               LIMIT %s OFFSET %s""",
+                            (limit, offset)
+                        )
+                    rows = cur.fetchall()
+                    return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting users for admin: {e}")
+            return []
+
     def update_user_avatar_data(self, user_id: str, avatar_data: str) -> bool:
         """Guardar imagen de avatar como base64 en la base de datos"""
         try:
