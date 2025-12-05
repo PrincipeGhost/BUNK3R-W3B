@@ -53,8 +53,7 @@ class WalletPoolService:
         self.use_testnet = os.environ.get('B3C_USE_TESTNET', 'true').lower() == 'true'
         
         if not self.master_key:
-            logger.error("WALLET_MASTER_KEY/ENCRYPTION_MASTER_KEY not set! Using fallback key - NOT SAFE FOR PRODUCTION!")
-            self.master_key = 'FALLBACK_DEV_KEY_NOT_FOR_PRODUCTION_32B'
+            raise ValueError("CRITICAL: ENCRYPTION_MASTER_KEY must be set! Cannot create wallets without encryption key.")
         
         self.encryption_key = self._derive_key(self.master_key)
         logger.info(f"WalletPoolService initialized - TONSDK: {TONSDK_AVAILABLE}, Testnet: {self.use_testnet}, HotWallet: {self.hot_wallet[:20] if self.hot_wallet else 'NOT SET'}...")
