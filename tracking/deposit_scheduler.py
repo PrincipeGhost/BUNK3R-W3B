@@ -18,6 +18,7 @@ class DepositScheduler:
     POLL_INTERVAL_SECONDS = 30
     EXPIRATION_CHECK_INTERVAL = 60
     MIN_POOL_CHECK_INTERVAL = 300
+    CONSOLIDATION_INTERVAL = 60
     
     def __init__(self, db_manager, wallet_pool_service=None):
         """
@@ -33,6 +34,7 @@ class DepositScheduler:
         self._thread: Optional[threading.Thread] = None
         self._last_pool_check = 0
         self._last_expiration_check = 0
+        self._last_consolidation_check = 0
         
         logger.info("DepositScheduler initialized")
     
@@ -73,6 +75,11 @@ class DepositScheduler:
                 self._check_pending_deposits()
                 
                 current_time = time.time()
+                
+                if current_time - self._last_consolidation_check > self.CONSOLIDATION_INTERVAL:
+                    self._consolidate_deposits()
+                    self._last_consolidation_check = current_time
+                
                 if current_time - self._last_expiration_check > self.EXPIRATION_CHECK_INTERVAL:
                     self._check_expired_wallets()
                     self._last_expiration_check = current_time
@@ -155,6 +162,15 @@ class DepositScheduler:
                         
         except Exception as e:
             logger.error(f"[SCHEDULER] Error in _check_expired_wallets: {e}")
+    
+    def _consolidate_deposits(self):
+        """Consolidar depósitos confirmados a la wallet maestra."""
+        try:
+            consolidated = self.wallet_pool.consolidate_confirmed_deposits()
+            if consolidated > 0:
+                logger.info(f"[SCHEDULER] Successfully consolidated {consolidated} deposits to master wallet")
+        except Exception as e:
+            logger.error(f"[SCHEDULER] Error consolidating deposits: {e}")
     
     def _ensure_pool_size(self):
         """Asegurar que el pool tenga suficientes wallets disponibles."""
