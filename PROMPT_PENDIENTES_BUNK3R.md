@@ -22,11 +22,12 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 5 Diciembre 2025 |
-| Sección actual | SECCIÓN 22 |
-| Total secciones | 22 |
+| Sección actual | SECCIÓN 23 |
+| Total secciones | 23 |
 | Completadas | 21 ✅ |
-| Pendientes | 1 ⏳ |
-| En progreso | 1 🔄 |
+| Pendientes | 2 ⏳ |
+| En progreso | 0 🔄 |
+| Crítico | 1 🔴 |
 
 ---
 
@@ -59,8 +60,14 @@ Esperando tu respuesta...
 - Flujo de conexión/desconexión funcionando correctamente
 - Integración con sistema de dispositivos confiables verificada
 
+### 🔴 CRÍTICO:
+- **Sección 23:** Verificación de Pagos B3C y Acreditación Automática - CRÍTICO
+  - Problema: Transacciones TON sin comentario, verificación falla
+  - API Key TonCenter: ✅ Configurada
+  - Causa raíz: `buildTextCommentPayload()` retorna undefined
+
 ### ⏳ PENDIENTES:
-- **Sección 22:** Auditoría de Seguridad y Vulnerabilidades (EN PROGRESO)
+- **Sección 22:** Auditoría de Seguridad y Vulnerabilidades (parcialmente completado)
 
 ### ✅ COMPLETADAS RECIENTEMENTE:
 - **Sección 21:** Rediseño UI Profesional (Neo-Banco) - COMPLETADO
@@ -1375,6 +1382,220 @@ if IS_PRODUCTION and not admin_token:
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 23: VERIFICACIÓN DE PAGOS B3C Y ACREDITACIÓN AUTOMÁTICA 🔴
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** CRÍTICA  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Usuario reporta que pagos TON se envían pero B3C no se acredita
+**Estado:** PENDIENTE
+
+---
+
+### PROBLEMA IDENTIFICADO:
+
+**Síntomas reportados:**
+1. Usuario envía 0.5 TON desde wallet conectada
+2. TON llegan correctamente a la hot wallet (`UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59`)
+3. Balance B3C permanece en 0.00
+4. Sección "Transacciones" vacía
+5. Sin notificaciones
+6. El verificador muestra "Verificando pago... (8/10), (9/10)" y luego termina sin éxito
+
+**Causa raíz encontrada:**
+```javascript
+// static/js/app.js línea 4314-4316
+buildTextCommentPayload(comment) {
+    return undefined;  // <-- SIEMPRE RETORNA UNDEFINED!
+},
+```
+
+La transacción se envía SIN el payload del comentario `B3C-XXXXX`, por lo que el verificador no puede encontrar la transacción en la blockchain (busca por comentario).
+
+**Evidencia en TonScan:**
+- Transacción hash: `1830187b6d9ad3463b27bab...`
+- Payload: `0x7369676e` ("sign" en hex) - NO es el comentario esperado
+- Monto: 0.5 TON
+- Destino correcto: `UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59`
+
+**Compras pendientes en BD (todas sin confirmar):**
+```
+purchase_id | ton_amount | b3c_amount | status
+B5DB40DD    | 0.5        | 7.41       | pending
+4D5CE566    | 0.5        | 23.75      | pending
+CBD1B67F    | 0.5        | 475.00     | pending
+... (7 total)
+```
+
+---
+
+### SOLUCIÓN PROPUESTA:
+
+#### FASE 23.1: Corregir envío de comentario en transacciones TON
+
+**Archivo:** `static/js/app.js`
+
+**Tarea 23.1.1:** Implementar `buildTextCommentPayload` correctamente
+```javascript
+buildTextCommentPayload(comment) {
+    // Construir payload base64 para comentario de texto
+    // Formato: 0x00000000 (op_code) + texto UTF-8
+    const encoder = new TextEncoder();
+    const commentBytes = encoder.encode(comment);
+    
+    // Crear buffer con op_code (4 bytes) + texto
+    const buffer = new Uint8Array(4 + commentBytes.length);
+    buffer.set([0, 0, 0, 0], 0); // op_code = 0 (text comment)
+    buffer.set(commentBytes, 4);
+    
+    // Convertir a base64
+    return btoa(String.fromCharCode(...buffer));
+}
+```
+
+**Tarea 23.1.2:** Agregar payload a la transacción
+```javascript
+// En buyB3CWithTonConnect, modificar:
+const transaction = {
+    validUntil: Math.floor(Date.now() / 1000) + 600,
+    messages: [{
+        address: response.hotWallet,
+        amount: amountNano,
+        payload: this.buildTextCommentPayload(response.comment) // AGREGAR
+    }]
+};
+```
+
+---
+
+#### FASE 23.2: Mejorar verificación de transacciones
+
+**Archivo:** `tracking/b3c_service.py`
+
+**Tarea 23.2.1:** Verificación robusta con API v3 de TonCenter
+- API key ya configurada: `TONCENTER_API_KEY`
+- Usar formato correcto de respuesta v3
+- Agregar logging detallado para debugging
+
+**Tarea 23.2.2:** Verificación alternativa por monto + wallet origen
+- Si no hay comentario, buscar por:
+  - Wallet origen del usuario
+  - Monto exacto (±0.01 TON)
+  - Timestamp reciente (últimos 15 minutos)
+
+```python
+def verify_ton_transaction_v2(self, user_wallet: str, expected_amount: float, 
+                               expected_comment: Optional[str] = None,
+                               time_window_minutes: int = 15) -> Dict[str, Any]:
+    """Verificación mejorada con múltiples criterios."""
+    # 1. Buscar primero por comentario (método preferido)
+    # 2. Si no hay comentario, buscar por wallet+monto+tiempo
+    # 3. Retornar transacción encontrada o estado pendiente
+```
+
+---
+
+#### FASE 23.3: Acreditación automática de B3C
+
+**Tarea 23.3.1:** Cuando se verifica el pago:
+1. Actualizar `b3c_purchases.status = 'confirmed'`
+2. Insertar en `wallet_transactions` (tipo 'credit')
+3. Registrar comisión en `b3c_commissions`
+4. Actualizar balance del usuario en cache
+
+**Tarea 23.3.2:** Respuesta al frontend con datos actualizados:
+```python
+return jsonify({
+    'success': True,
+    'status': 'confirmed',
+    'b3c_credited': b3c_amount,
+    'new_balance': updated_balance,
+    'tx_hash': verification['tx_hash']
+})
+```
+
+---
+
+#### FASE 23.4: Notificaciones de compra
+
+**Tarea 23.4.1:** Toast en la app
+- Ya implementado en `verifyB3CPurchaseAfterTx`
+- Verificar que muestra cantidad correcta
+
+**Tarea 23.4.2:** Notificación Telegram (via bot)
+- Enviar mensaje al usuario cuando compra confirmada
+- Formato: "✅ Compra confirmada: +X B3C acreditados a tu cuenta"
+
+**Tarea 23.4.3:** Actualizar balance inmediatamente
+- Llamar `refreshB3CBalance()` después de confirmación
+- Actualizar UI sin refresh de página
+
+---
+
+#### FASE 23.5: Historial de transacciones
+
+**Tarea 23.5.1:** Endpoint `/api/b3c/history`
+- Retornar lista de transacciones del usuario
+- Incluir: compras, ventas, transferencias, retiros
+
+**Tarea 23.5.2:** UI de historial
+- Mostrar en sección "Transacciones" de wallet
+- Incluir: fecha, tipo, monto, estado, tx_hash (link a TonScan)
+
+---
+
+#### FASE 23.6: Recuperar compras pendientes existentes
+
+**Tarea 23.6.1:** Script de reconciliación
+- Buscar en TonCenter transacciones hacia hot_wallet
+- Matchear con compras pendientes por monto + timestamp
+- Confirmar manualmente las que coincidan
+
+**Compras a reconciliar:**
+| purchase_id | TON    | Fecha       | Usuario     |
+|-------------|--------|-------------|-------------|
+| B5DB40DD    | 0.5    | 05/12 20:56 | 7729022720  |
+| 4D5CE566    | 0.5    | 05/12 19:31 | 7729022720  |
+| CBD1B67F    | 0.5    | 05/12 18:56 | 7729022720  |
+
+---
+
+### CONFIGURACIÓN REQUERIDA:
+
+**Variables de entorno (ya configuradas):**
+- ✅ `TONCENTER_API_KEY` - Para consultas a blockchain
+- ✅ `B3C_HOT_WALLET` - Wallet receptora de pagos
+- ✅ `B3C_TOKEN_ADDRESS` - Contrato del token B3C
+- ✅ `B3C_USE_FIXED_PRICE=true` - Precio fijo $0.10 USD
+
+**Wallets involucradas:**
+- Hot wallet: `UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59`
+- Wallet usuario: `UQA5l6-8ka5wsyOhn8S7qcXWESgvPJgOBC3wsOVBnxm87Bck`
+
+---
+
+### CRITERIOS DE ACEPTACIÓN:
+
+- [ ] 23.1 Transacciones TON incluyen comentario `B3C-XXXXX`
+- [ ] 23.2 Verificador encuentra transacciones en TonCenter
+- [ ] 23.3 Balance B3C se actualiza tras confirmación
+- [ ] 23.4 Historial muestra transacciones confirmadas
+- [ ] 23.5 Toast de confirmación visible en app
+- [ ] 23.6 Notificación Telegram enviada
+- [ ] 23.7 Compras pendientes existentes reconciliadas
+
+---
+
+### ARCHIVOS A MODIFICAR:
+
+1. `static/js/app.js` - Función buildTextCommentPayload y transacción
+2. `tracking/b3c_service.py` - Verificación mejorada con API v3
+3. `app.py` - Endpoint verify mejorado y notificaciones
+4. `static/js/app.js` - UI de historial de transacciones
+
+---
+
 ## SECCIONES ARCHIVADAS (COMPLETADAS)
 
 Las siguientes secciones han sido completadas y archivadas:
@@ -1410,6 +1631,7 @@ Las siguientes secciones han sido completadas y archivadas:
 | 7 | 05/12/2025 | Conexión wallet completa | SECCIÓN 20 - Wallet Connect | ⏳ |
 | 8 | 05/12/2025 | Rediseño UI neo-banco estilo Binance | SECCIÓN 21 - UI Profesional | ⏳ |
 | 9 | 05/12/2025 | Auditoría de vulnerabilidades | SECCIÓN 22 - Seguridad | ⏳ |
+| 10 | 05/12/2025 | Pagos B3C no se acreditan | SECCIÓN 23 - Verificación Pagos | 🔴 |
 
 ---
 
