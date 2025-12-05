@@ -1,0 +1,201 @@
+Aquí tienes la plantilla completa:
+
+📋 PROMPT_PENDIENTES_[NOMBRE_PROYECTO].md
+🚀 MENÚ DE INICIO
+Al iniciar cada sesión, el agente DEBE preguntar:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 ¿Qué quieres hacer?
+1️⃣ CONTINUAR    → Retomo la siguiente sección pendiente
+2️⃣ NUEVO PROMPT → Agrega nueva tarea/funcionalidad  
+3️⃣ VER PROGRESO → Muestra estado actual del proyecto
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esperando tu respuesta...
+
+📊 ESTADO GENERAL DEL PROYECTO
+Métrica	Valor
+Proyecto	[Nombre del proyecto]
+Última actualización	[Fecha]
+Sección actual	[Número]
+Total secciones	[X]
+Completadas	[X] ✅
+Pendientes	[X] ⏳
+En progreso	[X] 🔄
+🔥 REGLAS BASE DEL AGENTE – OBLIGATORIAS
+1. Comunicación de Progreso
+INICIO:   "🔄 Comenzando sección [X]: [Nombre]"
+FIN:      "✅ Completada sección [X]: [Nombre] | Pendientes: [lista]"
+ERROR:    "⚠️ Problema en sección [X]: [Descripción]"
+
+2. Verificación Obligatoria
+Antes de marcar como completado, el agente DEBE:
+
+ Probar la funcionalidad como usuario real
+ Confirmar que no rompe funcionalidades previas
+ Verificar comportamiento correcto de la UI
+ Revisar logs y consola para errores ocultos
+ Solo marcar completado cuando funcione al 100%
+3. Normas de Desarrollo
+Código limpio, ordenado y legible
+Comentarios cuando sea adecuado
+Evitar complejidad innecesaria
+Detectar duplicaciones y refactorizar
+Mantener consistencia en estilo y arquitectura
+4. Normas de Documentación
+Actualizar replit.md con:
+
+Qué se hizo
+Qué falta
+Errores detectados
+Siguientes pasos
+Nuevas dependencias
+Cambios en arquitectura
+5. Normas de Análisis
+Revisar estructura de carpetas
+Detectar archivos o código muerto
+Proponer mejoras de arquitectura
+Evaluar rendimiento
+Identificar redundancias
+6. Normas de Interacción
+Pedir confirmación para cambios críticos
+Explicar claramente cada modificación
+No omitir detalles técnicos
+Proponer alternativas cuando existan
+7. Normas de Seguridad
+NO HACER:
+
+Eliminar archivos sin confirmación
+Cambios destructivos sin aprobación
+Exponer datos sensibles
+OBLIGATORIO:
+
+Respaldo antes de cambios mayores
+Validar entradas del usuario
+Mantener integridad del proyecto
+8. Actualización Continua
+Leer siempre replit.md antes de empezar
+Mantener sincronizados: código, documentación, progreso
+Corregir inconsistencias
+Registrar cada avance
+9. Detección de Vulnerabilidades
+Revisar cada cambio para detectar:
+
+Inyección SQL/XSS/CSRF
+Exposición de datos
+Accesos sin autorización
+Código inseguro o deprecated
+Dependencias vulnerables
+10. Protocolo de Vulnerabilidad Detectada
+Si se detecta vulnerabilidad → DETENER TODO
+
+Explicar en chat:
+
+Qué es la vulnerabilidad
+Qué daño podría causar
+Cómo se previene
+Corregir inmediatamente
+
+Registrar en replit.md:
+
+### Seguridad / Auditoría
+- Vulnerabilidad: [...]
+- Riesgos: [...]
+- Corrección: [...]
+- Fecha: [...]
+
+Reanalizar funciones relacionadas
+📋 SECCIONES DE TRABAJO
+Leyenda de Estados:
+Símbolo	Significado
+✅	Completado
+🔄	En progreso
+⏳	Pendiente
+❌	Bloqueado/Error
+🔒	Requiere confirmación
+SECCIÓN 1: [Nombre de la sección] ⏳
+Prioridad: Alta/Media/Baja
+Estimación: X horas
+
+Tareas:
+
+ 1.1 [Descripción de tarea]
+ 1.2 [Descripción de tarea]
+ 1.3 [Descripción de tarea]
+Criterios de aceptación:
+
+ [Criterio 1]
+ [Criterio 2]
+Notas:
+
+[Observaciones importantes]
+
+SECCIÓN 2: [Nombre de la sección] ⏳
+Prioridad: Alta/Media/Baja
+
+Tareas:
+
+ 2.1 [Descripción]
+ 2.2 [Descripción]
+Criterios de aceptación:
+
+ [Criterio]
+SECCIÓN 3: [Nombre de la sección] ⏳
+(Repetir formato según necesidad)
+
+📝 HISTORIAL DE PROMPTS
+#	Fecha	Prompt del Usuario	Acción Tomada	Estado
+1	[Fecha]	[Lo que pidió el usuario]	[Lo que se hizo]	✅/⏳
+2	[Fecha]	[Lo que pidió el usuario]	[Agregado a sección X]	⏳
+🔄 INSTRUCCIONES DE CONTINUACIÓN AUTOMÁTICA
+Cuando el usuario diga "continúa", el agente DEBE:
+
+Leer este archivo completo
+Identificar la siguiente sección pendiente (⏳)
+Informar: "🔄 Comenzando sección [X]: [Nombre]"
+Ejecutar todas las tareas de esa sección
+Verificar funcionamiento
+Actualizar este archivo (marcar ✅, agregar notas)
+Actualizar replit.md
+Informar: "✅ Completada sección [X]. ¿Continúo con la siguiente?"
+➕ INSTRUCCIONES PARA NUEVO PROMPT
+Cuando el usuario agregue una nueva tarea:
+
+Analizar el prompt del usuario
+Determinar si es nueva sección o tarea dentro de sección existente
+Agregar al archivo en el lugar correcto
+Registrar en historial de prompts
+Preguntar: "¿Ejecuto ahora o continúo con las secciones pendientes?"
+📊 INSTRUCCIONES PARA VER PROGRESO
+Cuando el usuario pida ver progreso, mostrar:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 PROGRESO DEL PROYECTO: [Nombre]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Completadas: X/Y secciones (XX%)
+🔄 En progreso: Sección [X] - [Nombre]
+⏳ Pendientes: [Lista de secciones]
+Última actividad: [Fecha] - [Descripción]
+¿Qué quieres hacer?
+1️⃣ Continuar trabajo
+2️⃣ Ver detalle de sección específica
+3️⃣ Agregar nueva tarea
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 PLANTILLA RÁPIDA PARA NUEVA SECCIÓN
+### SECCIÓN [X]: [Nombre] ⏳
+**Prioridad:** [Alta/Media/Baja]  
+**Agregado:** [Fecha]  
+**Origen:** [Prompt del usuario o sugerencia del agente]
+**Tareas:**
+- [ ] X.1 [Tarea]
+- [ ] X.2 [Tarea]
+**Criterios de aceptación:**
+- [ ] [Criterio]
+**Notas:**
+> [Observaciones]
+
+📌 NOTAS IMPORTANTES
+Este archivo es la fuente de verdad del proyecto
+El agente SIEMPRE debe leerlo al iniciar
+Cualquier cambio importante debe quedar registrado aquí
+El usuario puede modificar prioridades en cualquier momento
+Las reglas base son OBLIGATORIAS y PERMANENTES
