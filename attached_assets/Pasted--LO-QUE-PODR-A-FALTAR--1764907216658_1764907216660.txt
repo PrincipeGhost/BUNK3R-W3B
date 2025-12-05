@@ -1,0 +1,124 @@
+⚠️ LO QUE PODRÍA FALTAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    ASPECTOS PENDIENTES DE DEFINIR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ ¿CÓMO PAGA EL USUARIO?
+   ────────────────────────
+   Opciones:
+   a) TON Connect (conecta Tonkeeper desde la app)
+   b) QR code (escanea y paga desde wallet)
+   c) Envía a dirección (como recargas actuales)
+   
+   ❓ ¿Cuál prefieres?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣ FLUJO DE COMPRA DETALLADO (falta diagrama)
+   ────────────────────────────────────────────
+   
+   Usuario quiere comprar B3C:
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │                                                                      │
+   │  PASO 1: Usuario indica cuántos TON quiere gastar                    │
+   │  PASO 2: App muestra: cantidad B3C que recibirá + comisión           │
+   │  PASO 3: Usuario confirma                                            │
+   │  PASO 4: ¿¿¿ CÓMO PAGA ???                                           │
+   │  PASO 5: Backend recibe TON                                          │
+   │  PASO 6: 5% → Tu wallet, 95% → Swap en DEX                           │
+   │  PASO 7: B3C → Balance interno del usuario                           │
+   │  PASO 8: Notificación de éxito                                       │
+   │                                                                      │
+   └─────────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣ INTEGRACIÓN CON SISTEMA ACTUAL
+   ─────────────────────────────────
+   Tu app YA tiene un sistema de wallet/BUNK3RCOIN.
+   
+   ❓ Preguntas:
+   • ¿El balance actual se mantiene separado o se migra?
+   • ¿Los usuarios actuales conservan sus créditos?
+   • ¿Hay dos balances (créditos + tokens reales) o solo uno?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4️⃣ UI/UX - ¿DÓNDE APARECEN LAS OPCIONES?
+   ───────────────────────────────────────
+   
+   ❓ ¿En qué pantalla de la app?
+   • ¿Nueva sección "Token B3C"?
+   • ¿Dentro del Wallet existente?
+   • ¿Tab separado?
+   
+   ❓ ¿Qué botones mostrar?
+   • [Comprar B3C]
+   • [Vender B3C]  
+   • [Retirar a wallet]
+   • [Depositar desde wallet]
+   • [Ver precio/gráfico]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5️⃣ HISTORIAL DE TRANSACCIONES
+   ────────────────────────────
+   
+   ❓ ¿Mostrar historial de?
+   • Compras de B3C
+   • Ventas de B3C
+   • Retiros a wallet externa
+   • Depósitos desde wallet externa
+   • ¿Con links al explorador blockchain?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6️⃣ TESTNET vs MAINNET
+   ─────────────────────
+   
+   ❓ ¿Quieres probar primero en testnet (gratis, sin riesgo)?
+   • Testnet: Pruebas con TON falso, sin costo
+   • Mainnet: Token real, cuesta dinero
+   
+   Recomendación: Testnet primero → Mainnet después
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7️⃣ MANEJO DE ERRORES
+   ────────────────────
+   
+   ¿Qué pasa si...?
+   • La transacción falla a mitad de camino
+   • El usuario envía TON pero el swap falla
+   • El retiro se queda pendiente
+   • El DEX no responde
+   
+   ❓ ¿Implementar sistema de reintentos automáticos?
+   ❓ ¿Reembolsos manuales o automáticos?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8️⃣ NOTIFICACIONES
+   ─────────────────
+   
+   ❓ ¿Notificar por?
+   • In-app (ya tienes sistema)
+   • Telegram bot
+   • Email
+   
+   ❓ ¿Cuándo notificar?
+   • Compra exitosa
+   • Venta exitosa
+   • Retiro procesado
+   • Depósito detectado
+   • Precio subió/bajó X%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9️⃣ ORDEN DE IMPLEMENTACIÓN
+   ──────────────────────────
+   
+   ❓ ¿En qué orden hacer las fases?
+   
+   Sugerencia:
+   1. Fase 15.1 (Crear token) ← TÚ manualmente
+   2. Fase 15.2 (Pool liquidez) ← TÚ manualmente
+   3. Fase 15.7 (Precio tiempo real) ← Yo implemento
+   4. Fase 15.3 (Compras) ← Yo implemento
+   5. Fase 15.4 (Retiros) ← Yo implemento
+   6. Fase 15.5 (Depósitos) ← Yo implemento
+   7. Fase 15.6 (Dashboard comisiones) ← Yo implemento
+   8. Fase 15.8 (Bot) ← Cuando llegue a $1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ PREGUNTAS PARA COMPLETAR EL PROMPT
+#	Pregunta	Tus opciones
+1	¿Cómo paga el usuario?	a) TON Connect b) QR c) Dirección
+2	¿Balance actual se migra?	a) Sí, todo junto b) No, separados
+3	¿Dónde en la UI?	a) Nueva sección b) Dentro de Wallet
+4	¿Testnet primero?	a) Sí b) Directo a mainnet
+5	¿Notificaciones dónde?	a) In-app b) Telegram c) Ambos
+6	¿Orden de fases OK?	a) Sí b) Cambiar orden
