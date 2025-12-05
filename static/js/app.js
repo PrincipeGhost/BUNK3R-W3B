@@ -4159,13 +4159,15 @@ const App = {
                 const valueUsdEl = document.getElementById('b3c-value-usd');
                 
                 if (balanceEl) {
-                    balanceEl.textContent = response.balance_formatted || response.balance.toLocaleString();
+                    const balance = response.balance || 0;
+                    balanceEl.textContent = balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
                 if (valueTonEl) {
                     valueTonEl.textContent = `~${response.value_ton.toFixed(4)} TON`;
                 }
                 if (valueUsdEl) {
-                    valueUsdEl.textContent = `(~$${response.value_usd.toFixed(2)})`;
+                    const usdValue = response.value_usd || 0;
+                    valueUsdEl.textContent = `~$${usdValue.toFixed(2)} USD`;
                 }
                 
                 this.state.update('wallet.balance', response.balance);
@@ -6081,15 +6083,15 @@ const App = {
             if (response.success) {
                 const balanceEl = document.getElementById('wallet-balance');
                 if (balanceEl) {
-                    const oldBalance = parseInt(balanceEl.textContent.replace(/,/g, '')) || 0;
-                    const newBalance = response.balance;
+                    const oldBalance = parseFloat(balanceEl.textContent.replace(/,/g, '')) || 0;
+                    const newBalance = response.balance || 0;
                     
                     this._lastKnownBalance = newBalance;
                     
                     if (animate && oldBalance !== newBalance) {
                         this.animateBalanceChange(balanceEl, oldBalance, newBalance);
                     } else {
-                        balanceEl.textContent = newBalance.toLocaleString();
+                        balanceEl.textContent = newBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     }
                     
                     if (typeof StateManager !== 'undefined') {
@@ -6113,9 +6115,9 @@ const App = {
             const elapsed = currentTime - start;
             const progress = Math.min(elapsed / duration, 1);
             const easeOut = 1 - Math.pow(1 - progress, 3);
-            const current = Math.round(from + diff * easeOut);
+            const current = from + diff * easeOut;
             
-            element.textContent = current.toLocaleString();
+            element.textContent = current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
             if (progress < 1) {
                 requestAnimationFrame(animate);
