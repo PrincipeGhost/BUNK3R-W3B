@@ -2273,6 +2273,29 @@ select:focus-visible {
     color: var(--accent-primary);
 }
 
+.neo-wallet-item.synced {
+    border-color: rgba(72, 187, 120, 0.3);
+    background: rgba(72, 187, 120, 0.08);
+}
+
+.neo-wallet-item.synced:hover {
+    border-color: rgba(72, 187, 120, 0.5);
+    background: rgba(72, 187, 120, 0.12);
+}
+
+.neo-wallet-synced {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #48bb78;
+    margin-top: 2px;
+}
+
+.neo-wallet-synced svg {
+    color: #48bb78;
+}
+
 /* Neo History Section */
 .neo-history-section {
     margin-top: 20px;

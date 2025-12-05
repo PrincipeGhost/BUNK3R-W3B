@@ -4696,7 +4696,49 @@ const App = {
         if (modal) modal.remove();
     },
 
+    getSyncedWallets() {
+        try {
+            const wallets = localStorage.getItem('syncedWallets');
+            return wallets ? JSON.parse(wallets) : {};
+        } catch (e) {
+            return {};
+        }
+    },
+    
+    saveSyncedWallet(type, address) {
+        try {
+            const wallets = this.getSyncedWallets();
+            wallets[type] = {
+                address: address,
+                syncedAt: new Date().toISOString()
+            };
+            localStorage.setItem('syncedWallets', JSON.stringify(wallets));
+        } catch (e) {
+            console.error('Error saving wallet:', e);
+        }
+    },
+    
+    removeSyncedWallet(type) {
+        try {
+            const wallets = this.getSyncedWallets();
+            delete wallets[type];
+            localStorage.setItem('syncedWallets', JSON.stringify(wallets));
+        } catch (e) {
+            console.error('Error removing wallet:', e);
+        }
+    },
+    
+    formatWalletAddress(address) {
+        if (!address || address.length < 12) return address;
+        return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+    },
+
     showB3CDepositModal() {
+        const syncedWallets = this.getSyncedWallets();
+        const hasTelegram = syncedWallets.telegram;
+        const hasBinance = syncedWallets.binance;
+        const hasExternal = syncedWallets.external;
+        
         const modal = document.createElement('div');
         modal.className = 'b3c-modal modal-overlay';
         modal.id = 'b3c-deposit-modal';
@@ -4710,7 +4752,7 @@ const App = {
                     <div class="neo-wallets-section">
                         <h3 class="neo-section-title">Selecciona tu wallet</h3>
                         <div class="neo-wallet-options">
-                            <div class="neo-wallet-item" onclick="App.connectTelegramWallet()">
+                            <div class="neo-wallet-item ${hasTelegram ? 'synced' : ''}" onclick="App.selectWalletForDeposit('telegram')">
                                 <div class="neo-wallet-icon telegram">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.828.94z"/>
@@ -4718,13 +4760,15 @@ const App = {
                                 </div>
                                 <div class="neo-wallet-info">
                                     <span class="neo-wallet-name">Telegram Wallet</span>
-                                    <span class="neo-wallet-desc">Conecta tu wallet de Telegram</span>
+                                    ${hasTelegram 
+                                        ? `<span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Sincronizada</span>` 
+                                        : `<span class="neo-wallet-desc">Conecta tu wallet de Telegram</span>`}
                                 </div>
                                 <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M9 18l6-6-6-6"/>
                                 </svg>
                             </div>
-                            <div class="neo-wallet-item" onclick="App.connectBinanceWallet()">
+                            <div class="neo-wallet-item ${hasBinance ? 'synced' : ''}" onclick="App.selectWalletForDeposit('binance')">
                                 <div class="neo-wallet-icon binance">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 0L7.172 4.828l1.768 1.768L12 3.536l3.06 3.06 1.768-1.768L12 0zM4.828 7.172L0 12l4.828 4.828 1.768-1.768L3.536 12l3.06-3.06-1.768-1.768zM19.172 7.172l-1.768 1.768L20.464 12l-3.06 3.06 1.768 1.768L24 12l-4.828-4.828zM12 8.464L8.464 12 12 15.536 15.536 12 12 8.464zM12 20.464l-3.06-3.06-1.768 1.768L12 24l4.828-4.828-1.768-1.768L12 20.464z"/>
@@ -4732,13 +4776,15 @@ const App = {
                                 </div>
                                 <div class="neo-wallet-info">
                                     <span class="neo-wallet-name">Binance</span>
-                                    <span class="neo-wallet-desc">Conecta tu cuenta Binance</span>
+                                    ${hasBinance 
+                                        ? `<span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Sincronizada</span>` 
+                                        : `<span class="neo-wallet-desc">Conecta tu cuenta Binance</span>`}
                                 </div>
                                 <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M9 18l6-6-6-6"/>
                                 </svg>
                             </div>
-                            <div class="neo-wallet-item" onclick="App.showExternalDepositAddress()">
+                            <div class="neo-wallet-item ${hasExternal ? 'synced' : ''}" onclick="App.selectWalletForDeposit('external')">
                                 <div class="neo-wallet-icon external">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="2" y="6" width="20" height="12" rx="2"/>
@@ -4747,7 +4793,9 @@ const App = {
                                 </div>
                                 <div class="neo-wallet-info">
                                     <span class="neo-wallet-name">Wallet Externa</span>
-                                    <span class="neo-wallet-desc">TON, MetaMask, TrustWallet...</span>
+                                    ${hasExternal 
+                                        ? `<span class="neo-wallet-synced"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Sincronizada</span>` 
+                                        : `<span class="neo-wallet-desc">TON, MetaMask, TrustWallet...</span>`}
                                 </div>
                                 <svg class="neo-wallet-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M9 18l6-6-6-6"/>
@@ -4762,6 +4810,41 @@ const App = {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) this.closeB3CModal('b3c-deposit-modal');
         });
+    },
+    
+    selectWalletForDeposit(type) {
+        const syncedWallets = this.getSyncedWallets();
+        
+        if (syncedWallets[type]) {
+            this.closeB3CModal('b3c-deposit-modal');
+            if (type === 'external') {
+                this.showExternalDepositAddress();
+            } else if (type === 'telegram') {
+                this.useTelegramWalletForDeposit();
+            } else if (type === 'binance') {
+                this.useBinanceWalletForDeposit();
+            }
+        } else {
+            if (type === 'telegram') {
+                this.connectTelegramWallet();
+            } else if (type === 'binance') {
+                this.connectBinanceWallet();
+            } else if (type === 'external') {
+                this.closeB3CModal('b3c-deposit-modal');
+                this.showExternalDepositAddress();
+                this.saveSyncedWallet('external', 'wallet-externa');
+            }
+        }
+    },
+    
+    useTelegramWalletForDeposit() {
+        this.showToast('Usando Telegram Wallet sincronizada', 'success');
+        // Implementar lógica de depósito con Telegram
+    },
+    
+    useBinanceWalletForDeposit() {
+        this.showToast('Usando Binance sincronizada', 'success');
+        // Implementar lógica de depósito con Binance
     },
     
     showExternalDepositAddress() {
