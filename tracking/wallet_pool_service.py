@@ -560,6 +560,69 @@ class WalletPoolService:
             logger.error(f"[DEPOSIT CHECK] Error checking wallet for deposit: {e}", exc_info=True)
             return {'found': False, 'error': str(e)}
     
+    def _credit_b3c_to_user_atomic(self, cur, user_id: str, ton_amount: float, purchase_id: str) -> dict:
+        """
+        Acreditar B3C al usuario usando el cursor existente (para transacción atómica).
+        
+        Args:
+            cur: Cursor de la base de datos
+            user_id: ID del usuario
+            ton_amount: Cantidad de TON recibida
+            purchase_id: ID de la compra
+            
+        Returns:
+            dict con b3c_amount si es exitoso, None si falla
+        """
+        try:
+            commission_rate = Decimal('0.05')
+            ton_decimal = Decimal(str(ton_amount))
+            commission = ton_decimal * commission_rate
+            net_ton = ton_decimal - commission
+            
+            fixed_price_usd = Decimal(os.environ.get('B3C_FIXED_PRICE_USD', '0.10'))
+            ton_usd_price = Decimal('5.0')
+            
+            try:
+                response = requests.get(
+                    'https://api.coingecko.com/api/v3/simple/price',
+                    params={'ids': 'the-open-network', 'vs_currencies': 'usd'},
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    ton_usd_price = Decimal(str(response.json().get('the-open-network', {}).get('usd', 5.0)))
+            except:
+                pass
+            
+            net_usd = net_ton * ton_usd_price
+            b3c_amount = net_usd / fixed_price_usd
+            
+            cur.execute("""
+                UPDATE b3c_purchases 
+                SET status = 'confirmed',
+                    b3c_amount = %s,
+                    commission_ton = %s,
+                    confirmed_at = NOW()
+                WHERE purchase_id = %s
+            """, (float(b3c_amount), float(commission), purchase_id))
+            
+            cur.execute("""
+                INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id, created_at)
+                VALUES (%s, 'b3c_purchase', %s, %s, %s, NOW())
+            """, (user_id, float(b3c_amount), f'Compra B3C - {purchase_id}', purchase_id))
+            
+            cur.execute("""
+                INSERT INTO b3c_commissions (transaction_type, reference_id, commission_ton)
+                VALUES ('purchase', %s, %s)
+            """, (purchase_id, float(commission)))
+            
+            logger.info(f"[B3C CREDIT ATOMIC] Prepared credit of {b3c_amount} B3C for user {user_id}, purchase {purchase_id}")
+            
+            return {'b3c_amount': float(b3c_amount), 'commission': float(commission)}
+            
+        except Exception as e:
+            logger.error(f"[B3C CREDIT ATOMIC] Error preparing B3C credit: {e}")
+            return None
+    
     def _credit_b3c_to_user(self, user_id: str, ton_amount: float, purchase_id: str) -> bool:
         """
         Acreditar B3C al usuario después de confirmar depósito.
