@@ -41,3 +41,27 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - **Cloudinary:** Encrypted media storage for publications.
 - **Cryptography (Python):** AES-256-GCM encryption/decryption of media files.
 - **SMSPool API:** Virtual phone numbers provisioning.
+
+## Recent Changes (December 2025)
+
+### Completed Priority Features:
+1. **Notifications System** - Full backend and frontend implementation for auto-generated notifications (likes, follows, comments, reactions, wallet transactions) with notification preferences and badge count.
+
+2. **Wallet Date Filter** - Added date range filter UI (today/week/month/all) to transaction history with backend support for `from_date` parameter.
+
+3. **Explore Screen** - New hashtag search with trending hashtags display, grid results, and sanitized rendering for XSS protection.
+
+4. **Security Improvements**:
+   - Added `escapeHtmlForExplore()`, `sanitizeHashtag()`, `sanitizeUrl()` functions for XSS prevention
+   - URL validation for media content in Explore
+   - Safe hashtag rendering with proper encoding
+
+5. **Verified Existing Features**:
+   - Stories (viewer with time remaining, delete, "seen by" list)
+   - Profile grid (Instagram-style 3-column layout)
+   - Comments (nested replies)
+   - Memory leak cleanup functions in both app.js and publications.js
+
+6. **Bug Fixes**:
+   - Changed `count_user_publications` to query 'posts' table instead of non-existent 'encrypted_publications'
+   - Fixed notification creation for wallet credits and bot purchases
