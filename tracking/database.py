@@ -5,11 +5,14 @@ Database connection and operations for the tracking system
 import os
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 from typing import List, Optional, Tuple
 import logging
 from datetime import datetime, timedelta
 from urllib.parse import quote_plus
 import random
+from contextlib import contextmanager
+import threading
 
 try:
     import pytz
@@ -21,38 +24,115 @@ from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, C
 
 logger = logging.getLogger(__name__)
 
+
+class PooledConnection:
+    """Wrapper for pooled connections that returns them to the pool on exit"""
+    
+    def __init__(self, conn, pool):
+        self._conn = conn
+        self._pool = pool
+    
+    def __enter__(self):
+        return self._conn
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self._conn.rollback()
+        try:
+            if self._pool is not None and self._conn is not None:
+                self._pool.putconn(self._conn)
+        except Exception as e:
+            logger.error(f"Error returning connection to pool: {e}")
+        return False
+    
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 class DatabaseManager:
-    """Handle all database operations"""
+    """Handle all database operations with connection pooling"""
+    
+    _pool = None
+    _pool_lock = threading.Lock()
+    MIN_CONNECTIONS = 2
+    MAX_CONNECTIONS = 10
     
     def __init__(self):
-        # Use DATABASE_URL directly - it's the most reliable source
         self.database_url = os.getenv('DATABASE_URL')
         
         if not self.database_url:
             raise ValueError("DATABASE_URL not found in environment variables")
         
-        # Clean the URL (strip whitespace/newlines and handle async driver prefix)
         self.database_url = self.database_url.strip()
         
-        # Clean database URL for psycopg2 (remove SQLAlchemy async driver prefix)
         if self.database_url.startswith('postgresql+asyncpg://'):
             self.database_url = self.database_url.replace('postgresql+asyncpg://', 'postgresql://')
         
-        # Ensure sslmode=require is present for Neon databases
         if 'sslmode=' not in self.database_url:
             separator = '&' if '?' in self.database_url else '?'
             self.database_url = f"{self.database_url}{separator}sslmode=require"
         
-        logger.info("Database connection configured using DATABASE_URL")
+        self._init_pool()
+        logger.info("Database connection configured using DATABASE_URL with connection pooling")
+    
+    def _init_pool(self):
+        """Initialize the connection pool"""
+        with DatabaseManager._pool_lock:
+            if DatabaseManager._pool is None:
+                try:
+                    DatabaseManager._pool = psycopg2.pool.ThreadedConnectionPool(
+                        minconn=self.MIN_CONNECTIONS,
+                        maxconn=self.MAX_CONNECTIONS,
+                        dsn=self.database_url
+                    )
+                    logger.info(f"Connection pool initialized (min={self.MIN_CONNECTIONS}, max={self.MAX_CONNECTIONS})")
+                except Exception as e:
+                    logger.error(f"Failed to initialize connection pool: {e}")
+                    raise
     
     def get_connection(self):
-        """Get database connection"""
+        """Get a connection from the pool wrapped for automatic return"""
         try:
-            conn = psycopg2.connect(self.database_url)
-            return conn
+            if DatabaseManager._pool is None:
+                self._init_pool()
+            conn = DatabaseManager._pool.getconn()
+            return PooledConnection(conn, DatabaseManager._pool)
         except Exception as e:
-            logger.error(f"Database connection error: {e}")
+            logger.error(f"Error getting connection from pool: {e}")
             raise
+    
+    def return_connection(self, conn):
+        """Return a connection to the pool"""
+        try:
+            if DatabaseManager._pool is not None and conn is not None:
+                raw_conn = conn._conn if isinstance(conn, PooledConnection) else conn
+                DatabaseManager._pool.putconn(raw_conn)
+        except Exception as e:
+            logger.error(f"Error returning connection to pool: {e}")
+    
+    @contextmanager
+    def get_db_connection(self):
+        """Context manager for database connections with automatic return to pool"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            yield conn
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if conn:
+                self.return_connection(conn)
+    
+    @classmethod
+    def close_pool(cls):
+        """Close all connections in the pool"""
+        with cls._pool_lock:
+            if cls._pool is not None:
+                cls._pool.closeall()
+                cls._pool = None
+                logger.info("Connection pool closed")
     
     def initialize_database(self):
         """Initialize database connection and verify tables exist"""

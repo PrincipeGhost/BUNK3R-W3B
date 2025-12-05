@@ -394,6 +394,10 @@ const PublicationsManager = {
     async loadFeed(refresh = false) {
         const feedContainer = document.getElementById('publications-feed');
         
+        if (typeof RequestManager !== 'undefined') {
+            RequestManager.cancel('feed-load');
+        }
+        
         if (refresh) {
             this.feedOffset = 0;
             this.hasMorePosts = true;
@@ -406,7 +410,7 @@ const PublicationsManager = {
             }
             
             Logger?.debug('Loading feed...');
-            const response = await this.apiRequest(`/api/publications/feed?offset=0&limit=${this.feedLimit}`);
+            const response = await this.apiRequest(`/api/publications/feed?offset=0&limit=${this.feedLimit}`, {}, 'feed-load');
             Logger?.debug('Feed response:', response);
             
             if (response.success) {
@@ -1351,16 +1355,58 @@ const PublicationsManager = {
                 const post = this.feedPosts.find(p => p.id === postId);
                 if (post) {
                     post.comments_count = (post.comments_count || 0) + 1;
+                    this.updateCommentsCountUI(postId, post.comments_count);
                 }
                 
                 this.loadInlineComments(postId);
                 this.showToast('Comentario publicado', 'success');
+                
+                if (typeof App !== 'undefined' && App.tg && App.tg.HapticFeedback) {
+                    App.tg.HapticFeedback.impactOccurred('light');
+                }
             }
         } catch (error) {
             console.error('Comment error:', error);
             this.showToast('Error al comentar', 'error');
         } finally {
             input.disabled = false;
+        }
+    },
+    
+    updateCommentsCountUI(postId, newCount) {
+        const section = document.getElementById(`comments-section-${postId}`);
+        if (!section) return;
+        
+        let btn = section.querySelector(`[data-view-comments="${postId}"]`);
+        
+        if (newCount > 0) {
+            const btnText = newCount > 2 
+                ? `Ver los ${newCount} comentarios` 
+                : newCount === 1 
+                    ? 'Ver 1 comentario' 
+                    : 'Ver comentarios';
+            
+            if (btn) {
+                btn.textContent = btnText;
+                btn.classList.add('count-updated');
+                setTimeout(() => btn.classList.remove('count-updated'), 300);
+            } else {
+                const btnHtml = `
+                    <button class="view-comments-btn count-updated" 
+                            onclick="PublicationsManager.loadInlineComments(${postId})" 
+                            data-view-comments="${postId}">
+                        ${btnText}
+                    </button>
+                `;
+                const list = section.querySelector('.inline-comments-list');
+                if (list) {
+                    list.insertAdjacentHTML('beforebegin', btnHtml);
+                    setTimeout(() => {
+                        const newBtn = section.querySelector(`[data-view-comments="${postId}"]`);
+                        if (newBtn) newBtn.classList.remove('count-updated');
+                    }, 300);
+                }
+            }
         }
     },
     
@@ -1919,12 +1965,17 @@ const PublicationsManager = {
         return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
     },
     
-    async apiRequest(url, options = {}) {
+    async apiRequest(url, options = {}, cancelKey = null) {
         const headers = {
             'Content-Type': 'application/json',
             ...this.getAuthHeaders(),
             ...options.headers
         };
+        
+        if (cancelKey && typeof RequestManager !== 'undefined') {
+            const result = await RequestManager.fetch(url, { ...options, headers, cancelKey });
+            return result.json();
+        }
         
         const response = await fetch(url, {
             ...options,

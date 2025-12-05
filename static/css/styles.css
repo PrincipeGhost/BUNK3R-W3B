@@ -7018,6 +7018,17 @@ select:focus-visible {
     font-size: 13px;
     cursor: pointer;
     padding: 0;
+    transition: color 0.2s ease;
+}
+
+.view-comments-btn.count-updated {
+    animation: comment-count-bump 0.3s ease;
+    color: var(--accent-primary);
+}
+
+@keyframes comment-count-bump {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
 /* Inline Comments Section (Facebook Style) */
@@ -10955,4 +10966,96 @@ select:focus-visible {
 
 .bottom-nav-item.active .nav-indicator {
     opacity: 1;
+}
+
+/* Modal improvements for small screens */
+@media (max-width: 480px) {
+    .modal-overlay {
+        padding: 10px;
+        align-items: flex-end;
+    }
+    
+    .modal-content {
+        max-height: 85vh;
+        max-width: 100%;
+        border-radius: var(--radius) var(--radius) 0 0;
+        margin-bottom: 0;
+    }
+    
+    .modal-body {
+        max-height: calc(85vh - 140px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .modal-header {
+        position: sticky;
+        top: 0;
+        background: var(--bg-card);
+        z-index: 10;
+    }
+    
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background: var(--bg-card);
+        z-index: 10;
+    }
+}
+
+@media (max-height: 600px) {
+    .modal-content {
+        max-height: 90vh;
+    }
+    
+    .modal-body {
+        max-height: calc(90vh - 120px);
+        overflow-y: auto;
+    }
+}
+
+/* Toast improvements to prevent overlap */
+.toast-container {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    pointer-events: none;
+    max-width: 90%;
+    width: max-content;
+}
+
+.toast, .toast-notification {
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s ease forwards;
+}
+
+.toast.toast-exit, .toast-notification.toast-exit {
+    animation: toastSlideOut 0.3s ease forwards;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
 }
