@@ -313,8 +313,20 @@ Si se detecta vulnerabilidad → **DETENER TODO**
 **Prioridad:** ALTA  
 **Agregado:** 5 Diciembre 2025  
 **Actualizado:** 5 Diciembre 2025
-**Estado:** EN PROGRESO (85% - Software completo con polling de depósitos, pendiente despliegue blockchain)
+**Estado:** EN PROGRESO (90% - Software completo, configurado para TESTNET)
 **Origen:** Prompt del usuario - Crear token real con liquidez automática
+
+---
+
+#### 🧪 MODO ACTUAL: TESTNET
+
+El sistema está configurado para usar **TON Testnet** primero. Esto permite probar todo sin riesgo antes de pasar a mainnet.
+
+**Configuración activa:**
+- `B3C_USE_TESTNET=true`
+- `B3C_NETWORK=testnet`
+
+**Guía completa:** Ver `docs/GUIA_TESTNET_B3C.md`
 
 ---
 
@@ -340,53 +352,54 @@ Crear el token BUNK3RCO1N (B3C) como un **Jetton real en la blockchain TON** con
 
 ---
 
-#### 📦 FASE 15.1: Creación del Token Jetton ⏳
+#### 📦 FASE 15.1: Creación del Token Jetton (TESTNET) ⏳
 
 **Tareas:**
-- [ ] 15.1.1 Crear token BUNK3RCO1N usando TON Minter (https://minter.ton.org)
+- [ ] 15.1.1 Obtener TON de prueba del faucet
+  - Bot: @testgiver_ton_bot en Telegram
+  - Recibirás 5 TON gratis para testnet
+
+- [ ] 15.1.2 Crear token BUNK3RCO1N en **TESTNET**
+  - URL: https://testnet.minter.ton.org/
   - Nombre: BUNK3RCO1N
   - Símbolo: B3C
   - Supply: 1,000,000,000 (mil millones)
   - Decimales: 9 (estándar TON)
-  - Logo: Usar logo existente de BUNK3R
-  - Costo: ~0.25 TON (~$1.50 USD)
+  - Costo: ~0.25 TON (testnet, gratis)
 
-- [ ] 15.1.2 Guardar datos del token
+- [ ] 15.1.3 Guardar datos del token
   - Dirección del contrato Jetton Master
-  - Guardar en variables de entorno/secrets
-  - Documentar en replit.md
+  - Configurar `B3C_TOKEN_ADDRESS` en Secrets
+  - Configurar `B3C_HOT_WALLET` con tu wallet testnet
 
-- [ ] 15.1.3 Verificar token en exploradores
-  - Confirmar en https://tonviewer.com
-  - Confirmar en https://tonscan.org
+- [ ] 15.1.4 Verificar token en explorador testnet
+  - Confirmar en https://testnet.tonscan.org/
 
 **Criterios de aceptación:**
-- [ ] Token creado y visible en blockchain
-- [ ] Logo aparece correctamente
-- [ ] Supply total correcto
+- [ ] Token creado y visible en blockchain testnet
+- [ ] Variables de entorno configuradas
+- [ ] Badge "TESTNET" visible en la app
 
 ---
 
-#### 📦 FASE 15.2: Pool de Liquidez Inicial ⏳
+#### 📦 FASE 15.2: Pool de Liquidez (TESTNET) ⏳
+
+**Nota:** Los DEX como STON.fi tienen soporte limitado en testnet.
+Por ahora, el sistema usa precio simulado hasta que se configure mainnet.
 
 **Tareas:**
-- [ ] 15.2.1 Crear pool en STON.fi o DeDust
-  - Par: B3C/TON
-  - Liquidez inicial: 1.6 TON (~$10 USD) + 16,000 B3C
-  - Precio inicial: 1 B3C = 0.0001 TON (~$0.0006 USD)
+- [ ] 15.2.1 Probar swap en testnet (si STON.fi lo soporta)
+- [ ] 15.2.2 Verificar que el sistema de precios funciona
 
-- [ ] 15.2.2 Documentar dirección del pool
-  - Guardar address del pool
-  - Link al pool en el DEX
-
-- [ ] 15.2.3 Verificar que el token es tradeable
-  - Probar swap pequeño
-  - Confirmar precio visible
+**Para MAINNET (futuro):**
+- Crear pool en STON.fi o DeDust
+- Par: B3C/TON
+- Liquidez inicial: 1.6 TON (~$10 USD) + 16,000 B3C
+- Precio inicial: 1 B3C = 0.0001 TON (~$0.0006 USD)
 
 **Criterios de aceptación:**
-- [ ] Pool creado y funcional
-- [ ] Token aparece en DEX
-- [ ] Se puede comprar/vender
+- [ ] Sistema de precios funciona (simulado o real)
+- [ ] UI muestra precio correctamente
 
 ---
 

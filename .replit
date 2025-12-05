@@ -17,6 +17,8 @@ ADMIN_TOKEN = "110917"
 RESEND_API_KEY = "re_h4v6TkUk_NUoP1XUtvPknzphaU95vdX4N"
 TON_WALLET_ADDRESS = "UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59"
 USER_TELEGRAM_ID = "7729022720"
+B3C_USE_TESTNET = "true"
+B3C_NETWORK = "testnet"
 
 [workflows]
 runButton = "Project"

@@ -3170,6 +3170,21 @@ def get_b3c_network_status():
         return jsonify({'success': False, 'error': 'Error al verificar red'}), 500
 
 
+@app.route('/api/b3c/testnet/guide', methods=['GET'])
+def get_testnet_setup_guide():
+    """Obtener guia de configuracion para testnet."""
+    try:
+        from tracking.b3c_service import get_b3c_service
+        b3c = get_b3c_service()
+        return jsonify({
+            'success': True,
+            'guide': b3c.get_testnet_setup_guide()
+        })
+    except Exception as e:
+        logger.error(f"Error getting testnet guide: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener guia'}), 500
+
+
 @app.route('/api/b3c/buy/create', methods=['POST'])
 @require_telegram_user
 def create_b3c_purchase():

@@ -23,6 +23,15 @@ class B3CTokenService:
     TESTNET_PTON = 'kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px'
     
     STONFI_API_URL = 'https://api.ston.fi/v1'
+    TESTNET_STONFI_API_URL = 'https://api.ston.fi/v1'
+    
+    TESTNET_MINTER_URL = 'https://testnet.minter.ton.org/'
+    MAINNET_MINTER_URL = 'https://minter.ton.org/'
+    
+    TESTNET_EXPLORER_URL = 'https://testnet.tonscan.org'
+    MAINNET_EXPLORER_URL = 'https://tonscan.org'
+    
+    TESTNET_FAUCET_URL = 'https://t.me/testgiver_ton_bot'
     
     COMMISSION_RATE = Decimal('0.05')
     
@@ -448,6 +457,61 @@ class B3CTokenService:
                 'withdraw': bool(self.hot_wallet),
                 'deposit': bool(self.hot_wallet),
                 'price_feed': True
+            },
+            'useful_links': {
+                'minter': self.TESTNET_MINTER_URL if self.use_testnet else self.MAINNET_MINTER_URL,
+                'explorer': self.TESTNET_EXPLORER_URL if self.use_testnet else self.MAINNET_EXPLORER_URL,
+                'faucet': self.TESTNET_FAUCET_URL if self.use_testnet else None
+            }
+        }
+    
+    def get_testnet_setup_guide(self) -> Dict[str, Any]:
+        """Obtener guía de configuración para testnet."""
+        return {
+            'network': 'testnet',
+            'steps': [
+                {
+                    'step': 1,
+                    'title': 'Obtener TON de prueba',
+                    'description': 'Usa el bot de Telegram para obtener TON gratis en testnet',
+                    'url': self.TESTNET_FAUCET_URL,
+                    'action': 'Envía /start al bot y recibirás 5 TON de prueba'
+                },
+                {
+                    'step': 2,
+                    'title': 'Crear el token B3C',
+                    'description': 'Usa TON Minter para crear el token Jetton',
+                    'url': self.TESTNET_MINTER_URL,
+                    'params': {
+                        'name': 'BUNK3RCO1N',
+                        'symbol': 'B3C',
+                        'decimals': 9,
+                        'supply': '1000000000',
+                        'description': 'Token interno de BUNK3R para servicios y marketplace'
+                    }
+                },
+                {
+                    'step': 3,
+                    'title': 'Guardar dirección del token',
+                    'description': 'Copia la dirección del contrato Jetton Master',
+                    'env_var': 'B3C_TOKEN_ADDRESS'
+                },
+                {
+                    'step': 4,
+                    'title': 'Configurar Hot Wallet',
+                    'description': 'Usa una wallet separada para operaciones',
+                    'env_var': 'B3C_HOT_WALLET'
+                },
+                {
+                    'step': 5,
+                    'title': 'Verificar en explorador',
+                    'description': 'Confirma que el token aparece correctamente',
+                    'url': self.TESTNET_EXPLORER_URL
+                }
+            ],
+            'requirements': {
+                'ton_needed': '0.5 TON (para fees)',
+                'wallet': 'Tonkeeper o similar configurado en testnet'
             }
         }
     
