@@ -32,6 +32,30 @@ The application is built with a Flask (Python) backend, a PostgreSQL database, a
 - **Performance:** Database connection pooling, memory leak prevention mechanisms, and smart skeleton loaders for improved user experience.
 - **BUNK3RCO1N (B3C) Integration:** Dedicated service layer for TON blockchain interaction, real-time pricing via STON.fi DEX API, TON/USD conversion via CoinGecko, buy/sell/withdraw/deposit functionalities, and commission tracking.
 
+## B3C Token Configuration (Current: TESTNET)
+
+**Modo actual:** TESTNET - Sistema configurado para pruebas antes de producción.
+
+**Variables de entorno configuradas:**
+- `B3C_USE_TESTNET=true` - Usar red de prueba
+- `B3C_NETWORK=testnet` - Indicador de red
+
+**Variables pendientes de configurar (cuando se cree el token):**
+- `B3C_TOKEN_ADDRESS` - Dirección del contrato Jetton
+- `B3C_HOT_WALLET` - Wallet para operaciones
+- `B3C_COMMISSION_WALLET` - Wallet para comisiones
+
+**Endpoints B3C disponibles:**
+- `GET /api/b3c/price` - Precio actual (simulado en testnet)
+- `GET /api/b3c/balance` - Balance del usuario
+- `GET /api/b3c/config` - Configuración del servicio
+- `GET /api/b3c/network` - Estado de la red
+- `GET /api/b3c/testnet/guide` - Guía de configuración testnet
+
+**Documentación:** Ver `docs/GUIA_TESTNET_B3C.md` para instrucciones paso a paso.
+
+**Última actualización:** 5 Diciembre 2025
+
 ## External Dependencies
 - **PostgreSQL:** Primary database.
 - **Telegram Web App API:** User authentication and core Telegram integration.
