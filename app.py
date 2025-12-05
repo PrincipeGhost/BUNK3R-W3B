@@ -3210,7 +3210,7 @@ def get_testnet_setup_guide():
 @app.route('/api/b3c/buy/create', methods=['POST'])
 @require_telegram_user
 def create_b3c_purchase():
-    """Crear solicitud de compra de B3C."""
+    """Crear solicitud de compra de B3C con wallet única de depósito."""
     try:
         data = request.get_json()
         ton_amount = float(data.get('tonAmount', 0))
@@ -3224,6 +3224,8 @@ def create_b3c_purchase():
         purchase_id = str(uuid.uuid4())[:8].upper()
         
         from tracking.b3c_service import get_b3c_service
+        from tracking.wallet_pool_service import get_wallet_pool_service
+        
         b3c = get_b3c_service()
         calculation = b3c.calculate_b3c_from_ton(ton_amount)
         
@@ -3232,8 +3234,7 @@ def create_b3c_purchase():
                 'success': True,
                 'purchaseId': purchase_id,
                 'calculation': calculation,
-                'hotWallet': b3c.hot_wallet or 'TESTNET_WALLET',
-                'comment': f'B3C-{purchase_id}',
+                'depositAddress': 'DEMO_WALLET_ADDRESS',
                 'message': 'Demo mode'
             })
         
@@ -3247,13 +3248,30 @@ def create_b3c_purchase():
                       calculation['commission_ton']))
                 conn.commit()
         
+        wallet_pool = get_wallet_pool_service(db_manager)
+        wallet_assignment = wallet_pool.assign_wallet_for_purchase(user_id, ton_amount, purchase_id)
+        
+        if not wallet_assignment or not wallet_assignment.get('success'):
+            return jsonify({
+                'success': False,
+                'error': 'No hay wallets disponibles. Intenta de nuevo.'
+            }), 503
+        
         return jsonify({
             'success': True,
             'purchaseId': purchase_id,
             'calculation': calculation,
-            'hotWallet': b3c.hot_wallet or os.environ.get('TON_WALLET_ADDRESS', ''),
-            'comment': f'B3C-{purchase_id}',
-            'expiresIn': 900
+            'depositAddress': wallet_assignment['deposit_address'],
+            'amountToSend': wallet_assignment['amount_to_send'],
+            'expiresAt': wallet_assignment['expires_at'],
+            'expiresInMinutes': wallet_assignment['expires_in_minutes'],
+            'useUniqueWallet': True,
+            'instructions': [
+                f"Envía exactamente {ton_amount} TON a la dirección indicada",
+                "Esta dirección es única para esta compra",
+                f"Tienes {wallet_assignment['expires_in_minutes']} minutos para completar el pago",
+                "Los B3C se acreditarán automáticamente al detectar el pago"
+            ]
         })
         
     except Exception as e:
@@ -3265,12 +3283,14 @@ def create_b3c_purchase():
 @require_telegram_user
 @rate_limit('b3c_verify')
 def verify_b3c_purchase(purchase_id):
-    """Verificar si un pago de compra B3C fue recibido."""
+    """Verificar si un pago de compra B3C fue recibido usando wallet única."""
     try:
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         
         if not db_manager:
             return jsonify({'success': True, 'status': 'confirmed', 'message': 'Demo mode'})
+        
+        from tracking.wallet_pool_service import get_wallet_pool_service
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -3286,53 +3306,42 @@ def verify_b3c_purchase(purchase_id):
                 if purchase['status'] == 'confirmed':
                     return jsonify({'success': True, 'status': 'confirmed', 
                                     'b3c_credited': float(purchase['b3c_amount'])})
-                
-                from tracking.b3c_service import get_b3c_service
-                b3c = get_b3c_service()
-                
-                verification = b3c.verify_ton_transaction(
-                    tx_hash='',
-                    expected_amount=float(purchase['ton_amount']),
-                    expected_comment=f'B3C-{purchase_id}'
-                )
-                
-                if verification.get('verified'):
-                    b3c_to_credit = float(purchase['b3c_amount'])
-                    
-                    cur.execute("""
-                        UPDATE b3c_purchases 
-                        SET status = 'confirmed', tx_hash = %s, confirmed_at = NOW()
-                        WHERE purchase_id = %s
-                    """, (verification.get('tx_hash', ''), purchase_id))
-                    
-                    cur.execute("""
-                        INSERT INTO wallet_transactions 
-                        (user_id, amount, transaction_type, description, reference_id, created_at)
-                        VALUES (%s, %s, 'credit', %s, %s, NOW())
-                    """, (user_id, b3c_to_credit, f'Compra B3C - {b3c_to_credit} tokens', purchase_id))
-                    
-                    commission_ton = float(purchase.get('commission_ton', 0))
-                    ton_amount = float(purchase.get('ton_amount', 0))
-                    cur.execute("""
-                        INSERT INTO b3c_commissions 
-                        (user_id, operation_type, b3c_amount, ton_amount, commission_ton, reference_id, created_at)
-                        VALUES (%s, 'buy', %s, %s, %s, %s, NOW())
-                    """, (user_id, b3c_to_credit, ton_amount, commission_ton, purchase_id))
-                    
-                    conn.commit()
-                    
-                    return jsonify({
-                        'success': True,
-                        'status': 'confirmed',
-                        'b3c_credited': b3c_to_credit,
-                        'tx_hash': verification.get('tx_hash')
-                    })
-                
-                return jsonify({
-                    'success': True,
-                    'status': 'pending',
-                    'message': 'Esperando confirmacion en blockchain'
-                })
+        
+        wallet_pool = get_wallet_pool_service(db_manager)
+        deposit_check = wallet_pool.check_deposit(purchase_id)
+        
+        if not deposit_check.get('success'):
+            return jsonify({
+                'success': False,
+                'error': deposit_check.get('error', 'Error verificando depósito')
+            }), 500
+        
+        status = deposit_check.get('status')
+        
+        if status == 'confirmed':
+            return jsonify({
+                'success': True,
+                'status': 'confirmed',
+                'b3c_credited': float(purchase['b3c_amount']),
+                'tx_hash': deposit_check.get('tx_hash'),
+                'amount_received': deposit_check.get('amount_received')
+            })
+        
+        if status == 'expired':
+            return jsonify({
+                'success': True,
+                'status': 'expired',
+                'message': 'El tiempo para esta compra expiró. Crea una nueva compra.'
+            })
+        
+        return jsonify({
+            'success': True,
+            'status': 'pending',
+            'message': 'Esperando confirmación de depósito',
+            'deposit_address': deposit_check.get('deposit_address'),
+            'expected_amount': deposit_check.get('expected_amount'),
+            'expires_at': deposit_check.get('expires_at')
+        })
                 
     except Exception as e:
         logger.error(f"Error verifying B3C purchase: {e}")
@@ -3786,6 +3795,96 @@ def get_b3c_commissions():
     except Exception as e:
         logger.error(f"Error getting commissions: {e}")
         return jsonify({'success': False, 'error': 'Error al obtener comisiones'}), 500
+
+
+@app.route('/api/b3c/wallet-pool/stats', methods=['GET'])
+@require_telegram_user
+def get_wallet_pool_stats():
+    """Obtener estadísticas del pool de wallets de depósito (admin)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': True, 'stats': {'available': 0, 'total': 0}})
+        
+        from tracking.wallet_pool_service import get_wallet_pool_service
+        wallet_pool = get_wallet_pool_service(db_manager)
+        
+        return jsonify(wallet_pool.get_pool_stats())
+        
+    except Exception as e:
+        logger.error(f"Error getting wallet pool stats: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener estadísticas'}), 500
+
+
+@app.route('/api/b3c/wallet-pool/fill', methods=['POST'])
+@require_telegram_user
+def fill_wallet_pool():
+    """Rellenar el pool de wallets de depósito (admin)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'BD no disponible'}), 500
+        
+        from tracking.wallet_pool_service import get_wallet_pool_service
+        wallet_pool = get_wallet_pool_service(db_manager)
+        
+        data = request.get_json() or {}
+        min_size = int(data.get('minSize', 10))
+        
+        added = wallet_pool.ensure_minimum_pool_size(min_size)
+        stats = wallet_pool.get_pool_stats()
+        
+        return jsonify({
+            'success': True,
+            'walletsAdded': added,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error filling wallet pool: {e}")
+        return jsonify({'success': False, 'error': 'Error al rellenar pool'}), 500
+
+
+@app.route('/api/b3c/wallet-pool/consolidate', methods=['POST'])
+@require_telegram_user
+def consolidate_wallets():
+    """Consolidar fondos de wallets con depósitos a hot wallet (admin)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'BD no disponible'}), 500
+        
+        from tracking.wallet_pool_service import get_wallet_pool_service
+        wallet_pool = get_wallet_pool_service(db_manager)
+        
+        consolidated = wallet_pool.consolidate_confirmed_deposits()
+        released = wallet_pool.release_expired_wallets()
+        
+        return jsonify({
+            'success': True,
+            'walletsConsolidated': consolidated,
+            'expiredReleased': released,
+            'message': f'Consolidados: {consolidated}, Liberados: {released}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error consolidating wallets: {e}")
+        return jsonify({'success': False, 'error': 'Error en consolidación'}), 500
 
 
 @app.route('/api/b3c/deposits/check', methods=['POST'])
