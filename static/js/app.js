@@ -4238,6 +4238,10 @@ const App = {
             this.showToast('Conecta tu wallet primero', 'error');
             try {
                 await this.connectWallet();
+                if (!this.connectedWallet) {
+                    this.showToast('Wallet no conectada', 'error');
+                    return;
+                }
             } catch (e) {
                 return;
             }
@@ -4256,13 +4260,27 @@ const App = {
                 body: JSON.stringify({ tonAmount })
             });
 
+            console.log('Buy create response:', JSON.stringify(response));
+
             if (!response.success) {
                 this.showToast(response.error || 'Error al crear compra', 'error');
                 return;
             }
 
+            if (!response.hotWallet) {
+                console.error('Missing hotWallet in response:', response);
+                this.showToast('Error: Wallet destino no configurada', 'error');
+                return;
+            }
+
             const purchaseId = response.purchaseId;
             const amountNano = Math.floor(tonAmount * 1e9).toString();
+
+            console.log('Creating transaction:', {
+                address: response.hotWallet,
+                amount: amountNano,
+                comment: response.comment
+            });
 
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
