@@ -1365,6 +1365,73 @@ class DatabaseManager:
             logger.error(f"Error adding bot {bot_type} to user {user_id}: {e}")
             return False
     
+    def toggle_bot_activation(self, user_id: str, bot_id: int) -> dict:
+        """Toggle bot activation status"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT is_active FROM user_bots WHERE id = %s AND user_id = %s",
+                        (bot_id, user_id)
+                    )
+                    bot = cur.fetchone()
+                    if not bot:
+                        return {'success': False, 'error': 'Bot no encontrado'}
+                    
+                    new_status = not bot['is_active']
+                    cur.execute(
+                        "UPDATE user_bots SET is_active = %s WHERE id = %s AND user_id = %s",
+                        (new_status, bot_id, user_id)
+                    )
+                    conn.commit()
+                    return {'success': True, 'is_active': new_status}
+        except Exception as e:
+            logger.error(f"Error toggling bot {bot_id}: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def update_bot_config(self, user_id: str, bot_id: int, config: dict) -> dict:
+        """Update bot configuration"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    import json
+                    cur.execute(
+                        "UPDATE user_bots SET config = %s WHERE id = %s AND user_id = %s",
+                        (json.dumps(config), bot_id, user_id)
+                    )
+                    success = cur.rowcount > 0
+                    conn.commit()
+                    return {'success': success}
+        except Exception as e:
+            logger.error(f"Error updating bot config {bot_id}: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def get_bot_config(self, user_id: str, bot_id: int) -> dict:
+        """Get bot configuration"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT config, bot_type, bot_name FROM user_bots WHERE id = %s AND user_id = %s",
+                        (bot_id, user_id)
+                    )
+                    bot = cur.fetchone()
+                    if bot:
+                        import json
+                        config = bot['config']
+                        if isinstance(config, str):
+                            config = json.loads(config) if config else {}
+                        return {
+                            'success': True,
+                            'config': config or {},
+                            'bot_type': bot['bot_type'],
+                            'bot_name': bot['bot_name']
+                        }
+                    return {'success': False, 'error': 'Bot no encontrado'}
+        except Exception as e:
+            logger.error(f"Error getting bot config {bot_id}: {e}")
+            return {'success': False, 'error': str(e)}
+
     def remove_user_bot(self, user_id: str, bot_id: int) -> bool:
         """Desactivar un bot del usuario"""
         try:
@@ -1476,6 +1543,10 @@ class DatabaseManager:
                     
                     cur.execute("""
                         ALTER TABLE bot_types ADD COLUMN IF NOT EXISTS owner_only BOOLEAN DEFAULT FALSE
+                    """)
+                    
+                    cur.execute("""
+                        ALTER TABLE bot_types ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'general'
                     """)
                     
                     cur.execute("""

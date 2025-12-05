@@ -7,6 +7,47 @@ const Utils = {
         return div.innerHTML;
     },
 
+    setupMobileKeyboardHandler() {
+        let initialViewportHeight = window.innerHeight;
+        let keyboardOpen = false;
+        
+        const detectKeyboard = () => {
+            const currentHeight = window.innerHeight;
+            const heightDiff = initialViewportHeight - currentHeight;
+            const isKeyboardNowOpen = heightDiff > 150;
+            
+            if (isKeyboardNowOpen !== keyboardOpen) {
+                keyboardOpen = isKeyboardNowOpen;
+                document.body.classList.toggle('keyboard-open', keyboardOpen);
+            }
+        };
+        
+        window.addEventListener('resize', detectKeyboard);
+        
+        document.addEventListener('focusin', (e) => {
+            const target = e.target;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+                target.classList.add('input-focused');
+                setTimeout(() => {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
+        });
+        
+        document.addEventListener('focusout', (e) => {
+            const target = e.target;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+                target.classList.remove('input-focused');
+            }
+        });
+        
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                initialViewportHeight = window.innerHeight;
+            }, 100);
+        });
+    },
+
     escapeAttribute(text) {
         if (text === null || text === undefined) return '';
         return String(text)

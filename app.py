@@ -2330,6 +2330,73 @@ def remove_bot(bot_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
+@app.route('/api/bots/<int:bot_id>/toggle', methods=['POST'])
+@require_telegram_user
+def toggle_bot(bot_id):
+    """Toggle bot activation status."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        result = db_manager.toggle_bot_activation(user_id, bot_id)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'isActive': result.get('is_active'),
+                'message': 'Bot activado' if result.get('is_active') else 'Bot desactivado'
+            })
+        else:
+            return jsonify({'error': result.get('error', 'Error al cambiar estado')}), 500
+            
+    except Exception as e:
+        logger.error(f"Error toggling bot {bot_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+@app.route('/api/bots/<int:bot_id>/config', methods=['GET', 'POST'])
+@require_telegram_user
+def bot_config(bot_id):
+    """Get or update bot configuration."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        if request.method == 'GET':
+            result = db_manager.get_bot_config(user_id, bot_id)
+            if result.get('success'):
+                return jsonify({
+                    'success': True,
+                    'config': result.get('config', {}),
+                    'botType': result.get('bot_type'),
+                    'botName': result.get('bot_name')
+                })
+            else:
+                return jsonify({'error': result.get('error', 'Bot no encontrado')}), 404
+        else:
+            data = request.get_json() or {}
+            config = data.get('config', {})
+            result = db_manager.update_bot_config(user_id, bot_id, config)
+            
+            if result.get('success'):
+                return jsonify({
+                    'success': True,
+                    'message': 'Configuracion guardada'
+                })
+            else:
+                return jsonify({'error': result.get('error', 'Error al guardar')}), 500
+            
+    except Exception as e:
+        logger.error(f"Error with bot config {bot_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
 import requests
 
 CHANGENOW_API_KEY = os.environ.get('CHANGENOW_API_KEY', '')

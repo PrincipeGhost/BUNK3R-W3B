@@ -8,6 +8,10 @@ let countriesData = [];
 let servicesData = [];
 let activeOrders = [];
 let checkInterval = null;
+let pollingDelay = 2000;
+const POLLING_MIN_DELAY = 2000;
+const POLLING_MAX_DELAY = 30000;
+let historyFilters = { status: 'all', service: 'all', dateFrom: '', dateTo: '' };
 
 document.addEventListener('DOMContentLoaded', () => {
     if (tg) {
@@ -397,17 +401,66 @@ async function cancelOrder(orderId) {
     }
 }
 
+let historyData = [];
+
 async function loadHistory() {
     const container = document.getElementById('history-list');
     
     try {
-        const result = await apiCall('/api/vn/history?limit=50');
+        const result = await apiCall('/api/vn/history?limit=100');
         if (result.success) {
-            renderHistory(result.orders || []);
+            historyData = result.orders || [];
+            populateServiceFilter(historyData);
+            applyHistoryFilters();
         }
     } catch (error) {
         console.error('Error loading history:', error);
     }
+}
+
+function populateServiceFilter(orders) {
+    const serviceFilter = document.getElementById('filter-service');
+    if (!serviceFilter) return;
+    
+    const services = [...new Set(orders.map(o => o.service).filter(Boolean))];
+    serviceFilter.innerHTML = '<option value="all">Todos los servicios</option>' +
+        services.map(s => `<option value="${escapeAttribute(s)}">${escapeHtml(s)}</option>`).join('');
+}
+
+function applyHistoryFilters() {
+    const statusFilter = document.getElementById('filter-status')?.value || 'all';
+    const serviceFilter = document.getElementById('filter-service')?.value || 'all';
+    const dateFrom = document.getElementById('filter-date-from')?.value || '';
+    const dateTo = document.getElementById('filter-date-to')?.value || '';
+    
+    let filtered = [...historyData];
+    
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(o => o.status === statusFilter);
+    }
+    
+    if (serviceFilter !== 'all') {
+        filtered = filtered.filter(o => o.service === serviceFilter);
+    }
+    
+    if (dateFrom) {
+        const fromDate = new Date(dateFrom);
+        filtered = filtered.filter(o => {
+            const orderDate = new Date(o.created_at || o.createdAt);
+            return orderDate >= fromDate;
+        });
+    }
+    
+    if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(o => {
+            const orderDate = new Date(o.created_at || o.createdAt);
+            return orderDate <= toDate;
+        });
+    }
+    
+    renderHistory(filtered);
 }
 
 function renderHistory(orders) {
@@ -479,12 +532,25 @@ function switchTab(tabName) {
 
 function startPolling() {
     if (checkInterval) {
-        clearInterval(checkInterval);
+        clearTimeout(checkInterval);
+    }
+    pollingDelay = POLLING_MIN_DELAY;
+    scheduleNextPoll();
+}
+
+function resetPollingDelay() {
+    pollingDelay = POLLING_MIN_DELAY;
+}
+
+async function scheduleNextPoll() {
+    if (checkInterval) {
+        clearTimeout(checkInterval);
     }
     
-    checkInterval = setInterval(async () => {
+    checkInterval = setTimeout(async () => {
         const activeTab = document.querySelector('.tab.active')?.dataset.tab;
         if (activeTab === 'active' && activeOrders.length > 0) {
+            let smsReceived = false;
             for (const order of activeOrders) {
                 if (order.status === 'pending' || order.status === 'active') {
                     try {
@@ -492,6 +558,8 @@ function startPolling() {
                         if (result.success && result.status === 'received') {
                             showToast('SMS recibido!', 'success');
                             await loadActiveOrders();
+                            resetPollingDelay();
+                            smsReceived = true;
                             break;
                         }
                     } catch (e) {
@@ -499,8 +567,12 @@ function startPolling() {
                     }
                 }
             }
+            if (!smsReceived) {
+                pollingDelay = Math.min(pollingDelay * 2, POLLING_MAX_DELAY);
+            }
         }
-    }, 5000);
+        scheduleNextPoll();
+    }, pollingDelay);
 }
 
 function copyToClipboard(text) {
@@ -559,6 +631,6 @@ function goBack() {
 
 window.addEventListener('beforeunload', () => {
     if (checkInterval) {
-        clearInterval(checkInterval);
+        clearTimeout(checkInterval);
     }
 });

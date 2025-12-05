@@ -663,6 +663,34 @@ const App = {
         }
     },
     
+    toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (!sidebar) return;
+        
+        const isOpen = sidebar.classList.contains('open');
+        
+        if (isOpen) {
+            sidebar.classList.remove('open');
+            if (overlay) overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
+        } else {
+            sidebar.classList.add('open');
+            if (overlay) overlay.classList.add('active');
+            document.body.classList.add('sidebar-open');
+        }
+    },
+    
+    closeSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+    },
+    
     goToHome(animate = true) {
         const activeScreens = document.querySelectorAll('.page-screen:not(.hidden), #tracking-module:not(.hidden)');
         const homeScreen = document.getElementById('home-screen');
@@ -2945,13 +2973,17 @@ const App = {
         
         myBotsEmpty.classList.add('hidden');
         myBotsList.innerHTML = bots.map(bot => {
+            const isActive = bot.isActive !== false;
+            const statusClass = isActive ? 'online' : 'offline';
+            const statusText = isActive ? 'Activo' : 'Inactivo';
+            
             if (bot.botType === 'tracking_manager') {
                 return `
                     <div class="bot-card active-bot owner-bot clickable" data-bot-id="${bot.id}" onclick="App.openBotPanel('${this.escapeHtml(bot.botType)}')">
                         <div class="bot-avatar">${bot.icon || '🤖'}</div>
                         <div class="bot-info">
                             <h3>${this.escapeHtml(bot.botName)}</h3>
-                            <p class="bot-status online">En linea</p>
+                            <p class="bot-status ${statusClass}">${statusText}</p>
                             ${bot.description ? `<p class="bot-desc">${this.escapeHtml(bot.description)}</p>` : ''}
                         </div>
                         <div class="bot-arrow">→</div>
@@ -2959,16 +2991,19 @@ const App = {
                 `;
             }
             return `
-                <div class="bot-card active-bot" data-bot-id="${bot.id}">
+                <div class="bot-card active-bot ${!isActive ? 'bot-inactive' : ''}" data-bot-id="${bot.id}">
                     <div class="bot-avatar">${bot.icon || '🤖'}</div>
                     <div class="bot-info">
                         <h3>${this.escapeHtml(bot.botName)}</h3>
-                        <p class="bot-status online">En linea</p>
+                        <p class="bot-status ${statusClass}">${statusText}</p>
                         ${bot.description ? `<p class="bot-desc">${this.escapeHtml(bot.description)}</p>` : ''}
                     </div>
-                    <div class="bot-actions">
-                        <button class="bot-action-btn" onclick="App.configureBot(${bot.id}, '${this.escapeHtml(bot.botType)}')">Configurar</button>
-                        <button class="bot-remove-btn" onclick="App.confirmRemoveBot(${bot.id}, '${this.escapeHtml(bot.botName)}')">Quitar</button>
+                    <div class="bot-controls">
+                        <label class="bot-toggle" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${isActive ? 'checked' : ''} onchange="App.toggleBot(${bot.id}, this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <button class="bot-config-btn" onclick="App.openBotConfig(${bot.id}, '${this.escapeHtml(bot.botName)}')" title="Configurar">⚙️</button>
                     </div>
                 </div>
             `;
@@ -3014,7 +3049,109 @@ const App = {
     },
     
     configureBot(botId, botType) {
-        this.showToast('Configuracion de bot disponible proximamente', 'info');
+        this.openBotConfig(botId, botType);
+    },
+    
+    async toggleBot(botId, activate) {
+        try {
+            const response = await this.apiRequest(`/api/bots/${botId}/toggle`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || (response.isActive ? 'Bot activado' : 'Bot desactivado'), 'success');
+            } else {
+                this.showToast(response.error || 'Error al cambiar estado', 'error');
+                await this.loadUserBots();
+            }
+        } catch (error) {
+            console.error('Error toggling bot:', error);
+            this.showToast('Error al cambiar estado del bot', 'error');
+            await this.loadUserBots();
+        }
+    },
+    
+    async openBotConfig(botId, botName) {
+        try {
+            const response = await this.apiRequest(`/api/bots/${botId}/config`);
+            
+            if (!response.success) {
+                this.showToast(response.error || 'Error al cargar configuracion', 'error');
+                return;
+            }
+            
+            const config = response.config || {};
+            const modalContent = `
+                <div class="modal-header">
+                    <h3>Configurar ${this.escapeHtml(botName)}</h3>
+                    <button class="modal-close" onclick="App.closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="config-section">
+                        <label class="config-label">Notificaciones</label>
+                        <div class="config-option">
+                            <span>Recibir alertas</span>
+                            <label class="bot-toggle">
+                                <input type="checkbox" id="config-notifications" ${config.notifications !== false ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="config-section">
+                        <label class="config-label">Frecuencia de actualizaciones</label>
+                        <select id="config-frequency" class="config-select">
+                            <option value="realtime" ${config.frequency === 'realtime' ? 'selected' : ''}>Tiempo real</option>
+                            <option value="hourly" ${config.frequency === 'hourly' ? 'selected' : ''}>Cada hora</option>
+                            <option value="daily" ${config.frequency === 'daily' ? 'selected' : ''}>Diario</option>
+                        </select>
+                    </div>
+                    <div class="config-section">
+                        <label class="config-label">Modo silencioso</label>
+                        <div class="config-option">
+                            <span>No molestar de noche</span>
+                            <label class="bot-toggle">
+                                <input type="checkbox" id="config-silent" ${config.silentMode ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="App.closeModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="App.saveBotConfig(${botId})">Guardar</button>
+                </div>
+            `;
+            
+            this.showModal(modalContent);
+        } catch (error) {
+            console.error('Error loading bot config:', error);
+            this.showToast('Error al cargar configuracion', 'error');
+        }
+    },
+    
+    async saveBotConfig(botId) {
+        try {
+            const config = {
+                notifications: document.getElementById('config-notifications')?.checked !== false,
+                frequency: document.getElementById('config-frequency')?.value || 'realtime',
+                silentMode: document.getElementById('config-silent')?.checked || false
+            };
+            
+            const response = await this.apiRequest(`/api/bots/${botId}/config`, {
+                method: 'POST',
+                body: JSON.stringify({ config })
+            });
+            
+            if (response.success) {
+                this.showToast('Configuracion guardada', 'success');
+                this.closeModal();
+            } else {
+                this.showToast(response.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving bot config:', error);
+            this.showToast('Error al guardar configuracion', 'error');
+        }
     },
     
     confirmRemoveBot(botId, botName) {
@@ -6741,6 +6878,9 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (typeof Utils !== 'undefined' && Utils.setupMobileKeyboardHandler) {
+        Utils.setupMobileKeyboardHandler();
+    }
     App.init();
 });
 

@@ -2313,6 +2313,136 @@ select:focus-visible {
     animation: spin 1s linear infinite;
 }
 
+.bot-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.bot-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.bot-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-input);
+    transition: 0.3s;
+    border-radius: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted);
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.bot-toggle input:checked + .toggle-slider {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.bot-toggle input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+    background-color: white;
+}
+
+.bot-config-btn {
+    padding: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.bot-config-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-primary);
+}
+
+.bot-card.bot-inactive {
+    opacity: 0.6;
+}
+
+.bot-card.bot-inactive .bot-avatar {
+    filter: grayscale(0.5);
+}
+
+.config-section {
+    margin-bottom: 20px;
+}
+
+.config-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.config-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.config-option span {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.config-select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.config-select:focus {
+    border-color: var(--accent-primary);
+    outline: none;
+}
+
+.config-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
@@ -11646,5 +11776,92 @@ select:focus-visible {
     to {
         opacity: 0;
         transform: translateY(-20px);
+    }
+}
+
+@media (max-width: 480px) {
+    .pub-modal,
+    .admin-modal,
+    .followers-modal,
+    .edit-profile-modal,
+    .avatar-crop-modal,
+    .notif-settings-modal,
+    .likes-modal,
+    .report-modal,
+    .options-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .pub-modal-overlay,
+    .admin-modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+    
+    .pub-modal {
+        border-radius: 16px 16px 0 0;
+        max-height: 90vh;
+    }
+    
+    .admin-modal {
+        border-radius: 16px 16px 0 0;
+        max-height: 90vh;
+        margin: 0;
+    }
+    
+    .admin-modal-content {
+        max-height: calc(90vh - 140px);
+        overflow-y: auto;
+    }
+    
+    .followers-modal {
+        max-height: 85vh;
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .edit-profile-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .notif-settings-modal {
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+}
+
+@media (max-height: 500px) {
+    .pub-modal,
+    .admin-modal,
+    .modal-content,
+    .followers-modal,
+    .edit-profile-modal {
+        max-height: 95vh;
+    }
+}
+
+.keyboard-open .modal-body,
+.keyboard-open .pub-modal,
+.keyboard-open .edit-profile-modal {
+    padding-bottom: 0;
+    max-height: 50vh;
+}
+
+.input-focused {
+    scroll-margin-bottom: 200px;
+}
+
+@supports (-webkit-touch-callout: none) {
+    input:focus,
+    textarea:focus,
+    select:focus {
+        scroll-padding-bottom: 200px;
+    }
+    
+    .modal-body:has(input:focus),
+    .modal-body:has(textarea:focus) {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
     }
 }
