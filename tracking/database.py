@@ -948,6 +948,21 @@ class DatabaseManager:
             logger.error(f"Error checking follow status: {e}")
             return False
     
+    def count_user_publications(self, user_id: str) -> int:
+        """Contar publicaciones de un usuario"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM encrypted_publications WHERE user_id = %s",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    return result[0] if result else 0
+        except Exception as e:
+            logger.error(f"Error counting publications for {user_id}: {e}")
+            return 0
+    
     # ============================================================
     # FUNCIONES PARA USUARIOS (Red Social)
     # ============================================================

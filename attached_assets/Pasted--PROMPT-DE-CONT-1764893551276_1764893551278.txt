@@ -1,0 +1,223 @@
+
+
+================================================================================
+PROMPT DE CONTINUACIÓN - MEJORAS PENDIENTES DE BUNK3R
+================================================================================
+
+CONTEXTO:
+Esta app BUNK3R ya tiene implementadas las secciones de seguridad críticas (15-25):
+✅ XSS Sanitization, Rate Limiting, Error Handling, Accesibilidad, StateManager,
+   RequestManager, Validación de inputs, Session Management, etc.
+
+NECESITO QUE COMPLETES LAS SIGUIENTES MEJORAS PENDIENTES:
+
+================================================================================
+SECCIÓN 1 - SISTEMA DE PUBLICACIONES (Prioridad: ALTA)
+================================================================================
+PENDIENTE:
+□ Implementar actualización del feed en tiempo real (WebSocket o polling inteligente)
+□ Implementar scroll infinito/paginación en el feed (actualmente carga todo de una vez)
+□ Hacer los hashtags (#tema) clickeables para filtrar posts por hashtag
+□ Crear página de Explore funcional con búsqueda y hashtags trending
+□ Animación de feedback visual inmediato para likes/reacciones
+□ Actualizar contador de comentarios en tiempo real
+
+STORIES - PENDIENTE:
+□ Funcionalidad para eliminar historias propias
+□ Mostrar tiempo restante de expiración (24h) en UI de stories
+□ Indicador "visto por X personas" para historias propias
+□ Reacciones/respuestas a historias con emoji
+
+================================================================================
+SECCIÓN 2 - NAVEGACIÓN Y UI (Prioridad: MEDIA)
+================================================================================
+PENDIENTE:
+□ Refactorizar goToHome() para que oculte pantallas dinámicamente (no lista hardcodeada)
+□ Hacer que los items del sidebar naveguen correctamente (no solo mostrar toast)
+□ Agregar animaciones de transición entre páginas/secciones
+□ Badge de notificaciones en barra de navegación inferior
+□ Asegurar que modales cierren correctamente al hacer click fuera
+□ Skeleton loaders ya existen, pero verificar que se usen en todos los lugares
+
+================================================================================
+SECCIÓN 3 - WALLET/BUNK3RCOIN (Prioridad: ALTA)
+================================================================================
+PENDIENTE:
+□ Auto-actualizar balance después de cada transacción sin recargar página
+□ Implementar historial de transacciones con filtros (fecha, tipo, monto)
+□ Confirmación visual clara cuando se completa una recarga
+□ Límite de intentos para verificación de pagos (evitar spam)
+□ Manejar pagos TON "pending" que pueden quedarse así si API falla
+
+================================================================================
+SECCIÓN 4 - BASE DE DATOS (Prioridad: MEDIA)
+================================================================================
+✅ YA IMPLEMENTADO: Índices en columnas frecuentes
+PENDIENTE:
+□ Implementar connection pooling (actualmente se crea nueva conexión para cada operación)
+□ Agregar límite a get_tracking_history (puede ser lento con historial largo)
+□ Optimizar búsquedas de posts/usuarios
+□ Considerar caché para datos que cambian poco (estadísticas, configuraciones)
+
+================================================================================
+SECCIÓN 5 - PERFILES DE USUARIO (Prioridad: MEDIA)
+================================================================================
+PENDIENTE:
+□ Mostrar grid de publicaciones propias en el perfil (estilo Instagram)
+□ Crear página de seguidores/siguiendo navegable
+□ Implementar cropping/ajuste de avatar antes de subir
+□ Agregar edición de bio/descripción
+□ Sistema de verificación de usuarios (badge verificado)
+□ Sincronizar contadores de posts/seguidores/siguiendo
+
+================================================================================
+SECCIÓN 6 - COMENTARIOS (Prioridad: MEDIA)
+================================================================================
+PENDIENTE:
+□ Paginación de comentarios (load more)
+□ Mostrar respuestas a comentarios anidadas correctamente
+□ Permitir editar un comentario después de enviarlo
+□ Reacciones a comentarios individuales
+□ Indicador de "escribiendo..." en tiempo real (opcional)
+
+================================================================================
+SECCIÓN 7 - NOTIFICACIONES (Prioridad: ALTA)
+================================================================================
+ESTADO: 10% implementado - MUY IMPORTANTE PARA $BUNK3R
+PENDIENTE:
+□ Crear sistema de notificaciones in-app
+□ Badge de notificaciones no leídas en el header/nav
+□ Historial de notificaciones consultable (nueva pantalla)
+□ Configuración de preferencias de notificaciones
+□ Notificaciones para: likes, comentarios, seguidores, transacciones, etc.
+
+================================================================================
+SECCIÓN 9 - MARKETPLACE Y BOTS (Prioridad: BAJA)
+================================================================================
+PENDIENTE:
+□ Sistema de categorías para productos
+□ Carrito de compras
+□ Mostrar estado de activación de bots comprados
+□ Panel de configuración de bots comprados
+□ Sistema de reviews/valoraciones
+
+================================================================================
+SECCIÓN 10 - NÚMEROS VIRTUALES (Prioridad: BAJA)
+================================================================================
+PENDIENTE:
+□ Cambiar polling de 5 segundos a backoff exponencial
+□ Agregar filtros al historial de órdenes
+□ Notificación push cuando llega SMS
+
+================================================================================
+SECCIÓN 11 - RESPONSIVE/MÓVIL (Prioridad: BAJA)
+================================================================================
+PENDIENTE:
+□ Hacer modales scrolleables en pantallas pequeñas
+□ Evitar superposición de toasts cuando aparecen múltiples
+□ Evitar que el teclado en móvil tape los inputs
+□ Modo landscape optimizado (opcional)
+
+================================================================================
+SECCIÓN 12 - MEMORY LEAKS (Prioridad: MEDIA)
+================================================================================
+PENDIENTE:
+□ Limpiar addEventListener al cambiar de pantalla (acumulan listeners)
+□ Limpiar setInterval de virtual-numbers.js si el usuario navega fuera
+□ Limpiar setInterval de sesión en app.js cuando no sea necesario
+□ Limpiar _storyTimeout en el visor de stories al cerrar
+□ Limpiar timeouts de debounceEstimate en exchange al cerrar modal
+
+================================================================================
+SECCIÓN 13 - RACE CONDITIONS (Prioridad: MEDIA)
+================================================================================
+RequestManager YA EXISTE pero falta:
+□ Usar RequestManager.cancel() en loadFeed() antes de nuevo request
+□ Prevenir múltiples clicks en botón de like/save (ya hay throttle, verificar)
+□ Cancelar requests pendientes al iniciar uno nuevo en búsquedas
+
+================================================================================
+SECCIÓN 14 - CÓDIGO DUPLICADO (Prioridad: BAJA)
+================================================================================
+PENDIENTE:
+□ Unificar apiRequest() que está en app.js Y publications.js
+□ Verificar que showToast() usa el Toast centralizado en todos lados
+□ Verificar getDeviceIcon() duplicado en app.js (líneas 1055-1065 y 4082-4092)
+□ Unificar getAuthHeaders() en función centralizada
+
+================================================================================
+ORDEN DE PRIORIDAD SUGERIDO:
+================================================================================
+1. ALTA: Sección 7 (Notificaciones) - Crítico para transacciones $BUNK3R
+2. ALTA: Sección 3 (Wallet) - Auto-actualización de balance
+3. ALTA: Sección 1 (Feed tiempo real y scroll infinito)
+4. MEDIA: Sección 5 (Perfiles - grid de posts)
+5. MEDIA: Sección 6 (Comentarios - paginación)
+6. MEDIA: Sección 12 (Memory leaks)
+7. BAJA: Resto de secciones
+
+================================================================================
+NOTAS TÉCNICAS:
+================================================================================
+- Ya existe utils.js con Logger, ErrorHandler, StateManager, RequestManager, Toast, A11y
+- Ya existe InputValidator en app.py para backend
+- Ya existe RateLimiter con @rate_limit decorator
+- Base de datos tiene 100+ índices ya creados
+- La app funciona, estas son mejoras de UX y optimización
+
+================================================================================
+ARCHIVOS PRINCIPALES A MODIFICAR:
+================================================================================
+- static/js/app.js (5000+ líneas)
+- static/js/publications.js (1500+ líneas)
+- static/js/utils.js (utilities centralizadas)
+- app.py (5500+ líneas - backend Flask)
+- tracking/database.py (2700+ líneas)
+- templates/index.html (HTML principal)
+- static/css/styles.css
+
+================================================================================
+INSTRUCCIONES DE EJECUCIÓN:
+================================================================================
+1. Al implementar cada sección, notificar:
+   "Comenzando sección [X]: [nombre]"
+2. Al terminar cada sección:
+   "✅ Completada sección [X]"
+3. Si hay errores:
+   "⚠️ Problema en sección [X]: [descripción]"
+4. Probar cada funcionalidad antes de marcar como completada
+5. Verificar que no rompa funcionalidades existentes
+
+================================================================================
+FIN DEL PROMPT
+================================================================================
+INSTRUCCIONES DE EJECUCIÓN PARA EL AGENTE
+================================================================================
+
+COMUNICACIÓN DE PROGRESO:
+
+Al implementar cada sección numerada del prompt, el agente DEBE:
+
+1. Notificar cuando INICIE una sección:
+   "Comenzando sección [X]: [nombre de la sección]"
+
+2. Notificar cuando TERMINE una sección:
+   "✅ Completada sección [X]: [nombre de la sección]"
+   "Pendientes: secciones [lista de números faltantes]"
+
+3. Si hay errores o bloqueos, notificar:
+   "⚠️ Problema en sección [X]: [descripción breve del problema]"
+
+Esto permite al usuario hacer seguimiento del progreso en tiempo real.
+
+VERIFICACIÓN OBLIGATORIA:
+
+Después de implementar cada funcionalidad, el agente DEBE:
+
+1. Probar la funcionalidad en un entorno de usuario real (no solo revisar código)
+2. Verificar que no rompa funcionalidades existentes
+3. Confirmar que la UI responde correctamente
+4. Revisar logs de consola para detectar errores
+5. Solo marcar como "completada" si funciona correctamente
+
+Si algo no funciona, corregir ANTES de pasar a la siguiente sección.

@@ -2048,6 +2048,110 @@ def get_user_following(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
+@app.route('/api/users/<user_id>/stats', methods=['GET'])
+@require_telegram_user
+def get_user_stats(user_id):
+    """Obtener estadisticas del perfil de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        posts_count = db_manager.count_user_publications(user_id)
+        followers = db_manager.get_followers(user_id, limit=1000)
+        following = db_manager.get_following(user_id, limit=1000)
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'posts': posts_count,
+                'followers': len(followers) if followers else 0,
+                'following': len(following) if following else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user stats for {user_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+@app.route('/api/users/<user_id>/profile', methods=['PUT'])
+@require_telegram_user
+def update_user_profile(user_id):
+    """Actualizar perfil de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        current_user = request.telegram_user
+        current_user_id = str(current_user.get('id'))
+        
+        if current_user_id != user_id:
+            return jsonify({'error': 'No autorizado'}), 403
+        
+        data = request.get_json()
+        bio = data.get('bio')
+        
+        success = db_manager.update_user_profile(user_id, bio=bio)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Perfil actualizado correctamente'
+            })
+        else:
+            return jsonify({'error': 'Error al actualizar perfil'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error updating user profile: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+@app.route('/api/users/avatar', methods=['POST'])
+@require_telegram_user
+def upload_user_avatar():
+    """Subir avatar de usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        if 'avatar' not in request.files:
+            return jsonify({'error': 'No se envio archivo'}), 400
+        
+        file = request.files['avatar']
+        if file.filename == '':
+            return jsonify({'error': 'Archivo vacio'}), 400
+        
+        if file and allowed_file(file.filename, {'png', 'jpg', 'jpeg', 'gif', 'webp'}):
+            filename = secure_filename(f"avatar_{user_id}_{int(time.time())}.{file.filename.rsplit('.', 1)[1].lower()}")
+            
+            avatars_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'avatars')
+            os.makedirs(avatars_folder, exist_ok=True)
+            
+            file_path = os.path.join(avatars_folder, filename)
+            file.save(file_path)
+            
+            avatar_url = f"/static/uploads/avatars/{filename}"
+            
+            success = db_manager.update_user_profile(user_id, avatar_url=avatar_url)
+            
+            if success:
+                return jsonify({
+                    'success': True,
+                    'avatar_url': avatar_url
+                })
+            else:
+                return jsonify({'error': 'Error al guardar avatar'}), 500
+        else:
+            return jsonify({'error': 'Formato de archivo no permitido'}), 400
+            
+    except Exception as e:
+        logger.error(f"Error uploading avatar: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
 # ============================================================
 # ENDPOINTS DE BOTS DE USUARIO
 # ============================================================

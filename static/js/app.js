@@ -419,8 +419,10 @@ const App = {
         try {
             this.showMainApp();
             this.setupEventListeners();
+            this.setupProfileEventListeners();
             this.updateAllAvatars();
             this.loadInitialData();
+            this.loadProfileStats();
             this.startSessionActivityMonitor();
             this.initTonConnect();
             this.loadWalletBalance();
@@ -432,7 +434,10 @@ const App = {
             this.initTransactionFilters();
             this.updateNotificationBadge();
             
-            setInterval(() => this.updateNotificationBadge(), 60000);
+            if (this.notificationBadgeInterval) {
+                clearInterval(this.notificationBadgeInterval);
+            }
+            this.notificationBadgeInterval = setInterval(() => this.updateNotificationBadge(), 60000);
         } catch (error) {
             console.error('Error in completeLogin():', error);
             this.showMainApp();
@@ -597,26 +602,28 @@ const App = {
     },
     
     goToHome() {
-        document.getElementById('tracking-module').classList.add('hidden');
-        document.getElementById('marketplace-screen').classList.add('hidden');
-        document.getElementById('bots-screen').classList.add('hidden');
-        document.getElementById('wallet-screen').classList.add('hidden');
-        document.getElementById('profile-screen').classList.add('hidden');
-        document.getElementById('exchange-screen')?.classList.add('hidden');
-        document.getElementById('settings-screen')?.classList.add('hidden');
-        document.getElementById('admin-screen')?.classList.add('hidden');
-        document.getElementById('home-screen').classList.remove('hidden');
+        document.querySelectorAll('.page-screen, #tracking-module').forEach(screen => {
+            screen.classList.add('hidden');
+        });
+        document.getElementById('home-screen')?.classList.remove('hidden');
         
         document.querySelectorAll('.bottom-nav-item').forEach(item => {
             item.classList.remove('active');
+            item.removeAttribute('aria-current');
         });
         const homeBtn = document.querySelector('.bottom-nav-item[data-nav="home"]');
         if (homeBtn) {
             homeBtn.classList.add('active');
+            homeBtn.setAttribute('aria-current', 'page');
         }
         
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.hide();
+        }
+        
+        this.currentSection = 'home';
+        if (typeof StateManager !== 'undefined') {
+            StateManager.setSection('home');
         }
     },
     
@@ -674,18 +681,7 @@ const App = {
                 sidebar.classList.remove('active');
                 sidebarOverlay.classList.remove('active');
                 const section = item.dataset.section;
-                if (section === 'exchange') {
-                    this.showPage('exchange');
-                } else if (section === 'bots') {
-                    this.showPage('bots');
-                } else if (section === 'settings') {
-                    this.showSettingsScreen();
-                } else if (section === 'numeros') {
-                    const initDataParam = this.initData ? `?initData=${encodeURIComponent(this.initData)}` : '';
-                    window.location.href = '/virtual-numbers' + initDataParam;
-                } else {
-                    this.showToast('Seccion: ' + item.textContent.trim(), 'info');
-                }
+                this.handleSidebarNavigation(section);
             });
         });
         
@@ -940,17 +936,47 @@ const App = {
         return labels[navType] || navType;
     },
     
+    handleSidebarNavigation(section) {
+        switch (section) {
+            case 'numeros':
+                const initDataParam = this.initData ? `?initData=${encodeURIComponent(this.initData)}` : '';
+                window.location.href = '/virtual-numbers' + initDataParam;
+                break;
+            case 'cuentas':
+                this.showPage('marketplace');
+                this.showToast('Navega a Cuentas en la tienda', 'info');
+                break;
+            case 'metodos':
+                this.showPage('wallet');
+                break;
+            case 'bots':
+                this.showPage('bots');
+                break;
+            case 'planes':
+                this.showPage('marketplace');
+                break;
+            case 'exchange':
+                this.showPage('exchange');
+                break;
+            case 'foro':
+                this.showToast('Foro proximamente disponible', 'info');
+                break;
+            case 'settings':
+                this.showSettingsScreen();
+                break;
+            default:
+                this.showToast('Seccion en desarrollo', 'info');
+        }
+    },
+    
+    hideAllScreens() {
+        document.querySelectorAll('.page-screen, #home-screen, #tracking-module').forEach(screen => {
+            screen.classList.add('hidden');
+        });
+    },
+    
     showPage(pageName) {
-        document.getElementById('home-screen').classList.add('hidden');
-        document.getElementById('tracking-module').classList.add('hidden');
-        document.getElementById('marketplace-screen').classList.add('hidden');
-        document.getElementById('bots-screen').classList.add('hidden');
-        document.getElementById('notifications-screen')?.classList.add('hidden');
-        document.getElementById('wallet-screen').classList.add('hidden');
-        document.getElementById('profile-screen').classList.add('hidden');
-        document.getElementById('exchange-screen')?.classList.add('hidden');
-        document.getElementById('settings-screen')?.classList.add('hidden');
-        document.getElementById('admin-screen')?.classList.add('hidden');
+        this.hideAllScreens();
         
         const pageScreen = document.getElementById(`${pageName}-screen`);
         if (pageScreen) {
@@ -959,6 +985,11 @@ const App = {
         
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.show();
+        }
+        
+        this.currentSection = pageName;
+        if (typeof StateManager !== 'undefined') {
+            StateManager.setSection(pageName);
         }
         
         if (pageName === 'bots') {
@@ -976,18 +1007,16 @@ const App = {
     },
     
     showSettingsScreen() {
-        document.getElementById('home-screen').classList.add('hidden');
-        document.getElementById('tracking-module').classList.add('hidden');
-        document.getElementById('marketplace-screen').classList.add('hidden');
-        document.getElementById('bots-screen').classList.add('hidden');
-        document.getElementById('wallet-screen').classList.add('hidden');
-        document.getElementById('profile-screen').classList.add('hidden');
-        document.getElementById('exchange-screen')?.classList.add('hidden');
-        document.getElementById('admin-screen')?.classList.add('hidden');
-        document.getElementById('settings-screen').classList.remove('hidden');
+        this.hideAllScreens();
+        document.getElementById('settings-screen')?.classList.remove('hidden');
         
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.show();
+        }
+        
+        this.currentSection = 'settings';
+        if (typeof StateManager !== 'undefined') {
+            StateManager.setSection('settings');
         }
         
         this.loadSettingsSecurityStatus();
@@ -1000,18 +1029,16 @@ const App = {
             return;
         }
         
-        document.getElementById('home-screen').classList.add('hidden');
-        document.getElementById('tracking-module').classList.add('hidden');
-        document.getElementById('marketplace-screen').classList.add('hidden');
-        document.getElementById('bots-screen').classList.add('hidden');
-        document.getElementById('wallet-screen').classList.add('hidden');
-        document.getElementById('profile-screen').classList.add('hidden');
-        document.getElementById('exchange-screen')?.classList.add('hidden');
-        document.getElementById('settings-screen')?.classList.add('hidden');
-        document.getElementById('admin-screen').classList.remove('hidden');
+        this.hideAllScreens();
+        document.getElementById('admin-screen')?.classList.remove('hidden');
         
         if (this.tg && this.tg.BackButton) {
             this.tg.BackButton.show();
+        }
+        
+        this.currentSection = 'admin';
+        if (typeof StateManager !== 'undefined') {
+            StateManager.setSection('admin');
         }
         
         this.loadAdminStats();
@@ -1291,6 +1318,257 @@ const App = {
     setupAvatarUpload() {
         const avatarWrap = document.getElementById('avatar-upload-wrap');
         const avatarInput = document.getElementById('avatar-input');
+    },
+    
+    setupProfileEventListeners() {
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', () => this.showEditProfileModal());
+        }
+        
+        const followersStatEl = document.querySelector('.profile-page-stat:nth-child(2)');
+        const followingStatEl = document.querySelector('.profile-page-stat:nth-child(3)');
+        
+        if (followersStatEl) {
+            followersStatEl.addEventListener('click', () => this.showFollowersModal('followers'));
+        }
+        if (followingStatEl) {
+            followingStatEl.addEventListener('click', () => this.showFollowersModal('following'));
+        }
+        
+        const bioInput = document.getElementById('edit-profile-bio');
+        if (bioInput) {
+            bioInput.addEventListener('input', () => {
+                const count = bioInput.value.length;
+                const countEl = document.getElementById('bio-char-count');
+                if (countEl) countEl.textContent = count;
+            });
+        }
+    },
+    
+    async showFollowersModal(type = 'followers') {
+        const modal = document.getElementById('followers-modal');
+        if (!modal) return;
+        
+        modal.classList.remove('hidden');
+        this.switchFollowersTab(type);
+    },
+    
+    hideFollowersModal() {
+        const modal = document.getElementById('followers-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+    
+    async switchFollowersTab(type) {
+        document.querySelectorAll('.followers-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.type === type);
+        });
+        
+        const title = document.getElementById('followers-modal-title');
+        if (title) {
+            title.textContent = type === 'followers' ? 'Seguidores' : 'Siguiendo';
+        }
+        
+        const list = document.getElementById('followers-list');
+        if (list) {
+            list.innerHTML = '<div class="followers-loading"><div class="spinner"></div></div>';
+        }
+        
+        try {
+            const userId = this.user?.id || '0';
+            const endpoint = type === 'followers' 
+                ? `/api/users/${userId}/followers` 
+                : `/api/users/${userId}/following`;
+            
+            const response = await this.apiRequest(endpoint);
+            
+            if (response.success) {
+                const users = response[type] || [];
+                if (users.length === 0) {
+                    list.innerHTML = `<div class="followers-empty">
+                        ${type === 'followers' ? 'Aun no tienes seguidores' : 'No sigues a nadie'}
+                    </div>`;
+                } else {
+                    list.innerHTML = users.map(user => `
+                        <div class="follower-item" onclick="App.viewUserProfile('${this.sanitizeForJs(user.id)}')">
+                            <img src="${this.escapeAttribute(user.avatarUrl || user.avatar_url || '/static/images/default-avatar.png')}" 
+                                 class="follower-avatar" 
+                                 onerror="this.src='/static/images/default-avatar.png'">
+                            <div class="follower-info">
+                                <span class="follower-name">${this.escapeHtml(user.firstName || user.first_name || user.username || 'Usuario')}</span>
+                                <span class="follower-username">@${this.escapeHtml(user.username || 'usuario')}</span>
+                            </div>
+                            ${type === 'following' ? `
+                                <button class="follower-btn following" onclick="event.stopPropagation(); App.unfollowUser('${this.sanitizeForJs(user.id)}')">
+                                    Siguiendo
+                                </button>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading followers:', error);
+            if (list) {
+                list.innerHTML = '<div class="followers-empty">Error al cargar</div>';
+            }
+        }
+    },
+    
+    async unfollowUser(userId) {
+        try {
+            const response = await this.apiRequest(`/api/users/${userId}/follow`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Usuario dejado de seguir', 'success');
+                this.switchFollowersTab('following');
+                this.loadProfileStats();
+            }
+        } catch (error) {
+            console.error('Unfollow error:', error);
+        }
+    },
+    
+    viewUserProfile(userId) {
+        this.hideFollowersModal();
+        this.showToast('Navegando al perfil...', 'info');
+    },
+    
+    async showEditProfileModal() {
+        const modal = document.getElementById('edit-profile-modal');
+        if (!modal) return;
+        
+        const avatarImg = document.getElementById('edit-profile-avatar-img');
+        const avatarInitial = document.getElementById('edit-profile-avatar-initial');
+        
+        if (this.userPhotoUrl && avatarImg) {
+            avatarImg.src = this.userPhotoUrl;
+            avatarImg.classList.remove('hidden');
+            avatarInitial?.classList.add('hidden');
+        } else if (avatarInitial) {
+            avatarInitial.textContent = this.userInitials;
+            avatarInitial.classList.remove('hidden');
+            avatarImg?.classList.add('hidden');
+        }
+        
+        try {
+            const userId = this.user?.id || '0';
+            const response = await this.apiRequest(`/api/users/${userId}/profile`);
+            if (response.success && response.profile) {
+                const bioInput = document.getElementById('edit-profile-bio');
+                if (bioInput) {
+                    bioInput.value = response.profile.bio || '';
+                    const countEl = document.getElementById('bio-char-count');
+                    if (countEl) countEl.textContent = bioInput.value.length;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading profile:', error);
+        }
+        
+        modal.classList.remove('hidden');
+    },
+    
+    hideEditProfileModal() {
+        const modal = document.getElementById('edit-profile-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+    
+    _pendingAvatarFile: null,
+    
+    handleAvatarSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Solo se permiten imagenes', 'error');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            this.showToast('Imagen muy grande (max 5MB)', 'error');
+            return;
+        }
+        
+        this._pendingAvatarFile = file;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const avatarImg = document.getElementById('edit-profile-avatar-img');
+            const avatarInitial = document.getElementById('edit-profile-avatar-initial');
+            
+            if (avatarImg) {
+                avatarImg.src = e.target.result;
+                avatarImg.classList.remove('hidden');
+            }
+            if (avatarInitial) {
+                avatarInitial.classList.add('hidden');
+            }
+        };
+        reader.readAsDataURL(file);
+    },
+    
+    async saveProfile() {
+        const bioInput = document.getElementById('edit-profile-bio');
+        const bio = bioInput?.value.trim() || '';
+        
+        try {
+            if (this._pendingAvatarFile) {
+                const formData = new FormData();
+                formData.append('avatar', this._pendingAvatarFile);
+                
+                const avatarResponse = await fetch('/api/users/avatar', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: formData
+                });
+                
+                const avatarResult = await avatarResponse.json();
+                if (avatarResult.success && avatarResult.avatar_url) {
+                    this.userPhotoUrl = avatarResult.avatar_url;
+                    this.updateAllAvatars();
+                }
+                
+                this._pendingAvatarFile = null;
+            }
+            
+            const userId = this.user?.id || '0';
+            const response = await this.apiRequest(`/api/users/${userId}/profile`, {
+                method: 'PUT',
+                body: JSON.stringify({ bio })
+            });
+            
+            if (response.success) {
+                this.showToast('Perfil actualizado', 'success');
+                this.hideEditProfileModal();
+            } else {
+                this.showToast(response.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Save profile error:', error);
+            this.showToast('Error al guardar perfil', 'error');
+        }
+    },
+    
+    async loadProfileStats() {
+        try {
+            const userId = this.user?.id || '0';
+            const response = await this.apiRequest(`/api/users/${userId}/stats`);
+            
+            if (response.success) {
+                const postsEl = document.getElementById('profile-page-posts');
+                const followersEl = document.getElementById('profile-page-followers');
+                const followingEl = document.getElementById('profile-page-following');
+                
+                if (postsEl) postsEl.textContent = response.stats.posts || 0;
+                if (followersEl) followersEl.textContent = response.stats.followers || 0;
+                if (followingEl) followingEl.textContent = response.stats.following || 0;
+            }
+        } catch (error) {
+            console.error('Error loading profile stats:', error);
+        }
     },
     
     updateAllAvatars() {

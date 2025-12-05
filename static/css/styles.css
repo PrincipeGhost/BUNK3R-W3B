@@ -9345,3 +9345,210 @@ select:focus-visible {
     color: var(--text-muted);
     font-size: 14px;
 }
+
+/* ============================================ */
+/* FOLLOWERS/FOLLOWING MODAL                   */
+/* ============================================ */
+
+.followers-modal {
+    max-height: 70vh;
+}
+
+.followers-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.followers-tab {
+    flex: 1;
+    padding: 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.followers-tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-primary);
+}
+
+.followers-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.followers-loading {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.follower-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.follower-item:hover {
+    background: var(--bg-input);
+}
+
+.follower-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-input);
+    object-fit: cover;
+}
+
+.follower-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.follower-name {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.follower-username {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.follower-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.follower-btn.follow {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+}
+
+.follower-btn.following {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.followers-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+/* ============================================ */
+/* EDIT PROFILE MODAL                          */
+/* ============================================ */
+
+.edit-profile-modal {
+    max-width: 400px;
+}
+
+.edit-profile-content {
+    padding: 20px;
+}
+
+.edit-profile-avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.edit-profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--bg-input);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.edit-profile-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.edit-profile-avatar-initial {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.edit-avatar-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent-primary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-profile-field {
+    margin-bottom: 16px;
+}
+
+.edit-profile-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.edit-profile-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 14px;
+    resize: none;
+}
+
+.edit-profile-textarea:focus {
+    border-color: var(--accent-primary);
+    outline: none;
+}
+
+.edit-field-hint {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* Profile page stat clickable */
+.profile-page-stat {
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.profile-page-stat:hover {
+    opacity: 0.7;
+}

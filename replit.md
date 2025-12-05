@@ -281,3 +281,42 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 - Comments load 5 at a time with "Ver mas comentarios" button
 - State management includes: offset, hasMore, loading flags per post
 - Added CSS for `.load-more-comments-btn`, `.loading-comments`, `.no-comments`
+
+### Section 28 - Profile & Navigation Improvements (Dec 2025)
+
+#### Dynamic Screen Navigation System
+- Created centralized `hideAllScreens()` utility method
+- Refactored screen show methods (showPage, showProfileScreen, showSettingsScreen, showAdminScreen) to use hideAllScreens()
+- Added `handleSidebarNavigation()` for proper routing from sidebar menu items
+- Integrated StateManager for section tracking across navigation
+
+#### Profile Stats and Followers/Following Modal
+- Added clickable profile stats (posts, followers, following)
+- Created followers/following modal with tab switching UI
+- Implemented `showFollowersModal()`, `hideFollowersModal()`, `switchFollowersTab()` methods
+- Added `loadProfileStats()` to fetch posts/followers/following counts
+- Added backend endpoints:
+  - `GET /api/users/<user_id>/stats` - Get profile statistics
+  - `GET /api/users/<user_id>/followers` - Get user's followers list
+  - `GET /api/users/<user_id>/following` - Get users being followed
+- Added `count_user_publications()` method to DatabaseManager
+
+#### Edit Profile Modal
+- Created edit profile modal with avatar upload and bio editing
+- Implemented `showEditProfileModal()`, `hideEditProfileModal()`, `saveProfile()` methods
+- Added `handleAvatarSelect()` for avatar file selection and preview
+- Added backend endpoints:
+  - `PUT /api/users/<user_id>/profile` - Update profile bio
+  - `POST /api/users/avatar` - Upload avatar image
+- Avatars stored in `/static/uploads/avatars/`
+
+#### Memory Leak Cleanup
+- Added interval tracking for `notificationBadgeInterval` with proper cleanup
+- Interval is cleared before creating new ones to prevent memory leaks
+- `sessionActivityInterval` cleanup already implemented
+
+#### CSS Additions
+- Added `.followers-modal` styles with tabs and user list
+- Added `.edit-profile-modal` styles with avatar section
+- Added `.follower-item`, `.follower-avatar`, `.follower-btn` styles
+- Made `.profile-page-stat` clickable with hover effects

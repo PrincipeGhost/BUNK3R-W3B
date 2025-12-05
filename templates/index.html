@@ -2198,6 +2198,62 @@
         </div>
     </div>
 
+    <!-- Modal Seguidores/Seguidos -->
+    <div id="followers-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="followers-modal-title">
+        <div class="pub-modal followers-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="App.hideFollowersModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2 id="followers-modal-title">Seguidores</h2>
+                <span></span>
+            </div>
+            <div class="followers-tabs">
+                <button class="followers-tab active" data-type="followers" onclick="App.switchFollowersTab('followers')">Seguidores</button>
+                <button class="followers-tab" data-type="following" onclick="App.switchFollowersTab('following')">Siguiendo</button>
+            </div>
+            <div class="followers-list" id="followers-list">
+                <div class="followers-loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Perfil -->
+    <div id="edit-profile-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
+        <div class="pub-modal edit-profile-modal">
+            <div class="pub-modal-header">
+                <button class="pub-modal-close" onclick="App.hideEditProfileModal()" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2 id="edit-profile-title">Editar perfil</h2>
+                <button class="pub-modal-action" onclick="App.saveProfile()">Guardar</button>
+            </div>
+            <div class="edit-profile-content">
+                <div class="edit-profile-avatar-section">
+                    <div class="edit-profile-avatar" id="edit-profile-avatar">
+                        <img class="edit-profile-avatar-img hidden" id="edit-profile-avatar-img" alt="Avatar">
+                        <span class="edit-profile-avatar-initial" id="edit-profile-avatar-initial">U</span>
+                    </div>
+                    <button class="edit-avatar-btn" onclick="document.getElementById('avatar-input').click()">Cambiar foto</button>
+                    <input type="file" id="avatar-input" accept="image/*" hidden onchange="App.handleAvatarSelect(event)">
+                </div>
+                <div class="edit-profile-field">
+                    <label for="edit-profile-bio">Bio</label>
+                    <textarea id="edit-profile-bio" class="edit-profile-textarea" placeholder="Escribe algo sobre ti..." rows="3" maxlength="150"></textarea>
+                    <span class="edit-field-hint"><span id="bio-char-count">0</span>/150</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Configuracion de Notificaciones -->
     <div id="notification-settings-modal" class="pub-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="notif-settings-title">
         <div class="pub-modal notif-settings-modal">
