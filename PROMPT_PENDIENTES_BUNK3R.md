@@ -313,7 +313,7 @@ Si se detecta vulnerabilidad → **DETENER TODO**
 **Prioridad:** ALTA  
 **Agregado:** 5 Diciembre 2025  
 **Actualizado:** 5 Diciembre 2025
-**Estado:** EN PROGRESO (90% - Software completo, configurado para TESTNET)
+**Estado:** EN PROGRESO (95% - Token siendo creado en TESTNET)
 **Origen:** Prompt del usuario - Crear token real con liquidez automática
 
 ---
@@ -327,6 +327,19 @@ El sistema está configurado para usar **TON Testnet** primero. Esto permite pro
 - `B3C_NETWORK=testnet`
 
 **Guía completa:** Ver `docs/GUIA_TESTNET_B3C.md`
+
+**✅ Tareas de software completadas:**
+- [x] b3c_service.py configurado para testnet con URLs y enlaces útiles
+- [x] Nuevo endpoint `/api/b3c/testnet/guide` con guía paso a paso
+- [x] Documentación completa en `docs/GUIA_TESTNET_B3C.md`
+- [x] Todos los endpoints B3C funcionando en modo testnet
+- [x] UI con indicador de red testnet
+
+**⏳ Tareas manuales en progreso:**
+- [ ] Crear token en https://testnet.minter.ton.org/ (USUARIO HACIÉNDOLO AHORA)
+- [ ] Guardar dirección del token en `B3C_TOKEN_ADDRESS`
+- [ ] Configurar `B3C_HOT_WALLET`
+- [ ] Verificar token en explorador testnet
 
 ---
 
