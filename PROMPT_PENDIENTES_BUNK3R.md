@@ -116,7 +116,36 @@ Actualizar replit.md con:
 - Nuevas dependencias
 - Cambios en arquitectura
 
-### 5. Normas de Seguridad
+### 5. ⚠️ ACTUALIZACIÓN INMEDIATA OBLIGATORIA ⚠️
+**Al completar CUALQUIER sección, el agente DEBE actualizar ESTE archivo de inmediato:**
+
+```
+UBICACIÓN: PROMPT_PENDIENTES_BUNK3R.md
+
+PASOS OBLIGATORIOS:
+1. Cambiar estado de ⏳ a ✅ en la sección completada
+2. Actualizar el encabezado de la sección (agregar ✅)
+3. Cambiar "Estado: PENDIENTE" a "Estado: COMPLETADO"
+4. Agregar fecha de completado
+5. Actualizar RESUMEN EJECUTIVO con lo que se hizo
+6. Actualizar contadores en ESTADO GENERAL DEL PROYECTO
+7. Marcar tareas individuales como [x] completadas
+```
+
+**EJEMPLO - Al completar Sección 18:**
+```markdown
+ANTES:
+## SECCIÓN 18: AUDITORÍA DE NÚMEROS VIRTUALES ⏳
+Estado: PENDIENTE
+
+DESPUÉS:
+## SECCIÓN 18: AUDITORÍA DE NÚMEROS VIRTUALES ✅
+Estado: COMPLETADO (5 Diciembre 2025)
+```
+
+**RAZÓN:** El usuario necesita ver en tiempo real qué secciones están completas y cuáles faltan. NO esperar a terminar todo - actualizar CADA sección inmediatamente al completarla.
+
+### 6. Normas de Seguridad
 **NO HACER:**
 - Eliminar archivos sin confirmación
 - Cambios destructivos sin aprobación
@@ -1620,12 +1649,35 @@ return jsonify({
 
 Implementar sistema donde cada compra de B3C genera una **wallet temporal única**. El usuario deposita en esa wallet específica, lo que permite identificación 100% segura del pago sin necesidad de memo/comentario en la transacción.
 
+### ⚠️ IMPORTANTE - NO NECESITA MEMO NI ENCRIPTACIÓN EXTRA:
+
+```
+❌ MÉTODO ANTERIOR (problemático):
+   Usuario envía TON + memo "B3C-12345" → Error de payload, memo no funciona
+
+✅ MÉTODO NUEVO (wallet única):
+   1. Usuario solicita comprar 5 TON de B3C
+   2. Sistema genera wallet temporal: UQB...xyz (ÚNICA para esta compra)
+   3. Usuario envía 5 TON a esa dirección
+   4. Sistema monitorea: "¿Llegó depósito a UQB...xyz?" → SÍ
+   5. Sistema sabe EXACTAMENTE quién pagó porque la wallet es única
+   
+   NO NECESITA:
+   - ❌ Memo/comentario en la transacción
+   - ❌ Encriptación adicional
+   - ❌ Identificadores en el payload
+   
+   LA WALLET ÚNICA ES LA IDENTIFICACIÓN
+```
+
 ### BENEFICIOS:
-- ✅ Identificación 100% segura de cada pago
+- ✅ Identificación 100% segura de cada pago (la wallet ES el identificador)
 - ✅ No depende de memo/comentario (que causaba errores)
-- ✅ Compatible con todas las wallets TON
+- ✅ No necesita encriptación extra en la transacción
+- ✅ Compatible con TODAS las wallets TON
 - ✅ Costo de gas incluido en comisión al usuario
 - ✅ Más profesional y seguro
+- ✅ Validación simple: si llegó dinero a wallet X = compra confirmada
 
 ---
 
