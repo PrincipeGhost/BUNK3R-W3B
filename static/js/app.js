@@ -4325,7 +4325,12 @@ const App = {
             payload[2] = 0;
             payload[3] = 0;
             payload.set(textBytes, 4);
-            return btoa(String.fromCharCode(...payload));
+            
+            let binary = '';
+            for (let i = 0; i < payload.length; i++) {
+                binary += String.fromCharCode(payload[i]);
+            }
+            return btoa(binary);
         } catch (e) {
             console.error('Error building comment payload:', e);
             return undefined;
