@@ -3801,6 +3801,36 @@ def get_b3c_commissions():
         return jsonify({'success': False, 'error': 'Error al obtener comisiones'}), 500
 
 
+@app.route('/api/b3c/scheduler/status', methods=['GET'])
+@require_telegram_user
+def get_scheduler_status():
+    """Obtener estado del scheduler de depósitos automáticos (admin)."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+        
+        if user_id != owner_id:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        global deposit_scheduler
+        if deposit_scheduler:
+            return jsonify({
+                'success': True,
+                'scheduler': deposit_scheduler.get_status(),
+                'message': 'Scheduler de depósitos automáticos activo'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'scheduler': {'running': False},
+                'message': 'Scheduler no inicializado'
+            })
+        
+    except Exception as e:
+        logger.error(f"Error getting scheduler status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/b3c/wallet-pool/stats', methods=['GET'])
 @require_telegram_user
 def get_wallet_pool_stats():
@@ -7328,6 +7358,21 @@ def virtual_numbers_page():
     """Render virtual numbers page"""
     return render_template('virtual_numbers.html')
 
+
+deposit_scheduler = None
+
+def init_deposit_scheduler():
+    """Inicializar el scheduler de depósitos en background."""
+    global deposit_scheduler
+    if db_manager:
+        try:
+            from tracking.deposit_scheduler import start_deposit_scheduler
+            deposit_scheduler = start_deposit_scheduler(db_manager)
+            logger.info("Deposit scheduler started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start deposit scheduler: {e}")
+
+init_deposit_scheduler()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
