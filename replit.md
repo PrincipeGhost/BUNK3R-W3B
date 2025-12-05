@@ -65,3 +65,27 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
 6. **Bug Fixes**:
    - Changed `count_user_publications` to query 'posts' table instead of non-existent 'encrypted_publications'
    - Fixed notification creation for wallet credits and bot purchases
+
+### Performance Optimizations (December 5, 2025):
+
+7. **Database Connection Pooling**:
+   - Implemented `ThreadedConnectionPool` with min=2, max=10 connections
+   - Added `PooledConnection` wrapper for automatic connection return
+   - Fixed connection leak in `return_connection()` method
+
+8. **Memory Leak Prevention**:
+   - `cleanupCurrentScreen()` function clears timeouts/intervals on navigation
+   - `RequestManager.cancel()` integrated in `loadFeed()` to prevent race conditions
+   - Proper cleanup of visibility handlers and polling intervals
+
+9. **Code Unification**:
+   - Consolidated duplicate `getDeviceIcon()` functions:
+     - `getDeviceIconEmoji(deviceType)` - returns emoji icons
+     - `getDeviceIconSVG()` - returns SVG icons for device modal
+   - `apiRequest()` in publications.js now supports `cancelKey` for request cancellation
+
+10. **UI Improvements for Mobile**:
+    - Modals now scrollable on small screens (max-height: 85vh)
+    - Sticky modal header/footer on mobile devices
+    - Toast notifications use `column-reverse` layout to prevent overlap
+    - CSS animations for toast slide-in/out
