@@ -4814,16 +4814,11 @@ const App = {
     
     selectWalletForDeposit(type) {
         const syncedWallets = this.getSyncedWallets();
+        this.selectedWalletType = type;
         
         if (syncedWallets[type]) {
             this.closeB3CModal('b3c-deposit-modal');
-            if (type === 'external') {
-                this.showExternalDepositAddress();
-            } else if (type === 'telegram') {
-                this.useTelegramWalletForDeposit();
-            } else if (type === 'binance') {
-                this.useBinanceWalletForDeposit();
-            }
+            this.showDepositPackages(type);
         } else {
             if (type === 'telegram') {
                 this.connectTelegramWallet();
@@ -4831,20 +4826,111 @@ const App = {
                 this.connectBinanceWallet();
             } else if (type === 'external') {
                 this.closeB3CModal('b3c-deposit-modal');
-                this.showExternalDepositAddress();
                 this.saveSyncedWallet('external', 'wallet-externa');
+                this.showDepositPackages('external');
             }
         }
     },
     
-    useTelegramWalletForDeposit() {
-        this.showToast('Usando Telegram Wallet sincronizada', 'success');
-        // Implementar lógica de depósito con Telegram
+    showDepositPackages(walletType) {
+        const walletNames = {
+            telegram: 'Telegram Wallet',
+            binance: 'Binance',
+            external: 'Wallet Externa'
+        };
+        
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-packages-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content b3c-packages-modal">
+                <div class="modal-header">
+                    <h3>Depositar B3C</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-packages-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="neo-wallet-selected">
+                        <span class="neo-wallet-selected-label">Wallet seleccionada</span>
+                        <span class="neo-wallet-selected-name">${walletNames[walletType]}</span>
+                        <button class="neo-change-wallet-btn" onclick="App.closeB3CModal('b3c-packages-modal'); App.showB3CDepositModal();">Cambiar</button>
+                    </div>
+                    
+                    <div class="neo-packages-section">
+                        <h4 class="neo-packages-title">Selecciona un paquete</h4>
+                        <p class="neo-packages-info">Comision: 5% - Precio en tiempo real</p>
+                        
+                        <div class="neo-packages-grid">
+                            <div class="neo-package-item test" onclick="App.selectPackage(0.5)">
+                                <span class="neo-package-badge">Prueba</span>
+                                <span class="neo-package-amount">0.5 TON</span>
+                                <span class="neo-package-estimate" id="pkg-est-05">~7 B3C</span>
+                            </div>
+                            <div class="neo-package-item" onclick="App.selectPackage(1)">
+                                <span class="neo-package-amount">1 TON</span>
+                                <span class="neo-package-estimate" id="pkg-est-1">~14 B3C</span>
+                            </div>
+                            <div class="neo-package-item popular" onclick="App.selectPackage(5)">
+                                <span class="neo-package-badge">Popular</span>
+                                <span class="neo-package-amount">5 TON</span>
+                                <span class="neo-package-estimate" id="pkg-est-5">~73 B3C</span>
+                            </div>
+                            <div class="neo-package-item" onclick="App.selectPackage(10)">
+                                <span class="neo-package-amount">10 TON</span>
+                                <span class="neo-package-estimate" id="pkg-est-10">~147 B3C</span>
+                            </div>
+                            <div class="neo-package-item" onclick="App.selectPackage(20)">
+                                <span class="neo-package-amount">20 TON</span>
+                                <span class="neo-package-estimate" id="pkg-est-20">~294 B3C</span>
+                            </div>
+                        </div>
+                        
+                        <div class="neo-custom-amount">
+                            <label>Monto personalizado</label>
+                            <div class="neo-custom-input-row">
+                                <input type="number" id="modal-custom-ton" placeholder="Cantidad en TON" min="0.1" step="0.1">
+                                <span class="neo-input-suffix">TON</span>
+                            </div>
+                            <button class="neo-custom-btn" onclick="App.selectCustomPackage()">Depositar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-packages-modal');
+        });
+        
+        this.updatePackageEstimates();
     },
     
-    useBinanceWalletForDeposit() {
-        this.showToast('Usando Binance sincronizada', 'success');
-        // Implementar lógica de depósito con Binance
+    updatePackageEstimates() {
+        // Actualizar estimaciones de paquetes
+        if (this.b3cPrice) {
+            const packages = [0.5, 1, 5, 10, 20];
+            packages.forEach(ton => {
+                const b3c = Math.floor((ton * 0.95) / this.b3cPrice);
+                const id = ton === 0.5 ? 'pkg-est-05' : `pkg-est-${ton}`;
+                const el = document.getElementById(id);
+                if (el) el.textContent = `~${b3c} B3C`;
+            });
+        }
+    },
+    
+    selectPackage(tonAmount) {
+        this.closeB3CModal('b3c-packages-modal');
+        this.buyB3CWithTonConnect(tonAmount);
+    },
+    
+    selectCustomPackage() {
+        const input = document.getElementById('modal-custom-ton');
+        const amount = parseFloat(input?.value);
+        if (amount && amount >= 0.1) {
+            this.closeB3CModal('b3c-packages-modal');
+            this.buyB3CWithTonConnect(amount);
+        } else {
+            this.showToast('Ingresa un monto valido (minimo 0.1 TON)', 'error');
+        }
     },
     
     showExternalDepositAddress() {

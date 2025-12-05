@@ -847,55 +847,6 @@
                         Cargar mas
                     </button>
                 </div>
-                <div class="wallet-section b3c-buy-section">
-                    <h2 class="section-title">Comprar B3C con TON</h2>
-                    <p class="recharge-info">Comision: 5% - Precio actualizado en tiempo real</p>
-                    <div class="recharge-options b3c-buy-options">
-                        <div class="recharge-option b3c-option test-option" data-ton="0.5" onclick="App.buyB3CWithTonConnect(0.5)">
-                            <span class="recharge-badge test-badge">Prueba</span>
-                            <span class="recharge-amount">0.5 TON</span>
-                            <span class="recharge-price b3c-estimate" id="b3c-est-05">Calculando...</span>
-                        </div>
-                        <div class="recharge-option b3c-option" data-ton="1" onclick="App.buyB3CWithTonConnect(1)">
-                            <span class="recharge-amount">1 TON</span>
-                            <span class="recharge-price b3c-estimate" id="b3c-est-1">Calculando...</span>
-                        </div>
-                        <div class="recharge-option b3c-option popular" data-ton="5" onclick="App.buyB3CWithTonConnect(5)">
-                            <span class="recharge-badge">Popular</span>
-                            <span class="recharge-amount">5 TON</span>
-                            <span class="recharge-price b3c-estimate" id="b3c-est-5">Calculando...</span>
-                        </div>
-                        <div class="recharge-option b3c-option" data-ton="10" onclick="App.buyB3CWithTonConnect(10)">
-                            <span class="recharge-amount">10 TON</span>
-                            <span class="recharge-price b3c-estimate" id="b3c-est-10">Calculando...</span>
-                        </div>
-                        <div class="recharge-option b3c-option" data-ton="20" onclick="App.buyB3CWithTonConnect(20)">
-                            <span class="recharge-amount">20 TON</span>
-                            <span class="recharge-price b3c-estimate" id="b3c-est-20">Calculando...</span>
-                        </div>
-                    </div>
-                    <div class="custom-recharge b3c-custom">
-                        <label class="custom-recharge-label">Monto personalizado en TON</label>
-                        <div class="custom-recharge-input-row">
-                            <input type="number" id="custom-ton-amount" class="custom-recharge-input" placeholder="Cantidad en TON" min="0.1" step="0.1" oninput="App.calculateB3CPreview()">
-                            <button class="custom-recharge-btn" id="custom-b3c-btn" onclick="App.buyB3CCustom()">Comprar B3C</button>
-                        </div>
-                        <div class="b3c-preview hidden" id="b3c-preview">
-                            <div class="b3c-preview-row">
-                                <span>Pagas:</span>
-                                <span id="b3c-preview-ton">0 TON</span>
-                            </div>
-                            <div class="b3c-preview-row">
-                                <span>Comision (5%):</span>
-                                <span id="b3c-preview-commission">0 TON</span>
-                            </div>
-                            <div class="b3c-preview-row b3c-preview-total">
-                                <span>Recibiras:</span>
-                                <span id="b3c-preview-amount">~0 B3C</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- PAGINA NOTIFICACIONES -->
