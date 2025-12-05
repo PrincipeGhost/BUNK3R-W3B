@@ -22,16 +22,27 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 5 Diciembre 2025 |
-| Sección actual | COMPLETADO |
-| Total secciones | 24 |
+| Sección actual | 25 |
+| Total secciones | 25 |
 | Completadas | 24 ✅ |
-| Pendientes | 0 ⏳ |
+| Pendientes | 1 ⏳ |
 | En progreso | 0 🔄 |
-| Crítico | 0 🔴 |
+| Crítico | 1 🔴 |
 
 ---
 
 ## RESUMEN EJECUTIVO - ÚLTIMAS ACTUALIZACIONES
+
+### 🔴 SECCIÓN 25: VERIFICACIÓN DE DEPÓSITOS B3C - CRÍTICO (PENDIENTE)
+**Problema detectado:** Usuario compró 0.5 TON desde PC, el pago llegó a la wallet de depósito única, pero:
+- El sistema NO detecta el depósito al verificar
+- El balance de B3C NO se actualiza
+- En móvil: Error `TON_CONNECT_SDK_ERROR Qr Transaction was not sent`
+
+**Evidencia:**
+- Wallet de depósito: `UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd`
+- Balance confirmado en TONScan: 0.5 TON recibidos
+- Tabla `deposit_wallets`: `deposit_detected_at = NULL` (no detectado)
 
 ### ✅ SECCIÓN 17: PAGOS TON CONNECT - COMPLETADO
 **Problema:** Error `TON_CONNECT_SDK_ERROR` al comprar B3C
@@ -2046,7 +2057,8 @@ Las siguientes secciones han sido completadas y archivadas:
 | 8 | 05/12/2025 | Rediseño UI neo-banco estilo Binance | SECCIÓN 21 - UI Profesional | ✅ |
 | 9 | 05/12/2025 | Auditoría de vulnerabilidades | SECCIÓN 22 - Seguridad | ⏳ |
 | 10 | 05/12/2025 | Pagos B3C no se acreditan | SECCIÓN 23 - Verificación Pagos | 🔴 |
-| 11 | 05/12/2025 | Sistema de wallets únicas por compra | SECCIÓN 24 - Wallets Únicas | 🔴 |
+| 11 | 05/12/2025 | Sistema de wallets únicas por compra | SECCIÓN 24 - Wallets Únicas | ✅ |
+| 12 | 05/12/2025 | Depósito no detectado + error móvil + sin notificaciones | SECCIÓN 25 - Verificación Crítica | 🔴 |
 
 ---
 
@@ -2093,17 +2105,20 @@ SECCIÓN 23 (Verificación)    ←  Ahora puede verificar correctamente
 
 ## RESUMEN FINAL ACTUALIZADO
 
-### SECCIONES CRÍTICAS (WALLET - PRIORIDAD MÁXIMA):
-- 🔴 **Sección 20** - Conexión de Wallet (BASE)
-- 🔴 **Sección 24** - Wallets Únicas por Compra (NUEVO)
-- 🔴 **Sección 23** - Verificación de Pagos B3C
+### 🔴 PRIORIDAD MÁXIMA - DINERO REAL INVOLUCRADO:
+- 🔴 **Sección 25** - Verificación de Depósitos y Consolidación (CRÍTICO - 0.5 TON pendiente)
+
+### SECCIONES CRÍTICAS (WALLET):
+- ✅ **Sección 20** - Conexión de Wallet (COMPLETADO)
+- ✅ **Sección 24** - Wallets Únicas por Compra (COMPLETADO)
+- ✅ **Sección 23** - Verificación de Pagos B3C (COMPLETADO)
 
 ### SECCIONES PENDIENTES:
 - ⏳ **Sección 22** - Seguridad y Vulnerabilidades
 
-### PROGRESO: 21/24 secciones (87.5%)
+### PROGRESO: 24/25 secciones (96%)
 
-**Próximo paso:** Ejecutar SECCIÓN 20 → SECCIÓN 24 → SECCIÓN 23 (en ese orden)
+**PRÓXIMO PASO INMEDIATO:** Ejecutar SECCIÓN 25 - Corregir verificación, acreditar B3C manualmente y consolidar fondos
 
 ---
 
@@ -2125,4 +2140,236 @@ Usuario → Envía TON con memo "B3C-12345" → Problema: memo no funciona
 ```
 Usuario → Recibe dirección única UQB...xyz → Deposita → Sistema detecta automáticamente
 ```
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 25: CORRECCIÓN CRÍTICA - VERIFICACIÓN Y CONSOLIDACIÓN ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA - DINERO REAL INVOLUCRADO  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Usuario reporta que compra de 0.5 TON no se acredita ni consolida
+**Estado:** PENDIENTE
+
+---
+
+### CONTEXTO DEL PROBLEMA:
+
+El usuario compró B3C enviando 0.5 TON desde PC. El dinero llegó correctamente a la wallet de depósito única pero:
+
+1. **El sistema NO detecta el depósito** al llamar a `/api/b3c/buy/:id/verify`
+2. **El balance B3C NO se actualiza** (muestra 0 B3C)
+3. **En móvil**: Error `TON_CONNECT_SDK_ERROR Qr Transaction was not sent`
+4. **NO se envían notificaciones** ni en la app ni al bot de Telegram
+5. **El dinero NO se consolida** a la wallet maestra del propietario
+
+---
+
+### EVIDENCIA RECOPILADA:
+
+**Transacción exitosa (TONScan):**
+- Wallet depósito: `UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd`
+- Balance actual: 0.5 TON (confirmado)
+- Origen: `UQAHsM7lUC154Ma_d...0_y2FT59` (wallet del usuario)
+
+**Estado en base de datos (`deposit_wallets`):**
+```sql
+id: 2
+wallet_address: UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd
+status: assigned
+assigned_to_user_id: 8305740334
+assigned_to_purchase_id: 3269A28F
+expected_amount: 0.500000000
+deposit_detected_at: NULL  ← PROBLEMA: No detectado
+deposit_tx_hash: NULL
+deposit_amount: NULL
+```
+
+**Wallet maestra (propietario):**
+- Dirección: `UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59`
+- El dinero debe consolidarse aquí
+
+---
+
+### PROMPT MAESTRO 25: CORRECCIÓN DE VERIFICACIÓN Y CONSOLIDACIÓN
+
+**OBJETIVO:** Hacer que el sistema detecte depósitos correctamente, acredite B3C, envíe notificaciones y consolide fondos.
+
+---
+
+#### FASE 25.1: DIAGNÓSTICO DE `_check_wallet_for_deposit()` ⏳
+
+**Ubicación:** `tracking/wallet_pool_service.py` líneas 438-509
+
+**TAREAS:**
+- [ ] 25.1.1 Verificar que `TONCENTER_API_KEY` esté configurada correctamente
+- [ ] 25.1.2 Probar manualmente la llamada a TonCenter API v3:
+  ```
+  GET https://toncenter.com/api/v3/transactions?account=UQBPp54eLlfWwuzLOsZ6u-pIfbqQvWzH10PvhmMNSbfxqmCd&limit=10
+  ```
+- [ ] 25.1.3 Verificar formato de respuesta de la API (campo `transactions` vs `result`)
+- [ ] 25.1.4 Verificar parsing de `in_msg.value` (debe ser entero en nanoTON)
+- [ ] 25.1.5 Agregar logging detallado para debug de verificación
+- [ ] 25.1.6 Corregir errores LSP existentes en el archivo
+
+**Código a revisar (líneas 475-501):**
+```python
+if response.status_code == 200:
+    data = response.json()
+    
+    if self.use_testnet:
+        transactions = data.get('result', [])
+    else:
+        transactions = data.get('transactions', [])
+    
+    for tx in transactions:
+        in_msg = tx.get('in_msg', {})
+        value_raw = in_msg.get('value', 0)
+        value = int(value_raw) / 1e9 if value_raw else 0
+        
+        if value >= expected_amount * 0.99:
+            # ... detectar depósito
+```
+
+**POSIBLES PROBLEMAS:**
+1. La estructura de respuesta de TonCenter API v3 puede ser diferente
+2. El campo `in_msg` puede no existir o tener diferente nombre
+3. El valor puede venir en formato diferente (string vs int)
+
+---
+
+#### FASE 25.2: ACREDITACIÓN MANUAL INMEDIATA ⏳
+
+**OBJETIVO:** Acreditar manualmente los B3C al usuario afectado AHORA.
+
+**TAREAS:**
+- [ ] 25.2.1 Calcular B3C a acreditar:
+  - TON recibido: 0.5 TON
+  - Comisión 5%: 0.025 TON
+  - Neto: 0.475 TON
+  - Precio TON/USD: ~$5.00 (verificar)
+  - Valor USD: ~$2.375
+  - Precio B3C: $0.10
+  - B3C a acreditar: ~23.75 B3C
+
+- [ ] 25.2.2 Ejecutar SQL para acreditar B3C:
+  ```sql
+  -- Actualizar balance del usuario
+  UPDATE wallets 
+  SET b3c_balance = b3c_balance + 23.75
+  WHERE telegram_id = '8305740334';
+  
+  -- Marcar depósito como confirmado
+  UPDATE deposit_wallets
+  SET status = 'deposit_confirmed',
+      deposit_detected_at = NOW(),
+      deposit_amount = 0.5
+  WHERE id = 2;
+  
+  -- Actualizar compra como confirmada
+  UPDATE b3c_purchases
+  SET status = 'confirmed'
+  WHERE purchase_id = '3269A28F';
+  ```
+
+- [ ] 25.2.3 Verificar que el balance se actualizó correctamente
+
+---
+
+#### FASE 25.3: CONSOLIDACIÓN A WALLET MAESTRA ⏳
+
+**OBJETIVO:** Transferir los 0.5 TON de la wallet de depósito a la wallet maestra.
+
+**TAREAS:**
+- [ ] 25.3.1 Verificar que `WALLET_MASTER_KEY` está configurada para desencriptar private keys
+- [ ] 25.3.2 Implementar/verificar método `consolidate_wallet()` en `WalletPoolService`
+- [ ] 25.3.3 Ejecutar consolidación manual vía endpoint admin:
+  ```
+  POST /api/b3c/wallet-pool/consolidate
+  ```
+- [ ] 25.3.4 Verificar que fondos llegaron a wallet maestra:
+  - Destino: `UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59`
+- [ ] 25.3.5 Marcar wallet de depósito como `consolidated` en DB
+
+---
+
+#### FASE 25.4: CORRECCIÓN ERROR MÓVIL TON_CONNECT_SDK_ERROR ⏳
+
+**Error:** `[TON_CONNECT_SDK_ERROR] Qr Transaction was not sent`
+
+**TAREAS:**
+- [ ] 25.4.1 Investigar por qué TON Connect falla en móvil pero no en PC
+- [ ] 25.4.2 Verificar inicialización de TonConnectUI en móvil
+- [ ] 25.4.3 Verificar que `tonconnect-manifest.json` es accesible desde móvil
+- [ ] 25.4.4 Revisar logs de consola del navegador móvil
+- [ ] 25.4.5 Probar diferentes wallets (Tonkeeper, Telegram Wallet)
+- [ ] 25.4.6 Agregar manejo de error específico para móvil
+
+---
+
+#### FASE 25.5: NOTIFICACIONES DE PAGO ⏳
+
+**PROBLEMA:** No se envían notificaciones cuando se recibe/procesa un pago.
+
+**TAREAS:**
+- [ ] 25.5.1 Verificar función de notificación en `_credit_b3c_to_user()`:
+  - Notificación in-app al usuario
+  - Notificación al bot de Telegram
+  
+- [ ] 25.5.2 Implementar notificación al propietario cuando recibe fondos:
+  ```
+  "Usuario @username compró 23.75 B3C por 0.5 TON"
+  ```
+  
+- [ ] 25.5.3 Implementar notificación al usuario cuando se acreditan B3C:
+  ```
+  "Tu compra fue exitosa. +23.75 B3C acreditados a tu cuenta."
+  ```
+  
+- [ ] 25.5.4 Verificar que BOT_TOKEN está configurado correctamente
+- [ ] 25.5.5 Probar endpoint de notificaciones de Telegram
+
+---
+
+#### FASE 25.6: PRUEBAS COMPLETAS ⏳
+
+**TAREAS:**
+- [ ] 25.6.1 Probar flujo completo de compra B3C en PC
+- [ ] 25.6.2 Probar flujo completo de compra B3C en móvil
+- [ ] 25.6.3 Verificar que depósito se detecta automáticamente
+- [ ] 25.6.4 Verificar que B3C se acreditan al usuario
+- [ ] 25.6.5 Verificar que notificación llega al usuario
+- [ ] 25.6.6 Verificar que notificación llega al propietario
+- [ ] 25.6.7 Verificar que fondos se consolidan automáticamente
+- [ ] 25.6.8 Verificar historial de transacciones actualizado
+
+---
+
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 25:
+- [ ] Depósitos se detectan correctamente via TonCenter API
+- [ ] B3C se acreditan automáticamente al detectar depósito
+- [ ] Error TON_CONNECT_SDK_ERROR solucionado en móvil
+- [ ] Notificaciones funcionan (app + Telegram bot)
+- [ ] Fondos se consolidan a wallet maestra
+- [ ] Usuario afectado recibió sus 23.75 B3C (manual)
+- [ ] Logs detallados para debugging futuro
+
+---
+
+#### ARCHIVOS A MODIFICAR:
+
+1. `tracking/wallet_pool_service.py` - Corregir `_check_wallet_for_deposit()`
+2. `app.py` - Agregar logging y notificaciones
+3. `static/js/app.js` - Mejorar manejo de error móvil
+
+---
+
+#### VARIABLES DE ENTORNO REQUERIDAS:
+
+- `TONCENTER_API_KEY` - Para consultar transacciones (verificar configuración)
+- `WALLET_MASTER_KEY` - Para desencriptar private keys y consolidar
+- `BOT_TOKEN` - Para enviar notificaciones por Telegram
+
+---
 
