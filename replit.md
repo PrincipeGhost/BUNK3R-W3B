@@ -171,3 +171,57 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
     - `apiRequest()` specialized per module (app.js/publications.js)
     - publications.js supports `cancelKey` for request management
     - `getAuthHeaders()` reads from App singleton - valid design pattern
+
+### Marketplace & Bots Enhancements (December 5, 2025):
+
+24. **Bot Activation Toggle (Section 9)**:
+    - Toggle switch UI for activating/deactivating purchased bots
+    - `/api/bots/{id}/toggle` POST endpoint
+    - Visual states: active bots full opacity, inactive bots dimmed with grayscale
+    - Instant UI feedback with toast notifications
+
+25. **Bot Configuration Panel (Section 9)**:
+    - `/api/bots/{id}/config` GET/POST endpoints
+    - Modal with notification preferences, update frequency, silent mode
+    - Persistent configuration stored in `user_bots.config` JSON field
+    - `toggle_bot_activation()`, `get_bot_config()`, `update_bot_config()` in database.py
+
+26. **Bot Categories (Section 9)**:
+    - Added `category` field to `bot_types` table
+    - Support for categorizing bots (utilities, tracking, social, etc.)
+
+### Virtual Numbers Improvements (December 5, 2025):
+
+27. **Exponential Backoff Polling (Section 10)**:
+    - `pollingDelay` starts at 2s, doubles on each poll up to 30s max
+    - `scheduleNextPoll()` with dynamic setTimeout
+    - Reset to 2s when SMS received for responsive experience
+
+28. **Order History Filters (Section 10)**:
+    - Filter by status (received, pending, cancelled, expired)
+    - Filter by service (dynamically populated from data)
+    - Date range filters (from/until)
+    - `renderHistoryFilters()` builds filter UI
+
+### Mobile/Responsive Improvements (December 5, 2025):
+
+29. **Scrollable Modals (Section 11)**:
+    - All modals now have `max-height: 90vh` with `overflow-y: auto`
+    - Sticky headers and footers for better navigation
+    - `.modal-header`, `.modal-footer` positioned at top/bottom
+
+30. **Toast Stacking (Section 11)**:
+    - Toast container uses `flex-direction: column-reverse`
+    - Toasts stack from bottom without overlapping
+    - Slide-in/out animations for smooth UX
+
+31. **Mobile Keyboard Handler (Section 11)**:
+    - `MobileKeyboardHandler` in utils.js
+    - Detects keyboard open via viewport height change
+    - `scrollIntoView()` auto-scroll with 300ms delay
+    - Initialized in App.init() via `Utils.setupMobileKeyboardHandler()`
+
+32. **Sidebar Toggle Fix**:
+    - Added `toggleSidebar()` and `closeSidebar()` functions to App
+    - Fixed "App.toggleSidebar is not a function" error
+    - Proper sidebar overlay management
