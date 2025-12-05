@@ -1139,6 +1139,207 @@ Las notificaciones deben moverse de la barra inferior al header principal.
 
 ---
 
+---
+
+## 🔴 SECCIÓN 22: VULNERABILIDADES Y SEGURIDAD
+
+### Estado: ⏳ PENDIENTE
+### Prioridad: 🔴 CRÍTICA
+
+---
+
+#### FASE 22.1: Vulnerabilidades XSS (Cross-Site Scripting) ⏳
+
+**PROBLEMA CRÍTICO:**
+Hay más de 100 usos de `innerHTML` en el código JavaScript que podrían ser vulnerables a XSS si no se sanitiza correctamente el contenido.
+
+**Archivos afectados:**
+- `static/js/publications.js` - 25+ usos
+- `static/js/app.js` - 60+ usos
+- `static/js/virtual-numbers.js` - 15+ usos
+- `static/js/utils.js` - 5+ usos
+
+**Solución requerida:**
+- [ ] 22.1.1 Auditar TODOS los usos de innerHTML
+- [ ] 22.1.2 Implementar función `sanitizeHTML()` global
+- [ ] 22.1.3 Usar `textContent` para texto plano
+- [ ] 22.1.4 Usar templates seguros para HTML dinámico
+- [ ] 22.1.5 Verificar que `escapeHtml()` se use consistentemente
+
+```javascript
+// Función de sanitización recomendada
+function sanitizeHTML(str) {
+    const temp = document.createElement('div');
+    temp.textContent = str;
+    return temp.innerHTML;
+}
+```
+
+---
+
+#### FASE 22.2: Rate Limiting Faltante ⏳
+
+**PROBLEMA:**
+Algunos endpoints críticos no tienen rate limiting aplicado.
+
+**Endpoints SIN protección (AGREGAR):**
+- [ ] 22.2.1 `/api/b3c/price` - Sin rate limit
+- [ ] 22.2.2 `/api/b3c/calculate/buy` - Sin rate limit
+- [ ] 22.2.3 `/api/b3c/calculate/sell` - Sin rate limit
+- [ ] 22.2.4 `/api/exchange/currencies` - Sin rate limit
+- [ ] 22.2.5 `/api/b3c/balance` - Sin rate limit
+
+**Endpoints CON rate limit (BIEN):**
+- ✅ `/api/2fa/verify` - `@rate_limit('2fa_verify')`
+- ✅ `/api/b3c/buy/<id>/verify` - `@rate_limit('b3c_verify')`
+- ✅ `/api/b3c/withdraw` - `@rate_limit('b3c_withdraw')`
+- ✅ Publicaciones y likes - Protegidos
+
+**Solución:**
+```python
+@app.route('/api/b3c/price', methods=['GET'])
+@rate_limit('price_check')  # AGREGAR
+def get_b3c_price():
+```
+
+---
+
+#### FASE 22.3: Condiciones de Carrera en Transacciones ⏳
+
+**PROBLEMA POTENCIAL:**
+Las operaciones de compra/venta de B3C podrían tener race conditions.
+
+**Áreas de riesgo:**
+- [ ] 22.3.1 `sell_b3c()` - Verificar balance y debitar no son atómicos
+- [ ] 22.3.2 `withdraw_b3c()` - Similar problema
+- [ ] 22.3.3 `verify_b3c_purchase()` - Múltiples verificaciones simultáneas
+
+**Solución requerida:**
+```python
+# Usar bloqueo a nivel de fila con SELECT FOR UPDATE
+cur.execute("""
+    SELECT balance FROM wallet_balances 
+    WHERE user_id = %s FOR UPDATE
+""", (user_id,))
+```
+
+- [ ] 22.3.4 Implementar `SELECT FOR UPDATE` en transacciones financieras
+- [ ] 22.3.5 Usar `ISOLATION_LEVEL_SERIALIZABLE` consistentemente
+- [ ] 22.3.6 Agregar índices únicos para prevenir duplicados
+
+---
+
+#### FASE 22.4: Validación de Entrada Insuficiente ⏳
+
+**PROBLEMA:**
+Falta validación robusta en algunos campos.
+
+**Tareas:**
+- [ ] 22.4.1 Validar direcciones de wallet TON (formato, longitud)
+- [ ] 22.4.2 Validar montos numéricos (no negativos, no NaN, no Infinity)
+- [ ] 22.4.3 Sanitizar nombres de usuario y contenido de publicaciones
+- [ ] 22.4.4 Validar purchase_id antes de consultar BD
+- [ ] 22.4.5 Implementar validador de direcciones TON:
+
+```python
+import re
+
+def validate_ton_address(address: str) -> bool:
+    """Validar dirección TON."""
+    if not address or len(address) < 48 or len(address) > 67:
+        return False
+    pattern = r'^[A-Za-z0-9_-]{48,67}$|^0:[a-fA-F0-9]{64}$'
+    return bool(re.match(pattern, address))
+```
+
+---
+
+#### FASE 22.5: Manejo de Errores y Logging ⏳
+
+**PROBLEMA:**
+Algunos errores podrían exponer información sensible.
+
+**Tareas:**
+- [ ] 22.5.1 Verificar que `sanitize_error()` se use en TODOS los endpoints
+- [ ] 22.5.2 No exponer stack traces en producción
+- [ ] 22.5.3 Logging para intentos de acceso no autorizado
+- [ ] 22.5.4 Alertas para actividades sospechosas:
+  - Múltiples intentos de 2FA fallidos
+  - Retiros inusuales
+  - Accesos desde IPs sospechosas
+
+---
+
+#### FASE 22.6: Protección CSRF ⏳
+
+**PROBLEMA:**
+No se detectó protección CSRF explícita.
+
+**Solución requerida:**
+- [ ] 22.6.1 Verificar header `X-Telegram-Init-Data` en TODOS los endpoints mutantes
+- [ ] 22.6.2 Implementar tokens CSRF para formularios (opcional con Flask-WTF)
+- [ ] 22.6.3 Configurar SameSite cookies
+
+---
+
+#### FASE 22.7: Seguridad de Sesión 2FA ⏳
+
+**MEJORAS:**
+- [ ] 22.7.1 Reducir timeout de sesión 2FA de 10 a 5 minutos para operaciones financieras
+- [ ] 22.7.2 Invalidar sesión 2FA después de operaciones críticas (retiros, ventas)
+- [ ] 22.7.3 Agregar verificación de IP para sesiones
+- [ ] 22.7.4 Limitar dispositivos de confianza activos (máx 5)
+
+---
+
+#### FASE 22.8: Validación de Configuración al Inicio ⏳
+
+**Agregar verificación de secretos requeridos:**
+```python
+# En app.py al inicio
+REQUIRED_SECRETS = ['BOT_TOKEN', 'DATABASE_URL']
+missing = [s for s in REQUIRED_SECRETS if not os.environ.get(s)]
+if missing and not app.debug:
+    raise ValueError(f"Missing required secrets: {missing}")
+```
+
+- [ ] 22.8.1 Verificar que `ADMIN_TOKEN` no use valor por defecto en producción
+- [ ] 22.8.2 Alertar si secretos críticos no están configurados
+
+---
+
+#### FASE 22.9: API Keys Faltantes ⏳
+
+**APIs sin configurar que causan errores:**
+- [ ] 22.9.1 `SMSPOOL_API_KEY` - Causa "no service" en números virtuales
+- [ ] 22.9.2 `CHANGENOW_API_KEY` - Exchange no funciona
+- [ ] 22.9.3 `RESEND_API_KEY` - Emails no se envían
+
+**Acción:** Solicitar al usuario configurar estas API keys en Secrets.
+
+---
+
+#### FASE 22.10: Auditoría de Dependencias ⏳
+
+**Tareas:**
+- [ ] 22.10.1 Ejecutar `pip-audit` o `safety check`
+- [ ] 22.10.2 Actualizar dependencias con vulnerabilidades conocidas
+- [ ] 22.10.3 Documentar versiones mínimas requeridas
+
+---
+
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 22:
+
+- [ ] Todos los usos de innerHTML auditados y sanitizados
+- [ ] Rate limiting en TODOS los endpoints críticos
+- [ ] Transacciones financieras con bloqueo adecuado
+- [ ] Validación robusta de entradas
+- [ ] Sin exposición de stack traces en producción
+- [ ] Sesiones 2FA con timeouts apropiados
+- [ ] API keys documentadas y solicitadas al usuario
+
+---
+
 ## SECCIONES ARCHIVADAS (COMPLETADAS)
 
 Las siguientes secciones han sido completadas y archivadas:
@@ -1173,6 +1374,7 @@ Las siguientes secciones han sido completadas y archivadas:
 | 6 | 05/12/2025 | Transferencias entre usuarios | SECCIÓN 19 - Transferencias P2P | ⏳ |
 | 7 | 05/12/2025 | Conexión wallet completa | SECCIÓN 20 - Wallet Connect | ⏳ |
 | 8 | 05/12/2025 | Rediseño UI neo-banco estilo Binance | SECCIÓN 21 - UI Profesional | ⏳ |
+| 9 | 05/12/2025 | Auditoría de vulnerabilidades | SECCIÓN 22 - Seguridad | ⏳ |
 
 ---
 
@@ -1204,12 +1406,22 @@ Cuando el usuario diga "continúa", el agente DEBE:
 ## RESUMEN FINAL
 
 ### SECCIONES ACTIVAS:
-- ⏳ **Sección 17** - Auditoría de Pagos B3C (0%) - CRÍTICO
+- 🔴 **Sección 17** - Auditoría de Pagos B3C (0%) - CRÍTICO
 - ⏳ **Sección 18** - Auditoría Números Virtuales (0%)
 - ⏳ **Sección 19** - Transferencias entre Usuarios (0%)
 - ⏳ **Sección 20** - Conexión de Wallet (0%)
 - ⏳ **Sección 21** - Rediseño UI Neo-Banco (0%) - VISUAL
+- 🔴 **Sección 22** - Vulnerabilidades y Seguridad (0%) - CRÍTICO
 
-### PROGRESO: 14/21 secciones (67%)
+### PROGRESO: 14/22 secciones (64%)
+
+### ORDEN DE EJECUCIÓN RECOMENDADO:
+
+1. **SECCIÓN 17** - Error de payload TON Connect (CRÍTICO - Pagos no funcionan)
+2. **SECCIÓN 22** - Seguridad (CRÍTICO - Vulnerabilidades XSS, rate limiting)
+3. **SECCIÓN 20** - Conexión wallet (BASE para otras funciones)
+4. **SECCIÓN 18** - Números virtuales (Funcionalidad)
+5. **SECCIÓN 19** - Transferencias P2P (Funcionalidad)
+6. **SECCIÓN 21** - UI Neo-Banco (VISUAL - Al final)
 
 **Próximo paso:** Ejecutar SECCIÓN 17 para corregir el error de payload TON Connect.
