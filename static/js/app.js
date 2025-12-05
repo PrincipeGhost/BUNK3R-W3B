@@ -2624,15 +2624,21 @@ const App = {
         const overlay = document.createElement('div');
         overlay.className = 'recharge-success-animation';
         overlay.innerHTML = `
-            <div class="recharge-success-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+            <div class="confetti-container" id="confetti-container"></div>
+            <div class="recharge-success-content">
+                <div class="recharge-success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <div class="recharge-success-amount">+${amount} B3C</div>
+                <div class="recharge-success-text">Recarga exitosa</div>
+                <div class="recharge-success-subtitle">Tu balance ha sido actualizado</div>
             </div>
-            <div class="recharge-success-amount">+${amount} B3C</div>
-            <div class="recharge-success-text">Recarga exitosa</div>
         `;
         document.body.appendChild(overlay);
+        
+        this.launchConfetti();
         
         if (this.tg && this.tg.HapticFeedback) {
             try {
@@ -2640,11 +2646,39 @@ const App = {
             } catch (e) {}
         }
         
+        this.refreshBalanceAfterTransaction();
+        
         setTimeout(() => {
             overlay.style.opacity = '0';
-            overlay.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => overlay.remove(), 300);
-        }, 2000);
+            overlay.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => overlay.remove(), 500);
+        }, 3000);
+    },
+    
+    launchConfetti() {
+        const container = document.getElementById('confetti-container');
+        if (!container) return;
+        
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+        const confettiCount = 50;
+        
+        for (let i = 0; i < confettiCount; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti-piece';
+            confetti.style.left = Math.random() * 100 + '%';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDelay = Math.random() * 0.5 + 's';
+            confetti.style.animationDuration = (Math.random() * 1 + 2) + 's';
+            container.appendChild(confetti);
+        }
+    },
+    
+    async refreshBalanceAfterTransaction() {
+        await this.loadWalletBalance(true);
+        this.loadTransactionHistory(0, false);
+        
+        setTimeout(() => this.loadWalletBalance(true), 2000);
+        setTimeout(() => this.loadWalletBalance(true), 5000);
     },
     
     getAuthHeaders() {
@@ -4388,16 +4422,26 @@ const App = {
     },
 
     paymentVerificationAttempts: {},
+    pendingPaymentTimeouts: {},
+    PAYMENT_TIMEOUT_MS: 15 * 60 * 1000,
+    MAX_VERIFICATION_ATTEMPTS: 5,
+    MAX_POLL_ATTEMPTS: 15,
     
     async verifyPayment(paymentId) {
         if (!this.paymentVerificationAttempts[paymentId]) {
-            this.paymentVerificationAttempts[paymentId] = { count: 0, maxRetries: 3 };
+            this.paymentVerificationAttempts[paymentId] = { 
+                count: 0, 
+                maxRetries: this.MAX_VERIFICATION_ATTEMPTS,
+                startTime: Date.now()
+            };
+            
+            this.startPaymentTimeout(paymentId);
         }
         
         const attemptData = this.paymentVerificationAttempts[paymentId];
         
         if (attemptData.count >= attemptData.maxRetries) {
-            this.showToast('Limite de verificaciones alcanzado. Espera unos minutos.', 'error');
+            this.showPaymentLimitReached(paymentId);
             return;
         }
         
@@ -4405,64 +4449,214 @@ const App = {
         
         const statusEl = document.getElementById('payment-status');
         const verifyBtn = document.querySelector('.btn-verify');
+        const cancelBtn = document.querySelector('.btn-cancel');
         
         if (statusEl) {
             statusEl.classList.remove('hidden');
-            statusEl.innerHTML = '<div class="spinner"></div><span>Verificando en blockchain...</span>';
+            statusEl.innerHTML = `
+                <div class="payment-verification-progress">
+                    <div class="spinner"></div>
+                    <span>Verificando en blockchain...</span>
+                    <div class="verification-progress-bar">
+                        <div class="verification-progress-fill" id="verify-progress"></div>
+                    </div>
+                    <span class="verification-attempt">Intento ${attemptData.count} de ${attemptData.maxRetries}</span>
+                </div>
+            `;
         }
         if (verifyBtn) {
             verifyBtn.disabled = true;
-            verifyBtn.textContent = 'Verificando...';
+            verifyBtn.innerHTML = '<span class="btn-spinner"></span> Verificando...';
+        }
+        if (cancelBtn) {
+            cancelBtn.textContent = 'Cancelar verificacion';
         }
         
-        let attempts = 0;
-        const maxAttempts = 12;
+        let pollAttempts = 0;
+        const maxPollAttempts = this.MAX_POLL_ATTEMPTS;
         
         const checkPayment = async () => {
             try {
+                if (this.isPaymentTimedOut(paymentId)) {
+                    this.handlePaymentTimeout(paymentId);
+                    return;
+                }
+                
                 const response = await this.apiRequest(`/api/ton/payment/${paymentId}/verify`, {
                     method: 'POST'
                 });
                 
                 if (response.status === 'confirmed') {
+                    this.clearPaymentTimeout(paymentId);
                     delete this.paymentVerificationAttempts[paymentId];
                     this.closeModal();
                     this.showRechargeSuccess(response.creditsAdded);
-                    this.loadWalletBalance(true);
-                    this.loadTransactionHistory(0, false);
                     return true;
                 }
                 
-                attempts++;
-                if (attempts < maxAttempts) {
+                if (response.status === 'pending') {
+                    this.updatePaymentPendingUI(statusEl, paymentId);
+                }
+                
+                pollAttempts++;
+                const progressPercent = (pollAttempts / maxPollAttempts) * 100;
+                const progressEl = document.getElementById('verify-progress');
+                if (progressEl) {
+                    progressEl.style.width = progressPercent + '%';
+                }
+                
+                if (pollAttempts < maxPollAttempts) {
                     if (statusEl) {
-                        statusEl.innerHTML = `<div class="spinner"></div><span>Buscando transaccion... (${attempts}/${maxAttempts})</span>`;
+                        const timeElapsed = Math.floor((Date.now() - attemptData.startTime) / 1000);
+                        statusEl.querySelector('span:not(.verification-attempt)').textContent = 
+                            `Buscando transaccion... (${pollAttempts}/${maxPollAttempts}) - ${timeElapsed}s`;
                     }
-                    setTimeout(checkPayment, 5000);
+                    setTimeout(checkPayment, 4000);
                 } else {
-                    const remaining = attemptData.maxRetries - attemptData.count;
-                    if (statusEl) {
-                        statusEl.innerHTML = `<span class="error">No se encontro la transaccion. Verifica el pago y comentario.${remaining > 0 ? ` (${remaining} intentos restantes)` : ''}</span>`;
-                    }
-                    if (verifyBtn) {
-                        verifyBtn.disabled = remaining === 0;
-                        verifyBtn.textContent = remaining > 0 ? 'Reintentar verificacion' : 'Sin intentos';
-                    }
+                    this.handleVerificationFailed(paymentId, attemptData, statusEl, verifyBtn);
                 }
                 
             } catch (error) {
                 console.error('Verification error:', error);
-                if (statusEl) {
-                    statusEl.innerHTML = '<span class="error">Error al verificar. Intenta de nuevo.</span>';
-                }
-                if (verifyBtn) {
-                    verifyBtn.disabled = false;
-                    verifyBtn.textContent = 'Reintentar verificacion';
-                }
+                this.handleVerificationError(statusEl, verifyBtn, error);
             }
         };
         
         await checkPayment();
+    },
+    
+    startPaymentTimeout(paymentId) {
+        this.clearPaymentTimeout(paymentId);
+        
+        this.pendingPaymentTimeouts[paymentId] = {
+            startTime: Date.now(),
+            timeoutId: setTimeout(() => {
+                this.handlePaymentTimeout(paymentId);
+            }, this.PAYMENT_TIMEOUT_MS)
+        };
+    },
+    
+    clearPaymentTimeout(paymentId) {
+        if (this.pendingPaymentTimeouts[paymentId]) {
+            clearTimeout(this.pendingPaymentTimeouts[paymentId].timeoutId);
+            delete this.pendingPaymentTimeouts[paymentId];
+        }
+    },
+    
+    isPaymentTimedOut(paymentId) {
+        const timeout = this.pendingPaymentTimeouts[paymentId];
+        if (!timeout) return false;
+        return (Date.now() - timeout.startTime) >= this.PAYMENT_TIMEOUT_MS;
+    },
+    
+    handlePaymentTimeout(paymentId) {
+        this.clearPaymentTimeout(paymentId);
+        delete this.paymentVerificationAttempts[paymentId];
+        
+        const statusEl = document.getElementById('payment-status');
+        const verifyBtn = document.querySelector('.btn-verify');
+        
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <div class="payment-timeout-message">
+                    <span class="timeout-icon">⏱️</span>
+                    <span class="timeout-title">Tiempo de espera agotado</span>
+                    <span class="timeout-text">Han pasado 15 minutos. Si realizaste el pago, contacta a soporte con el ID: ${paymentId}</span>
+                </div>
+            `;
+        }
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Tiempo agotado';
+        }
+        
+        this.showToast('El tiempo para verificar este pago ha expirado', 'error');
+    },
+    
+    updatePaymentPendingUI(statusEl, paymentId) {
+        const timeout = this.pendingPaymentTimeouts[paymentId];
+        if (!timeout || !statusEl) return;
+        
+        const elapsed = Date.now() - timeout.startTime;
+        const remaining = Math.max(0, this.PAYMENT_TIMEOUT_MS - elapsed);
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        
+        const pendingInfo = statusEl.querySelector('.pending-time-remaining');
+        if (!pendingInfo) {
+            const infoEl = document.createElement('div');
+            infoEl.className = 'pending-time-remaining';
+            infoEl.textContent = `Tiempo restante: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            statusEl.appendChild(infoEl);
+        } else {
+            pendingInfo.textContent = `Tiempo restante: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    },
+    
+    handleVerificationFailed(paymentId, attemptData, statusEl, verifyBtn) {
+        const remaining = attemptData.maxRetries - attemptData.count;
+        
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <div class="verification-failed">
+                    <span class="failed-icon">❌</span>
+                    <span class="failed-title">No se encontro la transaccion</span>
+                    <span class="failed-text">Verifica que hayas enviado el pago con el comentario correcto.</span>
+                    ${remaining > 0 ? `<span class="failed-attempts">${remaining} intento(s) restante(s)</span>` : ''}
+                </div>
+            `;
+        }
+        if (verifyBtn) {
+            verifyBtn.disabled = remaining === 0;
+            verifyBtn.innerHTML = remaining > 0 ? '🔄 Reintentar verificacion' : '❌ Sin intentos disponibles';
+            if (remaining === 0) {
+                verifyBtn.classList.add('btn-exhausted');
+            }
+        }
+    },
+    
+    handleVerificationError(statusEl, verifyBtn, error) {
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <div class="verification-error">
+                    <span class="error-icon">⚠️</span>
+                    <span>Error de conexion. Intenta de nuevo.</span>
+                </div>
+            `;
+        }
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '🔄 Reintentar verificacion';
+        }
+    },
+    
+    showPaymentLimitReached(paymentId) {
+        const statusEl = document.getElementById('payment-status');
+        const verifyBtn = document.querySelector('.btn-verify');
+        
+        if (statusEl) {
+            statusEl.classList.remove('hidden');
+            statusEl.innerHTML = `
+                <div class="limit-reached">
+                    <span class="limit-icon">🚫</span>
+                    <span class="limit-title">Limite de verificaciones alcanzado</span>
+                    <span class="limit-text">Has agotado los ${this.MAX_VERIFICATION_ATTEMPTS} intentos de verificacion.</span>
+                    <span class="limit-help">Si realizaste el pago correctamente, espera 10 minutos e intenta de nuevo o contacta a soporte.</span>
+                    <span class="limit-id">ID de pago: ${paymentId}</span>
+                </div>
+            `;
+        }
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.classList.add('btn-exhausted');
+            verifyBtn.textContent = 'Sin intentos disponibles';
+        }
+        
+        this.showToast('Limite de verificaciones alcanzado', 'error');
+        
+        setTimeout(() => {
+            delete this.paymentVerificationAttempts[paymentId];
+        }, 10 * 60 * 1000);
     },
 
     // ============================================================
