@@ -22,10 +22,10 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 5 Diciembre 2025 |
-| Sección actual | SECCIÓN 17-20 |
-| Total secciones | 20 |
+| Sección actual | SECCIÓN 17-21 |
+| Total secciones | 21 |
 | Completadas | 14 ✅ |
-| Pendientes | 4 ⏳ |
+| Pendientes | 5 ⏳ |
 | En progreso | 0 |
 
 ---
@@ -616,6 +616,301 @@ def transfer_b3c():
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 21: REDISEÑO UI PROFESIONAL ESTILO NEO-BANCO ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** ALTA  
+**Agregado:** 5 Diciembre 2025  
+**Origen:** Usuario solicita diseño profesional estilo Binance
+**Estado:** PENDIENTE
+
+---
+
+### OBJETIVO PRINCIPAL:
+
+Rediseñar TODA la interfaz de usuario para que tenga un aspecto profesional de **NEO-BANCO** similar a:
+- **Binance** (referencia principal)
+- **Revolut**
+- **N26**
+- **Crypto.com**
+
+### PALETA DE COLORES PROPUESTA (Estilo Binance Oscuro):
+
+```css
+:root {
+    /* Fondos - Ultra oscuros con profundidad */
+    --bg-primary: #0B0E11;        /* Negro profundo principal */
+    --bg-secondary: #12161C;       /* Gris oscuro para secciones */
+    --bg-card: #1E2329;            /* Tarjetas y modales */
+    --bg-elevated: #2B3139;        /* Elementos elevados */
+    --bg-input: #14181E;           /* Inputs y campos */
+    
+    /* Acentos - Dorado/Amarillo sutil (estilo Binance) */
+    --accent-primary: #F0B90B;     /* Dorado principal */
+    --accent-secondary: #FCD535;   /* Amarillo brillante hover */
+    --accent-muted: #C99D07;       /* Dorado apagado */
+    
+    /* Estados */
+    --accent-success: #0ECB81;     /* Verde éxito */
+    --accent-warning: #F6AD55;     /* Naranja advertencia */
+    --accent-danger: #F6465D;      /* Rojo peligro */
+    --accent-info: #3B82F6;        /* Azul info */
+    
+    /* Texto */
+    --text-primary: #EAECEF;       /* Blanco suave */
+    --text-secondary: #848E9C;     /* Gris claro */
+    --text-muted: #5E6673;         /* Gris oscuro */
+    --text-accent: #F0B90B;        /* Dorado para énfasis */
+    
+    /* Bordes */
+    --border-color: #2B3139;       /* Borde sutil */
+    --border-hover: #3C4451;       /* Borde hover */
+    
+    /* Efectos */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --glow-accent: 0 0 20px rgba(240, 185, 11, 0.15);
+}
+```
+
+---
+
+### PROMPT MAESTRO 21: REDISEÑO COMPLETO NEO-BANCO
+
+---
+
+#### FASE 21.1: Pantalla de Carga (Splash Screen) ⏳
+
+**Estado actual:** Logo BUNK3R básico con barra de progreso multicolor
+
+**Rediseño requerido:**
+- [ ] 21.1.1 Fondo negro profundo (#0B0E11) con textura sutil
+- [ ] 21.1.2 Logo BUNK3R minimalista y elegante
+  - Tipografía: Sans-serif bold, peso 700
+  - Color: Blanco (#EAECEF) con "3" en dorado (#F0B90B)
+  - Sin efectos de brillo excesivos
+- [ ] 21.1.3 Barra de progreso profesional
+  - Una sola línea fina
+  - Color: Dorado degradado (#F0B90B → #FCD535)
+  - Sin cuadrados de colores
+- [ ] 21.1.4 Texto "SECURE ACCESS" → Cambiar por badge sutil
+- [ ] 21.1.5 Indicador de carga minimalista (spinner circular dorado)
+- [ ] 21.1.6 Versión en footer con tipografía discreta
+
+**Mockup de código:**
+```html
+<div class="splash-screen">
+    <div class="splash-content">
+        <div class="splash-logo">
+            <span class="logo-text">BUNK<span class="accent">3</span>R</span>
+        </div>
+        <div class="splash-tagline">Secure Digital Banking</div>
+        <div class="splash-loader">
+            <div class="loader-bar"></div>
+        </div>
+        <div class="splash-status">Initializing...</div>
+    </div>
+    <div class="splash-footer">
+        <span class="version">v2.0</span>
+    </div>
+</div>
+```
+
+---
+
+#### FASE 21.2: Pantalla de Verificación 2FA ⏳
+
+**Estado actual:** Icono de candado amarillo circular, inputs con bordes azules
+
+**Rediseño requerido:**
+- [ ] 21.2.1 Eliminar icono de candado amarillo circular
+- [ ] 21.2.2 Usar icono minimalista de escudo o llave (SVG línea fina)
+- [ ] 21.2.3 Inputs de código 6 dígitos:
+  - Fondo: #14181E
+  - Borde: #2B3139 (normal), #F0B90B (focus)
+  - Tipografía: Monospace, tamaño grande (32px)
+  - Sin bordes azules brillantes
+- [ ] 21.2.4 Botón "Verificar":
+  - Fondo: Dorado (#F0B90B)
+  - Texto: Negro (#0B0E11)
+  - Hover: Dorado más claro (#FCD535)
+  - Border-radius: 8px (no tan redondeado)
+- [ ] 21.2.5 Badge "Conexión segura":
+  - Sin emoji de círculo verde
+  - Icono SVG de candado pequeño
+  - Color: Gris sutil (#848E9C)
+
+**Mockup de código:**
+```html
+<div class="auth-2fa-screen">
+    <div class="auth-logo">BUNK<span class="accent">3</span>R</div>
+    
+    <div class="auth-icon">
+        <svg class="shield-icon"><!-- Shield SVG --></svg>
+    </div>
+    
+    <h2 class="auth-title">Two-Factor Authentication</h2>
+    <p class="auth-subtitle">Enter the 6-digit code from your authenticator app</p>
+    
+    <div class="otp-inputs">
+        <input type="text" maxlength="1" class="otp-input" />
+        <input type="text" maxlength="1" class="otp-input" />
+        <input type="text" maxlength="1" class="otp-input" />
+        <span class="otp-separator">-</span>
+        <input type="text" maxlength="1" class="otp-input" />
+        <input type="text" maxlength="1" class="otp-input" />
+        <input type="text" maxlength="1" class="otp-input" />
+    </div>
+    
+    <button class="btn-verify">Verify</button>
+    
+    <div class="security-badge">
+        <svg class="lock-icon"><!-- Lock SVG --></svg>
+        <span>Secure connection</span>
+    </div>
+</div>
+```
+
+---
+
+#### FASE 21.3: Navbar y Header ⏳
+
+**Rediseño requerido:**
+- [ ] 21.3.1 Header fijo con fondo translúcido oscuro
+- [ ] 21.3.2 Logo pequeño a la izquierda
+- [ ] 21.3.3 Iconos minimalistas (línea fina, no relleno)
+- [ ] 21.3.4 Badge de notificaciones: Punto dorado pequeño
+- [ ] 21.3.5 Avatar con borde dorado sutil en estado verificado
+
+---
+
+#### FASE 21.4: Bottom Navigation ⏳
+
+**Rediseño requerido:**
+- [ ] 21.4.1 Fondo: #12161C con blur
+- [ ] 21.4.2 Iconos: Línea fina (#848E9C)
+- [ ] 21.4.3 Icono activo: Dorado (#F0B90B)
+- [ ] 21.4.4 Sin labels de texto (solo iconos)
+- [ ] 21.4.5 Indicador activo: Línea dorada arriba del icono
+
+---
+
+#### FASE 21.5: Cards y Modales ⏳
+
+**Rediseño requerido:**
+- [ ] 21.5.1 Background: #1E2329
+- [ ] 21.5.2 Bordes: 1px solid #2B3139
+- [ ] 21.5.3 Border-radius: 12px (consistente)
+- [ ] 21.5.4 Sombras sutiles, no exageradas
+- [ ] 21.5.5 Headers de modal con borde inferior sutil
+
+---
+
+#### FASE 21.6: Botones ⏳
+
+**Sistema de botones:**
+- [ ] 21.6.1 **Primario:** Fondo dorado, texto negro
+- [ ] 21.6.2 **Secundario:** Borde dorado, texto dorado, fondo transparente
+- [ ] 21.6.3 **Terciario:** Solo texto dorado
+- [ ] 21.6.4 **Danger:** Fondo rojo (#F6465D)
+- [ ] 21.6.5 **Success:** Fondo verde (#0ECB81)
+- [ ] 21.6.6 Todos con border-radius: 8px
+
+---
+
+#### FASE 21.7: Inputs y Forms ⏳
+
+**Rediseño requerido:**
+- [ ] 21.7.1 Background: #14181E
+- [ ] 21.7.2 Borde normal: #2B3139
+- [ ] 21.7.3 Borde focus: #F0B90B
+- [ ] 21.7.4 Label: Gris (#848E9C) arriba del input
+- [ ] 21.7.5 Placeholder: Gris oscuro (#5E6673)
+- [ ] 21.7.6 Border-radius: 8px
+
+---
+
+#### FASE 21.8: Wallet Screen ⏳
+
+**Rediseño completo:**
+- [ ] 21.8.1 Balance grande y prominente
+  - Valor: Blanco grande (36px)
+  - Equivalente USD: Gris pequeño
+- [ ] 21.8.2 Gráfico de precio minimalista (si aplica)
+- [ ] 21.8.3 Acciones rápidas: Iconos circulares con fondo #2B3139
+- [ ] 21.8.4 Lista de transacciones:
+  - Icono a la izquierda
+  - Descripción y fecha
+  - Monto a la derecha (verde/rojo según tipo)
+
+---
+
+#### FASE 21.9: Iconografía ⏳
+
+**Reemplazar todos los emojis por iconos SVG:**
+- [ ] 21.9.1 Crear/usar set de iconos consistente (Lucide, Heroicons, o custom)
+- [ ] 21.9.2 Eliminar TODOS los emojis de la UI
+- [ ] 21.9.3 Iconos en color #848E9C (normal) y #EAECEF (hover)
+- [ ] 21.9.4 Iconos de acento en dorado #F0B90B
+
+---
+
+#### FASE 21.10: Tipografía ⏳
+
+**Sistema tipográfico:**
+- [ ] 21.10.1 Font principal: Inter, SF Pro, o similar sans-serif
+- [ ] 21.10.2 Monospace para números/códigos: JetBrains Mono o similar
+- [ ] 21.10.3 Pesos: 400 (normal), 500 (medium), 600 (semibold), 700 (bold)
+- [ ] 21.10.4 Tamaños consistentes:
+  - H1: 28px
+  - H2: 24px
+  - H3: 20px
+  - Body: 16px
+  - Small: 14px
+  - Caption: 12px
+
+---
+
+#### FASE 21.11: Animaciones y Transiciones ⏳
+
+**Mejoras de UX:**
+- [ ] 21.11.1 Transiciones suaves (200-300ms)
+- [ ] 21.11.2 Ease-out para entradas, ease-in para salidas
+- [ ] 21.11.3 Micro-interacciones en botones (scale 0.98 on click)
+- [ ] 21.11.4 Loading states con skeleton dorado
+- [ ] 21.11.5 Page transitions suaves
+
+---
+
+#### FASE 21.12: Toasts y Notificaciones ⏳
+
+**Rediseño:**
+- [ ] 21.12.1 Fondo: #1E2329
+- [ ] 21.12.2 Borde izquierdo de color según tipo:
+  - Success: Verde
+  - Error: Rojo
+  - Warning: Naranja
+  - Info: Azul
+- [ ] 21.12.3 Iconos SVG en lugar de emojis
+- [ ] 21.12.4 Posición: Top center con slide-down animation
+
+---
+
+#### CRITERIOS DE ACEPTACIÓN SECCIÓN 21:
+
+- [ ] App se ve profesional como Binance/Revolut
+- [ ] Paleta de colores consistente (negro + dorado)
+- [ ] Sin emojis en la UI (solo iconos SVG)
+- [ ] Tipografía limpia y legible
+- [ ] Inputs y botones profesionales
+- [ ] Animaciones suaves y elegantes
+- [ ] Responsive en todos los tamaños
+- [ ] Dark mode por defecto
+
+---
+
 ## SECCIONES ARCHIVADAS (COMPLETADAS)
 
 Las siguientes secciones han sido completadas y archivadas:
@@ -649,6 +944,7 @@ Las siguientes secciones han sido completadas y archivadas:
 | 5 | 05/12/2025 | Números virtuales sin servicio + botón atrás | SECCIÓN 18 - Auditoría VN | ⏳ |
 | 6 | 05/12/2025 | Transferencias entre usuarios | SECCIÓN 19 - Transferencias P2P | ⏳ |
 | 7 | 05/12/2025 | Conexión wallet completa | SECCIÓN 20 - Wallet Connect | ⏳ |
+| 8 | 05/12/2025 | Rediseño UI neo-banco estilo Binance | SECCIÓN 21 - UI Profesional | ⏳ |
 
 ---
 
@@ -673,6 +969,7 @@ Cuando el usuario diga "continúa", el agente DEBE:
 2. **SECCIÓN 20** - Verificar conexión de wallet (BASE)
 3. **SECCIÓN 18** - Arreglar números virtuales 
 4. **SECCIÓN 19** - Implementar transferencias P2P
+5. **SECCIÓN 21** - Rediseño UI neo-banco (VISUAL)
 
 ---
 
@@ -683,7 +980,8 @@ Cuando el usuario diga "continúa", el agente DEBE:
 - ⏳ **Sección 18** - Auditoría Números Virtuales (0%)
 - ⏳ **Sección 19** - Transferencias entre Usuarios (0%)
 - ⏳ **Sección 20** - Conexión de Wallet (0%)
+- ⏳ **Sección 21** - Rediseño UI Neo-Banco (0%) - VISUAL
 
-### PROGRESO: 15/20 secciones (75%)
+### PROGRESO: 14/21 secciones (67%)
 
 **Próximo paso:** Ejecutar SECCIÓN 17 para corregir el error de payload TON Connect.
