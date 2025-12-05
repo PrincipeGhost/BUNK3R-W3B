@@ -38,7 +38,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('ADMIN_TOKEN', 'dev-secret-key')
+
+IS_PRODUCTION = os.environ.get('REPL_DEPLOYMENT', '') == '1'
+IS_DEPLOYED = os.environ.get('REPL_SLUG', '') != '' and os.environ.get('REPL_OWNER', '') != ''
+
+admin_token = os.environ.get('ADMIN_TOKEN', '')
+if IS_PRODUCTION and not admin_token:
+    logger.critical("SECURITY ERROR: ADMIN_TOKEN must be set in production. Server cannot start securely.")
+    raise ValueError("ADMIN_TOKEN environment variable is required in production deployment")
+elif not admin_token:
+    admin_token = 'dev-secret-key-only-for-development'
+    if IS_DEPLOYED:
+        logger.warning("Using development secret key. Set ADMIN_TOKEN for production.")
+    
+app.secret_key = admin_token
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'avatars')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -393,6 +406,10 @@ RATE_LIMITS = {
     '2fa_verify': {'limit': 5, 'window': 300},
     'vn_purchase': {'limit': 5, 'window': 60},
     'login': {'limit': 10, 'window': 300},
+    'price_check': {'limit': 60, 'window': 60},
+    'balance_check': {'limit': 60, 'window': 60},
+    'calculate': {'limit': 30, 'window': 60},
+    'exchange': {'limit': 30, 'window': 60},
     'default': {'limit': 100, 'window': 60}
 }
 
@@ -2407,6 +2424,7 @@ CHANGENOW_BASE_URL = 'https://api.changenow.io/v1'
 
 @app.route('/api/exchange/currencies', methods=['GET'])
 @require_telegram_user
+@rate_limit('exchange')
 def get_exchange_currencies():
     """Obtener lista de criptomonedas disponibles."""
     try:
@@ -3024,6 +3042,7 @@ def get_wallet_address():
 
 
 @app.route('/api/b3c/price', methods=['GET'])
+@rate_limit('price_check', use_ip=True)
 def get_b3c_price():
     """Obtener precio actual del token B3C."""
     try:
@@ -3037,6 +3056,7 @@ def get_b3c_price():
 
 
 @app.route('/api/b3c/calculate/buy', methods=['POST'])
+@rate_limit('calculate', use_ip=True)
 def calculate_b3c_buy():
     """Calcular cuantos B3C recibe el usuario por X TON."""
     try:
@@ -3060,6 +3080,7 @@ def calculate_b3c_buy():
 
 
 @app.route('/api/b3c/calculate/sell', methods=['POST'])
+@rate_limit('calculate', use_ip=True)
 def calculate_b3c_sell():
     """Calcular cuantos TON recibe el usuario por X B3C."""
     try:
@@ -3080,6 +3101,7 @@ def calculate_b3c_sell():
 
 
 @app.route('/api/b3c/balance', methods=['GET'])
+@rate_limit('balance_check', use_ip=True)
 def get_b3c_balance():
     """Obtener balance de B3C del usuario desde compras confirmadas y retiros."""
     try:
@@ -3477,8 +3499,9 @@ def sell_b3c():
         if b3c_amount > 1000000:
             return jsonify({'success': False, 'error': 'Maximo 1,000,000 B3C por venta'}), 400
         
-        if not destination_wallet or len(destination_wallet) < 40:
-            return jsonify({'success': False, 'error': 'Direccion de wallet TON invalida'}), 400
+        is_valid, error_msg = validate_ton_address(destination_wallet)
+        if not is_valid:
+            return jsonify({'success': False, 'error': error_msg}), 400
         
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         
@@ -3553,8 +3576,9 @@ def withdraw_b3c():
         if b3c_amount > 100000:
             return jsonify({'success': False, 'error': 'Maximo 100,000 B3C por retiro diario'}), 400
         
-        if not destination_wallet or len(destination_wallet) < 40:
-            return jsonify({'success': False, 'error': 'Direccion de wallet TON invalida'}), 400
+        is_valid, error_msg = validate_ton_address(destination_wallet)
+        if not is_valid:
+            return jsonify({'success': False, 'error': error_msg}), 400
         
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         

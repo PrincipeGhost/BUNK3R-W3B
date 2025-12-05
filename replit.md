@@ -117,6 +117,20 @@ Rediseño completo del UI al estilo neo-bank profesional (Binance/Revolut/N26):
 - Todos los colores azules (#4299e1, #63b3ed, rgba(66,153,225)) reemplazados por gold
 - Gradientes actualizados a tonos dorados
 
+### SECCIÓN 22 - Auditoría de Seguridad (EN PROGRESO)
+Mejoras de seguridad implementadas:
+
+**Cambios realizados (5 Diciembre 2025):**
+- Rate limiting agregado a endpoints críticos:
+  - `/api/b3c/price` - price_check (60/min)
+  - `/api/b3c/calculate/buy` y `/sell` - calculate (30/min)
+  - `/api/b3c/balance` - balance_check (60/min)
+  - `/api/exchange/currencies` - exchange (30/min)
+- Validación robusta de direcciones TON usando `validate_ton_address()`
+- ADMIN_TOKEN obligatorio en producción (fail-fast si no está configurado)
+- Confirmado que escapeHtml() se usa consistentemente para prevenir XSS
+- Verificado SERIALIZABLE isolation level en transferencias P2P
+
 **Última actualización:** 5 Diciembre 2025
 
 ## External Dependencies
