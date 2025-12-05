@@ -906,14 +906,80 @@ Estilo: Neo-banco profesional + red social (como Binance + Instagram)
 
 ---
 
-#### FASE 21.5: Bottom Navigation ⏳
+#### FASE 21.5: Reubicación de Notificaciones ⏳
+
+**CAMBIO IMPORTANTE:**
+Las notificaciones deben moverse de la barra inferior al header principal.
+
+**Quitar de la barra inferior:**
+- [ ] 21.5.1 Eliminar icono de campana/notificaciones de la bottom nav
+- [ ] 21.5.2 La bottom nav solo debe tener: Home, Marketplace, Wallet, Perfil (4 iconos)
+
+**Agregar al header (esquina superior derecha):**
+- [ ] 21.5.3 Icono de campana SVG elegante (NO emoji, NO animado exagerado)
+- [ ] 21.5.4 Posición: Header derecha, antes del avatar
+- [ ] 21.5.5 Badge de contador (punto dorado pequeño si hay notificaciones)
+- [ ] 21.5.6 Al presionar → Abre pantalla completa de notificaciones
+
+**Diseño del icono de notificaciones:**
+```html
+<button class="header-notif-btn" onclick="App.openNotifications()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+    <span class="notif-badge" id="notif-badge"></span>
+</button>
+```
+
+**Estilos:**
+```css
+.header-notif-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    position: relative;
+}
+.header-notif-btn svg {
+    stroke: #848E9C;
+    transition: stroke 0.2s;
+}
+.header-notif-btn:hover svg {
+    stroke: #EAECEF;
+}
+.notif-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background: #F0B90B;
+    border-radius: 50%;
+    display: none;
+}
+.notif-badge.has-notif {
+    display: block;
+}
+```
+
+---
+
+#### FASE 21.6: Bottom Navigation (Rediseñada) ⏳
+
+**Nueva estructura (4 iconos solamente):**
+1. Home (casa)
+2. Marketplace (tienda/bolsa)
+3. Wallet (billetera)
+4. Perfil (usuario)
 
 **Rediseño requerido:**
-- [ ] 21.5.1 Fondo: #12161C con blur
-- [ ] 21.5.2 Iconos: Línea fina (#848E9C)
-- [ ] 21.5.3 Icono activo: Dorado (#F0B90B)
-- [ ] 21.5.4 Sin labels de texto (solo iconos)
-- [ ] 21.5.5 Indicador activo: Línea dorada arriba del icono
+- [ ] 21.6.1 Fondo: #12161C con blur
+- [ ] 21.6.2 Iconos SVG línea fina (#848E9C)
+- [ ] 21.6.3 Icono activo: Dorado (#F0B90B)
+- [ ] 21.6.4 Sin labels de texto (solo iconos)
+- [ ] 21.6.5 Indicador activo: Línea dorada arriba del icono
+- [ ] 21.6.6 SIN icono de notificaciones (ya está en header)
 
 ---
 
