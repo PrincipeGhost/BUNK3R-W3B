@@ -832,18 +832,60 @@ Rediseñar TODA la interfaz de usuario para que tenga un aspecto profesional de 
 
 ---
 
-#### FASE 21.8: Wallet Screen ⏳
+#### FASE 21.8: Wallet Screen con Logo B3C ⏳
+
+**Logo oficial BUNK3RCO1N (B3C):**
+- Archivo: `static/images/b3c-logo.png`
+- Descripción: Bóveda metálica oscura con monedas doradas B3C
+- Colores del logo: Azul (#4299E1) + Rojo (#E53E3E) en "B3C"
 
 **Rediseño completo:**
-- [ ] 21.8.1 Balance grande y prominente
-  - Valor: Blanco grande (36px)
-  - Equivalente USD: Gris pequeño
-- [ ] 21.8.2 Gráfico de precio minimalista (si aplica)
-- [ ] 21.8.3 Acciones rápidas: Iconos circulares con fondo #2B3139
-- [ ] 21.8.4 Lista de transacciones:
-  - Icono a la izquierda
+- [ ] 21.8.1 **Header de Balance con Logo B3C:**
+  ```html
+  <div class="wallet-balance-header">
+      <img src="/static/images/b3c-logo.png" class="b3c-logo" alt="B3C" />
+      <div class="balance-info">
+          <span class="balance-label">Balance Disponible</span>
+          <span class="balance-value">1,234.56 <span class="currency">B3C</span></span>
+          <span class="balance-usd">≈ $123.45 USD</span>
+      </div>
+  </div>
+  ```
+- [ ] 21.8.2 **Estilos del logo B3C:**
+  ```css
+  .b3c-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 0 20px rgba(240, 185, 11, 0.2);
+  }
+  .balance-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #EAECEF;
+  }
+  .balance-value .currency {
+      color: #F0B90B;
+      font-size: 24px;
+  }
+  .balance-usd {
+      color: #848E9C;
+      font-size: 14px;
+  }
+  ```
+- [ ] 21.8.3 Logo B3C también en:
+  - Historial de transacciones (icono pequeño 24px)
+  - Modal de compra/venta
+  - Confirmaciones de pago
+  - Toast de éxito al recibir B3C
+- [ ] 21.8.4 Gráfico de precio minimalista (si aplica)
+- [ ] 21.8.5 Acciones rápidas: Iconos circulares con fondo #2B3139
+  - Depositar, Retirar, Transferir, Comprar
+- [ ] 21.8.6 Lista de transacciones:
+  - Logo B3C pequeño a la izquierda
   - Descripción y fecha
-  - Monto a la derecha (verde/rojo según tipo)
+  - Monto a la derecha (verde +/rojo - según tipo)
 
 ---
 
