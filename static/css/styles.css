@@ -2056,15 +2056,15 @@ select:focus-visible {
 }
 
 .page-title-neo {
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.5px;
-    margin-bottom: 8px;
-    background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #ffd700 0%, #b8860b 50%, #daa520 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    text-shadow: 0 2px 20px rgba(255, 215, 0, 0.3);
 }
 
 .token-badge-neo {
