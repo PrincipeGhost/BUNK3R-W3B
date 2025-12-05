@@ -112,3 +112,21 @@ The application uses a Flask (Python) backend with a PostgreSQL database and a v
     - Live countdown showing time remaining
     - `handlePaymentTimeout()` with support contact info
     - Proper cleanup of timeout handlers to prevent memory leaks
+
+### Navigation & UI Improvements (December 5, 2025):
+
+15. **Dynamic Screen Management**:
+    - `goToHome()` refactored to detect ALL active screens dynamically via `querySelectorAll`
+    - Early return if destination screen already visible (prevents flicker)
+    - All animation classes cleared before transitions
+
+16. **Page Transition Animations**:
+    - CSS `page-enter`/`page-exit` classes with fadeIn effect
+    - `_showPageContent()` prevents flicker on rapid navigation
+    - Automatic cleanup of animation classes
+
+17. **Smart Skeleton Loaders**:
+    - Triple-guard system: container exists, no prior skeletons, no real content
+    - `hide*Skeleton()` functions for clean data rendering
+    - Wallet balance element protected from overwrites
+    - Skeleton loaders for: transaction list, notifications list, profile grid
