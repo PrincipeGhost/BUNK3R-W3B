@@ -712,6 +712,7 @@ const App = {
             }
             
             this.updateBottomNavActive('home');
+            this.updateFloatingButtonVisibility('home');
             
             if (this.tg && this.tg.BackButton) {
                 this.tg.BackButton.hide();
@@ -1170,11 +1171,24 @@ const App = {
         if (pageName === 'profile') {
             this.showProfileSkeleton();
         }
+        
+        this.updateFloatingButtonVisibility(pageName);
     },
     
     showScreen(screenId) {
         const screenName = screenId.replace('-screen', '');
         this.showPage(screenName);
+    },
+    
+    updateFloatingButtonVisibility(pageName) {
+        const floatingBtn = document.getElementById('floating-create-btn');
+        if (!floatingBtn) return;
+        
+        if (pageName === 'home' || pageName === 'profile') {
+            floatingBtn.classList.remove('hidden');
+        } else {
+            floatingBtn.classList.add('hidden');
+        }
     },
     
     updateBottomNavActive(pageName) {
