@@ -131,6 +131,35 @@ Mejoras de seguridad implementadas:
 - Confirmado que escapeHtml() se usa consistentemente para prevenir XSS
 - Verificado SERIALIZABLE isolation level en transferencias P2P
 
+### SECCIÓN 24 - Sistema de Wallets Únicas por Compra (COMPLETADO)
+Sistema de wallets temporales para identificación 100% segura de pagos B3C:
+
+**Arquitectura:**
+- Cada compra genera una wallet TON única usando biblioteca `tonsdk`
+- Wallet v4r2 con mnemonic de 24 palabras como private key
+- Private keys encriptados con AES-256-CBC con IV único por wallet
+- Wallets expiran después de 30 minutos sin depósito
+
+**Componentes:**
+- **Tablas DB:** `deposit_wallets`, `wallet_pool_config`
+- **Servicio:** `WalletPoolService` en `tracking/wallet_pool_service.py`
+- **Endpoints:**
+  - `POST /api/b3c/buy/create` - Genera wallet única para depósito
+  - `POST /api/b3c/buy/:id/verify` - Verifica depósito y acredita B3C
+  - `GET /api/b3c/wallet-pool/stats` - Estadísticas del pool (admin)
+  - `POST /api/b3c/wallet-pool/fill` - Rellenar pool (admin)
+  - `POST /api/b3c/wallet-pool/consolidate` - Consolidar fondos (admin)
+
+**Flujo de compra:**
+1. Usuario solicita compra -> Sistema asigna wallet única
+2. Frontend usa `depositAddress` en TON Connect (no hotWallet)
+3. Usuario confirma transacción en wallet
+4. Backend verifica depósito en wallet única
+5. Si válido: acredita B3C y consolida fondos a hot wallet
+
+**Variables de entorno requeridas:**
+- `WALLET_MASTER_KEY` - Clave para encriptar/desencriptar private keys (OBLIGATORIO en producción)
+
 **Última actualización:** 5 Diciembre 2025
 
 ## External Dependencies
