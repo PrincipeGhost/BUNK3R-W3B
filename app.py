@@ -5194,6 +5194,125 @@ def admin_get_logs():
         return jsonify({'success': True, 'logs': []})
 
 
+@app.route('/api/admin/b3c/withdrawals', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_b3c_withdrawals():
+    """Admin: Obtener lista de retiros B3C pendientes y procesados."""
+    try:
+        status_filter = request.args.get('status', 'all')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if status_filter == 'all':
+                    cur.execute("""
+                        SELECT w.*, u.username, u.first_name 
+                        FROM b3c_withdrawals w
+                        LEFT JOIN users u ON w.user_id = u.user_id
+                        ORDER BY w.created_at DESC
+                        LIMIT 100
+                    """)
+                else:
+                    cur.execute("""
+                        SELECT w.*, u.username, u.first_name 
+                        FROM b3c_withdrawals w
+                        LEFT JOIN users u ON w.user_id = u.user_id
+                        WHERE w.status = %s
+                        ORDER BY w.created_at DESC
+                        LIMIT 100
+                    """, (status_filter,))
+                
+                withdrawals = cur.fetchall()
+        
+        result = []
+        for w in withdrawals:
+            result.append({
+                'id': w['withdrawal_id'],
+                'userId': w['user_id'],
+                'username': w.get('username', 'Unknown'),
+                'firstName': w.get('first_name', 'Unknown'),
+                'amount': float(w['b3c_amount']),
+                'destination': w['destination_wallet'],
+                'status': w['status'],
+                'txHash': w.get('tx_hash'),
+                'createdAt': w['created_at'].isoformat() if w['created_at'] else None,
+                'processedAt': w['processed_at'].isoformat() if w.get('processed_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'withdrawals': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting B3C withdrawals: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/b3c/withdrawals/<withdrawal_id>/process', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_process_b3c_withdrawal(withdrawal_id):
+    """Admin: Procesar un retiro B3C (marcar como completado con hash de transaccion)."""
+    try:
+        data = request.get_json()
+        tx_hash = data.get('txHash', '').strip()
+        action = data.get('action', 'complete')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM b3c_withdrawals WHERE withdrawal_id = %s
+                """, (withdrawal_id,))
+                withdrawal = cur.fetchone()
+                
+                if not withdrawal:
+                    return jsonify({'success': False, 'error': 'Retiro no encontrado'}), 404
+                
+                if action == 'complete':
+                    if not tx_hash:
+                        return jsonify({'success': False, 'error': 'Se requiere el hash de transaccion'}), 400
+                    
+                    cur.execute("""
+                        UPDATE b3c_withdrawals 
+                        SET status = 'completed', tx_hash = %s, processed_at = NOW()
+                        WHERE withdrawal_id = %s
+                    """, (tx_hash, withdrawal_id))
+                    
+                elif action == 'reject':
+                    reason = data.get('reason', 'Rechazado por admin')
+                    cur.execute("""
+                        UPDATE b3c_withdrawals 
+                        SET status = 'rejected', processed_at = NOW()
+                        WHERE withdrawal_id = %s
+                    """, (withdrawal_id,))
+                    
+                    cur.execute("""
+                        INSERT INTO wallet_transactions (user_id, amount, transaction_type, description, reference_id)
+                        VALUES (%s, %s, 'credit', %s, %s)
+                    """, (withdrawal['user_id'], withdrawal['b3c_amount'], 
+                          f'Retiro rechazado: {reason}', withdrawal_id))
+                
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Retiro {action}d exitosamente',
+            'withdrawalId': withdrawal_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing B3C withdrawal: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ENCRYPTED PUBLICATIONS SYSTEM - API ENDPOINTS
 # ============================================================

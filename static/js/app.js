@@ -4216,26 +4216,123 @@ const App = {
             return;
         }
         
+        await this.buyB3CWithTonConnect(tonAmount);
+    },
+
+    async buyB3CWithTonConnect(tonAmount) {
         if (!this.connectedWallet) {
             this.showToast('Conecta tu wallet primero', 'error');
+            try {
+                await this.connectWallet();
+            } catch (e) {
+                return;
+            }
+        }
+
+        if (!this.tonConnectUI) {
+            this.showToast('TON Connect no disponible', 'error');
             return;
         }
-        
+
         try {
+            this.showToast(`Preparando compra de B3C por ${tonAmount} TON...`, 'info');
+
             const response = await this.apiRequest('/api/b3c/buy/create', {
                 method: 'POST',
                 body: JSON.stringify({ tonAmount })
             });
-            
-            if (response.success) {
-                this.showB3CPaymentModal(response);
-            } else {
+
+            if (!response.success) {
                 this.showToast(response.error || 'Error al crear compra', 'error');
+                return;
+            }
+
+            const purchaseId = response.purchaseId;
+            const amountNano = Math.floor(tonAmount * 1e9).toString();
+
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [
+                    {
+                        address: response.hotWallet,
+                        amount: amountNano
+                    }
+                ]
+            };
+            
+            if (response.comment) {
+                transaction.messages[0].payload = this.buildTextCommentPayload(response.comment);
+            }
+
+            this.showToast('Confirma el pago en tu wallet...', 'info');
+
+            const result = await this.tonConnectUI.sendTransaction(transaction);
+
+            if (result && result.boc) {
+                this.showToast('Transaccion enviada! Verificando...', 'success');
+
+                await this.verifyB3CPurchaseAfterTx(purchaseId, result.boc);
             }
         } catch (error) {
-            console.error('Error creating B3C purchase:', error);
-            this.showToast('Error al crear compra', 'error');
+            console.error('B3C purchase error:', error);
+            if (error.message?.includes('Canceled') || error.message?.includes('cancel')) {
+                this.showToast('Compra cancelada', 'info');
+            } else {
+                this.showToast('Error: ' + (error.message || 'Intenta de nuevo'), 'error');
+            }
         }
+    },
+
+    buildTextCommentPayload(comment) {
+        if (!comment) return undefined;
+        try {
+            const textBytes = new TextEncoder().encode(comment);
+            const payload = new Uint8Array(textBytes.length + 4);
+            payload[0] = 0;
+            payload[1] = 0;
+            payload[2] = 0;
+            payload[3] = 0;
+            payload.set(textBytes, 4);
+            return btoa(String.fromCharCode(...payload));
+        } catch (e) {
+            console.error('Error building comment payload:', e);
+            return undefined;
+        }
+    },
+
+    async verifyB3CPurchaseAfterTx(purchaseId, boc) {
+        let attempts = 0;
+        const maxAttempts = 10;
+        const delay = 3000;
+
+        const checkPayment = async () => {
+            attempts++;
+            try {
+                const response = await this.apiRequest(`/api/b3c/buy/${purchaseId}/verify`, {
+                    method: 'POST',
+                    body: JSON.stringify({ boc })
+                });
+
+                if (response.success && response.status === 'confirmed') {
+                    this.showToast(`+${response.b3c_credited.toLocaleString()} B3C recibidos!`, 'success');
+                    this.showRechargeSuccess(response.b3c_credited);
+                    this.refreshB3CBalance();
+                    return true;
+                } else if (attempts < maxAttempts) {
+                    this.showToast(`Verificando pago... (${attempts}/${maxAttempts})`, 'info');
+                    setTimeout(checkPayment, delay);
+                } else {
+                    this.showToast('Pago enviado. La verificacion puede tardar unos minutos.', 'info');
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                if (attempts < maxAttempts) {
+                    setTimeout(checkPayment, delay);
+                }
+            }
+        };
+
+        setTimeout(checkPayment, delay);
     },
 
     showB3CPaymentModal(purchaseData) {
