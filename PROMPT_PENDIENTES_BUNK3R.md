@@ -958,6 +958,40 @@ Requiere capital para operar (de las ganancias acumuladas).
 
 ---
 
+#### 🚀 ESTADO DE IMPLEMENTACIÓN (5 Diciembre 2025)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     RESUMEN DE IMPLEMENTACIÓN                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  SOFTWARE COMPLETADO (70%):                                              │
+│  ──────────────────────────                                              │
+│  ✅ 15.3 - Compra/Venta B3C (endpoints + UI + comisiones)               │
+│  ✅ 15.4 - Sistema de retiro (endpoints + UI + límites)                 │
+│  ✅ 15.5 - Sistema de depósito (dirección/memo + UI)                    │
+│  ✅ 15.6 - Dashboard comisiones (tabla + endpoint admin)                │
+│  ✅ 15.7 - Precio en tiempo real (cache + polling)                      │
+│                                                                          │
+│  PENDIENTE - REQUIERE ACCIÓN MANUAL DEL USUARIO:                         │
+│  ───────────────────────────────────────────────                         │
+│  ⏳ 15.1 - Crear token en minter.ton.org                                │
+│  ⏳ 15.2 - Crear pool liquidez en STON.fi                               │
+│  ⏳ 15.5.2 - Configurar webhook/polling depósitos                       │
+│  ⏳ 15.8 - Bot estabilización (cuando llegue a ~$1)                     │
+│                                                                          │
+│  NOTAS IMPORTANTES:                                                      │
+│  ─────────────────                                                       │
+│  • El sistema usa precio SIMULADO hasta que exista el token real        │
+│  • Una vez creado el token, configurar B3C_TOKEN_ADDRESS                │
+│  • El webhook de depósitos se activa tras configurar B3C_TOKEN_ADDRESS  │
+│  • Todas las transacciones se registran en b3c_commissions              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 #### 🔧 REQUISITOS TÉCNICOS
 
 **Secrets/Variables de entorno necesarias:**

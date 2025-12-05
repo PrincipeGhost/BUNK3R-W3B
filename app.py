@@ -3273,6 +3273,14 @@ def verify_b3c_purchase(purchase_id):
                         VALUES (%s, %s, 'credit', %s, %s, NOW())
                     """, (user_id, b3c_to_credit, f'Compra B3C - {b3c_to_credit} tokens', purchase_id))
                     
+                    commission_ton = float(purchase.get('commission_ton', 0))
+                    ton_amount = float(purchase.get('ton_amount', 0))
+                    cur.execute("""
+                        INSERT INTO b3c_commissions 
+                        (user_id, operation_type, b3c_amount, ton_amount, commission_ton, reference_id, created_at)
+                        VALUES (%s, 'buy', %s, %s, %s, %s, NOW())
+                    """, (user_id, b3c_to_credit, ton_amount, commission_ton, purchase_id))
+                    
                     conn.commit()
                     
                     return jsonify({
@@ -3479,6 +3487,12 @@ def withdraw_b3c():
                     (withdrawal_id, user_id, b3c_amount, destination_wallet, status, created_at)
                     VALUES (%s, %s, %s, %s, 'pending', NOW())
                 """, (withdrawal_id, user_id, b3c_amount, destination_wallet))
+                
+                cur.execute("""
+                    INSERT INTO b3c_commissions 
+                    (user_id, operation_type, b3c_amount, ton_amount, commission_ton, reference_id, created_at)
+                    VALUES (%s, 'withdraw', %s, 0, %s, %s, NOW())
+                """, (user_id, b3c_amount, withdrawal_fee, withdrawal_id))
                 
                 conn.commit()
                 
