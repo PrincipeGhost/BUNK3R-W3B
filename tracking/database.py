@@ -1869,6 +1869,21 @@ class DatabaseManager:
                         );
                         CREATE INDEX IF NOT EXISTS idx_b3c_commissions_type 
                             ON b3c_commissions(transaction_type);
+                        
+                        CREATE TABLE IF NOT EXISTS b3c_transfers (
+                            id SERIAL PRIMARY KEY,
+                            transfer_id VARCHAR(20) UNIQUE NOT NULL,
+                            from_user_id VARCHAR(50) NOT NULL,
+                            to_user_id VARCHAR(50) NOT NULL,
+                            b3c_amount DECIMAL(20, 9) NOT NULL,
+                            note VARCHAR(255),
+                            status VARCHAR(20) DEFAULT 'completed',
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_b3c_transfers_from 
+                            ON b3c_transfers(from_user_id);
+                        CREATE INDEX IF NOT EXISTS idx_b3c_transfers_to 
+                            ON b3c_transfers(to_user_id);
                     """)
                     conn.commit()
             logger.info("B3C tables initialized successfully")

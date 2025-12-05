@@ -4291,10 +4291,6 @@ const App = {
                     }
                 ]
             };
-            
-            if (response.comment) {
-                transaction.messages[0].payload = this.buildTextCommentPayload(response.comment);
-            }
 
             this.showToast('Confirma el pago en tu wallet...', 'info');
 
@@ -4316,25 +4312,7 @@ const App = {
     },
 
     buildTextCommentPayload(comment) {
-        if (!comment) return undefined;
-        try {
-            const textBytes = new TextEncoder().encode(comment);
-            const payload = new Uint8Array(textBytes.length + 4);
-            payload[0] = 0;
-            payload[1] = 0;
-            payload[2] = 0;
-            payload[3] = 0;
-            payload.set(textBytes, 4);
-            
-            let binary = '';
-            for (let i = 0; i < payload.length; i++) {
-                binary += String.fromCharCode(payload[i]);
-            }
-            return btoa(binary);
-        } catch (e) {
-            console.error('Error building comment payload:', e);
-            return undefined;
-        }
+        return undefined;
     },
 
     async verifyB3CPurchaseAfterTx(purchaseId, boc) {
@@ -4717,6 +4695,155 @@ const App = {
     closeB3CModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) modal.remove();
+    },
+
+    showTransferModal() {
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-transfer-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Transferir B3C</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-transfer-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="b3c-transfer-info">
+                        <p>Envia B3C a otro usuario de BUNK3R</p>
+                        <div class="b3c-limits">
+                            <span>Minimo: 1 B3C</span>
+                            <span>Sin comision</span>
+                        </div>
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Usuario destino (@username)</label>
+                        <input type="text" id="transfer-recipient" placeholder="@usuario" autocomplete="off">
+                        <div id="user-search-results" class="user-search-results hidden"></div>
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Cantidad de B3C</label>
+                        <input type="number" id="transfer-b3c-amount" placeholder="Cantidad" min="1" step="1">
+                        <button class="btn-max" onclick="App.setMaxTransfer()">MAX</button>
+                    </div>
+                    
+                    <div class="b3c-input-group">
+                        <label>Nota (opcional)</label>
+                        <input type="text" id="transfer-note" placeholder="Ej: Para el cafe" maxlength="100">
+                    </div>
+                    
+                    <div class="b3c-modal-actions">
+                        <button class="btn-secondary" onclick="App.closeB3CModal('b3c-transfer-modal')">Cancelar</button>
+                        <button class="btn-primary" id="confirm-transfer-btn" onclick="App.confirmTransferB3C()">Enviar B3C</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-transfer-modal');
+        });
+        
+        const recipientInput = document.getElementById('transfer-recipient');
+        if (recipientInput) {
+            let searchTimeout;
+            recipientInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+                if (query.length >= 2) {
+                    searchTimeout = setTimeout(() => this.searchUsersForTransfer(query), 300);
+                } else {
+                    document.getElementById('user-search-results').classList.add('hidden');
+                }
+            });
+        }
+    },
+
+    async searchUsersForTransfer(query) {
+        try {
+            const response = await this.apiRequest(`/api/search/users?q=${encodeURIComponent(query)}`);
+            if (response.success && response.users.length > 0) {
+                const resultsDiv = document.getElementById('user-search-results');
+                resultsDiv.innerHTML = response.users.map(u => `
+                    <div class="user-result-item" onclick="App.selectTransferRecipient('${u.username || u.id}', '${u.name || u.username}')">
+                        <img src="${u.avatar || '/static/images/default-avatar.png'}" class="user-result-avatar">
+                        <div class="user-result-info">
+                            <span class="user-result-name">${u.name || 'Usuario'}</span>
+                            <span class="user-result-username">@${u.username || u.id}</span>
+                        </div>
+                    </div>
+                `).join('');
+                resultsDiv.classList.remove('hidden');
+            } else {
+                document.getElementById('user-search-results').classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error searching users:', error);
+        }
+    },
+
+    selectTransferRecipient(username, displayName) {
+        document.getElementById('transfer-recipient').value = '@' + username;
+        document.getElementById('user-search-results').classList.add('hidden');
+        this._selectedRecipient = { username, displayName };
+    },
+
+    setMaxTransfer() {
+        const balanceEl = document.getElementById('wallet-balance');
+        if (balanceEl) {
+            const balance = parseFloat(balanceEl.textContent.replace(/,/g, '')) || 0;
+            document.getElementById('transfer-b3c-amount').value = Math.floor(balance);
+        }
+    },
+
+    async confirmTransferB3C() {
+        const recipientInput = document.getElementById('transfer-recipient')?.value?.trim();
+        const amount = parseFloat(document.getElementById('transfer-b3c-amount')?.value) || 0;
+        const note = document.getElementById('transfer-note')?.value?.trim() || '';
+        
+        if (!recipientInput || recipientInput.length < 2) {
+            this.showToast('Ingresa el usuario destino', 'error');
+            return;
+        }
+        
+        if (amount < 1) {
+            this.showToast('Minimo 1 B3C para transferir', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('confirm-transfer-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/b3c/transfer', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    toUsername: recipientInput.replace('@', ''),
+                    amount: amount,
+                    note: note
+                })
+            });
+            
+            if (response.success) {
+                this.closeB3CModal('b3c-transfer-modal');
+                this.showToast(response.message || `Enviado ${amount} B3C correctamente`, 'success');
+                this.refreshB3CBalance();
+            } else {
+                this.showToast(response.error || 'Error al transferir', 'error');
+            }
+        } catch (error) {
+            console.error('Error transferring B3C:', error);
+            this.showToast('Error de conexion', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Enviar B3C';
+            }
+        }
     },
 
     getSyncedWallets() {

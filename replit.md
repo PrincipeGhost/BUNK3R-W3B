@@ -63,7 +63,26 @@ El usuario decidió NO usar pool de liquidez (DEX). En su lugar:
 - `GET /api/b3c/balance` - Balance del usuario
 - `GET /api/b3c/config` - Configuración del servicio
 - `GET /api/b3c/network` - Estado de la red
+- `POST /api/b3c/transfer` - Transferir B3C entre usuarios (P2P)
 - `POST /api/b3c/admin/price` - Actualizar precio fijo (admin)
+
+## Cambios Recientes (5 Diciembre 2025)
+
+### SECCIÓN 17 - Pagos TON Connect (COMPLETADO)
+- Corregido error TON_CONNECT_SDK_ERROR en payload de transacciones
+- Eliminado payload problemático de buildTextCommentPayload()
+- Las transacciones ahora envían solo dirección y monto (formato válido para SDK)
+
+### SECCIÓN 18 - Números Virtuales (COMPLETADO)  
+- Corregido botón "Atrás" que cerraba toda la mini app
+- Ahora navega correctamente a la pantalla principal
+
+### SECCIÓN 19 - Transferencias P2P (COMPLETADO)
+- Nuevo endpoint POST /api/b3c/transfer para transferencias entre usuarios
+- Tabla b3c_transfers para rastrear transferencias
+- Modal de transferencia con búsqueda de usuarios
+- Transacciones atómicas con nivel de aislamiento SERIALIZABLE
+- Bloqueo de filas con FOR UPDATE para prevenir doble gasto
 
 **Última actualización:** 5 Diciembre 2025
 

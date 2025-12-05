@@ -3362,6 +3362,106 @@ def get_b3c_transactions():
         return jsonify({'success': False, 'error': 'Error al obtener transacciones'}), 500
 
 
+@app.route('/api/b3c/transfer', methods=['POST'])
+@require_telegram_user
+@rate_limit('b3c_transfer')
+def transfer_b3c():
+    """Transferir B3C a otro usuario."""
+    try:
+        data = request.get_json()
+        to_username = data.get('toUsername', '').strip().lstrip('@')
+        to_user_id = data.get('toUserId', '').strip()
+        b3c_amount = float(data.get('amount', 0))
+        note = data.get('note', '').strip()[:255]
+        
+        if b3c_amount < 1:
+            return jsonify({'success': False, 'error': 'Minimo 1 B3C para transferir'}), 400
+        if b3c_amount > 1000000:
+            return jsonify({'success': False, 'error': 'Maximo 1,000,000 B3C por transferencia'}), 400
+        
+        from_user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        from_username = request.telegram_user.get('username', '') if hasattr(request, 'telegram_user') else ''
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if to_username and not to_user_id:
+                    cur.execute("""
+                        SELECT user_id, username, first_name FROM users WHERE LOWER(username) = LOWER(%s)
+                    """, (to_username,))
+                    to_user = cur.fetchone()
+                    if not to_user:
+                        return jsonify({'success': False, 'error': f'Usuario @{to_username} no encontrado'}), 404
+                    to_user_id = to_user['user_id']
+                    to_display_name = to_user['username'] or to_user['first_name']
+                elif to_user_id:
+                    cur.execute("""
+                        SELECT user_id, username, first_name FROM users WHERE user_id = %s
+                    """, (to_user_id,))
+                    to_user = cur.fetchone()
+                    if not to_user:
+                        return jsonify({'success': False, 'error': 'Usuario destino no encontrado'}), 404
+                    to_display_name = to_user['username'] or to_user['first_name']
+                else:
+                    return jsonify({'success': False, 'error': 'Debes especificar usuario destino'}), 400
+                
+                if str(from_user_id) == str(to_user_id):
+                    return jsonify({'success': False, 'error': 'No puedes transferirte a ti mismo'}), 400
+                
+                conn.set_session(isolation_level='SERIALIZABLE')
+                
+                cur.execute("""
+                    SELECT COALESCE(
+                        (SELECT SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) 
+                         FROM wallet_transactions WHERE user_id = %s FOR UPDATE), 0
+                    ) as balance
+                """, (from_user_id,))
+                result = cur.fetchone()
+                current_balance = float(result['balance']) if result else 0
+                
+                if current_balance < b3c_amount:
+                    conn.rollback()
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Saldo insuficiente. Tienes {current_balance:.2f} B3C'
+                    }), 400
+                
+                transfer_id = str(uuid.uuid4())[:8].upper()
+                
+                cur.execute("""
+                    INSERT INTO b3c_transfers (transfer_id, from_user_id, to_user_id, b3c_amount, note, status, created_at)
+                    VALUES (%s, %s, %s, %s, %s, 'completed', NOW())
+                """, (transfer_id, from_user_id, to_user_id, b3c_amount, note))
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, amount, transaction_type, description, reference_id, created_at)
+                    VALUES (%s, %s, 'debit', %s, %s, NOW())
+                """, (from_user_id, b3c_amount, f'Enviado a @{to_display_name}', transfer_id))
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, amount, transaction_type, description, reference_id, created_at)
+                    VALUES (%s, %s, 'credit', %s, %s, NOW())
+                """, (to_user_id, b3c_amount, f'Recibido de @{from_username}', transfer_id))
+                
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'transfer_id': transfer_id,
+                    'amount': b3c_amount,
+                    'to_user': to_display_name,
+                    'message': f'Transferencia exitosa de {b3c_amount} B3C a @{to_display_name}'
+                })
+                
+    except Exception as e:
+        logger.error(f"Error transferring B3C: {e}")
+        return jsonify({'success': False, 'error': 'Error al transferir B3C'}), 500
+
+
 @app.route('/api/b3c/sell', methods=['POST'])
 @require_telegram_user
 @rate_limit('b3c_sell')

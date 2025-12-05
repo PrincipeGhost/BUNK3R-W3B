@@ -622,11 +622,7 @@ function showToast(message, type = 'info') {
 }
 
 function goBack() {
-    if (tg) {
-        tg.close();
-    } else {
-        window.location.href = '/';
-    }
+    window.location.href = '/';
 }
 
 window.addEventListener('beforeunload', () => {
