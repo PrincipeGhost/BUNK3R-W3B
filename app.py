@@ -12401,6 +12401,720 @@ def admin_analytics_conversion():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ==================== SUPPORT SECTION API ENDPOINTS ====================
+
+# -------------------- TICKETS API --------------------
+
+@app.route('/api/admin/support/tickets', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_support_tickets():
+    """Get all support tickets with filters and pagination"""
+    try:
+        status = request.args.get('status', '')
+        priority = request.args.get('priority', '')
+        search = request.args.get('search', '')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clauses = []
+                params = []
+                
+                if status:
+                    where_clauses.append("t.status = %s")
+                    params.append(status)
+                
+                if priority:
+                    where_clauses.append("t.priority = %s")
+                    params.append(priority)
+                
+                if search:
+                    where_clauses.append("(t.subject ILIKE %s OR u.username ILIKE %s)")
+                    params.extend([f'%{search}%', f'%{search}%'])
+                
+                where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+                
+                cur.execute(f"""
+                    SELECT t.*, u.username, u.first_name, u.last_name,
+                           (SELECT COUNT(*) FROM ticket_messages WHERE ticket_id = t.id) as message_count
+                    FROM support_tickets t
+                    LEFT JOIN users u ON t.user_id = u.id
+                    WHERE {where_sql}
+                    ORDER BY 
+                        CASE t.priority 
+                            WHEN 'urgent' THEN 1 
+                            WHEN 'high' THEN 2 
+                            WHEN 'medium' THEN 3 
+                            ELSE 4 
+                        END,
+                        t.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, params + [per_page, offset])
+                tickets = cur.fetchall()
+                
+                cur.execute(f"""
+                    SELECT COUNT(*) as total FROM support_tickets t
+                    LEFT JOIN users u ON t.user_id = u.id
+                    WHERE {where_sql}
+                """, params)
+                total = cur.fetchone()['total']
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) FILTER (WHERE status = 'new') as new_count,
+                        COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
+                        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
+                        COUNT(*) FILTER (WHERE priority = 'urgent' AND status NOT IN ('closed', 'resolved')) as urgent_count
+                    FROM support_tickets
+                """)
+                stats = cur.fetchone()
+                
+                return jsonify({
+                    'success': True,
+                    'tickets': [dict(t) for t in tickets],
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page,
+                    'pages': (total + per_page - 1) // per_page,
+                    'stats': dict(stats)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting support tickets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/support/tickets/<int:ticket_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_ticket_detail(ticket_id):
+    """Get single ticket with messages"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT t.*, u.username, u.first_name, u.last_name, u.telegram_id
+                    FROM support_tickets t
+                    LEFT JOIN users u ON t.user_id = u.id
+                    WHERE t.id = %s
+                """, (ticket_id,))
+                ticket = cur.fetchone()
+                
+                if not ticket:
+                    return jsonify({'success': False, 'error': 'Ticket not found'}), 404
+                
+                cur.execute("""
+                    SELECT tm.*, 
+                           CASE WHEN tm.is_admin THEN 'Admin' ELSE u.username END as sender_name
+                    FROM ticket_messages tm
+                    LEFT JOIN users u ON tm.sender_id = u.id
+                    WHERE tm.ticket_id = %s
+                    ORDER BY tm.created_at ASC
+                """, (ticket_id,))
+                messages = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'ticket': dict(ticket),
+                    'messages': [dict(m) for m in messages]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting ticket detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/support/tickets/<int:ticket_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def update_ticket(ticket_id):
+    """Update ticket status or priority"""
+    try:
+        data = request.json
+        status = data.get('status')
+        priority = data.get('priority')
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                updates = []
+                params = []
+                
+                if status:
+                    updates.append("status = %s")
+                    params.append(status)
+                    if status == 'closed':
+                        updates.append("closed_at = NOW()")
+                
+                if priority:
+                    updates.append("priority = %s")
+                    params.append(priority)
+                
+                updates.append("updated_at = NOW()")
+                params.append(ticket_id)
+                
+                cur.execute(f"""
+                    UPDATE support_tickets
+                    SET {', '.join(updates)}
+                    WHERE id = %s
+                    RETURNING *
+                """, params)
+                ticket = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'ticket': dict(ticket)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error updating ticket: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/support/tickets/<int:ticket_id>/reply', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def reply_to_ticket(ticket_id):
+    """Send reply to ticket"""
+    try:
+        data = request.json
+        message = data.get('message', '').strip()
+        attachment_url = data.get('attachment_url')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        admin_id = session.get('admin_id', 0)
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO ticket_messages (ticket_id, sender_id, message, is_admin, attachment_url)
+                    VALUES (%s, %s, %s, true, %s)
+                    RETURNING *
+                """, (ticket_id, admin_id, message, attachment_url))
+                new_message = cur.fetchone()
+                
+                cur.execute("""
+                    UPDATE support_tickets
+                    SET status = CASE WHEN status = 'new' THEN 'in_progress' ELSE status END,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (ticket_id,))
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': dict(new_message)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error replying to ticket: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/support/templates', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_response_templates():
+    """Get response templates"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM response_templates
+                    WHERE is_active = true
+                    ORDER BY name ASC
+                """)
+                templates = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'templates': [dict(t) for t in templates]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting templates: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/support/templates', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def create_response_template():
+    """Create new response template"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        content = data.get('content', '').strip()
+        
+        if not name or not content:
+            return jsonify({'success': False, 'error': 'Name and content are required'}), 400
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO response_templates (name, content)
+                    VALUES (%s, %s)
+                    RETURNING *
+                """, (name, content))
+                template = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'template': dict(template)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error creating template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# -------------------- FAQ API --------------------
+
+@app.route('/api/admin/faq', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_faqs():
+    """Get all FAQs with filters"""
+    try:
+        category = request.args.get('category', '')
+        status = request.args.get('status', '')
+        search = request.args.get('search', '')
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clauses = []
+                params = []
+                
+                if category:
+                    where_clauses.append("category = %s")
+                    params.append(category)
+                
+                if status == 'published':
+                    where_clauses.append("is_published = true")
+                elif status == 'draft':
+                    where_clauses.append("is_published = false")
+                
+                if search:
+                    where_clauses.append("(question ILIKE %s OR answer ILIKE %s)")
+                    params.extend([f'%{search}%', f'%{search}%'])
+                
+                where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+                
+                cur.execute(f"""
+                    SELECT * FROM faqs
+                    WHERE {where_sql}
+                    ORDER BY display_order ASC, created_at DESC
+                """, params)
+                faqs = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'faqs': [dict(f) for f in faqs]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting FAQs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/faq', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def create_faq():
+    """Create new FAQ"""
+    try:
+        data = request.json
+        question = data.get('question', '').strip()
+        answer = data.get('answer', '').strip()
+        category = data.get('category', 'general')
+        display_order = data.get('display_order', 0)
+        is_published = data.get('is_published', True)
+        
+        if not question or not answer:
+            return jsonify({'success': False, 'error': 'Question and answer are required'}), 400
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO faqs (question, answer, category, display_order, is_published)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING *
+                """, (question, answer, category, display_order, is_published))
+                faq = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'faq': dict(faq)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error creating FAQ: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/faq/<int:faq_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def update_faq(faq_id):
+    """Update FAQ"""
+    try:
+        data = request.json
+        question = data.get('question', '').strip()
+        answer = data.get('answer', '').strip()
+        category = data.get('category', 'general')
+        display_order = data.get('display_order', 0)
+        is_published = data.get('is_published', True)
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    UPDATE faqs
+                    SET question = %s, answer = %s, category = %s, 
+                        display_order = %s, is_published = %s, updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING *
+                """, (question, answer, category, display_order, is_published, faq_id))
+                faq = cur.fetchone()
+                conn.commit()
+                
+                if not faq:
+                    return jsonify({'success': False, 'error': 'FAQ not found'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'faq': dict(faq)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error updating FAQ: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/faq/<int:faq_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def delete_faq(faq_id):
+    """Delete FAQ"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM faqs WHERE id = %s", (faq_id,))
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error deleting FAQ: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# -------------------- MASS MESSAGES API --------------------
+
+@app.route('/api/admin/messages', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_mass_messages():
+    """Get mass messages history"""
+    try:
+        status = request.args.get('status', '')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clause = ""
+                params = []
+                
+                if status == 'sent':
+                    where_clause = "WHERE status = 'sent'"
+                elif status == 'scheduled':
+                    where_clause = "WHERE status = 'scheduled'"
+                elif status == 'draft':
+                    where_clause = "WHERE status = 'draft'"
+                
+                cur.execute(f"""
+                    SELECT m.*,
+                           (SELECT COUNT(*) FROM mass_message_recipients WHERE message_id = m.id) as recipient_count,
+                           (SELECT COUNT(*) FROM mass_message_recipients WHERE message_id = m.id AND is_delivered = true) as delivered_count
+                    FROM mass_messages m
+                    {where_clause}
+                    ORDER BY m.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, [per_page, offset])
+                messages = cur.fetchall()
+                
+                cur.execute(f"SELECT COUNT(*) as total FROM mass_messages {where_clause}")
+                total = cur.fetchone()['total']
+                
+                return jsonify({
+                    'success': True,
+                    'messages': [dict(m) for m in messages],
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting mass messages: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/messages', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def send_mass_message():
+    """Create and send mass message"""
+    try:
+        data = request.json
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        recipient_type = data.get('recipient_type', 'all')
+        specific_users = data.get('specific_users', '')
+        send_type = data.get('send_type', 'now')
+        scheduled_at = data.get('scheduled_at')
+        msg_type = data.get('msg_type', 'info')
+        
+        if not title or not content:
+            return jsonify({'success': False, 'error': 'Title and content are required'}), 400
+        
+        admin_id = session.get('admin_id', 0)
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                status = 'scheduled' if send_type == 'scheduled' else 'sent'
+                sent_at = None if send_type == 'scheduled' else 'NOW()'
+                
+                cur.execute(f"""
+                    INSERT INTO mass_messages (title, content, message_type, recipient_filter, 
+                                               status, scheduled_at, sent_at, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, {'NOW()' if send_type == 'now' else 'NULL'}, %s)
+                    RETURNING *
+                """, (title, content, msg_type, recipient_type, status, 
+                      scheduled_at if send_type == 'scheduled' else None, admin_id))
+                message = cur.fetchone()
+                message_id = message['id']
+                
+                if send_type == 'now':
+                    user_ids = []
+                    if recipient_type == 'all':
+                        cur.execute("SELECT id FROM users WHERE is_banned = false")
+                        user_ids = [row['id'] for row in cur.fetchall()]
+                    elif recipient_type == 'active':
+                        cur.execute("""
+                            SELECT id FROM users 
+                            WHERE is_banned = false AND last_active > NOW() - INTERVAL '7 days'
+                        """)
+                        user_ids = [row['id'] for row in cur.fetchall()]
+                    elif recipient_type == 'premium':
+                        cur.execute("""
+                            SELECT id FROM users 
+                            WHERE is_banned = false AND is_premium = true
+                        """)
+                        user_ids = [row['id'] for row in cur.fetchall()]
+                    elif recipient_type == 'specific' and specific_users:
+                        specific_ids = [int(x.strip()) for x in specific_users.split(',') if x.strip().isdigit()]
+                        if specific_ids:
+                            cur.execute("""
+                                SELECT id FROM users WHERE id = ANY(%s) AND is_banned = false
+                            """, (specific_ids,))
+                            user_ids = [row['id'] for row in cur.fetchall()]
+                    
+                    for user_id in user_ids:
+                        cur.execute("""
+                            INSERT INTO mass_message_recipients (message_id, user_id, is_delivered)
+                            VALUES (%s, %s, true)
+                        """, (message_id, user_id))
+                        
+                        cur.execute("""
+                            INSERT INTO user_notifications (user_id, title, message, notification_type, is_read)
+                            VALUES (%s, %s, %s, %s, false)
+                        """, (user_id, title, content, msg_type))
+                    
+                    cur.execute("""
+                        UPDATE mass_messages SET recipients_count = %s WHERE id = %s
+                    """, (len(user_ids), message_id))
+                
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': dict(message),
+                    'recipients_count': len(user_ids) if send_type == 'now' else 0
+                })
+                
+    except Exception as e:
+        logger.error(f"Error sending mass message: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/messages/scheduled', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_scheduled_messages():
+    """Get scheduled messages"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM mass_messages
+                    WHERE status = 'scheduled' AND scheduled_at > NOW()
+                    ORDER BY scheduled_at ASC
+                """)
+                messages = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'messages': [dict(m) for m in messages]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting scheduled messages: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/messages/<int:message_id>/cancel', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def cancel_scheduled_message(message_id):
+    """Cancel scheduled message"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    UPDATE mass_messages
+                    SET status = 'cancelled'
+                    WHERE id = %s AND status = 'scheduled'
+                    RETURNING *
+                """, (message_id,))
+                message = cur.fetchone()
+                conn.commit()
+                
+                if not message:
+                    return jsonify({'success': False, 'error': 'Message not found or already sent'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'message': dict(message)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error cancelling message: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# -------------------- USER FAQ API (Public) --------------------
+
+@app.route('/api/faq', methods=['GET'])
+def get_public_faqs():
+    """Get published FAQs for users"""
+    try:
+        category = request.args.get('category', '')
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clause = "is_published = true"
+                params = []
+                
+                if category:
+                    where_clause += " AND category = %s"
+                    params.append(category)
+                
+                cur.execute(f"""
+                    SELECT id, question, answer, category FROM faqs
+                    WHERE {where_clause}
+                    ORDER BY display_order ASC
+                """, params)
+                faqs = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'faqs': [dict(f) for f in faqs]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting public FAQs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# -------------------- USER NOTIFICATIONS API --------------------
+
+@app.route('/api/user/notifications', methods=['GET'])
+@require_telegram_auth
+def get_user_notifications():
+    """Get notifications for logged in user"""
+    try:
+        user_id = request.telegram_user.get('id')
+        
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM user_notifications
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """, (user_id,))
+                notifications = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT COUNT(*) as unread FROM user_notifications
+                    WHERE user_id = %s AND is_read = false
+                """, (user_id,))
+                unread_count = cur.fetchone()['unread']
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': [dict(n) for n in notifications],
+                    'unread_count': unread_count
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting user notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/user/notifications/read', methods=['POST'])
+@require_telegram_auth
+def mark_support_notifications_read():
+    """Mark support notifications as read"""
+    try:
+        user_id = request.telegram_user.get('id')
+        data = request.json
+        notification_ids = data.get('notification_ids', [])
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                if notification_ids:
+                    cur.execute("""
+                        UPDATE user_notifications
+                        SET is_read = true
+                        WHERE user_id = %s AND id = ANY(%s)
+                    """, (user_id, notification_ids))
+                else:
+                    cur.execute("""
+                        UPDATE user_notifications
+                        SET is_read = true
+                        WHERE user_id = %s
+                    """, (user_id,))
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error marking notifications read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== END SUPPORT SECTION ====================
+
+
 deposit_scheduler = None
 
 def init_deposit_scheduler():

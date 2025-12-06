@@ -5268,6 +5268,698 @@ Fin del reporte
     }
 };
 
+const SupportModule = {
+    currentTicket: null,
+    
+    init() {
+        this.bindEvents();
+        this.loadTickets();
+        this.loadFAQs();
+        this.loadMassMessages();
+    },
+    
+    bindEvents() {
+        document.getElementById('ticketStatusFilter')?.addEventListener('change', () => this.loadTickets());
+        document.getElementById('ticketSearch')?.addEventListener('input', debounce(() => this.loadTickets(), 300));
+        
+        document.getElementById('faqCategoryFilter')?.addEventListener('change', () => this.loadFAQs());
+        document.getElementById('addFaqBtn')?.addEventListener('click', () => this.showFAQModal());
+        
+        document.querySelectorAll('.mass-msg-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => this.switchMassMessageTab(e.target.dataset.tab));
+        });
+        
+        document.getElementById('sendMassMessageBtn')?.addEventListener('click', () => this.sendMassMessage());
+        document.getElementById('scheduleMassMessageBtn')?.addEventListener('click', () => this.scheduleMassMessage());
+        
+        document.getElementById('sendTicketReply')?.addEventListener('click', () => this.sendTicketReply());
+    },
+    
+    async loadTickets() {
+        const status = document.getElementById('ticketStatusFilter')?.value || 'all';
+        const search = document.getElementById('ticketSearch')?.value || '';
+        
+        try {
+            const response = await fetch(`/api/admin/support/tickets?status=${status}&search=${encodeURIComponent(search)}`, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderTicketsList(data.tickets);
+                this.updateTicketStats(data.stats);
+            }
+        } catch (error) {
+            console.error('Error loading tickets:', error);
+        }
+    },
+    
+    renderTicketsList(tickets) {
+        const container = document.getElementById('ticketsList');
+        if (!container) return;
+        
+        if (!tickets || tickets.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-ticket-alt"></i>
+                    <p>No hay tickets para mostrar</p>
+                </div>`;
+            return;
+        }
+        
+        container.innerHTML = tickets.map(ticket => `
+            <div class="ticket-item ${this.currentTicket?.id === ticket.id ? 'active' : ''}" 
+                 onclick="SupportModule.selectTicket(${ticket.id})">
+                <div class="ticket-header">
+                    <span class="ticket-id">#${ticket.id}</span>
+                    <span class="ticket-status status-${ticket.status}">${this.getStatusLabel(ticket.status)}</span>
+                </div>
+                <div class="ticket-subject">${AdminPanel.escapeHtml(ticket.subject)}</div>
+                <div class="ticket-meta">
+                    <span class="ticket-user"><i class="fas fa-user"></i> ${AdminPanel.escapeHtml(ticket.user_name || 'Usuario')}</span>
+                    <span class="ticket-date"><i class="fas fa-clock"></i> ${this.formatDate(ticket.created_at)}</span>
+                </div>
+                ${ticket.priority === 'high' ? '<span class="ticket-priority high"><i class="fas fa-exclamation-triangle"></i> Alta</span>' : ''}
+            </div>
+        `).join('');
+    },
+    
+    updateTicketStats(stats) {
+        if (!stats) return;
+        document.querySelector('.stat-open')?.textContent = stats.open || 0;
+        document.querySelector('.stat-pending')?.textContent = stats.pending || 0;
+        document.querySelector('.stat-resolved')?.textContent = stats.resolved || 0;
+        document.querySelector('.stat-avg-time')?.textContent = stats.avg_response_time || '0h';
+    },
+    
+    getStatusLabel(status) {
+        const labels = {
+            'open': 'Abierto',
+            'pending': 'Pendiente',
+            'in_progress': 'En Progreso',
+            'resolved': 'Resuelto',
+            'closed': 'Cerrado'
+        };
+        return labels[status] || status;
+    },
+    
+    formatDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diff = (now - date) / 1000;
+        
+        if (diff < 60) return 'Hace un momento';
+        if (diff < 3600) return `Hace ${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
+        if (diff < 604800) return `Hace ${Math.floor(diff / 86400)}d`;
+        
+        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    },
+    
+    async selectTicket(ticketId) {
+        try {
+            const response = await fetch(`/api/admin/support/tickets/${ticketId}`, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentTicket = data.ticket;
+                this.renderTicketDetail(data.ticket);
+                
+                document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('active'));
+                document.querySelector(`.ticket-item[onclick*="${ticketId}"]`)?.classList.add('active');
+            }
+        } catch (error) {
+            console.error('Error loading ticket detail:', error);
+        }
+    },
+    
+    renderTicketDetail(ticket) {
+        const container = document.getElementById('ticketDetail');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="ticket-detail-header">
+                <h3>${AdminPanel.escapeHtml(ticket.subject)}</h3>
+                <div class="ticket-detail-meta">
+                    <span class="ticket-status status-${ticket.status}">${this.getStatusLabel(ticket.status)}</span>
+                    <span class="ticket-priority ${ticket.priority}">${ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja'}</span>
+                </div>
+            </div>
+            
+            <div class="ticket-user-info">
+                <div class="user-avatar">
+                    ${ticket.user_photo ? `<img src="${ticket.user_photo}" alt="">` : '<i class="fas fa-user"></i>'}
+                </div>
+                <div class="user-details">
+                    <span class="user-name">${AdminPanel.escapeHtml(ticket.user_name || 'Usuario')}</span>
+                    <span class="user-id">ID: ${ticket.user_id}</span>
+                </div>
+            </div>
+            
+            <div class="ticket-messages" id="ticketMessages">
+                ${this.renderTicketMessages(ticket.messages || [])}
+            </div>
+            
+            <div class="ticket-reply-box">
+                <div class="reply-templates">
+                    <select id="replyTemplateSelect" onchange="SupportModule.applyTemplate(this.value)">
+                        <option value="">Plantilla rápida...</option>
+                    </select>
+                </div>
+                <textarea id="ticketReplyText" placeholder="Escribe tu respuesta..." rows="3"></textarea>
+                <div class="reply-actions">
+                    <select id="ticketStatusChange">
+                        <option value="">Sin cambiar estado</option>
+                        <option value="pending">Pendiente</option>
+                        <option value="in_progress">En Progreso</option>
+                        <option value="resolved">Resuelto</option>
+                        <option value="closed">Cerrado</option>
+                    </select>
+                    <button id="sendTicketReply" class="btn-primary">
+                        <i class="fas fa-paper-plane"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        this.loadResponseTemplates();
+    },
+    
+    renderTicketMessages(messages) {
+        if (!messages || messages.length === 0) {
+            return '<div class="no-messages">Sin mensajes</div>';
+        }
+        
+        return messages.map(msg => `
+            <div class="ticket-message ${msg.is_admin ? 'admin-message' : 'user-message'}">
+                <div class="message-header">
+                    <span class="message-sender">${msg.is_admin ? 'Soporte' : AdminPanel.escapeHtml(msg.sender_name || 'Usuario')}</span>
+                    <span class="message-time">${this.formatDate(msg.created_at)}</span>
+                </div>
+                <div class="message-content">${AdminPanel.escapeHtml(msg.message)}</div>
+            </div>
+        `).join('');
+    },
+    
+    async loadResponseTemplates() {
+        try {
+            const response = await fetch('/api/admin/support/templates', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                const select = document.getElementById('replyTemplateSelect');
+                if (select) {
+                    select.innerHTML = '<option value="">Plantilla rápida...</option>' +
+                        data.templates.map(t => `<option value="${t.id}">${AdminPanel.escapeHtml(t.name)}</option>`).join('');
+                }
+                this.responseTemplates = data.templates;
+            }
+        } catch (error) {
+            console.error('Error loading templates:', error);
+        }
+    },
+    
+    applyTemplate(templateId) {
+        if (!templateId) return;
+        const template = this.responseTemplates?.find(t => t.id == templateId);
+        if (template) {
+            document.getElementById('ticketReplyText').value = template.content;
+        }
+    },
+    
+    async sendTicketReply() {
+        if (!this.currentTicket) return;
+        
+        const message = document.getElementById('ticketReplyText')?.value?.trim();
+        const newStatus = document.getElementById('ticketStatusChange')?.value;
+        
+        if (!message) {
+            AdminPanel.showNotification('Escribe un mensaje', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/admin/support/tickets/${this.currentTicket.id}/reply`, {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message, status: newStatus || undefined })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Respuesta enviada', 'success');
+                document.getElementById('ticketReplyText').value = '';
+                document.getElementById('ticketStatusChange').value = '';
+                this.selectTicket(this.currentTicket.id);
+                this.loadTickets();
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al enviar', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending reply:', error);
+            AdminPanel.showNotification('Error de conexión', 'error');
+        }
+    },
+    
+    async loadFAQs() {
+        const category = document.getElementById('faqCategoryFilter')?.value || '';
+        
+        try {
+            const response = await fetch(`/api/admin/faq?category=${encodeURIComponent(category)}`, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderFAQList(data.faqs);
+            }
+        } catch (error) {
+            console.error('Error loading FAQs:', error);
+        }
+    },
+    
+    renderFAQList(faqs) {
+        const container = document.getElementById('faqList');
+        if (!container) return;
+        
+        if (!faqs || faqs.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-question-circle"></i>
+                    <p>No hay FAQs creadas</p>
+                    <button class="btn-primary" onclick="SupportModule.showFAQModal()">Crear primera FAQ</button>
+                </div>`;
+            return;
+        }
+        
+        container.innerHTML = faqs.map(faq => `
+            <div class="faq-item ${faq.is_published ? 'published' : 'draft'}">
+                <div class="faq-content">
+                    <div class="faq-question">${AdminPanel.escapeHtml(faq.question)}</div>
+                    <div class="faq-answer">${AdminPanel.escapeHtml(faq.answer).substring(0, 100)}...</div>
+                    <div class="faq-meta">
+                        <span class="faq-category">${AdminPanel.escapeHtml(faq.category)}</span>
+                        <span class="faq-status">${faq.is_published ? 'Publicada' : 'Borrador'}</span>
+                    </div>
+                </div>
+                <div class="faq-actions">
+                    <button class="btn-icon" onclick="SupportModule.editFAQ(${faq.id})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon" onclick="SupportModule.toggleFAQPublish(${faq.id}, ${!faq.is_published})" 
+                            title="${faq.is_published ? 'Despublicar' : 'Publicar'}">
+                        <i class="fas fa-${faq.is_published ? 'eye-slash' : 'eye'}"></i>
+                    </button>
+                    <button class="btn-icon danger" onclick="SupportModule.deleteFAQ(${faq.id})" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    showFAQModal(faq = null) {
+        const modal = document.getElementById('faqModal');
+        if (!modal) return;
+        
+        const form = modal.querySelector('#faqForm');
+        if (form) form.reset();
+        
+        document.getElementById('faqModalTitle').textContent = faq ? 'Editar FAQ' : 'Nueva FAQ';
+        document.getElementById('faqId').value = faq?.id || '';
+        document.getElementById('faqQuestion').value = faq?.question || '';
+        document.getElementById('faqAnswer').value = faq?.answer || '';
+        document.getElementById('faqCategory').value = faq?.category || 'general';
+        document.getElementById('faqPublished').checked = faq?.is_published ?? true;
+        
+        modal.classList.add('active');
+    },
+    
+    closeFAQModal() {
+        document.getElementById('faqModal')?.classList.remove('active');
+    },
+    
+    async saveFAQ() {
+        const id = document.getElementById('faqId')?.value;
+        const question = document.getElementById('faqQuestion')?.value?.trim();
+        const answer = document.getElementById('faqAnswer')?.value?.trim();
+        const category = document.getElementById('faqCategory')?.value;
+        const is_published = document.getElementById('faqPublished')?.checked;
+        
+        if (!question || !answer) {
+            AdminPanel.showNotification('Completa pregunta y respuesta', 'error');
+            return;
+        }
+        
+        try {
+            const url = id ? `/api/admin/faq/${id}` : '/api/admin/faq';
+            const method = id ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ question, answer, category, is_published })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification(id ? 'FAQ actualizada' : 'FAQ creada', 'success');
+                this.closeFAQModal();
+                this.loadFAQs();
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving FAQ:', error);
+            AdminPanel.showNotification('Error de conexión', 'error');
+        }
+    },
+    
+    async editFAQ(faqId) {
+        try {
+            const response = await fetch(`/api/admin/faq?id=${faqId}`, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success && data.faqs.length > 0) {
+                const faq = data.faqs.find(f => f.id == faqId);
+                if (faq) this.showFAQModal(faq);
+            }
+        } catch (error) {
+            console.error('Error loading FAQ:', error);
+        }
+    },
+    
+    async toggleFAQPublish(faqId, publish) {
+        try {
+            const response = await fetch(`/api/admin/faq/${faqId}`, {
+                method: 'PUT',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ is_published: publish })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification(publish ? 'FAQ publicada' : 'FAQ despublicada', 'success');
+                this.loadFAQs();
+            }
+        } catch (error) {
+            console.error('Error toggling FAQ:', error);
+        }
+    },
+    
+    async deleteFAQ(faqId) {
+        if (!confirm('¿Eliminar esta FAQ?')) return;
+        
+        try {
+            const response = await fetch(`/api/admin/faq/${faqId}`, {
+                method: 'DELETE',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('FAQ eliminada', 'success');
+                this.loadFAQs();
+            }
+        } catch (error) {
+            console.error('Error deleting FAQ:', error);
+        }
+    },
+    
+    switchMassMessageTab(tab) {
+        document.querySelectorAll('.mass-msg-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.mass-msg-tab[data-tab="${tab}"]`)?.classList.add('active');
+        
+        document.querySelectorAll('.mass-msg-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(`massMsg-${tab}`)?.classList.add('active');
+        
+        if (tab === 'history') {
+            this.loadMassMessages();
+        } else if (tab === 'scheduled') {
+            this.loadScheduledMessages();
+        }
+    },
+    
+    async loadMassMessages() {
+        try {
+            const response = await fetch('/api/admin/messages', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderMessageHistory(data.messages);
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        }
+    },
+    
+    renderMessageHistory(messages) {
+        const container = document.getElementById('messageHistory');
+        if (!container) return;
+        
+        if (!messages || messages.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-envelope"></i>
+                    <p>No hay mensajes enviados</p>
+                </div>`;
+            return;
+        }
+        
+        container.innerHTML = messages.map(msg => `
+            <div class="message-history-item">
+                <div class="message-header">
+                    <span class="message-title">${AdminPanel.escapeHtml(msg.title)}</span>
+                    <span class="message-status status-${msg.status}">${this.getMessageStatus(msg.status)}</span>
+                </div>
+                <div class="message-preview">${AdminPanel.escapeHtml(msg.content).substring(0, 100)}...</div>
+                <div class="message-meta">
+                    <span><i class="fas fa-users"></i> ${msg.recipients_count || 0} destinatarios</span>
+                    <span><i class="fas fa-clock"></i> ${this.formatDate(msg.created_at)}</span>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    getMessageStatus(status) {
+        const labels = {
+            'sent': 'Enviado',
+            'scheduled': 'Programado',
+            'sending': 'Enviando...',
+            'cancelled': 'Cancelado'
+        };
+        return labels[status] || status;
+    },
+    
+    async loadScheduledMessages() {
+        try {
+            const response = await fetch('/api/admin/messages/scheduled', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderScheduledMessages(data.messages);
+            }
+        } catch (error) {
+            console.error('Error loading scheduled messages:', error);
+        }
+    },
+    
+    renderScheduledMessages(messages) {
+        const container = document.getElementById('scheduledMessages');
+        if (!container) return;
+        
+        if (!messages || messages.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-calendar-alt"></i>
+                    <p>No hay mensajes programados</p>
+                </div>`;
+            return;
+        }
+        
+        container.innerHTML = messages.map(msg => `
+            <div class="scheduled-message-item">
+                <div class="message-info">
+                    <div class="message-title">${AdminPanel.escapeHtml(msg.title)}</div>
+                    <div class="message-scheduled-time">
+                        <i class="fas fa-calendar"></i> 
+                        ${new Date(msg.scheduled_at).toLocaleString('es-ES')}
+                    </div>
+                </div>
+                <button class="btn-danger-sm" onclick="SupportModule.cancelScheduledMessage(${msg.id})">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        `).join('');
+    },
+    
+    async sendMassMessage() {
+        const title = document.getElementById('massMessageTitle')?.value?.trim();
+        const content = document.getElementById('massMessageContent')?.value?.trim();
+        const targetGroup = document.getElementById('massMessageTarget')?.value;
+        const messageType = document.getElementById('massMessageType')?.value;
+        
+        if (!title || !content) {
+            AdminPanel.showNotification('Completa título y contenido', 'error');
+            return;
+        }
+        
+        if (!confirm('¿Enviar mensaje a todos los usuarios seleccionados?')) return;
+        
+        try {
+            const response = await fetch('/api/admin/messages', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    target_group: targetGroup,
+                    message_type: messageType,
+                    send_type: 'now'
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification(`Mensaje enviado a ${data.recipients_count} usuarios`, 'success');
+                document.getElementById('massMessageTitle').value = '';
+                document.getElementById('massMessageContent').value = '';
+                this.loadMassMessages();
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al enviar', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            AdminPanel.showNotification('Error de conexión', 'error');
+        }
+    },
+    
+    async scheduleMassMessage() {
+        const title = document.getElementById('massMessageTitle')?.value?.trim();
+        const content = document.getElementById('massMessageContent')?.value?.trim();
+        const targetGroup = document.getElementById('massMessageTarget')?.value;
+        const messageType = document.getElementById('massMessageType')?.value;
+        const scheduledAt = document.getElementById('massMessageScheduleTime')?.value;
+        
+        if (!title || !content) {
+            AdminPanel.showNotification('Completa título y contenido', 'error');
+            return;
+        }
+        
+        if (!scheduledAt) {
+            AdminPanel.showNotification('Selecciona fecha y hora', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/admin/messages', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    target_group: targetGroup,
+                    message_type: messageType,
+                    send_type: 'scheduled',
+                    scheduled_at: scheduledAt
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Mensaje programado correctamente', 'success');
+                document.getElementById('massMessageTitle').value = '';
+                document.getElementById('massMessageContent').value = '';
+                document.getElementById('massMessageScheduleTime').value = '';
+                this.switchMassMessageTab('scheduled');
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al programar', 'error');
+            }
+        } catch (error) {
+            console.error('Error scheduling message:', error);
+            AdminPanel.showNotification('Error de conexión', 'error');
+        }
+    },
+    
+    async cancelScheduledMessage(messageId) {
+        if (!confirm('¿Cancelar este mensaje programado?')) return;
+        
+        try {
+            const response = await fetch(`/api/admin/messages/${messageId}/cancel`, {
+                method: 'POST',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Mensaje cancelado', 'success');
+                this.loadScheduledMessages();
+            }
+        } catch (error) {
+            console.error('Error cancelling message:', error);
+        }
+    }
+};
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     AdminPanel.init();
+    
+    const supportNav = document.querySelector('[data-section="support"]');
+    if (supportNav) {
+        supportNav.addEventListener('click', () => {
+            setTimeout(() => SupportModule.init(), 100);
+        });
+    }
+    
+    const faqNav = document.querySelector('[data-section="faq"]');
+    if (faqNav) {
+        faqNav.addEventListener('click', () => {
+            setTimeout(() => SupportModule.loadFAQs(), 100);
+        });
+    }
+    
+    const massMessagesNav = document.querySelector('[data-section="massmessages"]');
+    if (massMessagesNav) {
+        massMessagesNav.addEventListener('click', () => {
+            setTimeout(() => SupportModule.loadMassMessages(), 100);
+        });
+    }
 });
