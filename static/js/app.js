@@ -1325,8 +1325,8 @@ const App = {
             case 'marketplace':
                 this.showPage('marketplace');
                 break;
-            case 'bots':
-                this.showPage('bots');
+            case 'ai-chat':
+                this.showPage('ai-chat');
                 break;
             case 'wallet':
                 this.showPage('wallet');
@@ -1346,7 +1346,7 @@ const App = {
         const labels = {
             'home': 'Inicio',
             'marketplace': 'Tienda',
-            'bots': 'Bots',
+            'ai-chat': 'Asistente IA',
             'notifications': 'Notificaciones',
             'wallet': 'Billetera',
             'profile': 'Mi perfil'
@@ -1483,6 +1483,12 @@ const App = {
         
         if (pageName === 'profile') {
             this.showProfileSkeleton();
+        }
+        
+        if (pageName === 'ai-chat') {
+            if (typeof AIChat !== 'undefined') {
+                AIChat.init();
+            }
         }
         
         this.updateFloatingButtonVisibility(pageName);

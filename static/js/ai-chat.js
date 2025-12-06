@@ -2,11 +2,56 @@ const AIChat = {
     isOpen: false,
     messages: [],
     isLoading: false,
+    isPageMode: false,
     
     init() {
-        this.createChatWidget();
-        this.bindEvents();
+        const pageContainer = document.getElementById('ai-chat-screen');
+        if (pageContainer && !pageContainer.classList.contains('hidden')) {
+            this.isPageMode = true;
+            this.initPageMode();
+        } else {
+            this.isPageMode = false;
+            this.initWidgetMode();
+        }
         this.loadHistory();
+    },
+    
+    initPageMode() {
+        const input = document.getElementById('ai-chat-input');
+        const send = document.getElementById('ai-chat-send');
+        
+        if (!input || !send) return;
+        
+        input.removeEventListener('input', this.handleInputChange);
+        input.removeEventListener('keydown', this.handleKeyDown);
+        send.removeEventListener('click', this.handleSendClick);
+        
+        this.handleInputChange = () => {
+            send.disabled = !input.value.trim();
+            this.autoResize(input);
+        };
+        
+        this.handleKeyDown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        };
+        
+        this.handleSendClick = () => this.sendMessage();
+        
+        input.addEventListener('input', this.handleInputChange);
+        input.addEventListener('keydown', this.handleKeyDown);
+        send.addEventListener('click', this.handleSendClick);
+        
+        input.focus();
+    },
+    
+    initWidgetMode() {
+        if (document.getElementById('ai-chat-widget')) return;
+        
+        this.createChatWidget();
+        this.bindWidgetEvents();
     },
     
     createChatWidget() {
@@ -19,7 +64,7 @@ const AIChat = {
                 </svg>
                 <span class="ai-badge">AI</span>
             </button>
-            <div class="ai-chat-container hidden" id="ai-chat-container">
+            <div class="ai-chat-container-widget hidden" id="ai-chat-container-widget">
                 <div class="ai-chat-header">
                     <div class="ai-chat-title">
                         <span class="ai-icon">🤖</span>
@@ -40,7 +85,7 @@ const AIChat = {
                         </button>
                     </div>
                 </div>
-                <div class="ai-chat-messages" id="ai-chat-messages">
+                <div class="ai-chat-messages-widget" id="ai-chat-messages-widget">
                     <div class="ai-welcome-message">
                         <div class="ai-avatar">🤖</div>
                         <div class="ai-bubble">
@@ -59,8 +104,8 @@ const AIChat = {
                 <div class="ai-chat-input-area">
                     <div class="ai-provider-indicator" id="ai-provider-indicator"></div>
                     <div class="ai-input-wrapper">
-                        <textarea id="ai-chat-input" placeholder="Escribe tu mensaje..." rows="1"></textarea>
-                        <button class="ai-send-btn" id="ai-send-btn" disabled>
+                        <textarea id="ai-chat-input-widget" placeholder="Escribe tu mensaje..." rows="1"></textarea>
+                        <button class="ai-send-btn" id="ai-send-btn-widget" disabled>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                                 <line x1="22" y1="2" x2="11" y2="13"></line>
                                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -73,30 +118,34 @@ const AIChat = {
         document.body.appendChild(widget);
     },
     
-    bindEvents() {
+    bindWidgetEvents() {
         const toggle = document.getElementById('ai-chat-toggle');
         const close = document.getElementById('ai-close-btn');
         const clear = document.getElementById('ai-clear-btn');
-        const input = document.getElementById('ai-chat-input');
-        const send = document.getElementById('ai-send-btn');
+        const input = document.getElementById('ai-chat-input-widget');
+        const send = document.getElementById('ai-send-btn-widget');
+        
+        if (!toggle) return;
         
         toggle.addEventListener('click', () => this.toggle());
-        close.addEventListener('click', () => this.close());
-        clear.addEventListener('click', () => this.clearChat());
+        if (close) close.addEventListener('click', () => this.close());
+        if (clear) clear.addEventListener('click', () => this.clearChat());
         
-        input.addEventListener('input', () => {
-            send.disabled = !input.value.trim();
-            this.autoResize(input);
-        });
+        if (input) {
+            input.addEventListener('input', () => {
+                if (send) send.disabled = !input.value.trim();
+                this.autoResize(input);
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+        }
         
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
-        
-        send.addEventListener('click', () => this.sendMessage());
+        if (send) send.addEventListener('click', () => this.sendMessage());
     },
     
     autoResize(textarea) {
@@ -106,23 +155,54 @@ const AIChat = {
     
     toggle() {
         this.isOpen = !this.isOpen;
-        const container = document.getElementById('ai-chat-container');
+        const container = document.getElementById('ai-chat-container-widget');
         const toggle = document.getElementById('ai-chat-toggle');
         
         if (this.isOpen) {
-            container.classList.remove('hidden');
-            toggle.classList.add('active');
-            document.getElementById('ai-chat-input').focus();
+            if (container) container.classList.remove('hidden');
+            if (toggle) toggle.classList.add('active');
+            const input = document.getElementById('ai-chat-input-widget');
+            if (input) input.focus();
         } else {
-            container.classList.add('hidden');
-            toggle.classList.remove('active');
+            if (container) container.classList.add('hidden');
+            if (toggle) toggle.classList.remove('active');
         }
     },
     
     close() {
         this.isOpen = false;
-        document.getElementById('ai-chat-container').classList.add('hidden');
-        document.getElementById('ai-chat-toggle').classList.remove('active');
+        const container = document.getElementById('ai-chat-container-widget');
+        const toggle = document.getElementById('ai-chat-toggle');
+        if (container) container.classList.add('hidden');
+        if (toggle) toggle.classList.remove('active');
+    },
+    
+    getMessagesContainer() {
+        if (this.isPageMode) {
+            return document.getElementById('ai-chat-messages');
+        }
+        return document.getElementById('ai-chat-messages-widget');
+    },
+    
+    getInput() {
+        if (this.isPageMode) {
+            return document.getElementById('ai-chat-input');
+        }
+        return document.getElementById('ai-chat-input-widget');
+    },
+    
+    getSendButton() {
+        if (this.isPageMode) {
+            return document.getElementById('ai-chat-send');
+        }
+        return document.getElementById('ai-send-btn-widget');
+    },
+    
+    getProviderIndicator() {
+        if (this.isPageMode) {
+            return document.getElementById('ai-provider-info');
+        }
+        return document.getElementById('ai-provider-indicator');
     },
     
     async loadHistory() {
@@ -136,8 +216,10 @@ const AIChat = {
             }
             
             if (data.providers && data.providers.length > 0) {
-                const indicator = document.getElementById('ai-provider-indicator');
-                indicator.textContent = `Powered by: ${data.providers.join(', ')}`;
+                const indicator = this.getProviderIndicator();
+                if (indicator) {
+                    indicator.innerHTML = `<span class="provider-label">Powered by: ${data.providers.join(', ')}</span>`;
+                }
             }
         } catch (error) {
             console.error('Error loading AI history:', error);
@@ -145,23 +227,27 @@ const AIChat = {
     },
     
     renderMessages() {
-        const container = document.getElementById('ai-chat-messages');
-        const welcomeMsg = container.querySelector('.ai-welcome-message');
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        const welcomeMsg = container.querySelector('.ai-welcome-message, .ai-chat-welcome');
         
         if (this.messages.length > 0 && welcomeMsg) {
             welcomeMsg.style.display = 'none';
         }
         
         this.messages.forEach(msg => {
-            if (!document.querySelector(`[data-msg-id="${msg.id || msg.content.substring(0, 20)}"]`)) {
+            if (!container.querySelector(`[data-msg-id="${msg.id || msg.content.substring(0, 20)}"]`)) {
                 this.appendMessage(msg.role, msg.content, false);
             }
         });
     },
     
     appendMessage(role, content, save = true) {
-        const container = document.getElementById('ai-chat-messages');
-        const welcomeMsg = container.querySelector('.ai-welcome-message');
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        const welcomeMsg = container.querySelector('.ai-welcome-message, .ai-chat-welcome');
         if (welcomeMsg) welcomeMsg.style.display = 'none';
         
         const msgDiv = document.createElement('div');
@@ -170,7 +256,11 @@ const AIChat = {
         
         if (role === 'assistant') {
             msgDiv.innerHTML = `
-                <div class="ai-avatar">🤖</div>
+                <div class="ai-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                        <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3v-2a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+                    </svg>
+                </div>
                 <div class="ai-bubble">${this.formatMessage(content)}</div>
             `;
         } else {
@@ -204,12 +294,18 @@ const AIChat = {
     },
     
     showTyping() {
-        const container = document.getElementById('ai-chat-messages');
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
         const typing = document.createElement('div');
         typing.className = 'ai-message ai-message-assistant ai-typing';
         typing.id = 'ai-typing-indicator';
         typing.innerHTML = `
-            <div class="ai-avatar">🤖</div>
+            <div class="ai-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3v-2a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+                </svg>
+            </div>
             <div class="ai-bubble">
                 <div class="ai-typing-dots">
                     <span></span><span></span><span></span>
@@ -226,7 +322,11 @@ const AIChat = {
     },
     
     async sendMessage() {
-        const input = document.getElementById('ai-chat-input');
+        const input = this.getInput();
+        const send = this.getSendButton();
+        
+        if (!input) return;
+        
         const message = input.value.trim();
         
         if (!message || this.isLoading) return;
@@ -234,7 +334,7 @@ const AIChat = {
         this.isLoading = true;
         input.value = '';
         input.style.height = 'auto';
-        document.getElementById('ai-send-btn').disabled = true;
+        if (send) send.disabled = true;
         
         this.appendMessage('user', message);
         this.showTyping();
@@ -253,8 +353,10 @@ const AIChat = {
                 this.appendMessage('assistant', data.response);
                 
                 if (data.provider) {
-                    const indicator = document.getElementById('ai-provider-indicator');
-                    indicator.textContent = `Respondido por: ${data.provider}`;
+                    const indicator = this.getProviderIndicator();
+                    if (indicator) {
+                        indicator.innerHTML = `<span class="provider-label">Respondido por: ${data.provider}</span>`;
+                    }
                 }
             } else {
                 this.appendMessage('assistant', data.error || 'Error al procesar tu mensaje. Intenta de nuevo.');
@@ -275,15 +377,20 @@ const AIChat = {
             await fetch('/api/ai/clear', { method: 'POST' });
             this.messages = [];
             
-            const container = document.getElementById('ai-chat-messages');
-            container.innerHTML = `
-                <div class="ai-welcome-message">
-                    <div class="ai-avatar">🤖</div>
-                    <div class="ai-bubble">
-                        <p>Chat limpiado. Como puedo ayudarte?</p>
+            const container = this.getMessagesContainer();
+            if (container) {
+                container.innerHTML = `
+                    <div class="ai-chat-welcome">
+                        <div class="ai-avatar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+                                <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3v-2a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+                            </svg>
+                        </div>
+                        <h3>Chat limpiado</h3>
+                        <p>Como puedo ayudarte?</p>
                     </div>
-                </div>
-            `;
+                `;
+            }
         } catch (error) {
             console.error('Error clearing chat:', error);
         }

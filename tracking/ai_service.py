@@ -1,6 +1,6 @@
 """
 AI Service - Multi-provider AI chat service with automatic fallback
-Supports: Hugging Face, Groq, Google Gemini, Cerebras
+Supports: DeepSeek, Groq, Google Gemini, Cerebras, Hugging Face
 All providers offer free tiers
 """
 
@@ -228,6 +228,51 @@ class CerebrasProvider(AIProvider):
             return {"success": False, "error": str(e), "provider": self.name}
 
 
+class DeepSeekProvider(AIProvider):
+    """DeepSeek API - High quality, affordable, OpenAI-compatible"""
+    
+    def __init__(self, api_key: str):
+        super().__init__(api_key)
+        self.name = "deepseek"
+        self.model = "deepseek-chat"
+        self.base_url = "https://api.deepseek.com/chat/completions"
+    
+    def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
+        try:
+            import requests
+            
+            chat_messages = []
+            if system_prompt:
+                chat_messages.append({"role": "system", "content": system_prompt})
+            chat_messages.extend(messages)
+            
+            response = requests.post(
+                self.base_url,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.model,
+                    "messages": chat_messages,
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                },
+                timeout=60
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                return {"success": True, "response": text, "provider": self.name}
+            else:
+                return {"success": False, "error": f"HTTP {response.status_code}", "provider": self.name}
+                
+        except Exception as e:
+            logger.error(f"DeepSeek error: {e}")
+            return {"success": False, "error": str(e), "provider": self.name}
+
+
 class AIService:
     """
     Multi-provider AI service with automatic fallback
@@ -254,6 +299,11 @@ Si no sabes algo, admítelo honestamente."""
     
     def _initialize_providers(self):
         """Initialize all available AI providers"""
+        
+        deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
+        if deepseek_key:
+            self.providers.append(DeepSeekProvider(deepseek_key))
+            logger.info("DeepSeek provider initialized")
         
         groq_key = os.environ.get('GROQ_API_KEY', '')
         if groq_key:
