@@ -1575,6 +1575,8 @@ const AdminPanel = {
     },
     
     async loadContent() {
+        this.setupContentTabs();
+        
         try {
             const response = await this.fetchAPI('/api/admin/content/stats');
             
@@ -1582,13 +1584,61 @@ const AdminPanel = {
                 document.getElementById('totalPosts').textContent = this.formatNumber(response.totalPosts || 0);
                 document.getElementById('postsToday').textContent = this.formatNumber(response.postsToday || 0);
                 document.getElementById('totalMedia').textContent = this.formatNumber(response.totalMedia || 0);
+                document.getElementById('totalStories').textContent = this.formatNumber(response.totalStories || 0);
+                document.getElementById('reportedPostsCount').textContent = this.formatNumber(response.reportedPosts || 0);
             }
             
+            await this.loadContentPosts();
+        } catch (error) {
+            console.error('Error loading content:', error);
+        }
+    },
+    
+    setupContentTabs() {
+        document.querySelectorAll('.content-tabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.content-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const tabName = btn.dataset.contentTab;
+                
+                document.querySelectorAll('.content-tab-panel').forEach(panel => {
+                    panel.style.display = 'none';
+                    panel.classList.remove('active');
+                });
+                
+                const targetPanel = document.getElementById(`contentTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+                if (targetPanel) {
+                    targetPanel.style.display = 'block';
+                    targetPanel.classList.add('active');
+                }
+                
+                switch(tabName) {
+                    case 'posts':
+                        this.loadContentPosts();
+                        break;
+                    case 'reported':
+                        this.loadReportedContent();
+                        break;
+                    case 'stories':
+                        this.loadStories();
+                        break;
+                    case 'hashtags':
+                        this.loadHashtags();
+                        break;
+                }
+            });
+        });
+    },
+    
+    async loadContentPosts() {
+        const tbody = document.getElementById('contentTableBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando contenido...</td></tr>';
+        
+        try {
             const postsResponse = await this.fetchAPI('/api/admin/content/posts?limit=50');
             
             if (postsResponse.success && postsResponse.posts) {
-                const tbody = document.getElementById('contentTableBody');
-                
                 if (postsResponse.posts.length === 0) {
                     tbody.innerHTML = '<tr class="loading-row"><td colspan="8">No hay publicaciones</td></tr>';
                     return;
@@ -1606,6 +1656,7 @@ const AdminPanel = {
                         <td>
                             <div class="action-btns">
                                 <button class="action-btn" onclick="AdminPanel.viewPost(${post.id})">Ver</button>
+                                <button class="action-btn warning" onclick="AdminPanel.warnPostAuthor(${post.id})">Advertir</button>
                                 <button class="action-btn danger" onclick="AdminPanel.deletePost(${post.id})">Eliminar</button>
                             </div>
                         </td>
@@ -1613,7 +1664,261 @@ const AdminPanel = {
                 `).join('');
             }
         } catch (error) {
-            console.error('Error loading content:', error);
+            console.error('Error loading posts:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Error al cargar publicaciones</td></tr>';
+        }
+    },
+    
+    async loadReportedContent() {
+        const container = document.getElementById('reportedContentList');
+        container.innerHTML = '<div class="empty-state">Cargando contenido reportado...</div>';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/content/reported');
+            
+            if (response.success && response.posts) {
+                if (response.posts.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No hay contenido reportado</div>';
+                    return;
+                }
+                
+                container.innerHTML = response.posts.map(post => `
+                    <div class="report-item">
+                        <div class="report-content">
+                            <div class="report-header">
+                                <strong>Publicacion #${post.id}</strong>
+                                <span class="status-badge warning">${post.report_count || 0} reportes</span>
+                            </div>
+                            <p>${this.escapeHtml((post.caption || 'Sin texto').slice(0, 100))}...</p>
+                            <div class="report-meta">
+                                <span>Autor: @${this.escapeHtml(post.username || 'N/A')}</span>
+                                <span>Tipo: ${post.content_type}</span>
+                                <span>${this.formatDate(post.created_at)}</span>
+                            </div>
+                        </div>
+                        <div class="report-actions">
+                            <button class="action-btn" onclick="AdminPanel.viewPost(${post.id})">Ver</button>
+                            <button class="action-btn warning" onclick="AdminPanel.warnPostAuthor(${post.id})">Advertir</button>
+                            <button class="action-btn danger" onclick="AdminPanel.deletePost(${post.id})">Eliminar</button>
+                            <button class="action-btn danger" onclick="AdminPanel.banPostAuthor(${post.id})">Banear Autor</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading reported content:', error);
+            container.innerHTML = '<div class="empty-state">Error al cargar contenido reportado</div>';
+        }
+    },
+    
+    async loadStories() {
+        const tbody = document.getElementById('storiesTableBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando stories...</td></tr>';
+        
+        try {
+            const status = document.getElementById('storiesStatusFilter')?.value || 'active';
+            const response = await this.fetchAPI(`/api/admin/stories?status=${status}`);
+            
+            if (response.success && response.stories) {
+                if (response.stories.length === 0) {
+                    tbody.innerHTML = '<tr class="loading-row"><td colspan="7">No hay stories</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = response.stories.map(story => `
+                    <tr>
+                        <td>${story.id}</td>
+                        <td>@${this.escapeHtml(story.username || 'N/A')}</td>
+                        <td>${story.media_type || 'image'}</td>
+                        <td>${story.views_count || 0}</td>
+                        <td>${this.formatDateTime(story.expires_at)}</td>
+                        <td>
+                            <span class="status-badge ${story.is_active ? 'active' : 'inactive'}">
+                                ${story.is_active ? 'Activa' : 'Expirada'}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn danger" onclick="AdminPanel.deleteStory(${story.id})">Eliminar</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading stories:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Error al cargar stories</td></tr>';
+        }
+    },
+    
+    async loadHashtags() {
+        const tbody = document.getElementById('hashtagsTableBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando hashtags...</td></tr>';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/hashtags');
+            
+            if (response.success && response.hashtags) {
+                if (response.hashtags.length === 0) {
+                    tbody.innerHTML = '<tr class="loading-row"><td colspan="5">No hay hashtags</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = response.hashtags.map(tag => `
+                    <tr>
+                        <td>${tag.id}</td>
+                        <td>#${this.escapeHtml(tag.name)}</td>
+                        <td>${tag.usage_count || 0}</td>
+                        <td>
+                            <span class="status-badge ${tag.is_blocked ? 'danger' : (tag.is_promoted ? 'success' : 'active')}">
+                                ${tag.is_blocked ? 'Bloqueado' : (tag.is_promoted ? 'Promovido' : 'Activo')}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                ${tag.is_blocked 
+                                    ? `<button class="action-btn success" onclick="AdminPanel.unblockHashtag(${tag.id})">Desbloquear</button>`
+                                    : `<button class="action-btn danger" onclick="AdminPanel.blockHashtag(${tag.id})">Bloquear</button>`
+                                }
+                                ${!tag.is_blocked && !tag.is_promoted 
+                                    ? `<button class="action-btn" onclick="AdminPanel.promoteHashtag(${tag.id})">Promover</button>`
+                                    : ''
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading hashtags:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Error al cargar hashtags</td></tr>';
+        }
+    },
+    
+    async warnPostAuthor(postId) {
+        const reason = prompt('Ingrese el motivo de la advertencia:');
+        if (!reason) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/content/posts/${postId}/warn`, {
+                method: 'POST',
+                body: JSON.stringify({ reason })
+            });
+            
+            if (response.success) {
+                this.showToast('Advertencia enviada al autor', 'success');
+            } else {
+                this.showToast(response.error || 'Error al enviar advertencia', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al enviar advertencia', 'error');
+        }
+    },
+    
+    async banPostAuthor(postId) {
+        if (!confirm('Esta accion baneara permanentemente al autor de esta publicacion. Esta seguro?')) {
+            return;
+        }
+        
+        const reason = prompt('Ingrese el motivo del ban:');
+        if (!reason) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/content/posts/${postId}/ban-author`, {
+                method: 'POST',
+                body: JSON.stringify({ reason })
+            });
+            
+            if (response.success) {
+                this.showToast('Autor baneado exitosamente', 'success');
+                this.loadReportedContent();
+            } else {
+                this.showToast(response.error || 'Error al banear autor', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al banear autor', 'error');
+        }
+    },
+    
+    async deleteStory(storyId) {
+        if (!confirm('Esta seguro de eliminar esta story?')) {
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/stories/${storyId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Story eliminada', 'success');
+                this.loadStories();
+            } else {
+                this.showToast(response.error || 'Error al eliminar story', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al eliminar story', 'error');
+        }
+    },
+    
+    async blockHashtag(hashtagId) {
+        if (!confirm('Esta seguro de bloquear este hashtag?')) {
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/hashtags/${hashtagId}/block`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Hashtag bloqueado', 'success');
+                this.loadHashtags();
+            } else {
+                this.showToast(response.error || 'Error al bloquear hashtag', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al bloquear hashtag', 'error');
+        }
+    },
+    
+    async unblockHashtag(hashtagId) {
+        try {
+            const response = await this.fetchAPI(`/api/admin/hashtags/${hashtagId}/unblock`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Hashtag desbloqueado', 'success');
+                this.loadHashtags();
+            } else {
+                this.showToast(response.error || 'Error al desbloquear hashtag', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al desbloquear hashtag', 'error');
+        }
+    },
+    
+    async promoteHashtag(hashtagId) {
+        try {
+            const response = await this.fetchAPI(`/api/admin/hashtags/${hashtagId}/promote`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Hashtag promovido', 'success');
+                this.loadHashtags();
+            } else {
+                this.showToast(response.error || 'Error al promover hashtag', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al promover hashtag', 'error');
         }
     },
     

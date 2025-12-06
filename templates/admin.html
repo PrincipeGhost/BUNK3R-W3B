@@ -1194,28 +1194,138 @@
                             <span class="stat-value" id="totalMedia">0</span>
                             <span class="stat-label">Archivos Media</span>
                         </div>
+                        <div class="content-stat">
+                            <span class="stat-value" id="totalStories">0</span>
+                            <span class="stat-label">Stories Activas</span>
+                        </div>
+                        <div class="content-stat">
+                            <span class="stat-value" id="reportedPostsCount">0</span>
+                            <span class="stat-label">Reportados</span>
+                        </div>
                     </div>
                     
-                    <div class="data-table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Usuario</th>
-                                    <th>Tipo</th>
-                                    <th>Preview</th>
-                                    <th>Reacciones</th>
-                                    <th>Comentarios</th>
-                                    <th>Fecha</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="contentTableBody">
-                                <tr class="loading-row">
-                                    <td colspan="8">Cargando contenido...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="content-tabs">
+                        <button class="tab-btn active" data-content-tab="posts">Todas las Publicaciones</button>
+                        <button class="tab-btn" data-content-tab="reported">Contenido Reportado</button>
+                        <button class="tab-btn" data-content-tab="stories">Stories</button>
+                        <button class="tab-btn" data-content-tab="hashtags">Hashtags</button>
+                    </div>
+                    
+                    <div id="contentTabPosts" class="content-tab-panel active">
+                        <div class="section-toolbar">
+                            <div class="toolbar-left">
+                                <div class="search-box">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input type="text" id="contentSearch" placeholder="Buscar publicaciones...">
+                                </div>
+                                <select id="contentTypeFilter">
+                                    <option value="">Todos los tipos</option>
+                                    <option value="image">Imagenes</option>
+                                    <option value="video">Videos</option>
+                                    <option value="text">Texto</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>Tipo</th>
+                                        <th>Preview</th>
+                                        <th>Reacciones</th>
+                                        <th>Comentarios</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contentTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="8">Cargando contenido...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div id="contentTabReported" class="content-tab-panel" style="display: none;">
+                        <div class="reported-list" id="reportedContentList">
+                            <div class="empty-state">Cargando contenido reportado...</div>
+                        </div>
+                    </div>
+                    
+                    <div id="contentTabStories" class="content-tab-panel" style="display: none;">
+                        <div class="section-toolbar">
+                            <div class="toolbar-left">
+                                <select id="storiesStatusFilter">
+                                    <option value="active">Activas</option>
+                                    <option value="all">Todas</option>
+                                    <option value="expired">Expiradas</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>Tipo</th>
+                                        <th>Vistas</th>
+                                        <th>Expira</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="storiesTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="7">Cargando stories...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div id="contentTabHashtags" class="content-tab-panel" style="display: none;">
+                        <div class="section-toolbar">
+                            <div class="toolbar-left">
+                                <div class="search-box">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input type="text" id="hashtagSearch" placeholder="Buscar hashtags...">
+                                </div>
+                                <select id="hashtagStatusFilter">
+                                    <option value="">Todos</option>
+                                    <option value="active">Activos</option>
+                                    <option value="blocked">Bloqueados</option>
+                                    <option value="promoted">Promovidos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Hashtag</th>
+                                        <th>Usos</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hashtagsTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="5">Cargando hashtags...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
                 

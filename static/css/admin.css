@@ -1159,6 +1159,48 @@
     margin-top: 5px;
 }
 
+/* Content Tabs */
+.content-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.content-tab-panel {
+    display: none;
+}
+
+.content-tab-panel.active {
+    display: block;
+}
+
+.action-btn.warning {
+    background: rgba(243, 156, 18, 0.1);
+    color: #f39c12;
+    border: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+.action-btn.warning:hover {
+    background: rgba(243, 156, 18, 0.2);
+}
+
+.action-btn.success {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+    border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+.action-btn.success:hover {
+    background: rgba(39, 174, 96, 0.2);
+}
+
+.reported-list {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    min-height: 300px;
+}
+
 /* Reports */
 .reports-tabs {
     display: flex;

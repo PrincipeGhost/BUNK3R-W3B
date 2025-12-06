@@ -6724,7 +6724,9 @@ def admin_content_stats():
                 'success': True,
                 'totalPosts': 0,
                 'postsToday': 0,
-                'totalMedia': 0
+                'totalMedia': 0,
+                'totalStories': 0,
+                'reportedPosts': 0
             })
         
         with db_manager.get_connection() as conn:
@@ -6743,12 +6745,34 @@ def admin_content_stats():
                     WHERE is_active = true AND content_type IN ('image', 'video')
                 """)
                 total_media = cur.fetchone()[0] or 0
+                
+                total_stories = 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(*) FROM stories 
+                        WHERE is_active = true AND expires_at > NOW()
+                    """)
+                    total_stories = cur.fetchone()[0] or 0
+                except:
+                    pass
+                
+                reported_posts = 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT post_id) FROM reports 
+                        WHERE status = 'pending' AND post_id IS NOT NULL
+                    """)
+                    reported_posts = cur.fetchone()[0] or 0
+                except:
+                    pass
         
         return jsonify({
             'success': True,
             'totalPosts': total_posts,
             'postsToday': posts_today,
-            'totalMedia': total_media
+            'totalMedia': total_media,
+            'totalStories': total_stories,
+            'reportedPosts': reported_posts
         })
         
     except Exception as e:
@@ -6757,7 +6781,9 @@ def admin_content_stats():
             'success': True,
             'totalPosts': 0,
             'postsToday': 0,
-            'totalMedia': 0
+            'totalMedia': 0,
+            'totalStories': 0,
+            'reportedPosts': 0
         })
 
 
