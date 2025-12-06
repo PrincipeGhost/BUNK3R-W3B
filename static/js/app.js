@@ -1691,19 +1691,7 @@ const App = {
             return;
         }
         
-        this.hideAllScreens();
-        document.getElementById('admin-screen')?.classList.remove('hidden');
-        
-        if (this.tg && this.tg.BackButton) {
-            this.tg.BackButton.show();
-        }
-        
-        this.currentSection = 'admin';
-        if (typeof StateManager !== 'undefined') {
-            StateManager.setSection('admin');
-        }
-        
-        this.loadAdminStats();
+        window.location.href = '/admin';
     },
     
     async loadSettingsSecurityStatus() {
