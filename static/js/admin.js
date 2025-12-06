@@ -683,7 +683,7 @@ const AdminPanel = {
         try {
             const [hotWallet, poolStats, depositWallets] = await Promise.all([
                 this.fetchAPI('/api/admin/wallets/hot'),
-                this.fetchAPI('/api/b3c/wallet-pool/stats'),
+                this.fetchAPI('/api/admin/wallet-pool/stats'),
                 this.fetchAPI('/api/admin/wallets/deposits')
             ]);
             
@@ -739,13 +739,13 @@ const AdminPanel = {
     
     async fillWalletPool() {
         try {
-            const response = await this.fetchAPI('/api/b3c/wallet-pool/fill', {
+            const response = await this.fetchAPI('/api/admin/wallets/fill-pool', {
                 method: 'POST',
-                body: JSON.stringify({ minSize: 10 })
+                body: JSON.stringify({ count: 10 })
             });
             
             if (response.success) {
-                this.showToast(`Pool rellenado: ${response.walletsAdded} wallets agregadas`, 'success');
+                this.showToast(`Pool rellenado: ${response.created} wallets creadas`, 'success');
                 this.loadWallets();
             } else {
                 this.showToast(response.error || 'Error al rellenar pool', 'error');
@@ -760,12 +760,12 @@ const AdminPanel = {
         if (!confirm('¿Consolidar fondos de todas las wallets a la hot wallet?')) return;
         
         try {
-            const response = await this.fetchAPI('/api/b3c/wallet-pool/consolidate', {
+            const response = await this.fetchAPI('/api/admin/wallets/consolidate', {
                 method: 'POST'
             });
             
             if (response.success) {
-                this.showToast('Consolidación iniciada', 'success');
+                this.showToast(`Consolidación completada: ${response.consolidated} wallets, ${response.totalAmount} TON`, 'success');
                 this.loadWallets();
             } else {
                 this.showToast(response.error || 'Error al consolidar', 'error');
@@ -918,6 +918,91 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error:', error);
             this.showToast('Error al actualizar reporte', 'error');
+        }
+    },
+    
+    async viewPost(postId) {
+        const modal = document.getElementById('userDetailModal');
+        const content = document.getElementById('userDetailContent');
+        
+        content.innerHTML = 'Cargando publicación...';
+        modal.classList.add('active');
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/content/posts?limit=100`);
+            
+            if (response.success && response.posts) {
+                const post = response.posts.find(p => p.id === postId);
+                
+                if (post) {
+                    content.innerHTML = `
+                        <div class="user-detail-header">
+                            <h3>Publicación #${post.id}</h3>
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label>Autor</label>
+                                <div class="value">@${this.escapeHtml(post.username || 'N/A')}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Tipo</label>
+                                <div class="value">${post.content_type}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Reacciones</label>
+                                <div class="value">${post.reactions_count || 0}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Comentarios</label>
+                                <div class="value">${post.comments_count || 0}</div>
+                            </div>
+                            <div class="detail-item" style="grid-column: 1 / -1;">
+                                <label>Caption</label>
+                                <div class="value" style="white-space: pre-wrap;">${this.escapeHtml(post.caption || 'Sin texto')}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Fecha</label>
+                                <div class="value">${this.formatDateTime(post.created_at)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Estado</label>
+                                <div class="value">${post.is_active ? 'Activo' : 'Eliminado'}</div>
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn-secondary" onclick="AdminPanel.deletePost(${post.id})">Eliminar Publicación</button>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = '<div class="empty-state">Publicación no encontrada</div>';
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            content.innerHTML = '<div class="empty-state">Error al cargar publicación</div>';
+        }
+    },
+    
+    async deletePost(postId) {
+        if (!confirm('¿Estás seguro de eliminar esta publicación? Esta acción no se puede deshacer.')) {
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/content/posts/${postId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Publicación eliminada', 'success');
+                document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+                this.loadContent();
+            } else {
+                this.showToast(response.error || 'Error al eliminar publicación', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al eliminar publicación', 'error');
         }
     },
     

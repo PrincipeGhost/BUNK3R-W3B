@@ -5709,6 +5709,202 @@ def admin_get_all_users():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/users/export', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_export_users():
+    """Admin: Exportar usuarios a CSV."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, telegram_id, username, first_name, last_name, 
+                           credits, is_active, is_verified, wallet_address,
+                           created_at, last_seen
+                    FROM users 
+                    ORDER BY created_at DESC
+                """)
+                users = cur.fetchall()
+        
+        csv_lines = ['ID,Telegram ID,Username,Nombre,Apellido,Credits,Activo,Verificado,Wallet,Registro,Ultima Conexion']
+        for u in users:
+            csv_lines.append(','.join([
+                str(u.get('id', '')),
+                str(u.get('telegram_id', '')),
+                str(u.get('username', '') or ''),
+                str(u.get('first_name', '') or ''),
+                str(u.get('last_name', '') or ''),
+                str(u.get('credits', 0)),
+                'Si' if u.get('is_active') else 'No',
+                'Si' if u.get('is_verified') else 'No',
+                str(u.get('wallet_address', '') or ''),
+                str(u.get('created_at', '') or ''),
+                str(u.get('last_seen', '') or '')
+            ]))
+        
+        return jsonify({
+            'success': True,
+            'csv': '\n'.join(csv_lines)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error exporting users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/transactions/export', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_export_transactions():
+    """Admin: Exportar transacciones a CSV."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT wt.id, wt.user_id, wt.transaction_type, wt.amount, 
+                           wt.status, wt.tx_hash, wt.created_at,
+                           u.username, u.first_name
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON wt.user_id = u.id
+                    ORDER BY wt.created_at DESC
+                    LIMIT 10000
+                """)
+                transactions = cur.fetchall()
+        
+        csv_lines = ['ID,Usuario ID,Username,Nombre,Tipo,Monto,Estado,TX Hash,Fecha']
+        for tx in transactions:
+            csv_lines.append(','.join([
+                str(tx.get('id', '')),
+                str(tx.get('user_id', '')),
+                str(tx.get('username', '') or ''),
+                str(tx.get('first_name', '') or ''),
+                str(tx.get('transaction_type', '')),
+                str(tx.get('amount', 0)),
+                str(tx.get('status', '')),
+                str(tx.get('tx_hash', '') or ''),
+                str(tx.get('created_at', '') or '')
+            ]))
+        
+        return jsonify({
+            'success': True,
+            'csv': '\n'.join(csv_lines)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error exporting transactions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/content/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_content_stats():
+    """Admin: Estadísticas de contenido."""
+    try:
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'totalPosts': 0,
+                'postsToday': 0,
+                'totalMedia': 0
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM posts WHERE is_active = true")
+                total_posts = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM posts 
+                    WHERE is_active = true AND created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                posts_today = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM posts 
+                    WHERE is_active = true AND content_type IN ('image', 'video')
+                """)
+                total_media = cur.fetchone()[0] or 0
+        
+        return jsonify({
+            'success': True,
+            'totalPosts': total_posts,
+            'postsToday': posts_today,
+            'totalMedia': total_media
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting content stats: {e}")
+        return jsonify({
+            'success': True,
+            'totalPosts': 0,
+            'postsToday': 0,
+            'totalMedia': 0
+        })
+
+
+@app.route('/api/admin/content/posts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_content_posts():
+    """Admin: Listar publicaciones para moderación."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'posts': []})
+        
+        limit = request.args.get('limit', 50, type=int)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT p.id, p.user_id, p.content_type, p.caption, p.content_url,
+                           p.reactions_count, p.comments_count, p.shares_count,
+                           p.is_active, p.created_at,
+                           u.username, u.first_name
+                    FROM posts p
+                    LEFT JOIN users u ON p.user_id = u.telegram_id
+                    ORDER BY p.created_at DESC
+                    LIMIT %s
+                """, (limit,))
+                posts = cur.fetchall()
+        
+        return jsonify({
+            'success': True,
+            'posts': [dict(p) for p in posts]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting content posts: {e}")
+        return jsonify({'success': True, 'posts': []})
+
+
+@app.route('/api/admin/content/posts/<int:post_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_post(post_id):
+    """Admin: Eliminar una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE posts SET is_active = false WHERE id = %s", (post_id,))
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Publicación eliminada'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/user/<user_id>', methods=['GET'])
 @require_telegram_auth
 @require_owner
@@ -8093,6 +8289,453 @@ def delete_admin_vn_inventory(inventory_id):
 def virtual_numbers_page():
     """Render virtual numbers page"""
     return render_template('virtual_numbers.html')
+
+
+def log_admin_action(admin_id, admin_name, action_type, target_type=None, target_id=None, description=None, metadata=None):
+    """Helper function to log admin actions."""
+    try:
+        if not db_manager:
+            return
+        ip_address = request.remote_addr if request else None
+        user_agent = request.headers.get('User-Agent', '')[:500] if request else None
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO admin_logs (admin_id, admin_name, action_type, target_type, target_id, description, ip_address, user_agent, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (admin_id, admin_name, action_type, target_type, target_id, description, ip_address, user_agent, json.dumps(metadata) if metadata else None))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error logging admin action: {e}")
+
+
+@app.route('/api/admin/logs/admin', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_admin_logs():
+    """Admin: Obtener logs de acciones de administradores."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'logs': []})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        action_type = request.args.get('action_type', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM admin_logs WHERE 1=1"
+                params = []
+                
+                if action_type:
+                    query += " AND action_type = %s"
+                    params.append(action_type)
+                
+                cur.execute(query.replace("SELECT *", "SELECT COUNT(*)") + " AS count", params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = cur.fetchall()
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting admin logs: {e}")
+        return jsonify({'success': True, 'logs': []})
+
+
+@app.route('/api/admin/config', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_config():
+    """Admin: Obtener configuración del sistema."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'config': {}})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT config_key, config_value, config_type FROM system_config")
+                rows = cur.fetchall()
+                
+                config = {}
+                for row in rows:
+                    value = row['config_value']
+                    if row['config_type'] == 'number':
+                        value = float(value) if '.' in str(value) else int(value)
+                    elif row['config_type'] == 'boolean':
+                        value = value.lower() == 'true'
+                    config[row['config_key']] = value
+                
+                return jsonify({'success': True, 'config': config})
+    
+    except Exception as e:
+        logger.error(f"Error getting config: {e}")
+        return jsonify({'success': True, 'config': {}})
+
+
+@app.route('/api/admin/config', methods=['POST'])
+@require_telegram_auth
+@require_owner  
+def admin_update_config():
+    """Admin: Actualizar configuración del sistema."""
+    try:
+        data = request.get_json()
+        user_id = getattr(request, 'user_id', '0')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                for key, value in data.items():
+                    cur.execute("""
+                        UPDATE system_config 
+                        SET config_value = %s, updated_at = NOW(), updated_by = %s
+                        WHERE config_key = %s
+                    """, (str(value), user_id, key))
+            conn.commit()
+        
+        log_admin_action(user_id, 'Admin', 'config_update', 'system_config', None, 
+                        f"Updated config: {list(data.keys())}", {'changes': data})
+        
+        return jsonify({'success': True, 'message': 'Configuración actualizada'})
+    
+    except Exception as e:
+        logger.error(f"Error updating config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/blocked-ips', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_blocked_ips():
+    """Admin: Obtener lista de IPs bloqueadas."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'ips': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM blocked_ips 
+                    WHERE is_active = true
+                    ORDER BY blocked_at DESC
+                """)
+                ips = cur.fetchall()
+                
+                for ip in ips:
+                    if ip.get('blocked_at'):
+                        ip['blocked_at'] = ip['blocked_at'].isoformat()
+                    if ip.get('expires_at'):
+                        ip['expires_at'] = ip['expires_at'].isoformat()
+                
+                return jsonify({'success': True, 'ips': ips})
+    
+    except Exception as e:
+        logger.error(f"Error getting blocked IPs: {e}")
+        return jsonify({'success': True, 'ips': []})
+
+
+@app.route('/api/admin/blocked-ips', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_block_ip():
+    """Admin: Bloquear una IP."""
+    try:
+        data = request.get_json()
+        ip_address = data.get('ip_address', '').strip()
+        reason = data.get('reason', '')
+        is_permanent = data.get('is_permanent', False)
+        user_id = getattr(request, 'user_id', '0')
+        
+        if not ip_address:
+            return jsonify({'success': False, 'error': 'IP requerida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO blocked_ips (ip_address, reason, blocked_by, is_permanent)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (ip_address, reason, user_id, is_permanent))
+            conn.commit()
+        
+        log_admin_action(user_id, 'Admin', 'ip_block', 'blocked_ips', ip_address, 
+                        f"Blocked IP: {ip_address}", {'reason': reason, 'permanent': is_permanent})
+        
+        return jsonify({'success': True, 'message': f'IP {ip_address} bloqueada'})
+    
+    except Exception as e:
+        logger.error(f"Error blocking IP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/blocked-ips/<int:ip_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_unblock_ip(ip_id):
+    """Admin: Desbloquear una IP."""
+    try:
+        user_id = getattr(request, 'user_id', '0')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT ip_address FROM blocked_ips WHERE id = %s", (ip_id,))
+                row = cur.fetchone()
+                ip_address = row['ip_address'] if row else 'Unknown'
+                
+                cur.execute("UPDATE blocked_ips SET is_active = false WHERE id = %s", (ip_id,))
+            conn.commit()
+        
+        log_admin_action(user_id, 'Admin', 'ip_unblock', 'blocked_ips', str(ip_id), 
+                        f"Unblocked IP: {ip_address}")
+        
+        return jsonify({'success': True, 'message': 'IP desbloqueada'})
+    
+    except Exception as e:
+        logger.error(f"Error unblocking IP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wallet-pool/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_wallet_pool_stats():
+    """Admin: Obtener estadísticas del pool de wallets."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM deposit_wallets")
+                total = cur.fetchone()['total']
+                
+                cur.execute("SELECT COUNT(*) as available FROM deposit_wallets WHERE status = 'available'")
+                available = cur.fetchone()['available']
+                
+                cur.execute("SELECT COUNT(*) as assigned FROM deposit_wallets WHERE status = 'assigned'")
+                assigned = cur.fetchone()['assigned']
+                
+                cur.execute("SELECT COUNT(*) as used FROM deposit_wallets WHERE status = 'used'")
+                used = cur.fetchone()['used']
+                
+                cur.execute("SELECT COALESCE(SUM(deposit_amount), 0) as pending_balance FROM deposit_wallets WHERE deposit_amount > 0 AND consolidated_at IS NULL")
+                pending_balance = float(cur.fetchone()['pending_balance'] or 0)
+                
+                return jsonify({
+                    'success': True,
+                    'stats': {
+                        'total': total,
+                        'available': available,
+                        'assigned': assigned,
+                        'used': used,
+                        'pendingBalance': pending_balance
+                    }
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting wallet pool stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/secrets-status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_secrets_status():
+    """Admin: Verificar qué secrets están configurados."""
+    secrets_to_check = [
+        'BOT_TOKEN',
+        'ADMIN_TOKEN',
+        'OWNER_TELEGRAM_ID',
+        'TONCENTER_API_KEY',
+        'B3C_HOT_WALLET_MNEMONIC',
+        'WALLET_MASTER_KEY',
+        'SMSPOOL_API_KEY',
+        'CLOUDINARY_URL',
+        'RESEND_API_KEY'
+    ]
+    
+    status = {}
+    for secret in secrets_to_check:
+        status[secret] = bool(os.environ.get(secret))
+    
+    return jsonify({'success': True, 'secrets': status})
+
+
+@app.route('/api/admin/wallets/hot', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_hot_wallet():
+    """Admin: Obtener información del hot wallet."""
+    try:
+        hot_wallet_address = os.environ.get('TON_WALLET_ADDRESS', '')
+        
+        balance = 0
+        if hot_wallet_address:
+            try:
+                from tracking.wallet_pool_service import wallet_pool_service
+                if wallet_pool_service:
+                    balance = wallet_pool_service.get_wallet_balance(hot_wallet_address)
+            except Exception as e:
+                logger.warning(f"Could not get hot wallet balance: {e}")
+        
+        return jsonify({
+            'success': True,
+            'address': hot_wallet_address,
+            'balance': balance,
+            'status': 'ok' if balance > 0.1 else 'low'
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting hot wallet info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wallets/deposits', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_deposit_wallets():
+    """Admin: Obtener lista de wallets de depósito."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        status_filter = request.args.get('status', '')
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM deposit_wallets WHERE 1=1"
+                params = []
+                
+                if status_filter:
+                    query += " AND status = %s"
+                    params.append(status_filter)
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                wallets = cur.fetchall()
+                
+                count_query = "SELECT COUNT(*) as total FROM deposit_wallets WHERE 1=1"
+                if status_filter:
+                    cur.execute(count_query + " AND status = %s", (status_filter,))
+                else:
+                    cur.execute(count_query)
+                total = cur.fetchone()['total']
+        
+        return jsonify({
+            'success': True,
+            'wallets': [{
+                'id': w['id'],
+                'wallet_address': w.get('wallet_address', ''),
+                'status': w.get('status', 'unknown'),
+                'assigned_to_user_id': w.get('assigned_to_user_id'),
+                'deposit_amount': float(w.get('deposit_amount', 0) or 0),
+                'created_at': str(w.get('created_at', '')),
+                'consolidated_at': str(w.get('consolidated_at', '')) if w.get('consolidated_at') else None
+            } for w in wallets],
+            'total': total,
+            'page': page,
+            'pages': (total + limit - 1) // limit
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting deposit wallets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wallets/fill-pool', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_fill_wallet_pool():
+    """Admin: Llenar el pool de wallets."""
+    try:
+        data = request.get_json() or {}
+        count = min(int(data.get('count', 10)), 50)
+        
+        try:
+            from tracking.wallet_pool_service import wallet_pool_service
+            if wallet_pool_service:
+                created = wallet_pool_service.fill_pool(count)
+                
+                user_id = getattr(request, 'user_id', '0')
+                log_admin_action(user_id, 'Admin', 'fill_wallet_pool', 'deposit_wallets', 
+                               None, f"Created {created} new deposit wallets")
+                
+                return jsonify({
+                    'success': True,
+                    'created': created,
+                    'message': f'{created} wallets creadas'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Wallet pool service no disponible'}), 500
+        except Exception as e:
+            logger.error(f"Error filling wallet pool: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    except Exception as e:
+        logger.error(f"Error in fill wallet pool: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wallets/consolidate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_consolidate_wallets():
+    """Admin: Consolidar fondos de wallets de depósito al hot wallet."""
+    try:
+        try:
+            from tracking.wallet_pool_service import wallet_pool_service
+            if wallet_pool_service:
+                result = wallet_pool_service.consolidate_all_balances()
+                
+                user_id = getattr(request, 'user_id', '0')
+                log_admin_action(user_id, 'Admin', 'consolidate_wallets', 'deposit_wallets', 
+                               None, f"Consolidated {result.get('count', 0)} wallets, total: {result.get('total', 0)} TON")
+                
+                return jsonify({
+                    'success': True,
+                    'consolidated': result.get('count', 0),
+                    'totalAmount': result.get('total', 0),
+                    'message': f"Consolidados {result.get('count', 0)} wallets"
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Wallet pool service no disponible'}), 500
+        except Exception as e:
+            logger.error(f"Error consolidating wallets: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    except Exception as e:
+        logger.error(f"Error in consolidate wallets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 deposit_scheduler = None
