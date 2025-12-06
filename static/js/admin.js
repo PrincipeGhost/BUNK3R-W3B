@@ -1735,6 +1735,117 @@ const AdminPanel = {
         window.open(`https://tonscan.org/tx/${hash}`, '_blank');
     },
     
+    async viewTransaction(txId) {
+        const modal = document.getElementById('transactionDetailModal');
+        const content = document.getElementById('transactionDetailContent');
+        
+        modal.classList.add('active');
+        content.innerHTML = '<div class="loading-spinner">Cargando...</div>';
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/transactions/${txId}`);
+            
+            if (response.success && response.transaction) {
+                const tx = response.transaction;
+                const statusClass = tx.status === 'completed' ? 'success' : (tx.status === 'pending' ? 'warning' : 'danger');
+                
+                content.innerHTML = `
+                    <div class="tx-detail-grid">
+                        <div class="tx-detail-header">
+                            <div class="tx-type-badge ${tx.type}">${this.escapeHtml(tx.type_label)}</div>
+                            <div class="tx-amount ${tx.type.includes('out') || tx.type === 'withdrawal' || tx.type === 'fee' ? 'negative' : 'positive'}">
+                                ${tx.type.includes('out') || tx.type === 'withdrawal' || tx.type === 'fee' ? '-' : '+'}${tx.amount.toFixed(2)} ${tx.currency}
+                            </div>
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Información General</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">ID Transacción:</span>
+                                <span class="detail-value">#${tx.id}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Estado:</span>
+                                <span class="detail-value"><span class="status-badge ${statusClass}">${tx.status}</span></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha:</span>
+                                <span class="detail-value">${this.formatDateTime(tx.created_at)}</span>
+                            </div>
+                            ${tx.description ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Descripción:</span>
+                                <span class="detail-value">${this.escapeHtml(tx.description)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Usuario</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Username:</span>
+                                <span class="detail-value">@${this.escapeHtml(tx.username)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Nombre:</span>
+                                <span class="detail-value">${this.escapeHtml(tx.user_name)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Telegram ID:</span>
+                                <span class="detail-value">${tx.telegram_id || 'N/A'}</span>
+                            </div>
+                        </div>
+                        
+                        ${tx.balance_before !== null || tx.balance_after !== null ? `
+                        <div class="tx-detail-section">
+                            <h4>Balance</h4>
+                            ${tx.balance_before !== null ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Balance Anterior:</span>
+                                <span class="detail-value">${tx.balance_before.toFixed(2)} B3C</span>
+                            </div>
+                            ` : ''}
+                            ${tx.balance_after !== null ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Balance Posterior:</span>
+                                <span class="detail-value">${tx.balance_after.toFixed(2)} B3C</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                        
+                        ${tx.tx_hash ? `
+                        <div class="tx-detail-section">
+                            <h4>Blockchain</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">TX Hash:</span>
+                                <span class="detail-value tx-hash-full">
+                                    <code>${this.escapeHtml(tx.tx_hash)}</code>
+                                </span>
+                            </div>
+                            <div class="detail-actions">
+                                <button class="btn-primary btn-sm" onclick="AdminPanel.openTxHash('${tx.tx_hash}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                    </svg>
+                                    Ver en TonScan
+                                </button>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<div class="error-state">Error: ${response.error || 'No se pudo cargar la transacción'}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading transaction:', error);
+            content.innerHTML = '<div class="error-state">Error al cargar los datos</div>';
+        }
+    },
+    
     startAutoRefresh() {
         this.refreshInterval = setInterval(() => {
             if (this.currentSection === 'dashboard') {

@@ -1512,6 +1512,123 @@
     border-top: 1px solid var(--border-color);
 }
 
+/* Transaction Detail */
+.tx-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tx-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.tx-type-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tx-type-badge.buy { background: rgba(39, 174, 96, 0.2); color: #27ae60; }
+.tx-type-badge.sell { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+.tx-type-badge.transfer_in { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+.tx-type-badge.transfer_out { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
+.tx-type-badge.withdrawal { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+.tx-type-badge.deposit { background: rgba(26, 188, 156, 0.2); color: #1abc9c; }
+.tx-type-badge.reward { background: rgba(240, 185, 11, 0.2); color: var(--accent-gold); }
+.tx-type-badge.fee { background: rgba(149, 165, 166, 0.2); color: #95a5a6; }
+
+.tx-amount {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.tx-amount.positive { color: #27ae60; }
+.tx-amount.negative { color: #e74c3c; }
+
+.tx-detail-section {
+    padding: 15px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.tx-detail-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.detail-value {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.tx-hash-full code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--accent-gold);
+    word-break: break-all;
+    background: var(--bg-tertiary);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.detail-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.btn-sm svg {
+    margin-right: 6px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.error-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--accent-danger);
+}
+
 /* Toast */
 .toast-container {
     position: fixed;

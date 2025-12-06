@@ -7033,6 +7033,67 @@ def admin_get_transactions():
         })
 
 
+@app.route('/api/admin/transactions/<int:tx_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_transaction_detail(tx_id):
+    """Admin: Obtener detalle de una transacción específica."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT wt.*, u.username, u.telegram_id, u.first_name, u.last_name
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON CAST(wt.user_id AS INTEGER) = u.id
+                    WHERE wt.id = %s
+                """, (tx_id,))
+                tx = cur.fetchone()
+                
+                if not tx:
+                    return jsonify({'success': False, 'error': 'Transacción no encontrada'})
+                
+                tx_type = tx.get('transaction_type', 'unknown')
+                tx_types_labels = {
+                    'buy': 'Compra B3C',
+                    'sell': 'Venta B3C',
+                    'transfer_in': 'Transferencia Recibida',
+                    'transfer_out': 'Transferencia Enviada',
+                    'withdrawal': 'Retiro',
+                    'deposit': 'Depósito',
+                    'reward': 'Recompensa',
+                    'fee': 'Comisión'
+                }
+                
+                return jsonify({
+                    'success': True,
+                    'transaction': {
+                        'id': tx['id'],
+                        'user_id': tx.get('user_id', ''),
+                        'username': tx.get('username') or f"User {tx.get('user_id', 'N/A')}",
+                        'user_name': f"{tx.get('first_name', '')} {tx.get('last_name', '')}".strip() or 'N/A',
+                        'telegram_id': tx.get('telegram_id', ''),
+                        'type': tx_type,
+                        'type_label': tx_types_labels.get(tx_type, tx_type.capitalize()),
+                        'amount': float(tx.get('amount', 0)),
+                        'currency': 'B3C',
+                        'status': 'completed',
+                        'description': tx.get('description', ''),
+                        'reference_id': tx.get('reference_id', ''),
+                        'tx_hash': tx.get('reference_id', ''),
+                        'created_at': str(tx.get('created_at', '')),
+                        'balance_before': float(tx.get('balance_before', 0)) if tx.get('balance_before') else None,
+                        'balance_after': float(tx.get('balance_after', 0)) if tx.get('balance_after') else None
+                    }
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting transaction detail: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/api/admin/activity', methods=['GET'])
 @require_telegram_auth
 @require_owner
