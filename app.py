@@ -10838,24 +10838,50 @@ def admin_get_admin_logs():
     """Admin: Obtener logs de acciones de administradores."""
     try:
         if not db_manager:
-            return jsonify({'success': True, 'logs': []})
+            return jsonify({'success': True, 'logs': [], 'total': 0, 'actionTypes': []})
         
         page = int(request.args.get('page', 1))
-        limit = min(int(request.args.get('limit', 50)), 100)
+        limit = min(int(request.args.get('per_page', request.args.get('limit', 50))), 100)
         action_type = request.args.get('action_type', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
         
         offset = (page - 1) * limit
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 query = "SELECT * FROM admin_logs WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM admin_logs WHERE 1=1"
                 params = []
+                count_params = []
                 
                 if action_type:
                     query += " AND action_type = %s"
+                    count_query += " AND action_type = %s"
                     params.append(action_type)
+                    count_params.append(action_type)
                 
-                cur.execute(query.replace("SELECT *", "SELECT COUNT(*)") + " AS count", params)
+                if search:
+                    query += " AND (admin_name ILIKE %s OR description ILIKE %s OR target_id::text ILIKE %s)"
+                    count_query += " AND (admin_name ILIKE %s OR description ILIKE %s OR target_id::text ILIKE %s)"
+                    search_pattern = f'%{search}%'
+                    params.extend([search_pattern, search_pattern, search_pattern])
+                    count_params.extend([search_pattern, search_pattern, search_pattern])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                    count_query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
                 total = cur.fetchone()['count']
                 
                 query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
@@ -10868,17 +10894,26 @@ def admin_get_admin_logs():
                     if log.get('created_at'):
                         log['created_at'] = log['created_at'].isoformat()
                 
+                cur.execute("""
+                    SELECT action_type, COUNT(*) as count
+                    FROM admin_logs
+                    GROUP BY action_type
+                    ORDER BY count DESC
+                """)
+                action_types = [dict(row) for row in cur.fetchall()]
+                
                 return jsonify({
                     'success': True,
                     'logs': logs,
                     'total': total,
                     'page': page,
-                    'pages': (total + limit - 1) // limit
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'actionTypes': action_types
                 })
     
     except Exception as e:
         logger.error(f"Error getting admin logs: {e}")
-        return jsonify({'success': True, 'logs': []})
+        return jsonify({'success': True, 'logs': [], 'total': 0, 'actionTypes': []})
 
 
 @app.route('/api/admin/logs/security', methods=['GET'])
