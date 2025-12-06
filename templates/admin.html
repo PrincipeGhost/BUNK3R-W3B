@@ -625,6 +625,7 @@
                         <button class="tx-tab" data-tab="purchases">Compras B3C</button>
                         <button class="tx-tab" data-tab="withdrawal">Retiros</button>
                         <button class="tx-tab" data-tab="transfer">Transferencias P2P</button>
+                        <button class="tx-tab" data-tab="periodStats">Estadísticas</button>
                     </div>
                     
                     <div id="purchasesSection" class="purchases-section" style="display: none;">
@@ -794,6 +795,158 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    
+                    <div id="periodStatsSection" class="period-stats-section" style="display: none;">
+                        <div class="period-stats-header">
+                            <h3>Estadísticas por Período</h3>
+                            <div class="period-selector">
+                                <div class="date-range-picker">
+                                    <label>Desde:</label>
+                                    <input type="date" id="periodDateFrom" class="date-input">
+                                    <label>Hasta:</label>
+                                    <input type="date" id="periodDateTo" class="date-input">
+                                </div>
+                                <div class="period-presets">
+                                    <button class="preset-btn active" data-period="7">7 días</button>
+                                    <button class="preset-btn" data-period="30">30 días</button>
+                                    <button class="preset-btn" data-period="90">90 días</button>
+                                    <button class="preset-btn" data-period="custom">Personalizado</button>
+                                </div>
+                                <button class="btn-primary" id="loadPeriodStats">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                    </svg>
+                                    Cargar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="period-stats-grid">
+                            <div class="period-stat-card">
+                                <div class="period-stat-icon transactions">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="period-stat-content">
+                                    <span class="period-stat-value" id="periodTxCount">0</span>
+                                    <span class="period-stat-label">Transacciones</span>
+                                </div>
+                            </div>
+                            <div class="period-stat-card">
+                                <div class="period-stat-icon volume">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 6v12"></path>
+                                        <path d="M8 10h8"></path>
+                                    </svg>
+                                </div>
+                                <div class="period-stat-content">
+                                    <span class="period-stat-value" id="periodB3CVolume">0</span>
+                                    <span class="period-stat-label">Volumen B3C</span>
+                                </div>
+                            </div>
+                            <div class="period-stat-card">
+                                <div class="period-stat-icon purchases">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                    </svg>
+                                </div>
+                                <div class="period-stat-content">
+                                    <span class="period-stat-value" id="periodPurchases">0</span>
+                                    <span class="period-stat-label">Compras B3C</span>
+                                </div>
+                                <span class="period-stat-sub" id="periodPurchasesTon">0 TON</span>
+                            </div>
+                            <div class="period-stat-card">
+                                <div class="period-stat-icon withdrawals">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 19V6"></path>
+                                        <path d="M5 12l7-7 7 7"></path>
+                                        <rect x="3" y="19" width="18" height="2" rx="1"></rect>
+                                    </svg>
+                                </div>
+                                <div class="period-stat-content">
+                                    <span class="period-stat-value" id="periodWithdrawals">0</span>
+                                    <span class="period-stat-label">Retiros</span>
+                                </div>
+                                <span class="period-stat-sub" id="periodWithdrawalsB3C">0 B3C</span>
+                            </div>
+                            <div class="period-stat-card">
+                                <div class="period-stat-icon transfers">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="17 1 21 5 17 9"></polyline>
+                                        <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                        <polyline points="7 23 3 19 7 15"></polyline>
+                                        <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                                    </svg>
+                                </div>
+                                <div class="period-stat-content">
+                                    <span class="period-stat-value" id="periodTransfers">0</span>
+                                    <span class="period-stat-label">Transferencias P2P</span>
+                                </div>
+                                <span class="period-stat-sub" id="periodTransfersB3C">0 B3C</span>
+                            </div>
+                            <div class="period-stat-card highlight">
+                                <div class="period-stat-icon commissions">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                </div>
+                                <div class="period-stat-content">
+                                    <span class="period-stat-value" id="periodCommissions">0</span>
+                                    <span class="period-stat-label">Comisiones Ganadas</span>
+                                </div>
+                                <span class="period-stat-sub">TON</span>
+                            </div>
+                        </div>
+                        
+                        <div class="period-charts">
+                            <div class="period-chart-card">
+                                <div class="card-header">
+                                    <h4>Volumen Diario</h4>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="periodVolumeChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="period-chart-card">
+                                <div class="card-header">
+                                    <h4>Transacciones por Tipo</h4>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="periodTypeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="period-export">
+                            <h4>Exportar Datos</h4>
+                            <div class="export-options">
+                                <button class="btn-secondary" id="exportPeriodCSV">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Exportar CSV
+                                </button>
+                                <button class="btn-secondary" id="exportPeriodPDF">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    </svg>
+                                    Exportar Reporte
+                                </button>
+                            </div>
                         </div>
                     </div>
                     

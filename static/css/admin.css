@@ -2554,3 +2554,196 @@ textarea.form-control {
         grid-template-columns: 1fr;
     }
 }
+
+/* Period Statistics Section */
+.period-stats-section {
+    padding: 20px 0;
+}
+
+.period-stats-header {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: var(--radius);
+}
+
+.period-stats-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.period-selector {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.date-range-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-range-picker label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.period-presets {
+    display: flex;
+    gap: 8px;
+}
+
+.preset-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.preset-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+.period-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.period-stat-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+}
+
+.period-stat-card.highlight {
+    background: linear-gradient(135deg, rgba(240, 185, 11, 0.15), rgba(240, 185, 11, 0.05));
+    border: 1px solid rgba(240, 185, 11, 0.3);
+}
+
+.period-stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.period-stat-icon.transactions { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+.period-stat-icon.volume { background: rgba(240, 185, 11, 0.15); color: var(--accent-primary); }
+.period-stat-icon.purchases { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.period-stat-icon.withdrawals { background: rgba(246, 70, 93, 0.15); color: var(--accent-danger); }
+.period-stat-icon.transfers { background: rgba(14, 203, 129, 0.15); color: var(--accent-success); }
+.period-stat-icon.commissions { background: rgba(240, 185, 11, 0.15); color: var(--accent-primary); }
+
+.period-stat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.period-stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.period-stat-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.period-stat-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+}
+
+.period-charts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.period-chart-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.period-chart-card .card-header h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.period-export {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+}
+
+.period-export h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 15px 0;
+}
+
+.export-options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .period-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date-range-picker {
+        flex-wrap: wrap;
+    }
+    
+    .period-presets {
+        flex-wrap: wrap;
+    }
+    
+    .period-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .period-charts {
+        grid-template-columns: 1fr;
+    }
+}

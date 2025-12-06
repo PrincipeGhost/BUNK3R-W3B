@@ -209,11 +209,13 @@ const AdminPanel = {
                 const transactionsSection = document.getElementById('transactionsSection');
                 const withdrawalsSection = document.getElementById('withdrawalsSection');
                 const p2pSection = document.getElementById('p2pSection');
+                const periodStatsSection = document.getElementById('periodStatsSection');
                 
                 purchasesSection.style.display = 'none';
                 transactionsSection.style.display = 'none';
                 withdrawalsSection.style.display = 'none';
                 p2pSection.style.display = 'none';
+                periodStatsSection.style.display = 'none';
                 
                 if (tabType === 'purchases') {
                     purchasesSection.style.display = 'block';
@@ -224,6 +226,9 @@ const AdminPanel = {
                 } else if (tabType === 'transfer') {
                     p2pSection.style.display = 'block';
                     this.loadP2PTransfers();
+                } else if (tabType === 'periodStats') {
+                    periodStatsSection.style.display = 'block';
+                    this.loadPeriodStats();
                 } else {
                     transactionsSection.style.display = 'block';
                     document.getElementById('txTypeFilter').value = '';
@@ -267,6 +272,62 @@ const AdminPanel = {
         document.getElementById('confirmRejectWithdrawal')?.addEventListener('click', () => {
             this.rejectWithdrawal();
         });
+        
+        document.getElementById('loadPeriodStats')?.addEventListener('click', () => {
+            this.loadPeriodStats();
+        });
+        
+        document.getElementById('exportPeriodCSV')?.addEventListener('click', () => {
+            this.exportPeriodCSV();
+        });
+        
+        document.getElementById('exportPeriodPDF')?.addEventListener('click', () => {
+            this.exportPeriodReport();
+        });
+        
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const period = btn.dataset.period;
+                this.setPeriodDates(period);
+            });
+        });
+        
+        this.initPeriodDates();
+    },
+    
+    initPeriodDates() {
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        
+        const fromInput = document.getElementById('periodDateFrom');
+        const toInput = document.getElementById('periodDateTo');
+        
+        if (fromInput && toInput) {
+            fromInput.value = weekAgo.toISOString().split('T')[0];
+            toInput.value = today.toISOString().split('T')[0];
+        }
+    },
+    
+    setPeriodDates(period) {
+        const today = new Date();
+        const fromInput = document.getElementById('periodDateFrom');
+        const toInput = document.getElementById('periodDateTo');
+        
+        if (!fromInput || !toInput) return;
+        
+        toInput.value = today.toISOString().split('T')[0];
+        
+        if (period === 'custom') {
+            return;
+        }
+        
+        const days = parseInt(period);
+        const fromDate = new Date(today);
+        fromDate.setDate(fromDate.getDate() - days);
+        fromInput.value = fromDate.toISOString().split('T')[0];
     },
     
     async loadDashboard() {
@@ -2765,6 +2826,227 @@ const AdminPanel = {
     openTxHash(txHash) {
         if (txHash) {
             window.open(`https://tonscan.org/tx/${txHash}`, '_blank');
+        }
+    },
+    
+    async loadPeriodStats() {
+        const fromDate = document.getElementById('periodDateFrom')?.value;
+        const toDate = document.getElementById('periodDateTo')?.value;
+        
+        if (!fromDate || !toDate) {
+            this.showToast('Selecciona un rango de fechas', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/financial/period-stats?from=${fromDate}&to=${toDate}`);
+            
+            if (response.success && response.data) {
+                const data = response.data;
+                
+                document.getElementById('periodTxCount').textContent = this.formatNumber(data.totalTransactions || 0);
+                document.getElementById('periodB3CVolume').textContent = this.formatNumber(data.totalB3CVolume || 0, 2);
+                document.getElementById('periodPurchases').textContent = this.formatNumber(data.purchases?.count || 0);
+                document.getElementById('periodPurchasesTon').textContent = `${this.formatNumber(data.purchases?.tonAmount || 0, 4)} TON`;
+                document.getElementById('periodWithdrawals').textContent = this.formatNumber(data.withdrawals?.count || 0);
+                document.getElementById('periodWithdrawalsB3C').textContent = `${this.formatNumber(data.withdrawals?.b3cAmount || 0, 2)} B3C`;
+                document.getElementById('periodTransfers').textContent = this.formatNumber(data.transfers?.count || 0);
+                document.getElementById('periodTransfersB3C').textContent = `${this.formatNumber(data.transfers?.b3cAmount || 0, 2)} B3C`;
+                document.getElementById('periodCommissions').textContent = this.formatNumber(data.totalCommissions || 0, 4);
+                
+                this.initPeriodCharts(data);
+                
+                this.showToast('Estadísticas cargadas', 'success');
+            } else {
+                this.showToast(response.error || 'Error al cargar estadísticas', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading period stats:', error);
+            this.showToast('Error al cargar estadísticas', 'error');
+        }
+    },
+    
+    initPeriodCharts(data) {
+        const volumeCtx = document.getElementById('periodVolumeChart');
+        const typeCtx = document.getElementById('periodTypeChart');
+        
+        if (volumeCtx && data.dailyVolume) {
+            if (this.charts.periodVolume) {
+                this.charts.periodVolume.destroy();
+            }
+            
+            const labels = data.dailyVolume.map(d => d.date);
+            const values = data.dailyVolume.map(d => d.volume);
+            
+            this.charts.periodVolume = new Chart(volumeCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Volumen B3C',
+                        data: values,
+                        backgroundColor: 'rgba(240, 185, 11, 0.6)',
+                        borderColor: '#F0B90B',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#848E9C', maxRotation: 45 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#848E9C' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        if (typeCtx && data.byType) {
+            if (this.charts.periodType) {
+                this.charts.periodType.destroy();
+            }
+            
+            const typeLabels = {
+                purchases: 'Compras',
+                withdrawals: 'Retiros',
+                transfers: 'Transferencias'
+            };
+            
+            const labels = Object.keys(data.byType).map(k => typeLabels[k] || k);
+            const values = Object.values(data.byType);
+            const colors = ['#F0B90B', '#e74c3c', '#3498db', '#27ae60'];
+            
+            this.charts.periodType = new Chart(typeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, values.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#EAECEF' }
+                        }
+                    }
+                }
+            });
+        }
+    },
+    
+    async exportPeriodCSV() {
+        const fromDate = document.getElementById('periodDateFrom')?.value;
+        const toDate = document.getElementById('periodDateTo')?.value;
+        
+        if (!fromDate || !toDate) {
+            this.showToast('Selecciona un rango de fechas', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/admin/financial/period-stats/export?from=${fromDate}&to=${toDate}&format=csv`);
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `transacciones_${fromDate}_${toDate}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                this.showToast('CSV exportado correctamente', 'success');
+            } else {
+                this.showToast('Error al exportar CSV', 'error');
+            }
+        } catch (error) {
+            console.error('Error exporting CSV:', error);
+            this.showToast('Error al exportar CSV', 'error');
+        }
+    },
+    
+    async exportPeriodReport() {
+        const fromDate = document.getElementById('periodDateFrom')?.value;
+        const toDate = document.getElementById('periodDateTo')?.value;
+        
+        if (!fromDate || !toDate) {
+            this.showToast('Selecciona un rango de fechas', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/financial/period-stats?from=${fromDate}&to=${toDate}`);
+            
+            if (response.success && response.data) {
+                const data = response.data;
+                
+                const reportContent = `
+REPORTE DE TRANSACCIONES - BUNK3R
+================================
+Período: ${fromDate} a ${toDate}
+Generado: ${new Date().toLocaleString('es-ES')}
+
+RESUMEN GENERAL
+---------------
+Total de transacciones: ${data.totalTransactions || 0}
+Volumen total B3C: ${(data.totalB3CVolume || 0).toFixed(2)} B3C
+Comisiones generadas: ${(data.totalCommissions || 0).toFixed(4)} TON
+
+COMPRAS B3C
+-----------
+Cantidad: ${data.purchases?.count || 0}
+Monto TON recibido: ${(data.purchases?.tonAmount || 0).toFixed(4)} TON
+B3C entregados: ${(data.purchases?.b3cAmount || 0).toFixed(2)} B3C
+
+RETIROS
+-------
+Cantidad: ${data.withdrawals?.count || 0}
+B3C retirados: ${(data.withdrawals?.b3cAmount || 0).toFixed(2)} B3C
+Pendientes: ${data.withdrawals?.pending || 0}
+Completados: ${data.withdrawals?.completed || 0}
+
+TRANSFERENCIAS P2P
+------------------
+Cantidad: ${data.transfers?.count || 0}
+Volumen: ${(data.transfers?.b3cAmount || 0).toFixed(2)} B3C
+
+================================
+Fin del reporte
+                `.trim();
+                
+                const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `reporte_${fromDate}_${toDate}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                this.showToast('Reporte generado correctamente', 'success');
+            } else {
+                this.showToast('Error al generar reporte', 'error');
+            }
+        } catch (error) {
+            console.error('Error generating report:', error);
+            this.showToast('Error al generar reporte', 'error');
         }
     }
 };

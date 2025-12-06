@@ -6530,6 +6530,189 @@ def admin_financial_stats():
         })
 
 
+@app.route('/api/admin/financial/period-stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_financial_period_stats():
+    """Admin: Estadísticas financieras por período personalizado."""
+    try:
+        date_from = request.args.get('from')
+        date_to = request.args.get('to')
+        
+        if not date_from or not date_to:
+            return jsonify({'success': False, 'error': 'Fechas requeridas'}), 400
+        
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'txCount': 0,
+                    'b3cVolume': 0,
+                    'purchases': {'count': 0, 'tonAmount': 0, 'b3cAmount': 0},
+                    'withdrawals': {'count': 0, 'b3cAmount': 0},
+                    'transfers': {'count': 0, 'b3cAmount': 0},
+                    'commissions': 0,
+                    'dailyVolume': [],
+                    'typeBreakdown': {'purchases': 0, 'withdrawals': 0, 'transfers': 0}
+                }
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                tx_totals = cur.fetchone()
+                tx_count = int(tx_totals['count']) if tx_totals else 0
+                b3c_volume = float(tx_totals['volume']) if tx_totals else 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, 
+                           COALESCE(SUM(amount), 0) as b3c_amount,
+                           COALESCE(SUM(amount * 0.1), 0) as ton_amount
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'deposit' 
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                purchases = cur.fetchone()
+                purchases_count = int(purchases['count']) if purchases else 0
+                purchases_b3c = float(purchases['b3c_amount']) if purchases else 0
+                purchases_ton = float(purchases['ton_amount']) if purchases else 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as b3c_amount
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'withdrawal' 
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                withdrawals = cur.fetchone()
+                withdrawals_count = int(withdrawals['count']) if withdrawals else 0
+                withdrawals_b3c = float(withdrawals['b3c_amount']) if withdrawals else 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as b3c_amount
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'transfer' 
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                transfers = cur.fetchone()
+                transfers_count = int(transfers['count']) if transfers else 0
+                transfers_b3c = float(transfers['b3c_amount']) if transfers else 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount * 0.02), 0) as commissions
+                    FROM wallet_transactions
+                    WHERE transaction_type IN ('deposit', 'withdrawal')
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                comm = cur.fetchone()
+                commissions = float(comm['commissions']) if comm else 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """, (date_from, date_to))
+                daily_data = cur.fetchall()
+        
+        daily_volume = []
+        if daily_data:
+            for row in daily_data:
+                daily_volume.append({
+                    'date': row['date'].isoformat(),
+                    'label': row['date'].strftime('%d/%m'),
+                    'amount': float(row['volume'])
+                })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'txCount': tx_count,
+                'b3cVolume': b3c_volume,
+                'purchases': {
+                    'count': purchases_count,
+                    'tonAmount': purchases_ton,
+                    'b3cAmount': purchases_b3c
+                },
+                'withdrawals': {
+                    'count': withdrawals_count,
+                    'b3cAmount': withdrawals_b3c
+                },
+                'transfers': {
+                    'count': transfers_count,
+                    'b3cAmount': transfers_b3c
+                },
+                'commissions': commissions,
+                'dailyVolume': daily_volume,
+                'typeBreakdown': {
+                    'purchases': purchases_count,
+                    'withdrawals': withdrawals_count,
+                    'transfers': transfers_count
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting period stats: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener estadísticas'}), 500
+
+
+@app.route('/api/admin/financial/period-stats/export', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_financial_period_stats_export():
+    """Admin: Exportar estadísticas por período a CSV."""
+    try:
+        date_from = request.args.get('from')
+        date_to = request.args.get('to')
+        
+        if not date_from or not date_to:
+            return jsonify({'success': False, 'error': 'Fechas requeridas'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': True, 'csv': 'No hay datos disponibles'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT wt.id, u.telegram_id, u.username, u.first_name,
+                           wt.transaction_type, wt.amount, wt.status, wt.tx_hash, wt.created_at
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON wt.user_id = u.id
+                    WHERE wt.created_at >= %s AND wt.created_at <= %s::date + INTERVAL '1 day'
+                    ORDER BY wt.created_at DESC
+                """, (date_from, date_to))
+                transactions = cur.fetchall()
+        
+        csv_lines = ['ID,Telegram ID,Username,Nombre,Tipo,Monto,Estado,TX Hash,Fecha']
+        for tx in transactions:
+            csv_lines.append(','.join([
+                str(tx.get('id', '')),
+                str(tx.get('telegram_id', '')),
+                str(tx.get('username', '') or ''),
+                str(tx.get('first_name', '') or ''),
+                str(tx.get('transaction_type', '')),
+                str(tx.get('amount', 0)),
+                str(tx.get('status', '')),
+                str(tx.get('tx_hash', '') or ''),
+                str(tx.get('created_at', '') or '')
+            ]))
+        
+        return jsonify({
+            'success': True,
+            'csv': '\n'.join(csv_lines),
+            'filename': f'estadisticas_{date_from}_{date_to}.csv'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error exporting period stats: {e}")
+        return jsonify({'success': False, 'error': 'Error al exportar'}), 500
+
+
 @app.route('/api/admin/content/stats', methods=['GET'])
 @require_telegram_auth
 @require_owner
