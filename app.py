@@ -881,15 +881,15 @@ def browser_proxy():
     
     url = request.args.get('url', '')
     if not url:
-        return '<html><body style="background:#1a1a1a;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>Ingresa una URL para navegar</p></body></html>', 200
+        return '<html><body style="background:#1a1a1a;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>Ingresa una URL para navegar<br><small style="color:#666;">Ejemplo: github.com, wikipedia.org</small></p></body></html>', 200
     
     if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
     
     try:
         parsed = urlparse(url)
-        if not parsed.netloc:
-            return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>URL inválida</p></body></html>', 400
+        if not parsed.netloc or '.' not in parsed.netloc:
+            return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>URL incompleta<br><small style="color:#888;">Escribe la URL completa, ejemplo:<br>github.com, wikipedia.org</small></p></body></html>', 400
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -897,12 +897,13 @@ def browser_proxy():
             'Accept-Language': 'en-US,en;q=0.5',
         }
         
-        resp = req.get(url, headers=headers, timeout=10, allow_redirects=True)
+        resp = req.get(url, headers=headers, timeout=15, allow_redirects=True)
         content_type = resp.headers.get('Content-Type', 'text/html')
         
         if 'text/html' in content_type:
             content = resp.text
-            base_tag = f'<base href="{url}">'
+            base_url = f"{parsed.scheme}://{parsed.netloc}"
+            base_tag = f'<base href="{base_url}/">'
             if '<head>' in content:
                 content = content.replace('<head>', f'<head>{base_tag}', 1)
             elif '<HEAD>' in content:
@@ -919,12 +920,12 @@ def browser_proxy():
         return response
         
     except req.exceptions.Timeout:
-        return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>Tiempo de espera agotado</p></body></html>', 504
+        return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>Tiempo de espera agotado<br><small style="color:#888;">El sitio tardó demasiado en responder</small></p></body></html>', 504
     except req.exceptions.ConnectionError:
-        return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>No se pudo conectar al sitio</p></body></html>', 502
+        return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>No se pudo conectar<br><small style="color:#888;">Verifica que la URL esté completa<br>Ejemplo: github.com (no solo github)</small></p></body></html>', 502
     except Exception as e:
         logger.error(f"Proxy error: {e}")
-        return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>Error: {str(e)}</p></body></html>', 500
+        return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>Error al cargar<br><small style="color:#888;">{str(e)}</small></p></body></html>', 500
 
 
 # ============================================================
