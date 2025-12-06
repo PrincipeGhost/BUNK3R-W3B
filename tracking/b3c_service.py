@@ -80,7 +80,7 @@ class B3CTokenService:
     def get_b3c_price(self) -> Dict[str, Any]:
         """
         Obtener precio actual del token B3C.
-        Si B3C_USE_FIXED_PRICE=true, retorna el precio fijo configurado.
+        SIEMPRE usa el precio fijo configurado en B3C_FIXED_PRICE_USD.
         
         Returns:
             Dict con precio en TON, USD, y metadata
@@ -93,50 +93,9 @@ class B3CTokenService:
             if now - cached_time < self._price_cache_ttl:
                 return cached_data
         
-        if self.use_fixed_price:
-            fixed_price_data = self._get_fixed_price()
-            self._price_cache[cache_key] = (fixed_price_data, now)
-            return fixed_price_data
-        
-        try:
-            if not self.b3c_token_address:
-                simulated_price = self._get_simulated_price()
-                self._price_cache[cache_key] = (simulated_price, now)
-                return simulated_price
-            
-            response = requests.get(
-                f'{self.STONFI_API_URL}/assets/{self.b3c_token_address}',
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                asset = data.get('asset', {})
-                
-                price_data = {
-                    'success': True,
-                    'price_ton': float(asset.get('dex_price_usd', 0)) / self._get_ton_usd_price(),
-                    'price_usd': float(asset.get('dex_price_usd', 0)),
-                    'symbol': asset.get('symbol', 'B3C'),
-                    'name': asset.get('display_name', 'BUNK3R Coin'),
-                    'decimals': asset.get('decimals', 9),
-                    'total_supply': asset.get('third_party_usd_price', 0),
-                    'liquidity_usd': float(asset.get('dex_usd_price', 0)),
-                    'change_24h': 0,
-                    'volume_24h': 0,
-                    'updated_at': datetime.utcnow().isoformat(),
-                    'source': 'stonfi',
-                    'is_testnet': self.use_testnet
-                }
-                
-                self._price_cache[cache_key] = (price_data, now)
-                return price_data
-            else:
-                return self._get_simulated_price()
-                
-        except Exception as e:
-            logger.error(f"Error fetching B3C price: {e}")
-            return self._get_simulated_price()
+        fixed_price_data = self._get_fixed_price()
+        self._price_cache[cache_key] = (fixed_price_data, now)
+        return fixed_price_data
     
     def _get_fixed_price(self) -> Dict[str, Any]:
         """Precio fijo controlado por el administrador (sin pool de liquidez)."""
