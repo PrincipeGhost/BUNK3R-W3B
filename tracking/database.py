@@ -1303,20 +1303,33 @@ class DatabaseManager:
     # FUNCIONES PARA BOTS DE USUARIO
     # ============================================================
     
-    def get_user_bots(self, user_id: str) -> List[dict]:
-        """Obtener todos los bots activos de un usuario"""
+    def get_user_bots(self, user_id: str, is_owner: bool = False) -> List[dict]:
+        """Obtener todos los bots activos de un usuario.
+        Si no es owner, filtra automaticamente los bots owner_only para prevenir acceso no autorizado."""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    cur.execute(
-                        """SELECT ub.id, ub.bot_name, ub.bot_type, ub.is_active, ub.config, ub.created_at,
-                                  bt.icon, bt.description, bt.price
-                           FROM user_bots ub
-                           LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
-                           WHERE ub.user_id = %s AND ub.is_active = TRUE
-                           ORDER BY ub.created_at DESC""",
-                        (user_id,)
-                    )
+                    if is_owner:
+                        cur.execute(
+                            """SELECT ub.id, ub.bot_name, ub.bot_type, ub.is_active, ub.config, ub.created_at,
+                                      bt.icon, bt.description, bt.price
+                               FROM user_bots ub
+                               LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                               WHERE ub.user_id = %s AND ub.is_active = TRUE
+                               ORDER BY ub.created_at DESC""",
+                            (user_id,)
+                        )
+                    else:
+                        cur.execute(
+                            """SELECT ub.id, ub.bot_name, ub.bot_type, ub.is_active, ub.config, ub.created_at,
+                                      bt.icon, bt.description, bt.price
+                               FROM user_bots ub
+                               LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                               WHERE ub.user_id = %s AND ub.is_active = TRUE
+                               AND (bt.owner_only = FALSE OR bt.owner_only IS NULL)
+                               ORDER BY ub.created_at DESC""",
+                            (user_id,)
+                        )
                     rows = cur.fetchall()
                     return [dict(row) for row in rows]
         except Exception as e:

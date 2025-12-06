@@ -2461,10 +2461,12 @@ def get_my_bots():
         
         if is_demo and OWNER_TELEGRAM_ID:
             user_id = str(OWNER_TELEGRAM_ID)
+            user_is_owner = True
         else:
             user_id = str(user.get('id'))
+            user_is_owner = is_owner(user.get('id'))
         
-        bots = db_manager.get_user_bots(user_id)
+        bots = db_manager.get_user_bots(user_id, is_owner=user_is_owner)
         
         result = []
         for bot in bots:
