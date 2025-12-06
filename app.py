@@ -99,6 +99,46 @@ CHANNEL_ID = os.environ.get('CHANNEL_ID', '')
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
 USER_TELEGRAM_ID = os.environ.get('USER_TELEGRAM_ID', '')
 
+DEMO_2FA_SECRET = os.environ.get('DEMO_2FA_SECRET', pyotp.random_base32())
+demo_2fa_sessions = {}
+
+def get_demo_2fa_code():
+    """Genera y devuelve el código 2FA actual para modo demo."""
+    totp = pyotp.TOTP(DEMO_2FA_SECRET, interval=60)
+    return totp.now()
+
+def verify_demo_2fa_code(code: str) -> bool:
+    """Verifica el código 2FA para modo demo."""
+    totp = pyotp.TOTP(DEMO_2FA_SECRET, interval=60)
+    return totp.verify(code, valid_window=1)
+
+def get_demo_session_token(client_ip: str) -> str:
+    """Genera un token de sesión para el modo demo."""
+    import secrets
+    token = secrets.token_urlsafe(32)
+    demo_2fa_sessions[token] = {
+        'ip': client_ip,
+        'created_at': datetime.now(),
+        'valid': True
+    }
+    for old_token in list(demo_2fa_sessions.keys()):
+        session = demo_2fa_sessions[old_token]
+        if (datetime.now() - session['created_at']).total_seconds() > 3600:
+            del demo_2fa_sessions[old_token]
+    return token
+
+def verify_demo_session(token: str, client_ip: str) -> bool:
+    """Verifica si el token de sesión demo es válido."""
+    if not token or token not in demo_2fa_sessions:
+        return False
+    session = demo_2fa_sessions[token]
+    if not session['valid']:
+        return False
+    if (datetime.now() - session['created_at']).total_seconds() > 3600:
+        del demo_2fa_sessions[token]
+        return False
+    return True
+
 try:
     db_manager = DatabaseManager()
     logger.info("Database connection established")
@@ -597,7 +637,7 @@ def is_allowed_user(user_id: int) -> bool:
 
 
 def require_telegram_auth(f):
-    """Decorador para requerir autenticación de Telegram o modo demo."""
+    """Decorador para requerir autenticación de Telegram o modo demo con 2FA."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         demo_header_present = request.headers.get('X-Demo-Mode') == 'true'
@@ -608,6 +648,21 @@ def require_telegram_auth(f):
             return jsonify({'error': 'Modo demo no disponible', 'code': 'DEMO_DISABLED'}), 403
         
         if demo_header_present and not IS_PRODUCTION:
+            demo_session_token = request.headers.get('X-Demo-Session')
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            
+            if not verify_demo_session(demo_session_token, client_ip):
+                current_code = get_demo_2fa_code()
+                logger.info(f"═══════════════════════════════════════════════")
+                logger.info(f"🔐 DEMO 2FA CODE: {current_code}")
+                logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
+                logger.info(f"═══════════════════════════════════════════════")
+                return jsonify({
+                    'error': 'Verificación 2FA requerida para modo demo',
+                    'code': 'DEMO_2FA_REQUIRED',
+                    'requiresDemo2FA': True
+                }), 401
+            
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -665,6 +720,21 @@ def require_telegram_user(f):
             return jsonify({'error': 'Modo demo no disponible', 'code': 'DEMO_DISABLED'}), 403
         
         if demo_header_present and not IS_PRODUCTION:
+            demo_session_token = request.headers.get('X-Demo-Session')
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            
+            if not verify_demo_session(demo_session_token, client_ip):
+                current_code = get_demo_2fa_code()
+                logger.info(f"═══════════════════════════════════════════════")
+                logger.info(f"🔐 DEMO 2FA CODE: {current_code}")
+                logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
+                logger.info(f"═══════════════════════════════════════════════")
+                return jsonify({
+                    'error': 'Verificación 2FA requerida para modo demo',
+                    'code': 'DEMO_2FA_REQUIRED',
+                    'requiresDemo2FA': True
+                }), 401
+            
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -806,6 +876,49 @@ def health_check():
 # ============================================================
 # ENDPOINTS PARA 2FA (Two-Factor Authentication)
 # ============================================================
+
+@app.route('/api/demo/2fa/verify', methods=['POST'])
+def verify_demo_2fa():
+    """Verificar código 2FA para modo demo."""
+    if IS_PRODUCTION:
+        return jsonify({'error': 'Not available in production'}), 403
+    
+    try:
+        data = request.get_json() or {}
+        code = data.get('code', '').strip()
+        
+        if not code:
+            return jsonify({
+                'success': False,
+                'error': 'Código requerido'
+            }), 400
+        
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        
+        if verify_demo_2fa_code(code):
+            session_token = get_demo_session_token(client_ip)
+            logger.info(f"✅ Demo 2FA verified successfully from IP: {client_ip}")
+            return jsonify({
+                'success': True,
+                'sessionToken': session_token,
+                'message': 'Verificación exitosa'
+            })
+        else:
+            current_code = get_demo_2fa_code()
+            logger.info(f"═══════════════════════════════════════════════")
+            logger.info(f"🔐 DEMO 2FA CODE: {current_code}")
+            logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
+            logger.info(f"   Attempt failed with code: {code}")
+            logger.info(f"═══════════════════════════════════════════════")
+            return jsonify({
+                'success': False,
+                'error': 'Código incorrecto. Revisa los logs del servidor.'
+            }), 401
+            
+    except Exception as e:
+        logger.error(f"Error verifying demo 2FA: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
 
 def ensure_user_exists(user_data, db_mgr):
     """Asegura que el usuario exista en la base de datos"""

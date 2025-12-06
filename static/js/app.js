@@ -15,6 +15,7 @@ const App = {
     twoFactorEnabled: false,
     sessionActivityInterval: null,
     lastActivityTime: Date.now(),
+    demoSessionToken: null,
     tonConnectUI: null,
     connectedWallet: null,
     walletSyncedFromServer: false,
@@ -177,16 +178,33 @@ const App = {
         this.userInitials = 'D';
         this.userPhotoUrl = null;
         
+        const savedToken = sessionStorage.getItem('demoSessionToken');
+        if (savedToken) {
+            this.demoSessionToken = savedToken;
+        }
+        
         await this.check2FAStatus();
     },
     
     async check2FAStatus() {
         try {
-            // En modo demo, saltar verificación 2FA directamente
             if (this.isDemoMode) {
-                console.log('Modo demo: saltando 2FA, completando login');
-                this.completeLogin();
-                return;
+                console.log('Modo demo: verificando sesión 2FA...');
+                try {
+                    await this.apiRequest('/api/2fa/status', { method: 'POST' });
+                    console.log('Sesión demo válida, completando login');
+                    this.completeLogin();
+                    return;
+                } catch (error) {
+                    if (error.message && error.message.includes('DEMO_2FA_REQUIRED')) {
+                        console.log('Demo 2FA requerido, mostrando pantalla de verificación');
+                        this.showDemo2FAVerifyScreen();
+                        return;
+                    }
+                    console.log('Error al verificar sesión demo:', error);
+                    this.showDemo2FAVerifyScreen();
+                    return;
+                }
             }
             
             console.log('Checking 2FA status...');
@@ -270,6 +288,190 @@ const App = {
         const firstInput = document.querySelector('.otp-input[data-index="0"]');
         if (firstInput) {
             setTimeout(() => firstInput.focus(), 100);
+        }
+    },
+    
+    showDemo2FAVerifyScreen() {
+        console.log('Mostrando pantalla de verificación 2FA para modo demo');
+        this.hidePreloadOverlay();
+        document.getElementById('loading-screen').classList.add('hidden');
+        
+        let demoScreen = document.getElementById('demo-2fa-screen');
+        if (!demoScreen) {
+            demoScreen = document.createElement('div');
+            demoScreen.id = 'demo-2fa-screen';
+            demoScreen.className = 'auth-screen';
+            demoScreen.innerHTML = `
+                <div class="auth-container">
+                    <div class="auth-header">
+                        <div class="auth-icon">🔐</div>
+                        <h2>Verificación Demo 2FA</h2>
+                        <p>Ingresa el código de los logs del servidor para acceder al modo demo</p>
+                    </div>
+                    <div class="otp-container">
+                        <div id="demo-otp-inputs" class="otp-inputs-container">
+                            <input type="text" class="otp-input demo-otp" data-index="0" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            <input type="text" class="otp-input demo-otp" data-index="1" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            <input type="text" class="otp-input demo-otp" data-index="2" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            <input type="text" class="otp-input demo-otp" data-index="3" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            <input type="text" class="otp-input demo-otp" data-index="4" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            <input type="text" class="otp-input demo-otp" data-index="5" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                        </div>
+                    </div>
+                    <div id="demo-2fa-error" class="auth-error hidden"></div>
+                    <div id="demo-2fa-loading" class="auth-loading hidden">
+                        <div class="loading-spinner"></div>
+                        <span>Verificando...</span>
+                    </div>
+                    <button id="demo-verify-btn" class="btn btn-primary btn-block">Verificar</button>
+                    <p class="auth-hint">El código se muestra en los logs del servidor y cambia cada 60 segundos</p>
+                </div>
+            `;
+            document.body.appendChild(demoScreen);
+        }
+        
+        demoScreen.classList.remove('hidden');
+        this.setupDemo2FAInputs();
+        
+        const firstInput = demoScreen.querySelector('.demo-otp[data-index="0"]');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 100);
+        }
+    },
+    
+    setupDemo2FAInputs() {
+        const container = document.getElementById('demo-otp-inputs');
+        if (!container) return;
+        
+        const inputs = container.querySelectorAll('.demo-otp');
+        
+        inputs.forEach((input, index) => {
+            input.value = '';
+            input.classList.remove('filled', 'error');
+            
+            input.addEventListener('input', (e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                e.target.value = value.slice(0, 1);
+                
+                if (value) {
+                    e.target.classList.add('filled');
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                } else {
+                    e.target.classList.remove('filled');
+                }
+                
+                const code = Array.from(inputs).map(i => i.value).join('');
+                if (code.length === 6) {
+                    this.verifyDemo2FA(code);
+                }
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    if (!e.target.value && index > 0) {
+                        inputs[index - 1].focus();
+                        inputs[index - 1].value = '';
+                        inputs[index - 1].classList.remove('filled');
+                    } else {
+                        e.target.classList.remove('filled');
+                    }
+                }
+                if (e.key === 'ArrowLeft' && index > 0) {
+                    e.preventDefault();
+                    inputs[index - 1].focus();
+                }
+                if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+                    e.preventDefault();
+                    inputs[index + 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                pastedData.split('').forEach((digit, i) => {
+                    if (inputs[i]) {
+                        inputs[i].value = digit;
+                        inputs[i].classList.add('filled');
+                    }
+                });
+                const focusIndex = Math.min(pastedData.length, inputs.length - 1);
+                inputs[focusIndex].focus();
+                
+                const code = Array.from(inputs).map(i => i.value).join('');
+                if (code.length === 6) {
+                    this.verifyDemo2FA(code);
+                }
+            });
+        });
+        
+        const verifyBtn = document.getElementById('demo-verify-btn');
+        if (verifyBtn) {
+            verifyBtn.onclick = () => {
+                const code = Array.from(inputs).map(i => i.value).join('');
+                if (code.length === 6) {
+                    this.verifyDemo2FA(code);
+                } else {
+                    this.showDemo2FAError('Ingresa los 6 dígitos');
+                }
+            };
+        }
+    },
+    
+    async verifyDemo2FA(code) {
+        const loadingEl = document.getElementById('demo-2fa-loading');
+        const verifyBtn = document.getElementById('demo-verify-btn');
+        const errorEl = document.getElementById('demo-2fa-error');
+        const inputs = document.querySelectorAll('.demo-otp');
+        
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        if (verifyBtn) verifyBtn.classList.add('hidden');
+        if (errorEl) errorEl.classList.add('hidden');
+        
+        try {
+            const response = await fetch('/api/demo/2fa/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.sessionToken) {
+                this.demoSessionToken = data.sessionToken;
+                sessionStorage.setItem('demoSessionToken', data.sessionToken);
+                
+                const demoScreen = document.getElementById('demo-2fa-screen');
+                if (demoScreen) demoScreen.classList.add('hidden');
+                
+                console.log('Demo 2FA verificado, completando login');
+                this.completeLogin();
+            } else {
+                this.showDemo2FAError(data.error || 'Código incorrecto');
+                inputs.forEach(input => {
+                    input.value = '';
+                    input.classList.remove('filled');
+                    input.classList.add('error');
+                });
+                if (inputs[0]) inputs[0].focus();
+            }
+        } catch (error) {
+            console.error('Error verificando demo 2FA:', error);
+            this.showDemo2FAError('Error de conexión');
+        } finally {
+            if (loadingEl) loadingEl.classList.add('hidden');
+            if (verifyBtn) verifyBtn.classList.remove('hidden');
+        }
+    },
+    
+    showDemo2FAError(message) {
+        const errorEl = document.getElementById('demo-2fa-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            setTimeout(() => errorEl.classList.add('hidden'), 3000);
         }
     },
     
@@ -3049,6 +3251,9 @@ const App = {
         
         if (this.isDemoMode) {
             headers['X-Demo-Mode'] = 'true';
+            if (this.demoSessionToken) {
+                headers['X-Demo-Session'] = this.demoSessionToken;
+            }
         } else if (this.initData) {
             headers['X-Telegram-Init-Data'] = this.initData;
         }
@@ -3065,6 +3270,9 @@ const App = {
         const data = await response.json();
         
         if (!response.ok && !data.success) {
+            if (data.code === 'DEMO_2FA_REQUIRED' && this.isDemoMode) {
+                throw new Error('DEMO_2FA_REQUIRED');
+            }
             throw new Error(data.error || `HTTP error ${response.status}`);
         }
         
