@@ -194,6 +194,10 @@ const AdminPanel = {
         document.getElementById('txChartPeriod')?.addEventListener('change', () => {
             this.initCharts();
         });
+        
+        document.getElementById('revenueChartPeriod')?.addEventListener('change', () => {
+            this.initCharts();
+        });
     },
     
     async loadDashboard() {
@@ -301,9 +305,11 @@ const AdminPanel = {
     async initCharts() {
         const usersCtx = document.getElementById('usersChart');
         const txCtx = document.getElementById('transactionsChart');
+        const revenueCtx = document.getElementById('revenueChart');
         
         const usersPeriod = document.getElementById('usersChartPeriod')?.value || '30';
         const txPeriod = parseInt(document.getElementById('txChartPeriod')?.value || '7');
+        const revenuePeriod = parseInt(document.getElementById('revenueChartPeriod')?.value || '7');
         
         try {
             const chartData = await this.fetchAPI(`/api/admin/dashboard/charts?period=${usersPeriod}`);
@@ -313,6 +319,8 @@ const AdminPanel = {
                 const usersData = chartData.data.users.map(d => d.count);
                 const txLabels = chartData.data.transactions.slice(-txPeriod).map(d => d.label);
                 const txData = chartData.data.transactions.slice(-txPeriod).map(d => d.count);
+                const revenueLabels = (chartData.data.revenue || []).slice(-revenuePeriod).map(d => d.label);
+                const revenueData = (chartData.data.revenue || []).slice(-revenuePeriod).map(d => d.amount);
                 
                 if (usersCtx) {
                     if (this.charts.users) {
@@ -391,14 +399,54 @@ const AdminPanel = {
                         });
                     }
                 }
+                
+                if (revenueCtx) {
+                    if (this.charts.revenue) {
+                        this.charts.revenue.data.labels = revenueLabels;
+                        this.charts.revenue.data.datasets[0].data = revenueData;
+                        this.charts.revenue.update();
+                    } else {
+                        this.charts.revenue = new Chart(revenueCtx, {
+                            type: 'line',
+                            data: {
+                                labels: revenueLabels,
+                                datasets: [{
+                                    label: 'Comisiones (TON)',
+                                    data: revenueData,
+                                    borderColor: '#27ae60',
+                                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    x: {
+                                        grid: { color: 'rgba(255,255,255,0.05)' },
+                                        ticks: { color: '#848E9C' }
+                                    },
+                                    y: {
+                                        grid: { color: 'rgba(255,255,255,0.05)' },
+                                        ticks: { color: '#848E9C' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
             }
         } catch (error) {
             console.error('Error loading chart data:', error);
-            this.initFallbackCharts(usersCtx, txCtx);
+            this.initFallbackCharts(usersCtx, txCtx, revenueCtx);
         }
     },
     
-    initFallbackCharts(usersCtx, txCtx) {
+    initFallbackCharts(usersCtx, txCtx, revenueCtx) {
         if (usersCtx && !this.charts.users) {
             this.charts.users = new Chart(usersCtx, {
                 type: 'line',
@@ -443,6 +491,32 @@ const AdminPanel = {
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: '#848E9C' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } }
+                    }
+                }
+            });
+        }
+        
+        if (revenueCtx && !this.charts.revenue) {
+            this.charts.revenue = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                    datasets: [{
+                        label: 'Comisiones (TON)',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#27ae60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } },
                         y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } }
                     }
                 }

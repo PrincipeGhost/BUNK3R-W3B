@@ -5286,6 +5286,53 @@ def admin_dashboard_alerts():
                                 'message': row['message'],
                                 'timestamp': row['created_at'].isoformat() if row['created_at'] else None
                             })
+                        
+                        try:
+                            cur.execute("""
+                                SELECT COUNT(*) FROM wallet_transactions 
+                                WHERE transaction_type = 'withdrawal' 
+                                AND created_at >= NOW() - INTERVAL '24 hours'
+                            """)
+                            recent_withdrawals = cur.fetchone()[0] or 0
+                            if recent_withdrawals > 0:
+                                alerts.insert(0, {
+                                    'id': 'recent_withdrawals',
+                                    'level': 'info',
+                                    'message': f'{recent_withdrawals} retiros en las últimas 24h',
+                                    'timestamp': datetime.now().isoformat()
+                                })
+                        except Exception as e:
+                            logger.debug(f"Error checking withdrawals: {e}")
+                        
+                        try:
+                            cur.execute("""
+                                SELECT COUNT(*) FROM posts 
+                                WHERE is_reported = true AND is_hidden = false
+                            """)
+                            pending_reports = cur.fetchone()[0] or 0
+                            if pending_reports > 0:
+                                alerts.insert(0, {
+                                    'id': 'pending_reports',
+                                    'level': 'danger',
+                                    'message': f'{pending_reports} reportes de contenido sin revisar',
+                                    'timestamp': datetime.now().isoformat()
+                                })
+                        except:
+                            pass
+                        
+                        cur.execute("""
+                            SELECT COALESCE(SUM(deposit_amount), 0) 
+                            FROM deposit_wallets 
+                            WHERE deposit_amount > 0 AND consolidated_at IS NULL
+                        """)
+                        hot_wallet = float(cur.fetchone()[0] or 0)
+                        if hot_wallet < 1.0:
+                            alerts.insert(0, {
+                                'id': 'low_balance',
+                                'level': 'danger',
+                                'message': f'Balance bajo en Hot Wallet: {hot_wallet:.4f} TON',
+                                'timestamp': datetime.now().isoformat()
+                            })
             except psycopg2.errors.UndefinedTable:
                 logger.info("security_alerts table not found - returning empty alerts")
                 alerts = []
@@ -5334,12 +5381,25 @@ def admin_dashboard_charts():
                         ORDER BY date ASC
                     """ % days)
                     tx_by_date = {row['date'].isoformat(): row['count'] for row in cur.fetchall()}
+                    
+                    cur.execute("""
+                        SELECT DATE(created_at) as date, COALESCE(SUM(amount * 0.02), 0) as revenue
+                        FROM wallet_transactions
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        AND transaction_type = 'deposit'
+                        GROUP BY DATE(created_at)
+                        ORDER BY date ASC
+                    """ % days)
+                    revenue_by_date = {row['date'].isoformat(): float(row['revenue']) for row in cur.fetchall()}
         else:
             users_by_date = {}
             tx_by_date = {}
+            revenue_by_date = {}
         
         from datetime import timedelta
         today = datetime.now().date()
+        
+        revenue_data = []
         
         for i in range(days - 1, -1, -1):
             date = today - timedelta(days=i)
@@ -5354,12 +5414,18 @@ def admin_dashboard_charts():
                 'label': date.strftime('%d/%m'),
                 'count': tx_by_date.get(date_str, 0)
             })
+            revenue_data.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'amount': revenue_by_date.get(date_str, 0)
+            })
         
         return jsonify({
             'success': True,
             'data': {
                 'users': users_data,
-                'transactions': transactions_data
+                'transactions': transactions_data,
+                'revenue': revenue_data
             }
         })
         
@@ -5682,25 +5748,80 @@ def admin_get_user_activity(user_id):
 @require_telegram_auth
 @require_owner
 def admin_get_all_users():
-    """Admin: Obtener todos los usuarios."""
+    """Admin: Obtener todos los usuarios con paginación, búsqueda y filtros."""
     try:
         if not db_manager:
             return jsonify({'success': False, 'error': 'Database not available'}), 500
         
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 20))
+        search = request.args.get('search', '').strip()
+        status = request.args.get('status', '')
+        offset = (page - 1) * limit
+        
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("""
+                query = """
                     SELECT id, username, first_name, last_name, telegram_id, 
                            credits, level, is_active, is_verified, wallet_address,
-                           created_at, last_seen
+                           created_at, last_seen,
+                           COALESCE(is_banned, false) as is_banned
                     FROM users 
-                    ORDER BY created_at DESC
-                """)
+                    WHERE 1=1
+                """
+                count_query = "SELECT COUNT(*) FROM users WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if search:
+                    search_pattern = f"%{search}%"
+                    query += " AND (username ILIKE %s OR first_name ILIKE %s OR CAST(telegram_id AS TEXT) ILIKE %s OR CAST(id AS TEXT) = %s)"
+                    count_query += " AND (username ILIKE %s OR first_name ILIKE %s OR CAST(telegram_id AS TEXT) ILIKE %s OR CAST(id AS TEXT) = %s)"
+                    params.extend([search_pattern, search_pattern, search_pattern, search])
+                    count_params.extend([search_pattern, search_pattern, search_pattern, search])
+                
+                if status == 'active':
+                    query += " AND (is_banned IS NULL OR is_banned = false)"
+                    count_query += " AND (is_banned IS NULL OR is_banned = false)"
+                elif status == 'banned':
+                    query += " AND is_banned = true"
+                    count_query += " AND is_banned = true"
+                elif status == 'verified':
+                    query += " AND is_verified = true"
+                    count_query += " AND is_verified = true"
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()[0] or 0
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
                 users = cur.fetchall()
+        
+        pages = max(1, (total + limit - 1) // limit)
         
         return jsonify({
             'success': True,
-            'users': [dict(u) for u in users],
+            'users': [{
+                'user_id': str(u['id']),
+                'id': u['id'],
+                'telegram_id': u.get('telegram_id'),
+                'username': u.get('username'),
+                'first_name': u.get('first_name'),
+                'last_name': u.get('last_name'),
+                'credits': float(u.get('credits', 0)),
+                'level': u.get('level', 1),
+                'is_active': u.get('is_active', True),
+                'is_verified': u.get('is_verified', False),
+                'is_banned': u.get('is_banned', False),
+                'wallet_address': u.get('wallet_address'),
+                'created_at': str(u.get('created_at', '')),
+                'last_seen': str(u.get('last_seen', ''))
+            } for u in users],
+            'total': total,
+            'page': page,
+            'pages': pages,
             'count': len(users)
         })
         
@@ -5919,7 +6040,9 @@ def admin_get_user_detail(user_id):
                 cur.execute("""
                     SELECT id, username, first_name, last_name, telegram_id, 
                            credits, level, is_active, is_verified, wallet_address,
-                           created_at, last_seen
+                           created_at, last_seen, bio, avatar_url,
+                           COALESCE(is_banned, false) as is_banned,
+                           two_factor_enabled, security_score
                     FROM users WHERE id = %s
                 """, (user_id,))
                 user = cur.fetchone()
@@ -5930,12 +6053,32 @@ def admin_get_user_detail(user_id):
                 cur.execute("SELECT COUNT(*) FROM wallet_transactions WHERE user_id = %s", (user_id,))
                 total_tx = cur.fetchone()[0] or 0
                 
-                user_dict = dict(user)
-                user_dict['total_transactions'] = total_tx
+                user_data = {
+                    'user_id': str(user['id']),
+                    'id': user['id'],
+                    'telegram_id': user.get('telegram_id'),
+                    'username': user.get('username'),
+                    'first_name': user.get('first_name'),
+                    'last_name': user.get('last_name'),
+                    'bio': user.get('bio'),
+                    'avatar_url': user.get('avatar_url'),
+                    'credits': float(user.get('credits', 0)),
+                    'level': user.get('level', 1),
+                    'is_active': user.get('is_active', True),
+                    'is_verified': user.get('is_verified', False),
+                    'is_banned': user.get('is_banned', False),
+                    'wallet_address': user.get('wallet_address'),
+                    'two_factor_enabled': user.get('two_factor_enabled', False),
+                    'security_score': user.get('security_score', 0),
+                    'created_at': str(user.get('created_at', '')),
+                    'last_seen': str(user.get('last_seen', '')),
+                    'total_transactions': total_tx,
+                    'language_code': 'es'
+                }
         
         return jsonify({
             'success': True,
-            'user': user_dict
+            'user': user_data
         })
         
     except Exception as e:
@@ -6173,60 +6316,103 @@ def admin_get_transactions():
     """Admin: Obtener todas las transacciones."""
     try:
         filter_type = request.args.get('filter', 'all')
+        tx_type = request.args.get('type', '')
+        status = request.args.get('status', '')
         period = request.args.get('period', 'all')
+        user_id = request.args.get('user_id', '')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        offset = (page - 1) * limit
         
         if not db_manager:
             return jsonify({
                 'success': True,
                 'transactions': [],
-                'totalDeposits': 0,
-                'totalWithdrawals': 0
+                'total': 0,
+                'page': 1,
+                'pages': 1,
+                'totalVolume': 0,
+                'totalFees': 0
             })
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 query = """
-                    SELECT wt.*, u.username 
+                    SELECT wt.*, u.username, u.telegram_id
                     FROM wallet_transactions wt
-                    LEFT JOIN users u ON wt.user_id = u.id
+                    LEFT JOIN users u ON CAST(wt.user_id AS INTEGER) = u.id
                     WHERE 1=1
                 """
+                count_query = "SELECT COUNT(*) FROM wallet_transactions wt WHERE 1=1"
                 params = []
+                count_params = []
                 
                 if filter_type != 'all':
                     query += " AND wt.transaction_type = %s"
+                    count_query += " AND wt.transaction_type = %s"
                     params.append(filter_type)
+                    count_params.append(filter_type)
+                
+                if tx_type:
+                    query += " AND wt.transaction_type = %s"
+                    count_query += " AND wt.transaction_type = %s"
+                    params.append(tx_type)
+                    count_params.append(tx_type)
+                
+                if user_id:
+                    query += " AND wt.user_id = %s"
+                    count_query += " AND wt.user_id = %s"
+                    params.append(str(user_id))
+                    count_params.append(str(user_id))
                 
                 if period == 'today':
                     query += " AND wt.created_at >= CURRENT_DATE"
+                    count_query += " AND wt.created_at >= CURRENT_DATE"
                 elif period == 'week':
                     query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '7 days'"
+                    count_query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '7 days'"
                 elif period == 'month':
                     query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '30 days'"
+                    count_query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '30 days'"
                 
-                query += " ORDER BY wt.created_at DESC LIMIT 100"
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()[0] or 0
+                
+                query += " ORDER BY wt.created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
                 
                 cur.execute(query, params)
                 transactions = cur.fetchall()
                 
                 cur.execute("""
-                    SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE 0 END), 0) as deposits,
-                           COALESCE(SUM(CASE WHEN transaction_type = 'withdrawal' THEN amount ELSE 0 END), 0) as withdrawals
+                    SELECT COALESCE(SUM(amount), 0) as volume,
+                           COALESCE(SUM(CASE WHEN transaction_type IN ('buy', 'sell') THEN amount * 0.01 ELSE 0 END), 0) as fees
                     FROM wallet_transactions
                 """)
                 totals = cur.fetchone()
+        
+        pages = max(1, (total + limit - 1) // limit)
         
         return jsonify({
             'success': True,
             'transactions': [{
                 'id': t['id'],
+                'user_id': t.get('user_id', ''),
                 'type': t.get('transaction_type', 'unknown'),
                 'amount': float(t.get('amount', 0)),
-                'username': t.get('username', 'unknown'),
+                'currency': 'B3C',
+                'status': 'completed',
+                'username': t.get('username') or f"User {t.get('user_id', 'N/A')}",
+                'description': t.get('description', ''),
+                'reference_id': t.get('reference_id', ''),
+                'tx_hash': t.get('reference_id', ''),
                 'created_at': str(t.get('created_at', ''))
             } for t in transactions],
-            'totalDeposits': float(totals['deposits']) if totals else 0,
-            'totalWithdrawals': float(totals['withdrawals']) if totals else 0
+            'total': total,
+            'page': page,
+            'pages': pages,
+            'totalVolume': float(totals['volume']) if totals else 0,
+            'totalFees': float(totals['fees']) if totals else 0
         })
         
     except Exception as e:
