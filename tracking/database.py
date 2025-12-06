@@ -2050,13 +2050,41 @@ class DatabaseManager:
                     """)
                     daily_stats = [dict(row) for row in cur.fetchall()]
                     
+                    cur.execute("""
+                        SELECT 
+                            COALESCE(service_name, service_code) as service,
+                            COUNT(*) as count,
+                            COALESCE(SUM(bunkercoin_charged), 0) as revenue
+                        FROM virtual_number_orders
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        GROUP BY COALESCE(service_name, service_code)
+                        ORDER BY count DESC
+                        LIMIT 10
+                    """, (days,))
+                    top_services = [dict(row) for row in cur.fetchall()]
+                    
+                    cur.execute("""
+                        SELECT 
+                            COALESCE(country_name, country_code) as country,
+                            COUNT(*) as count,
+                            COALESCE(SUM(bunkercoin_charged), 0) as revenue
+                        FROM virtual_number_orders
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        GROUP BY COALESCE(country_name, country_code)
+                        ORDER BY count DESC
+                        LIMIT 10
+                    """, (days,))
+                    top_countries = [dict(row) for row in cur.fetchall()]
+                    
                     return {
                         'summary': dict(result) if result else {},
-                        'daily': daily_stats
+                        'daily': daily_stats,
+                        'top_services': top_services,
+                        'top_countries': top_countries
                     }
         except Exception as e:
             logger.error(f"Error getting virtual number stats: {e}")
-            return {'summary': {}, 'daily': []}
+            return {'summary': {}, 'daily': [], 'top_services': [], 'top_countries': []}
     
     def get_legitsms_inventory(self, available_only: bool = True) -> list:
         """Obtener inventario de numeros Legit SMS"""

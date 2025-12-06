@@ -7576,6 +7576,139 @@ def admin_delete_bot(bot_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/bots/<int:bot_id>/toggle', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_toggle_bot(bot_id):
+    """Admin: Activar/desactivar un bot."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, is_available FROM bot_types WHERE id = %s", (bot_id,))
+                bot = cur.fetchone()
+                
+                if not bot:
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                new_status = not bot['is_available']
+                cur.execute("UPDATE bot_types SET is_available = %s WHERE id = %s", (new_status, bot_id))
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'isAvailable': new_status,
+                    'message': 'Bot activado' if new_status else 'Bot desactivado'
+                })
+        
+    except Exception as e:
+        logger.error(f"Error toggling bot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/bots/<int:bot_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def admin_update_bot(bot_id):
+    """Admin: Actualizar un bot."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        data = request.get_json() or {}
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id FROM bot_types WHERE id = %s", (bot_id,))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                updates = []
+                params = []
+                
+                if 'name' in data:
+                    updates.append("bot_name = %s")
+                    params.append(data['name'])
+                if 'description' in data:
+                    updates.append("description = %s")
+                    params.append(data['description'])
+                if 'price' in data:
+                    updates.append("price = %s")
+                    params.append(int(data['price']))
+                if 'icon' in data:
+                    updates.append("icon = %s")
+                    params.append(data['icon'])
+                if 'isAvailable' in data:
+                    updates.append("is_available = %s")
+                    params.append(bool(data['isAvailable']))
+                
+                if updates:
+                    params.append(bot_id)
+                    cur.execute(f"UPDATE bot_types SET {', '.join(updates)} WHERE id = %s", params)
+                    conn.commit()
+                
+                return jsonify({'success': True, 'message': 'Bot actualizado'})
+        
+    except Exception as e:
+        logger.error(f"Error updating bot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/bots/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_stats():
+    """Admin: Obtener estadísticas de bots."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        bt.id,
+                        bt.bot_name,
+                        bt.bot_type,
+                        bt.icon,
+                        bt.price,
+                        bt.is_available,
+                        COUNT(ub.id) as total_users,
+                        COUNT(CASE WHEN ub.is_active THEN 1 END) as active_users,
+                        COALESCE(bt.price * COUNT(ub.id), 0) as total_revenue
+                    FROM bot_types bt
+                    LEFT JOIN user_bots ub ON ub.bot_type = bt.bot_type
+                    GROUP BY bt.id, bt.bot_name, bt.bot_type, bt.icon, bt.price, bt.is_available
+                    ORDER BY total_users DESC
+                """)
+                bot_stats = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("SELECT COUNT(*) as total FROM bot_types")
+                total_bots = cur.fetchone()['total']
+                
+                cur.execute("SELECT COUNT(*) as total FROM bot_types WHERE is_available = true")
+                active_bots = cur.fetchone()['total']
+                
+                cur.execute("SELECT COUNT(*) as total FROM user_bots")
+                total_users_using_bots = cur.fetchone()['total']
+                
+                return jsonify({
+                    'success': True,
+                    'summary': {
+                        'totalBots': total_bots,
+                        'activeBots': active_bots,
+                        'totalUsersUsingBots': total_users_using_bots
+                    },
+                    'botStats': bot_stats
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bot stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/products', methods=['GET'])
 @require_telegram_auth
 @require_owner
@@ -10323,6 +10456,110 @@ def delete_admin_vn_inventory(inventory_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/vn/orders', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_admin_vn_orders():
+    """Admin: Get all virtual number orders with filters"""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        status = request.args.get('status', '')
+        provider = request.args.get('provider', '')
+        country = request.args.get('country', '')
+        service = request.args.get('service', '')
+        user_id = request.args.get('user_id', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT vno.*, u.username, u.first_name, u.last_name
+                    FROM virtual_number_orders vno
+                    LEFT JOIN users u ON vno.user_id = u.telegram_id::text
+                    WHERE 1=1
+                """
+                count_query = "SELECT COUNT(*) FROM virtual_number_orders vno WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if status:
+                    query += " AND vno.status = %s"
+                    count_query += " AND vno.status = %s"
+                    params.append(status)
+                    count_params.append(status)
+                
+                if provider:
+                    query += " AND vno.provider = %s"
+                    count_query += " AND vno.provider = %s"
+                    params.append(provider)
+                    count_params.append(provider)
+                
+                if country:
+                    query += " AND (vno.country_code ILIKE %s OR vno.country_name ILIKE %s)"
+                    count_query += " AND (vno.country_code ILIKE %s OR vno.country_name ILIKE %s)"
+                    params.extend([f'%{country}%', f'%{country}%'])
+                    count_params.extend([f'%{country}%', f'%{country}%'])
+                
+                if service:
+                    query += " AND (vno.service_code ILIKE %s OR vno.service_name ILIKE %s)"
+                    count_query += " AND (vno.service_code ILIKE %s OR vno.service_name ILIKE %s)"
+                    params.extend([f'%{service}%', f'%{service}%'])
+                    count_params.extend([f'%{service}%', f'%{service}%'])
+                
+                if user_id:
+                    query += " AND vno.user_id = %s"
+                    count_query += " AND vno.user_id = %s"
+                    params.append(user_id)
+                    count_params.append(user_id)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY vno.created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                orders = []
+                
+                for row in cur.fetchall():
+                    orders.append({
+                        'id': str(row['id']),
+                        'userId': row['user_id'],
+                        'username': row.get('username') or row.get('first_name') or 'Unknown',
+                        'provider': row['provider'],
+                        'countryCode': row['country_code'],
+                        'countryName': row['country_name'],
+                        'serviceCode': row['service_code'],
+                        'serviceName': row['service_name'],
+                        'phoneNumber': row['phone_number'],
+                        'providerOrderId': row['provider_order_id'],
+                        'costUsd': float(row['cost_usd']) if row['cost_usd'] else 0,
+                        'costWithCommission': float(row['cost_with_commission']) if row['cost_with_commission'] else 0,
+                        'bunkercoinCharged': float(row['bunkercoin_charged']) if row['bunkercoin_charged'] else 0,
+                        'smsCode': row['sms_code'],
+                        'status': row['status'],
+                        'expiresAt': row['expires_at'].isoformat() if row['expires_at'] else None,
+                        'createdAt': row['created_at'].isoformat() if row['created_at'] else None
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'orders': orders,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting admin VN orders: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/virtual-numbers')
 @require_telegram_auth
 def virtual_numbers_page():
@@ -10397,6 +10634,164 @@ def admin_get_admin_logs():
     except Exception as e:
         logger.error(f"Error getting admin logs: {e}")
         return jsonify({'success': True, 'logs': []})
+
+
+@app.route('/api/admin/logs/security', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_security_logs():
+    """Admin: Obtener logs de seguridad (intentos de login, actividad sospechosa)."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        activity_type = request.args.get('activity_type', '')
+        user_id = request.args.get('user_id', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM security_activity_log WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM security_activity_log WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if activity_type:
+                    query += " AND activity_type = %s"
+                    count_query += " AND activity_type = %s"
+                    params.append(activity_type)
+                    count_params.append(activity_type)
+                
+                if user_id:
+                    query += " AND user_id = %s"
+                    count_query += " AND user_id = %s"
+                    params.append(user_id)
+                    count_params.append(user_id)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT activity_type, COUNT(*) as count
+                    FROM security_activity_log
+                    GROUP BY activity_type
+                    ORDER BY count DESC
+                """)
+                activity_types = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'activityTypes': activity_types
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting security logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+@app.route('/api/admin/logs/export', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_export_logs():
+    """Admin: Exportar logs a CSV o JSON."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        log_type = request.args.get('type', 'admin')
+        export_format = request.args.get('format', 'csv')
+        days = int(request.args.get('days', 30))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if log_type == 'admin':
+                    cur.execute("""
+                        SELECT id, admin_id, admin_name, action_type, target_type, 
+                               target_id, description, ip_address, created_at
+                        FROM admin_logs
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        ORDER BY created_at DESC
+                    """, (days,))
+                elif log_type == 'security':
+                    cur.execute("""
+                        SELECT id, user_id, activity_type, description, 
+                               device_id, ip_address, created_at
+                        FROM security_activity_log
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        ORDER BY created_at DESC
+                    """, (days,))
+                elif log_type == 'client':
+                    cur.execute("""
+                        SELECT id, user_id, log_type, action, is_mobile, 
+                               is_telegram, ip, created_at
+                        FROM client_logs
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        ORDER BY created_at DESC
+                    """, (days,))
+                else:
+                    return jsonify({'success': False, 'error': 'Tipo de log inválido'}), 400
+                
+                logs = [dict(row) for row in cur.fetchall()]
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                if export_format == 'json':
+                    return Response(
+                        json.dumps(logs, indent=2, ensure_ascii=False),
+                        mimetype='application/json',
+                        headers={'Content-Disposition': f'attachment; filename={log_type}_logs.json'}
+                    )
+                else:
+                    if not logs:
+                        return Response(
+                            '',
+                            mimetype='text/csv',
+                            headers={'Content-Disposition': f'attachment; filename={log_type}_logs.csv'}
+                        )
+                    
+                    output = io.StringIO()
+                    headers = list(logs[0].keys())
+                    output.write(','.join(headers) + '\n')
+                    
+                    for log in logs:
+                        row_values = []
+                        for h in headers:
+                            value = log.get(h, '')
+                            if isinstance(value, str) and (',' in value or '"' in value or '\n' in value):
+                                value = '"' + value.replace('"', '""') + '"'
+                            row_values.append(str(value) if value is not None else '')
+                        output.write(','.join(row_values) + '\n')
+                    
+                    return Response(
+                        output.getvalue(),
+                        mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename={log_type}_logs.csv'}
+                    )
+    
+    except Exception as e:
+        logger.error(f"Error exporting logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/admin/config', methods=['GET'])
