@@ -66,7 +66,11 @@ const AdminPanel = {
             reports: 'Reportes',
             virtualnumbers: 'Números Virtuales',
             bots: 'Gestión de Bots',
+            support: 'Tickets de Soporte',
+            faq: 'Preguntas Frecuentes',
+            massmessages: 'Mensajes Masivos',
             logs: 'Logs',
+            analytics: 'Analíticas',
             settings: 'Configuración'
         };
         
@@ -120,6 +124,15 @@ const AdminPanel = {
                 break;
             case 'settings':
                 this.loadSettings();
+                break;
+            case 'support':
+                SupportModule.loadTickets();
+                break;
+            case 'faq':
+                SupportModule.loadFAQs();
+                break;
+            case 'massmessages':
+                SupportModule.loadMassMessages();
                 break;
         }
     },

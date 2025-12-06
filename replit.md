@@ -38,7 +38,7 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 - **Monetary System (BUNK3RCO1N):** Internal currency for in-app purchases, secured by TON payment verification and TonCenter API. Features include auto-registration of wallets, address validation, transaction history, and a debit system.
 - **Social Features:** User profiles, posts, likes, follows, avatar uploads, and AES-256-GCM encrypted media publications via Cloudinary.
 - **Marketplace:** Sections for products and dynamic bot management.
-- **Admin Panel:** Comprehensive logging and auditing system for admin and security actions with filtering, pagination, and export capabilities. Content moderation endpoints for posts, stories, and hashtags.
+- **Admin Panel:** Comprehensive logging and auditing system for admin and security actions with filtering, pagination, and export capabilities. Content moderation endpoints for posts, stories, and hashtags. Support system with tickets management, FAQ administration, and mass messaging capabilities.
 
 ## External Dependencies
 - **PostgreSQL:** Primary database.
