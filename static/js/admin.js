@@ -3471,23 +3471,23 @@ const AdminPanel = {
         
         const modal = document.createElement('div');
         modal.id = 'admin2FAModal';
-        modal.className = 'modal-overlay active';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.8);';
         modal.innerHTML = `
-            <div class="modal" style="max-width: 400px;">
-                <div class="modal-header">
-                    <h2>Verificación 2FA</h2>
+            <div style="background: #1E2329; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+                <div style="padding: 20px 24px; border-bottom: 1px solid #2B3139;">
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #EAECEF;">Verificación 2FA</h2>
                 </div>
-                <div class="modal-body" style="padding: 24px;">
-                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                        Ingresa el código 2FA que aparece en la consola del servidor.
+                <div style="padding: 24px;">
+                    <p style="color: #848E9C; margin: 0 0 16px 0; font-size: 14px;">
+                        Ingresa el código 2FA que aparece en la consola del servidor (Logs).
                     </p>
                     <input type="text" id="admin2FACode" placeholder="Código de 6 dígitos" 
-                           style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); color: var(--text-primary);"
+                           style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 8px; border: 1px solid #2B3139; border-radius: 8px; background: #0B0E11; color: #EAECEF; box-sizing: border-box;"
                            maxlength="6" autocomplete="off">
-                    <button id="admin2FASubmit" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--accent-gold); color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    <button id="admin2FASubmit" style="width: 100%; margin-top: 16px; padding: 12px; background: #F0B90B; color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">
                         Verificar
                     </button>
-                    <p id="admin2FAError" style="color: var(--accent-danger); margin-top: 12px; display: none; text-align: center;"></p>
+                    <p id="admin2FAError" style="color: #F6465D; margin-top: 12px; display: none; text-align: center; font-size: 14px;"></p>
                 </div>
             </div>
         `;
@@ -3520,9 +3520,10 @@ const AdminPanel = {
             
             const data = await response.json();
             
-            if (data.success && data.session_token) {
-                this.demoSessionToken = data.session_token;
-                localStorage.setItem('demo_session_token', data.session_token);
+            const token = data.sessionToken || data.session_token;
+            if (data.success && token) {
+                this.demoSessionToken = token;
+                localStorage.setItem('demo_session_token', token);
                 document.getElementById('admin2FAModal').remove();
                 this.showToast('Verificación exitosa', 'success');
                 this.loadSectionData(this.currentSection);
