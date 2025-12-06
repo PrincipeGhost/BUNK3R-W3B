@@ -63,6 +63,7 @@ const AdminPanel = {
             wallets: 'Wallets',
             content: 'Contenido',
             reports: 'Reportes',
+            virtualnumbers: 'Números Virtuales',
             logs: 'Logs',
             settings: 'Configuración'
         };
@@ -101,6 +102,9 @@ const AdminPanel = {
                 break;
             case 'reports':
                 this.loadReports();
+                break;
+            case 'virtualnumbers':
+                this.loadVirtualNumbers();
                 break;
             case 'logs':
                 this.loadLogs();
@@ -3615,6 +3619,210 @@ Fin del reporte
             console.error('Error generating report:', error);
             this.showToast('Error al generar reporte', 'error');
         }
+    },
+    
+    vnPage: 1,
+    vnPerPage: 20,
+    vnListenersInitialized: false,
+    vnTotalOrders: 0,
+    
+    async loadVirtualNumbers() {
+        try {
+            const [stats, orders] = await Promise.all([
+                this.fetchAPI('/api/admin/vn/stats'),
+                this.fetchAPI(`/api/admin/vn/orders?page=${this.vnPage}&per_page=${this.vnPerPage}`)
+            ]);
+            
+            if (stats.success && stats.data) {
+                document.getElementById('vnTotalPurchases').textContent = this.formatNumber(stats.data.total_purchases || 0);
+                document.getElementById('vnTotalRevenue').textContent = this.formatNumber(stats.data.total_revenue || 0);
+                document.getElementById('vnActiveNumbers').textContent = this.formatNumber(stats.data.active_numbers || 0);
+                document.getElementById('smsPoolBalance').textContent = '$' + this.formatNumber(stats.data.smspool_balance || 0, 2);
+                document.getElementById('smsPoolBalanceDisplay').textContent = '$' + this.formatNumber(stats.data.smspool_balance || 0, 2);
+                
+                if (stats.data.smspool_balance < 10) {
+                    document.getElementById('smsPoolAlert').style.display = 'flex';
+                } else {
+                    document.getElementById('smsPoolAlert').style.display = 'none';
+                }
+                
+                this.renderVNTopServices(stats.data.top_services || []);
+                this.renderVNTopCountries(stats.data.top_countries || []);
+                this.populateVNServiceFilter(stats.data.top_services || []);
+            }
+            
+            if (orders.success) {
+                this.vnTotalOrders = orders.total || orders.data?.length || 0;
+                this.renderVNOrders(orders.data || []);
+            }
+            
+            if (!this.vnListenersInitialized) {
+                this.setupVNEventListeners();
+                this.vnListenersInitialized = true;
+            }
+            
+        } catch (error) {
+            console.error('Error loading virtual numbers:', error);
+            this.showToast('Error al cargar números virtuales', 'error');
+        }
+    },
+    
+    populateVNServiceFilter(services) {
+        const select = document.getElementById('vnServiceFilter');
+        if (!select) return;
+        
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Todos los servicios</option>';
+        
+        services.forEach(service => {
+            const name = service.name || service.service;
+            if (name) {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            }
+        });
+        
+        if (currentValue) {
+            select.value = currentValue;
+        }
+    },
+    
+    setupVNEventListeners() {
+        document.getElementById('refreshVNBtn')?.addEventListener('click', () => {
+            this.loadVirtualNumbers();
+        });
+        
+        document.getElementById('vnStatusFilter')?.addEventListener('change', () => {
+            this.vnPage = 1;
+            this.loadVNOrders();
+        });
+        
+        document.getElementById('vnServiceFilter')?.addEventListener('change', () => {
+            this.vnPage = 1;
+            this.loadVNOrders();
+        });
+        
+        document.getElementById('vnPrevBtn')?.addEventListener('click', () => {
+            if (this.vnPage > 1) {
+                this.vnPage--;
+                this.loadVNOrders();
+            }
+        });
+        
+        document.getElementById('vnNextBtn')?.addEventListener('click', () => {
+            if (!document.getElementById('vnNextBtn').disabled) {
+                this.vnPage++;
+                this.loadVNOrders();
+            }
+        });
+    },
+    
+    async loadVNOrders() {
+        const status = document.getElementById('vnStatusFilter')?.value || '';
+        const service = document.getElementById('vnServiceFilter')?.value || '';
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/vn/orders?page=${this.vnPage}&per_page=${this.vnPerPage}&status=${status}&service=${service}`);
+            
+            if (response.success) {
+                this.vnTotalOrders = response.total || response.data?.length || 0;
+                this.renderVNOrders(response.data || []);
+            }
+        } catch (error) {
+            console.error('Error loading VN orders:', error);
+        }
+    },
+    
+    renderVNTopServices(services) {
+        const container = document.getElementById('vnTopServices');
+        if (!services || services.length === 0) {
+            container.innerHTML = '<div class="empty-state">Sin datos de servicios</div>';
+            return;
+        }
+        
+        container.innerHTML = services.slice(0, 5).map(service => `
+            <div class="service-item">
+                <span class="service-name">${this.escapeHtml(service.name || service.service)}</span>
+                <span class="service-count">${service.count || 0}</span>
+            </div>
+        `).join('');
+    },
+    
+    renderVNTopCountries(countries) {
+        const container = document.getElementById('vnTopCountries');
+        if (!countries || countries.length === 0) {
+            container.innerHTML = '<div class="empty-state">Sin datos de países</div>';
+            return;
+        }
+        
+        container.innerHTML = countries.slice(0, 5).map(country => `
+            <div class="country-item">
+                <span class="country-name">${this.escapeHtml(country.name || country.country)}</span>
+                <span class="country-count">${country.count || 0}</span>
+            </div>
+        `).join('');
+    },
+    
+    renderVNOrders(orders) {
+        const tbody = document.getElementById('vnOrdersTableBody');
+        const pageInfo = document.getElementById('vnPageInfo');
+        const prevBtn = document.getElementById('vnPrevBtn');
+        const nextBtn = document.getElementById('vnNextBtn');
+        
+        if (!tbody) return;
+        
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No hay compras de números virtuales</td></tr>';
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+            if (pageInfo) pageInfo.textContent = this.vnPage === 1 ? 'Sin resultados' : 'Página ' + this.vnPage;
+            return;
+        }
+        
+        tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td>${order.id}</td>
+                <td>
+                    <a href="#" class="user-link" data-user-id="${order.user_id}">${this.escapeHtml(order.username || order.user_id)}</a>
+                </td>
+                <td class="monospace">${this.escapeHtml(order.phone_number || '-')}</td>
+                <td>${this.escapeHtml(order.service || '-')}</td>
+                <td>${this.escapeHtml(order.country || '-')}</td>
+                <td>${this.formatNumber(order.cost || 0, 2)} B3C</td>
+                <td><span class="status-badge ${this.getVNStatusClass(order.status)}">${this.getVNStatusLabel(order.status)}</span></td>
+                <td>${order.sms_received ? '<span class="status-badge success">Sí</span>' : '<span class="status-badge pending">No</span>'}</td>
+                <td>${this.formatDate(order.created_at)}</td>
+            </tr>
+        `).join('');
+        
+        const isLastPage = orders.length < this.vnPerPage;
+        if (prevBtn) prevBtn.disabled = this.vnPage <= 1;
+        if (nextBtn) nextBtn.disabled = isLastPage;
+        if (pageInfo) pageInfo.textContent = `Página ${this.vnPage}`;
+    },
+    
+    getVNStatusClass(status) {
+        const classes = {
+            'active': 'info',
+            'received': 'success',
+            'cancelled': 'danger',
+            'expired': 'warning',
+            'pending': 'pending'
+        };
+        return classes[status] || 'default';
+    },
+    
+    getVNStatusLabel(status) {
+        const labels = {
+            'active': 'Activo',
+            'received': 'Recibido',
+            'cancelled': 'Cancelado',
+            'expired': 'Expirado',
+            'pending': 'Pendiente'
+        };
+        return labels[status] || status;
     }
 };
 

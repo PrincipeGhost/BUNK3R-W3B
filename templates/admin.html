@@ -1351,6 +1351,160 @@
                     </div>
                 </section>
                 
+                <section class="admin-section" id="section-virtualnumbers">
+                    <div class="vn-stats-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon vn">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="vnTotalPurchases">-</span>
+                                <span class="metric-label">Total Números Comprados</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon revenue">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="vnTotalRevenue">-</span>
+                                <span class="metric-label">Ingresos VN (B3C)</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon online">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="vnActiveNumbers">-</span>
+                                <span class="metric-label">Números Activos</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon wallet">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                    <path d="M2 10h20"></path>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="smsPoolBalance">-</span>
+                                <span class="metric-label">Balance SMSPool</span>
+                            </div>
+                            <span class="metric-unit">USD</span>
+                        </div>
+                    </div>
+                    
+                    <div class="vn-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3>Servicios Más Usados</h3>
+                            </div>
+                            <div class="services-list" id="vnTopServices">
+                                <div class="loading-state">Cargando...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3>Países Más Solicitados</h3>
+                            </div>
+                            <div class="countries-list" id="vnTopCountries">
+                                <div class="loading-state">Cargando...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>Balance SMSPool API</h3>
+                        </div>
+                        <div class="smspool-info" id="smsPoolInfo">
+                            <div class="balance-display">
+                                <span class="balance-amount" id="smsPoolBalanceDisplay">$0.00</span>
+                                <span class="balance-label">Balance Actual</span>
+                            </div>
+                            <div class="balance-alert" id="smsPoolAlert" style="display: none;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <span>Balance bajo - Recargar pronto</span>
+                            </div>
+                            <a href="https://www.smspool.net/account/deposit" target="_blank" class="btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                                Recargar SMSPool
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="section-toolbar">
+                        <div class="toolbar-left">
+                            <select id="vnStatusFilter">
+                                <option value="">Todos los estados</option>
+                                <option value="active">Activo</option>
+                                <option value="received">SMS Recibido</option>
+                                <option value="cancelled">Cancelado</option>
+                                <option value="expired">Expirado</option>
+                            </select>
+                            <select id="vnServiceFilter">
+                                <option value="">Todos los servicios</option>
+                            </select>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn-secondary" id="refreshVNBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuario</th>
+                                    <th>Número</th>
+                                    <th>Servicio</th>
+                                    <th>País</th>
+                                    <th>Costo</th>
+                                    <th>Estado</th>
+                                    <th>SMS</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vnOrdersTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="9">Cargando compras de números virtuales...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="pagination" id="vnPagination">
+                        <button class="btn-secondary" id="vnPrevBtn" disabled>Anterior</button>
+                        <span class="page-info" id="vnPageInfo">Página 1</span>
+                        <button class="btn-secondary" id="vnNextBtn">Siguiente</button>
+                    </div>
+                </section>
+                
                 <section class="admin-section" id="section-logs">
                     <div class="logs-tabs">
                         <button class="tab-btn active" data-log="admin">Acciones Admin</button>
