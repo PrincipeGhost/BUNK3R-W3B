@@ -11039,6 +11039,372 @@ def admin_export_logs():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def log_system_error(error_level, endpoint, error_message, stack_trace=None, user_id=None, metadata=None):
+    """Helper function to log system errors."""
+    try:
+        if not db_manager:
+            return
+        ip_address = request.remote_addr if request else None
+        user_agent = request.headers.get('User-Agent', '')[:500] if request else None
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO system_errors (error_level, endpoint, error_message, stack_trace, user_id, ip_address, user_agent, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (error_level, endpoint, error_message, stack_trace, user_id, ip_address, user_agent, json.dumps(metadata) if metadata else None))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error logging system error: {e}")
+
+
+@app.route('/api/admin/logs/errors', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_error_logs():
+    """Admin: Obtener logs de errores del sistema."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', 50)), 100)
+        error_level = request.args.get('level', '')
+        is_resolved = request.args.get('resolved', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM system_errors WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM system_errors WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if error_level:
+                    query += " AND error_level = %s"
+                    count_query += " AND error_level = %s"
+                    params.append(error_level)
+                    count_params.append(error_level)
+                
+                if is_resolved != '':
+                    resolved_bool = is_resolved.lower() == 'true'
+                    query += " AND is_resolved = %s"
+                    count_query += " AND is_resolved = %s"
+                    params.append(resolved_bool)
+                    count_params.append(resolved_bool)
+                
+                if search:
+                    query += " AND (error_message ILIKE %s OR endpoint ILIKE %s)"
+                    count_query += " AND (error_message ILIKE %s OR endpoint ILIKE %s)"
+                    search_param = f'%{search}%'
+                    params.extend([search_param, search_param])
+                    count_params.extend([search_param, search_param])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + interval '1 day'"
+                    count_query += " AND created_at <= %s::date + interval '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    if log_entry.get('resolved_at'):
+                        log_entry['resolved_at'] = log_entry['resolved_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT error_level, COUNT(*) as count
+                    FROM system_errors
+                    GROUP BY error_level
+                    ORDER BY count DESC
+                """)
+                error_levels = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("SELECT COUNT(*) FROM system_errors WHERE is_resolved = FALSE")
+                unresolved_count = cur.fetchone()['count']
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'errorLevels': error_levels,
+                    'unresolvedCount': unresolved_count
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting error logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+@app.route('/api/admin/logs/errors/<int:error_id>/resolve', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_resolve_error(error_id):
+    """Admin: Marcar error como resuelto."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 503
+        
+        user_id = getattr(request, 'user_id', '0')
+        user_data = getattr(request, 'user_data', {})
+        admin_name = user_data.get('first_name', 'Admin')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE system_errors
+                    SET is_resolved = TRUE, resolved_by = %s, resolved_at = NOW()
+                    WHERE id = %s
+                """, (admin_name, error_id))
+            conn.commit()
+        
+        log_admin_action(user_id, admin_name, 'error_resolve', 'system_error', str(error_id), 'Marked error as resolved')
+        
+        return jsonify({'success': True, 'message': 'Error marcado como resuelto'})
+    
+    except Exception as e:
+        logger.error(f"Error resolving system error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/logs/logins', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_login_logs():
+    """Admin: Obtener logs de intentos de login."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', 50)), 100)
+        status = request.args.get('status', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """SELECT * FROM security_activity_log 
+                           WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'WALLET_ACCESS', 
+                                                   'WALLET_FAILED_ATTEMPT', 'WALLET_LOCKOUT', 'IP_BLOCKED')"""
+                count_query = """SELECT COUNT(*) FROM security_activity_log 
+                                WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'WALLET_ACCESS', 
+                                                        'WALLET_FAILED_ATTEMPT', 'WALLET_LOCKOUT', 'IP_BLOCKED')"""
+                params = []
+                count_params = []
+                
+                if status == 'success':
+                    query += " AND activity_type IN ('LOGIN_SUCCESS', 'WALLET_ACCESS')"
+                    count_query += " AND activity_type IN ('LOGIN_SUCCESS', 'WALLET_ACCESS')"
+                elif status == 'failed':
+                    query += " AND activity_type IN ('LOGIN_FAILED', 'WALLET_FAILED_ATTEMPT')"
+                    count_query += " AND activity_type IN ('LOGIN_FAILED', 'WALLET_FAILED_ATTEMPT')"
+                elif status == 'blocked':
+                    query += " AND activity_type IN ('WALLET_LOCKOUT', 'IP_BLOCKED')"
+                    count_query += " AND activity_type IN ('WALLET_LOCKOUT', 'IP_BLOCKED')"
+                
+                if search:
+                    query += " AND (user_id ILIKE %s OR ip_address ILIKE %s)"
+                    count_query += " AND (user_id ILIKE %s OR ip_address ILIKE %s)"
+                    search_param = f'%{search}%'
+                    params.extend([search_param, search_param])
+                    count_params.extend([search_param, search_param])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + interval '1 day'"
+                    count_query += " AND created_at <= %s::date + interval '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT activity_type, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'WALLET_ACCESS', 
+                                           'WALLET_FAILED_ATTEMPT', 'WALLET_LOCKOUT', 'IP_BLOCKED')
+                    GROUP BY activity_type
+                    ORDER BY count DESC
+                """)
+                login_stats = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT ip_address, COUNT(*) as attempts
+                    FROM security_activity_log
+                    WHERE activity_type IN ('LOGIN_FAILED', 'WALLET_FAILED_ATTEMPT')
+                    AND created_at >= NOW() - INTERVAL '24 hours'
+                    GROUP BY ip_address
+                    HAVING COUNT(*) >= 5
+                    ORDER BY attempts DESC
+                    LIMIT 10
+                """)
+                suspicious_ips = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'loginStats': login_stats,
+                    'suspiciousIPs': suspicious_ips
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting login logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+@app.route('/api/admin/logs/config-history', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_config_history():
+    """Admin: Obtener historial de cambios de configuración."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', 50)), 100)
+        config_key = request.args.get('key', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM config_history WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM config_history WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if config_key:
+                    query += " AND config_key = %s"
+                    count_query += " AND config_key = %s"
+                    params.append(config_key)
+                    count_params.append(config_key)
+                
+                if search:
+                    query += " AND (config_key ILIKE %s OR changed_by_name ILIKE %s)"
+                    count_query += " AND (config_key ILIKE %s OR changed_by_name ILIKE %s)"
+                    search_param = f'%{search}%'
+                    params.extend([search_param, search_param])
+                    count_params.extend([search_param, search_param])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + interval '1 day'"
+                    count_query += " AND created_at <= %s::date + interval '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT config_key, COUNT(*) as count
+                    FROM config_history
+                    GROUP BY config_key
+                    ORDER BY count DESC
+                """)
+                config_keys = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'configKeys': config_keys
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting config history: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+def log_config_change(config_key, old_value, new_value, changed_by_id, changed_by_name, description=None):
+    """Helper function to log configuration changes."""
+    try:
+        if not db_manager:
+            return
+        ip_address = request.remote_addr if request else None
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO config_history (config_key, old_value, new_value, changed_by_id, changed_by_name, ip_address, description)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (config_key, str(old_value) if old_value is not None else None, str(new_value), changed_by_id, changed_by_name, ip_address, description))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error logging config change: {e}")
+
+
 @app.route('/api/admin/config', methods=['GET'])
 @require_telegram_auth
 @require_owner

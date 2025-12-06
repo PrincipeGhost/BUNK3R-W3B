@@ -2181,6 +2181,11 @@ const AdminPanel = {
         const thead = document.getElementById('logsTableHead');
         tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando logs...</td></tr>';
         
+        const suspiciousSection = document.getElementById('suspiciousIPsSection');
+        if (suspiciousSection) {
+            suspiciousSection.style.display = this.logsCurrentType === 'logins' ? 'block' : 'none';
+        }
+        
         try {
             await this.loadLogsStats();
             
@@ -2188,6 +2193,12 @@ const AdminPanel = {
                 await this.loadAdminLogs();
             } else if (this.logsCurrentType === 'security') {
                 await this.loadSecurityLogs();
+            } else if (this.logsCurrentType === 'logins') {
+                await this.loadLoginLogs();
+            } else if (this.logsCurrentType === 'errors') {
+                await this.loadErrorLogs();
+            } else if (this.logsCurrentType === 'config') {
+                await this.loadConfigHistory();
             }
         } catch (error) {
             console.error('Error loading logs:', error);
@@ -2334,6 +2345,260 @@ const AdminPanel = {
             `).join('');
         } else {
             tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar logs de seguridad</td></tr>';
+        }
+    },
+    
+    async loadLoginLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        const thead = document.getElementById('logsTableHead');
+        
+        thead.innerHTML = `
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Usuario</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Dispositivo</th>
+                <th>IP</th>
+            </tr>
+        `;
+        
+        const search = document.getElementById('logSearch')?.value || '';
+        const statusFilter = document.getElementById('logActionFilter')?.value || '';
+        const dateFrom = document.getElementById('logDateFrom')?.value || '';
+        const dateTo = document.getElementById('logDateTo')?.value || '';
+        
+        let url = `/api/admin/logs/logins?page=${this.logsPage}&per_page=${this.logsPerPage}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+        
+        const response = await this.fetchAPI(url);
+        
+        if (response.success && response.logs) {
+            this.logsTotalPages = response.pages || 1;
+            this.updateLogsPagination();
+            this.updateLoginStatusFilter(response.loginStats || []);
+            this.renderSuspiciousIPs(response.suspiciousIPs || []);
+            
+            if (response.logs.length === 0) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay logs de login</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = response.logs.map(log => `
+                <tr class="${this.getSecurityRowClass(log.activity_type)}">
+                    <td>${this.formatDateTime(log.created_at)}</td>
+                    <td>${log.user_id || '-'}</td>
+                    <td><span class="security-badge ${this.getSecurityBadgeClass(log.activity_type)}">${this.formatActivityType(log.activity_type)}</span></td>
+                    <td class="log-description">${this.escapeHtml(log.description || '-')}</td>
+                    <td><code class="device-id">${log.device_id ? log.device_id.substring(0, 8) + '...' : '-'}</code></td>
+                    <td><code class="ip-address">${log.ip_address || '-'}</code></td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar logs de login</td></tr>';
+        }
+    },
+    
+    async loadErrorLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        const thead = document.getElementById('logsTableHead');
+        
+        thead.innerHTML = `
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Nivel</th>
+                <th>Endpoint</th>
+                <th>Mensaje</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        `;
+        
+        const search = document.getElementById('logSearch')?.value || '';
+        const levelFilter = document.getElementById('logActionFilter')?.value || '';
+        const dateFrom = document.getElementById('logDateFrom')?.value || '';
+        const dateTo = document.getElementById('logDateTo')?.value || '';
+        
+        let url = `/api/admin/logs/errors?page=${this.logsPage}&per_page=${this.logsPerPage}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (levelFilter) url += `&level=${encodeURIComponent(levelFilter)}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+        
+        const response = await this.fetchAPI(url);
+        
+        if (response.success && response.logs) {
+            this.logsTotalPages = response.pages || 1;
+            this.updateLogsPagination();
+            this.updateErrorLevelFilter(response.errorLevels || []);
+            
+            if (response.logs.length === 0) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay errores del sistema</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = response.logs.map(log => `
+                <tr class="${log.is_resolved ? '' : 'log-row-warning'}">
+                    <td>${this.formatDateTime(log.created_at)}</td>
+                    <td><span class="error-level-badge ${log.error_level}">${log.error_level.toUpperCase()}</span></td>
+                    <td><code>${this.escapeHtml(log.endpoint || '-')}</code></td>
+                    <td class="log-description" title="${this.escapeHtml(log.stack_trace || '')}">${this.escapeHtml(log.error_message || '-')}</td>
+                    <td><span class="status-badge ${log.is_resolved ? 'resolved' : 'pending'}">${log.is_resolved ? 'Resuelto' : 'Pendiente'}</span></td>
+                    <td>
+                        ${!log.is_resolved ? `<button class="btn-sm btn-success" onclick="AdminPanel.resolveError(${log.id})">Resolver</button>` : `<span class="resolved-by">${this.escapeHtml(log.resolved_by || '')}</span>`}
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar errores del sistema</td></tr>';
+        }
+    },
+    
+    async loadConfigHistory() {
+        const tbody = document.getElementById('logsTableBody');
+        const thead = document.getElementById('logsTableHead');
+        
+        thead.innerHTML = `
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Configuración</th>
+                <th>Valor Anterior</th>
+                <th>Valor Nuevo</th>
+                <th>Cambiado Por</th>
+                <th>IP</th>
+            </tr>
+        `;
+        
+        const search = document.getElementById('logSearch')?.value || '';
+        const keyFilter = document.getElementById('logActionFilter')?.value || '';
+        const dateFrom = document.getElementById('logDateFrom')?.value || '';
+        const dateTo = document.getElementById('logDateTo')?.value || '';
+        
+        let url = `/api/admin/logs/config-history?page=${this.logsPage}&per_page=${this.logsPerPage}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (keyFilter) url += `&key=${encodeURIComponent(keyFilter)}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+        
+        const response = await this.fetchAPI(url);
+        
+        if (response.success && response.logs) {
+            this.logsTotalPages = response.pages || 1;
+            this.updateLogsPagination();
+            this.updateConfigKeyFilter(response.configKeys || []);
+            
+            if (response.logs.length === 0) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay historial de configuración</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = response.logs.map(log => `
+                <tr>
+                    <td>${this.formatDateTime(log.created_at)}</td>
+                    <td><code class="config-key">${this.escapeHtml(log.config_key)}</code></td>
+                    <td class="old-value">${this.escapeHtml(log.old_value || '-')}</td>
+                    <td class="new-value">${this.escapeHtml(log.new_value || '-')}</td>
+                    <td>${this.escapeHtml(log.changed_by_name || 'Sistema')}</td>
+                    <td><code class="ip-address">${log.ip_address || '-'}</code></td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar historial de configuración</td></tr>';
+        }
+    },
+    
+    async resolveError(errorId) {
+        try {
+            const response = await this.fetchAPI(`/api/admin/logs/errors/${errorId}/resolve`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast('Error marcado como resuelto', 'success');
+                this.loadErrorLogs();
+            } else {
+                this.showToast(response.error || 'Error al resolver', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al resolver', 'error');
+        }
+    },
+    
+    updateLoginStatusFilter(loginStats) {
+        const filter = document.getElementById('logActionFilter');
+        if (!filter || this.logsCurrentType !== 'logins') return;
+        
+        filter.innerHTML = `
+            <option value="">Todos los estados</option>
+            <option value="success">Exitosos</option>
+            <option value="failed">Fallidos</option>
+            <option value="blocked">Bloqueados</option>
+        `;
+    },
+    
+    updateErrorLevelFilter(errorLevels) {
+        const filter = document.getElementById('logActionFilter');
+        if (!filter || this.logsCurrentType !== 'errors') return;
+        
+        const currentValue = filter.value;
+        filter.innerHTML = '<option value="">Todos los niveles</option>';
+        errorLevels.forEach(el => {
+            filter.innerHTML += `<option value="${el.error_level}" ${el.error_level === currentValue ? 'selected' : ''}>${el.error_level.toUpperCase()} (${el.count})</option>`;
+        });
+    },
+    
+    updateConfigKeyFilter(configKeys) {
+        const filter = document.getElementById('logActionFilter');
+        if (!filter || this.logsCurrentType !== 'config') return;
+        
+        const currentValue = filter.value;
+        filter.innerHTML = '<option value="">Todas las claves</option>';
+        configKeys.forEach(ck => {
+            filter.innerHTML += `<option value="${ck.config_key}" ${ck.config_key === currentValue ? 'selected' : ''}>${ck.config_key} (${ck.count})</option>`;
+        });
+    },
+    
+    renderSuspiciousIPs(suspiciousIPs) {
+        const container = document.getElementById('suspiciousIPsList');
+        if (!container) return;
+        
+        if (!suspiciousIPs || suspiciousIPs.length === 0) {
+            container.innerHTML = '<div class="empty-state">No hay IPs sospechosas en las últimas 24h</div>';
+            return;
+        }
+        
+        container.innerHTML = suspiciousIPs.map(ip => `
+            <div class="suspicious-ip-item">
+                <code class="ip-address">${ip.ip_address}</code>
+                <span class="attempts-badge danger">${ip.attempts} intentos fallidos</span>
+                <button class="btn-sm btn-danger" onclick="AdminPanel.blockIP('${ip.ip_address}')">Bloquear</button>
+            </div>
+        `).join('');
+    },
+    
+    async blockIP(ipAddress) {
+        if (!confirm(`¿Bloquear la IP ${ipAddress}?`)) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip_address: ipAddress, reason: 'Demasiados intentos fallidos de login' })
+            });
+            
+            if (response.success) {
+                this.showToast('IP bloqueada', 'success');
+                this.loadLoginLogs();
+            } else {
+                this.showToast(response.error || 'Error al bloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al bloquear IP', 'error');
         }
     },
     

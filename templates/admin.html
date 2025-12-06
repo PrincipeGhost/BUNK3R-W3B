@@ -1763,6 +1763,9 @@
                     <div class="logs-tabs">
                         <button class="tab-btn active" data-log="admin">Acciones Admin</button>
                         <button class="tab-btn" data-log="security">Seguridad</button>
+                        <button class="tab-btn" data-log="logins">Intentos Login</button>
+                        <button class="tab-btn" data-log="errors">Errores Sistema</button>
+                        <button class="tab-btn" data-log="config">Historial Config</button>
                     </div>
                     
                     <div class="section-toolbar">
@@ -1838,6 +1841,24 @@
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>
                         </button>
+                    </div>
+                    
+                    <div class="suspicious-ips-section" id="suspiciousIPsSection" style="display: none;">
+                        <div class="section-card">
+                            <div class="card-header">
+                                <h3>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                    IPs Sospechosas (24h)
+                                </h3>
+                            </div>
+                            <div class="suspicious-ips-list" id="suspiciousIPsList">
+                                <div class="empty-state">No hay IPs sospechosas en las últimas 24h</div>
+                            </div>
+                        </div>
                     </div>
                 </section>
                 
