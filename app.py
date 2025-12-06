@@ -5104,6 +5104,299 @@ def check_user_lockout():
 
 
 # ============================================================
+# ADMIN PANEL - PÁGINA PRINCIPAL Y DASHBOARD
+# ============================================================
+
+@app.route('/admin')
+@require_telegram_auth
+@require_owner
+def admin_page():
+    """Servir la página del panel de administración."""
+    return render_template('admin.html')
+
+
+@app.route('/api/admin/dashboard/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_dashboard_stats():
+    """Obtener estadísticas del dashboard admin."""
+    try:
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'totalUsers': 0,
+                    'activeToday': 0,
+                    'totalB3C': 0,
+                    'hotWalletBalance': 0,
+                    'transactions24h': 0,
+                    'revenueToday': 0,
+                    'usersChange': 0
+                }
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM users")
+                total_users = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM users 
+                    WHERE last_seen >= NOW() - INTERVAL '24 hours'
+                """)
+                active_today = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COALESCE(SUM(credits), 0) FROM users")
+                total_b3c = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM wallet_transactions 
+                    WHERE created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                tx_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions 
+                    WHERE transaction_type = 'deposit'
+                    AND created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                revenue_today = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM users 
+                    WHERE created_at >= NOW() - INTERVAL '7 days'
+                """)
+                new_users_week = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM users 
+                    WHERE created_at >= NOW() - INTERVAL '14 days'
+                    AND created_at < NOW() - INTERVAL '7 days'
+                """)
+                prev_users_week = cur.fetchone()[0] or 0
+                
+                users_change = 0
+                if prev_users_week > 0:
+                    users_change = round(((new_users_week - prev_users_week) / prev_users_week) * 100, 1)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalUsers': total_users,
+                'activeToday': active_today,
+                'totalB3C': float(total_b3c),
+                'hotWalletBalance': 0,
+                'transactions24h': tx_24h,
+                'revenueToday': float(revenue_today),
+                'usersChange': users_change
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting dashboard stats: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener estadísticas'}), 500
+
+
+@app.route('/api/admin/dashboard/activity', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_dashboard_activity():
+    """Obtener actividad reciente para el dashboard."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'data': []})
+        
+        activities = []
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, telegram_id, first_name, username, created_at, 'user_register' as type
+                    FROM users
+                    ORDER BY created_at DESC
+                    LIMIT 5
+                """)
+                for row in cur.fetchall():
+                    activities.append({
+                        'type': 'user',
+                        'message': f"Nuevo usuario: {row['first_name'] or row['username'] or row['id']}",
+                        'timestamp': row['created_at'].isoformat() if row['created_at'] else None
+                    })
+                
+                cur.execute("""
+                    SELECT wt.user_id, wt.amount, wt.transaction_type, wt.created_at, u.first_name
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON wt.user_id = u.id
+                    ORDER BY wt.created_at DESC
+                    LIMIT 5
+                """)
+                for row in cur.fetchall():
+                    tx_type = 'depósito' if row['transaction_type'] == 'deposit' else 'retiro' if row['transaction_type'] == 'withdrawal' else row['transaction_type']
+                    activities.append({
+                        'type': 'transaction',
+                        'message': f"{row['first_name'] or 'Usuario'}: {tx_type} de {row['amount']} TON",
+                        'timestamp': row['created_at'].isoformat() if row['created_at'] else None
+                    })
+        
+        activities.sort(key=lambda x: x['timestamp'] or '', reverse=True)
+        activities = activities[:10]
+        
+        return jsonify({'success': True, 'data': activities})
+        
+    except Exception as e:
+        logger.error(f"Error getting dashboard activity: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/dashboard/alerts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_dashboard_alerts():
+    """Obtener alertas del sistema para el dashboard."""
+    try:
+        alerts = []
+        
+        if db_manager:
+            try:
+                with db_manager.get_connection() as conn:
+                    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                        cur.execute("""
+                            SELECT id, alert_type, message, created_at, resolved
+                            FROM security_alerts
+                            WHERE resolved = false
+                            ORDER BY created_at DESC
+                            LIMIT 10
+                        """)
+                        for row in cur.fetchall():
+                            alerts.append({
+                                'id': row['id'],
+                                'level': 'warning' if row['alert_type'] == 'warning' else 'danger',
+                                'message': row['message'],
+                                'timestamp': row['created_at'].isoformat() if row['created_at'] else None
+                            })
+            except psycopg2.errors.UndefinedTable:
+                logger.info("security_alerts table not found - returning empty alerts")
+                alerts = []
+        
+        return jsonify({'success': True, 'data': alerts})
+        
+    except Exception as e:
+        logger.error(f"Error getting dashboard alerts: {e}")
+        return jsonify({'success': True, 'data': []})
+
+
+@app.route('/api/admin/users/<user_id>/ban', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_ban_user(user_id):
+    """Banear o desbanear un usuario."""
+    try:
+        data = request.get_json() or {}
+        should_ban = data.get('banned', True)
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users SET is_banned = %s WHERE id = %s OR telegram_id::text = %s
+                    RETURNING is_banned
+                """, (should_ban, str(user_id), str(user_id)))
+                result = cur.fetchone()
+                
+                if not result:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                conn.commit()
+        
+        action = 'baneado' if should_ban else 'desbaneado'
+        return jsonify({'success': True, 'message': f'Usuario {action} correctamente', 'banned': should_ban})
+        
+    except Exception as e:
+        logger.error(f"Error banning user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+
+@app.route('/api/admin/realtime/online', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_realtime_online():
+    """Obtener usuarios online en tiempo real."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'count': 0, 'users': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT user_id, username, first_name, last_seen
+                    FROM users
+                    WHERE last_seen >= NOW() - INTERVAL '5 minutes'
+                    ORDER BY last_seen DESC
+                    LIMIT 50
+                """)
+                users = cur.fetchall()
+                
+                users_list = []
+                for u in users:
+                    users_list.append({
+                        'user_id': u['user_id'],
+                        'username': u['username'],
+                        'first_name': u['first_name'],
+                        'last_seen': u['last_seen'].isoformat() if u['last_seen'] else None
+                    })
+        
+        return jsonify({'success': True, 'count': len(users_list), 'users': users_list})
+        
+    except Exception as e:
+        logger.error(f"Error getting online users: {e}")
+        return jsonify({'success': True, 'count': 0, 'users': []})
+
+
+@app.route('/api/admin/sessions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_sessions():
+    """Obtener sesiones activas."""
+    try:
+        if not security_manager:
+            return jsonify({'success': True, 'sessions': []})
+        
+        sessions = []
+        
+        if db_manager:
+            with db_manager.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT td.user_id, td.device_name, td.last_used, td.ip_address,
+                               u.first_name, u.username
+                        FROM trusted_devices td
+                        LEFT JOIN users u ON td.user_id = u.user_id
+                        WHERE td.last_used >= NOW() - INTERVAL '24 hours'
+                        ORDER BY td.last_used DESC
+                        LIMIT 100
+                    """)
+                    for row in cur.fetchall():
+                        sessions.append({
+                            'user_id': row['user_id'],
+                            'username': row['username'],
+                            'first_name': row['first_name'],
+                            'device': row['device_name'],
+                            'ip': row['ip_address'],
+                            'last_activity': row['last_used'].isoformat() if row['last_used'] else None
+                        })
+        
+        return jsonify({'success': True, 'sessions': sessions})
+        
+    except Exception as e:
+        logger.error(f"Error getting sessions: {e}")
+        return jsonify({'success': True, 'sessions': []})
+
+
+# ============================================================
 # ENDPOINTS DE ADMIN - SEGURIDAD
 # ============================================================
 
