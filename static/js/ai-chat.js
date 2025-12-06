@@ -48,10 +48,7 @@ const AIChat = {
     },
     
     initWidgetMode() {
-        if (document.getElementById('ai-chat-widget')) return;
-        
-        this.createChatWidget();
-        this.bindWidgetEvents();
+        return;
     },
     
     createChatWidget() {
