@@ -143,6 +143,14 @@
                         </svg>
                         <span>Logs</span>
                     </a>
+                    <a href="#analytics" class="nav-item" data-section="analytics">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        <span>Analytics</span>
+                    </a>
                     <a href="#settings" class="nav-item" data-section="settings">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"></circle>
@@ -1857,6 +1865,163 @@
                             </div>
                             <div class="suspicious-ips-list" id="suspiciousIPsList">
                                 <div class="empty-state">No hay IPs sospechosas en las últimas 24h</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="admin-section" id="section-analytics">
+                    <div class="analytics-stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon users">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="analyticsActiveToday">0</span>
+                                <span class="stat-label">Activos Hoy</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon week">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="analyticsActiveWeek">0</span>
+                                <span class="stat-label">Activos Semana</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon month">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="analyticsActiveMonth">0</span>
+                                <span class="stat-label">Activos Mes</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon retention">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="analyticsRetention">0%</span>
+                                <span class="stat-label">Retención</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-tabs">
+                        <button class="tab-btn active" data-analytics="users">Usuarios</button>
+                        <button class="tab-btn" data-analytics="usage">Uso</button>
+                        <button class="tab-btn" data-analytics="conversion">Conversión</button>
+                    </div>
+                    
+                    <div class="analytics-content">
+                        <div class="analytics-panel active" id="analytics-users">
+                            <div class="analytics-row">
+                                <div class="analytics-chart-card">
+                                    <h3>Usuarios Nuevos (30 días)</h3>
+                                    <div class="chart-container" id="newUsersChart">
+                                        <div class="chart-bars" id="newUsersChartBars"></div>
+                                    </div>
+                                </div>
+                                <div class="analytics-table-card">
+                                    <h3>Por País</h3>
+                                    <table class="mini-table">
+                                        <thead>
+                                            <tr><th>País</th><th>Usuarios</th></tr>
+                                        </thead>
+                                        <tbody id="usersByCountryTable"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="analytics-row">
+                                <div class="analytics-table-card">
+                                    <h3>Por Dispositivo</h3>
+                                    <table class="mini-table">
+                                        <thead>
+                                            <tr><th>Dispositivo</th><th>Usuarios</th></tr>
+                                        </thead>
+                                        <tbody id="usersByDeviceTable"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="analytics-panel" id="analytics-usage">
+                            <div class="analytics-row">
+                                <div class="analytics-chart-card">
+                                    <h3>Horarios Pico (24h)</h3>
+                                    <div class="chart-container" id="hourlyActivityChart">
+                                        <div class="chart-bars horizontal" id="hourlyActivityBars"></div>
+                                    </div>
+                                </div>
+                                <div class="analytics-table-card">
+                                    <h3>Secciones Más Usadas</h3>
+                                    <table class="mini-table">
+                                        <thead>
+                                            <tr><th>Sección</th><th>Visitas</th></tr>
+                                        </thead>
+                                        <tbody id="topSectionsTable"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="analytics-row">
+                                <div class="analytics-table-card full-width">
+                                    <h3>Actividad por Día</h3>
+                                    <table class="mini-table">
+                                        <thead>
+                                            <tr><th>Día</th><th>Actividad</th></tr>
+                                        </thead>
+                                        <tbody id="dailyActivityTable"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="analytics-panel" id="analytics-conversion">
+                            <div class="analytics-row">
+                                <div class="analytics-chart-card full-width">
+                                    <h3>Funnel de Conversión</h3>
+                                    <div class="funnel-container" id="conversionFunnel"></div>
+                                </div>
+                            </div>
+                            <div class="analytics-row">
+                                <div class="conversion-stat-card">
+                                    <div class="conversion-value" id="b3cConversionRate">0%</div>
+                                    <div class="conversion-label">Compraron B3C</div>
+                                    <div class="conversion-count" id="usersPurchasedB3C">0 usuarios</div>
+                                </div>
+                                <div class="conversion-stat-card">
+                                    <div class="conversion-value" id="vnConversionRate">0%</div>
+                                    <div class="conversion-label">Usaron VN</div>
+                                    <div class="conversion-count" id="usersUsedVN">0 usuarios</div>
+                                </div>
+                                <div class="conversion-stat-card">
+                                    <div class="conversion-value" id="publishConversionRate">0%</div>
+                                    <div class="conversion-label">Publicaron</div>
+                                    <div class="conversion-count" id="usersPublished">0 usuarios</div>
+                                </div>
+                                <div class="conversion-stat-card highlight">
+                                    <div class="conversion-value" id="totalRevenueTON">0 TON</div>
+                                    <div class="conversion-label">Ingresos Totales</div>
+                                </div>
                             </div>
                         </div>
                     </div>

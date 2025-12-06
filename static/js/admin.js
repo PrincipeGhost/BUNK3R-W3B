@@ -114,6 +114,10 @@ const AdminPanel = {
             case 'logs':
                 this.loadLogs();
                 break;
+            case 'analytics':
+                this.loadAnalytics();
+                this.initAnalyticsTabs();
+                break;
             case 'settings':
                 this.loadSettings();
                 break;
@@ -5081,6 +5085,186 @@ Fin del reporte
             'pending': 'Pendiente'
         };
         return labels[status] || status;
+    },
+    
+    async loadAnalytics() {
+        try {
+            const [usersRes, usageRes, conversionRes] = await Promise.all([
+                this.fetchAPI('/api/admin/analytics/users'),
+                this.fetchAPI('/api/admin/analytics/usage'),
+                this.fetchAPI('/api/admin/analytics/conversion')
+            ]);
+            
+            if (usersRes.success) {
+                document.getElementById('analyticsActiveToday').textContent = this.formatNumber(usersRes.activeToday);
+                document.getElementById('analyticsActiveWeek').textContent = this.formatNumber(usersRes.activeWeek);
+                document.getElementById('analyticsActiveMonth').textContent = this.formatNumber(usersRes.activeMonth);
+                document.getElementById('analyticsRetention').textContent = usersRes.retentionRate + '%';
+                
+                this.renderNewUsersChart(usersRes.newUsersChart || []);
+                this.renderUsersByCountry(usersRes.usersByCountry || []);
+                this.renderUsersByDevice(usersRes.usersByDevice || []);
+            }
+            
+            if (usageRes.success) {
+                this.renderHourlyActivity(usageRes.hourlyActivity || []);
+                this.renderTopSections(usageRes.topSections || []);
+                this.renderDailyActivity(usageRes.dailyActivity || []);
+            }
+            
+            if (conversionRes.success) {
+                document.getElementById('b3cConversionRate').textContent = conversionRes.b3cConversionRate + '%';
+                document.getElementById('vnConversionRate').textContent = conversionRes.vnConversionRate + '%';
+                document.getElementById('publishConversionRate').textContent = conversionRes.publishRate + '%';
+                document.getElementById('usersPurchasedB3C').textContent = this.formatNumber(conversionRes.usersPurchasedB3C) + ' usuarios';
+                document.getElementById('usersUsedVN').textContent = this.formatNumber(conversionRes.usersUsedVN) + ' usuarios';
+                document.getElementById('usersPublished').textContent = this.formatNumber(conversionRes.usersPublished) + ' usuarios';
+                document.getElementById('totalRevenueTON').textContent = this.formatNumber(conversionRes.totalRevenueTON, 4) + ' TON';
+                
+                this.renderConversionFunnel(conversionRes.funnel || []);
+            }
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+        }
+    },
+    
+    renderNewUsersChart(data) {
+        const container = document.getElementById('newUsersChartBars');
+        if (!container || !data.length) {
+            if (container) container.innerHTML = '<div class="empty-chart">Sin datos</div>';
+            return;
+        }
+        
+        const maxCount = Math.max(...data.map(d => d.count), 1);
+        container.innerHTML = data.map(item => {
+            const height = (item.count / maxCount) * 100;
+            const date = new Date(item.date);
+            const day = date.getDate();
+            return `<div class="chart-bar" style="height: ${height}%" title="${item.date}: ${item.count} usuarios"><span class="bar-label">${day}</span></div>`;
+        }).join('');
+    },
+    
+    renderUsersByCountry(data) {
+        const tbody = document.getElementById('usersByCountryTable');
+        if (!tbody) return;
+        
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="2">Sin datos</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.slice(0, 10).map(item => `
+            <tr>
+                <td>${this.escapeHtml(item.country)}</td>
+                <td>${this.formatNumber(item.count)}</td>
+            </tr>
+        `).join('');
+    },
+    
+    renderUsersByDevice(data) {
+        const tbody = document.getElementById('usersByDeviceTable');
+        if (!tbody) return;
+        
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="2">Sin datos</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.map(item => `
+            <tr>
+                <td>${this.escapeHtml(item.device)}</td>
+                <td>${this.formatNumber(item.count)}</td>
+            </tr>
+        `).join('');
+    },
+    
+    renderHourlyActivity(data) {
+        const container = document.getElementById('hourlyActivityBars');
+        if (!container) return;
+        
+        if (!data.length) {
+            container.innerHTML = '<div class="empty-chart">Sin datos</div>';
+            return;
+        }
+        
+        const maxCount = Math.max(...data.map(d => d.count), 1);
+        const hours = Array(24).fill(0);
+        data.forEach(d => hours[d.hour] = d.count);
+        
+        container.innerHTML = hours.map((count, hour) => {
+            const width = (count / maxCount) * 100;
+            return `<div class="chart-bar-h" style="width: ${width}%" title="${hour}:00 - ${count} acciones"><span class="bar-label-h">${hour}h</span></div>`;
+        }).join('');
+    },
+    
+    renderTopSections(data) {
+        const tbody = document.getElementById('topSectionsTable');
+        if (!tbody) return;
+        
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="2">Sin datos</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.slice(0, 10).map(item => `
+            <tr>
+                <td>${this.escapeHtml(item.section || 'N/A')}</td>
+                <td>${this.formatNumber(item.count)}</td>
+            </tr>
+        `).join('');
+    },
+    
+    renderDailyActivity(data) {
+        const tbody = document.getElementById('dailyActivityTable');
+        if (!tbody) return;
+        
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="2">Sin datos</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.map(item => `
+            <tr>
+                <td>${this.escapeHtml(item.day)}</td>
+                <td>${this.formatNumber(item.count)}</td>
+            </tr>
+        `).join('');
+    },
+    
+    renderConversionFunnel(data) {
+        const container = document.getElementById('conversionFunnel');
+        if (!container) return;
+        
+        if (!data.length) {
+            container.innerHTML = '<div class="empty-funnel">Sin datos de conversión</div>';
+            return;
+        }
+        
+        const maxCount = data[0]?.count || 1;
+        container.innerHTML = data.map((item, index) => {
+            const width = 100 - (index * 15);
+            return `
+                <div class="funnel-stage" style="width: ${width}%">
+                    <div class="funnel-bar" style="background: linear-gradient(90deg, #F0B90B ${item.rate}%, #2a2e35 ${item.rate}%);">
+                        <span class="funnel-label">${this.escapeHtml(item.stage)}</span>
+                        <span class="funnel-value">${this.formatNumber(item.count)} (${item.rate}%)</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+    
+    initAnalyticsTabs() {
+        document.querySelectorAll('.analytics-tabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.analytics-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const tab = btn.dataset.analytics;
+                document.querySelectorAll('.analytics-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(`analytics-${tab}`)?.classList.add('active');
+            });
+        });
     }
 };
 

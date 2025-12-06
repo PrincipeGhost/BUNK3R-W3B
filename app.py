@@ -12133,6 +12133,274 @@ def admin_consolidate_single_wallet(wallet_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ==================== ANALYTICS ENDPOINTS ====================
+
+@app.route('/api/admin/analytics/users', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_analytics_users():
+    """Admin: Estadísticas de usuarios para analytics."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Usuarios activos hoy
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count 
+                    FROM security_activity_log 
+                    WHERE created_at >= CURRENT_DATE
+                """)
+                active_today = cur.fetchone()['count'] or 0
+                
+                # Usuarios activos esta semana
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count 
+                    FROM security_activity_log 
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                """)
+                active_week = cur.fetchone()['count'] or 0
+                
+                # Usuarios activos este mes
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count 
+                    FROM security_activity_log 
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                """)
+                active_month = cur.fetchone()['count'] or 0
+                
+                # Total usuarios registrados
+                cur.execute("SELECT COUNT(*) as count FROM users")
+                total_users = cur.fetchone()['count'] or 0
+                
+                # Usuarios nuevos últimos 30 días (gráfico)
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM users
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                new_users_chart = [{'date': row['date'].isoformat(), 'count': row['count']} for row in cur.fetchall()]
+                
+                # Tasa de retención (usuarios que volvieron en los últimos 7 días)
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                    AND user_id IN (
+                        SELECT DISTINCT user_id FROM security_activity_log
+                        WHERE created_at < CURRENT_DATE - INTERVAL '7 days'
+                        AND created_at >= CURRENT_DATE - INTERVAL '14 days'
+                    )
+                """)
+                returning_users = cur.fetchone()['count'] or 0
+                retention_rate = round((returning_users / max(active_week, 1)) * 100, 1)
+                
+                # Usuarios por país
+                cur.execute("""
+                    SELECT COALESCE(country, 'Desconocido') as country, COUNT(*) as count
+                    FROM users
+                    GROUP BY country
+                    ORDER BY count DESC
+                    LIMIT 10
+                """)
+                users_by_country = [dict(row) for row in cur.fetchall()]
+                
+                # Usuarios por dispositivo (basado en user_agent)
+                cur.execute("""
+                    SELECT 
+                        CASE 
+                            WHEN user_agent ILIKE '%android%' THEN 'Android'
+                            WHEN user_agent ILIKE '%iphone%' OR user_agent ILIKE '%ipad%' THEN 'iOS'
+                            WHEN user_agent ILIKE '%windows%' THEN 'Windows'
+                            WHEN user_agent ILIKE '%macintosh%' THEN 'Mac'
+                            WHEN user_agent ILIKE '%linux%' THEN 'Linux'
+                            ELSE 'Otro'
+                        END as device,
+                        COUNT(DISTINCT user_id) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY device
+                    ORDER BY count DESC
+                """)
+                users_by_device = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'activeToday': active_today,
+                    'activeWeek': active_week,
+                    'activeMonth': active_month,
+                    'totalUsers': total_users,
+                    'newUsersChart': new_users_chart,
+                    'retentionRate': retention_rate,
+                    'returningUsers': returning_users,
+                    'usersByCountry': users_by_country,
+                    'usersByDevice': users_by_device
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting user analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/usage', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_analytics_usage():
+    """Admin: Estadísticas de uso de la app."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Secciones más visitadas (basado en activity_type)
+                cur.execute("""
+                    SELECT activity_type as section, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY activity_type
+                    ORDER BY count DESC
+                    LIMIT 10
+                """)
+                top_sections = [dict(row) for row in cur.fetchall()]
+                
+                # Horarios pico de actividad (24h)
+                cur.execute("""
+                    SELECT EXTRACT(HOUR FROM created_at)::int as hour, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                    GROUP BY hour
+                    ORDER BY hour ASC
+                """)
+                hourly_activity = [{'hour': row['hour'], 'count': row['count']} for row in cur.fetchall()]
+                
+                # Días más activos
+                cur.execute("""
+                    SELECT TO_CHAR(created_at, 'Day') as day_name, 
+                           EXTRACT(DOW FROM created_at)::int as day_num,
+                           COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY day_name, day_num
+                    ORDER BY day_num ASC
+                """)
+                daily_activity = [{'day': row['day_name'].strip(), 'count': row['count']} for row in cur.fetchall()]
+                
+                # Actividad por día últimos 30 días
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                activity_chart = [{'date': row['date'].isoformat(), 'count': row['count']} for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'topSections': top_sections,
+                    'hourlyActivity': hourly_activity,
+                    'dailyActivity': daily_activity,
+                    'activityChart': activity_chart
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting usage analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/conversion', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_analytics_conversion():
+    """Admin: Métricas de conversión."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Total usuarios
+                cur.execute("SELECT COUNT(*) as count FROM users")
+                total_users = cur.fetchone()['count'] or 0
+                
+                # Usuarios que compraron B3C
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM b3c_purchases
+                    WHERE status = 'completed'
+                """)
+                users_purchased_b3c = cur.fetchone()['count'] or 0
+                
+                # Usuarios que usaron números virtuales
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM virtual_number_purchases
+                """)
+                users_used_vn = cur.fetchone()['count'] or 0
+                
+                # Usuarios que publicaron contenido
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM publications
+                    WHERE is_active = true
+                """)
+                users_published = cur.fetchone()['count'] or 0
+                
+                # Usuarios con wallet conectada
+                cur.execute("""
+                    SELECT COUNT(*) as count
+                    FROM users
+                    WHERE wallet_address IS NOT NULL AND wallet_address != ''
+                """)
+                users_with_wallet = cur.fetchone()['count'] or 0
+                
+                # Calcular tasas de conversión
+                b3c_rate = round((users_purchased_b3c / max(total_users, 1)) * 100, 1)
+                vn_rate = round((users_used_vn / max(total_users, 1)) * 100, 1)
+                publish_rate = round((users_published / max(total_users, 1)) * 100, 1)
+                wallet_rate = round((users_with_wallet / max(total_users, 1)) * 100, 1)
+                
+                # Funnel de conversión
+                funnel = [
+                    {'stage': 'Registrados', 'count': total_users, 'rate': 100},
+                    {'stage': 'Wallet conectada', 'count': users_with_wallet, 'rate': wallet_rate},
+                    {'stage': 'Compraron B3C', 'count': users_purchased_b3c, 'rate': b3c_rate},
+                    {'stage': 'Publicaron contenido', 'count': users_published, 'rate': publish_rate},
+                    {'stage': 'Usaron VN', 'count': users_used_vn, 'rate': vn_rate}
+                ]
+                
+                # Ingresos totales
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount_ton), 0) as total_ton
+                    FROM b3c_purchases
+                    WHERE status = 'completed'
+                """)
+                total_revenue_ton = float(cur.fetchone()['total_ton'] or 0)
+                
+                return jsonify({
+                    'success': True,
+                    'totalUsers': total_users,
+                    'usersPurchasedB3C': users_purchased_b3c,
+                    'usersUsedVN': users_used_vn,
+                    'usersPublished': users_published,
+                    'usersWithWallet': users_with_wallet,
+                    'b3cConversionRate': b3c_rate,
+                    'vnConversionRate': vn_rate,
+                    'publishRate': publish_rate,
+                    'walletRate': wallet_rate,
+                    'funnel': funnel,
+                    'totalRevenueTON': total_revenue_ton
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting conversion analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 deposit_scheduler = None
 
 def init_deposit_scheduler():
