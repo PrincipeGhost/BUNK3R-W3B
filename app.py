@@ -10964,34 +10964,121 @@ def admin_export_logs():
         
         log_type = request.args.get('type', 'admin')
         export_format = request.args.get('format', 'csv')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
         days = int(request.args.get('days', 30))
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 if log_type == 'admin':
-                    cur.execute("""
+                    query = """
                         SELECT id, admin_id, admin_name, action_type, target_type, 
                                target_id, description, ip_address, created_at
-                        FROM admin_logs
-                        WHERE created_at >= NOW() - INTERVAL '%s days'
-                        ORDER BY created_at DESC
-                    """, (days,))
+                        FROM admin_logs WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
                 elif log_type == 'security':
-                    cur.execute("""
+                    query = """
                         SELECT id, user_id, activity_type, description, 
                                device_id, ip_address, created_at
-                        FROM security_activity_log
-                        WHERE created_at >= NOW() - INTERVAL '%s days'
-                        ORDER BY created_at DESC
-                    """, (days,))
+                        FROM security_activity_log WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
                 elif log_type == 'client':
-                    cur.execute("""
+                    query = """
                         SELECT id, user_id, log_type, action, is_mobile, 
                                is_telegram, ip, created_at
-                        FROM client_logs
-                        WHERE created_at >= NOW() - INTERVAL '%s days'
-                        ORDER BY created_at DESC
-                    """, (days,))
+                        FROM client_logs WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'errors':
+                    query = """
+                        SELECT id, error_level, endpoint, error_message, 
+                               user_id, ip_address, is_resolved, created_at
+                        FROM system_errors WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'logins':
+                    query = """
+                        SELECT id, user_id, activity_type, description, 
+                               device_id, ip_address, created_at
+                        FROM security_activity_log 
+                        WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED') 
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'config':
+                    query = """
+                        SELECT id, config_key, old_value, new_value, 
+                               changed_by_name, ip_address, description, created_at
+                        FROM config_history WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
                 else:
                     return jsonify({'success': False, 'error': 'Tipo de log inválido'}), 400
                 
