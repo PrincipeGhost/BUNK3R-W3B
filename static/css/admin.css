@@ -2747,3 +2747,142 @@ textarea.form-control {
         grid-template-columns: 1fr;
     }
 }
+
+/* Pool Config Card */
+.pool-config-card {
+    margin-top: 20px;
+}
+
+.pool-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    align-items: end;
+}
+
+.config-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.config-item label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.config-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.config-input-group input {
+    width: 100px;
+    padding: 10px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.config-input-group input:focus {
+    border-color: var(--accent-primary);
+    outline: none;
+}
+
+.config-unit {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.config-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 10px;
+}
+
+/* Wallet Address Copy */
+.wallet-address-copy {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.wallet-address-copy:hover {
+    color: var(--accent-primary);
+}
+
+/* Header Tabs */
+.header-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.header-tabs .tab-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.header-tabs .tab-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.header-tabs .tab-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+/* TX Link */
+.tx-link {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.tx-link:hover {
+    text-decoration: underline;
+}
+
+/* Filter Select in Card Header */
+.card-header .filter-select {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.card-header .filter-select:focus {
+    border-color: var(--accent-primary);
+    outline: none;
+}
+
+@media (max-width: 768px) {
+    .pool-config-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .config-actions {
+        justify-content: stretch;
+    }
+    
+    .config-actions button {
+        width: 100%;
+    }
+}

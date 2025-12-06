@@ -145,6 +145,23 @@ const AdminPanel = {
             this.consolidateWallets();
         });
         
+        document.getElementById('walletStatusFilter')?.addEventListener('change', () => {
+            this.loadWallets();
+        });
+        
+        document.getElementById('savePoolConfigBtn')?.addEventListener('click', () => {
+            this.savePoolConfig();
+        });
+        
+        document.querySelectorAll('[data-blockchain-tab]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-blockchain-tab]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const txType = btn.dataset.blockchainTab;
+                this.loadBlockchainHistory(txType === 'all' ? '' : txType);
+            });
+        });
+        
         document.getElementById('usersPrevBtn')?.addEventListener('click', () => {
             if (this.usersPage > 1) {
                 this.usersPage--;
@@ -1273,16 +1290,20 @@ const AdminPanel = {
     
     async loadWallets() {
         try {
+            const statusFilter = document.getElementById('walletStatusFilter')?.value || '';
+            
             const [hotWallet, poolStats, depositWallets] = await Promise.all([
                 this.fetchAPI('/api/admin/wallets/hot'),
                 this.fetchAPI('/api/admin/wallet-pool/stats'),
-                this.fetchAPI('/api/admin/wallets/deposits')
+                this.fetchAPI(`/api/admin/wallets/deposits?status=${statusFilter}`)
             ]);
             
             if (hotWallet.success) {
+                const explorerUrl = hotWallet.explorerUrl || this.explorerUrl || 'https://tonscan.org';
+                this.explorerUrl = explorerUrl;
                 document.getElementById('hwBalance').textContent = this.formatNumber(hotWallet.balance || 0, 4);
                 document.getElementById('hwAddress').textContent = hotWallet.address || '-';
-                document.getElementById('hotWalletLink').href = `https://tonscan.org/address/${hotWallet.address}`;
+                document.getElementById('hotWalletLink').href = `${explorerUrl}/address/${hotWallet.address}`;
                 
                 const statusEl = document.getElementById('hwStatus');
                 if (hotWallet.balance < 1) {
@@ -1301,8 +1322,14 @@ const AdminPanel = {
             }
             
             if (depositWallets.success && depositWallets.wallets) {
+                if (depositWallets.explorerUrl) {
+                    this.explorerUrl = depositWallets.explorerUrl;
+                }
                 this.renderDepositWallets(depositWallets.wallets);
             }
+            
+            this.loadBlockchainHistory();
+            this.loadPoolConfig();
             
         } catch (error) {
             console.error('Error loading wallets:', error);
@@ -1313,20 +1340,157 @@ const AdminPanel = {
         const tbody = document.getElementById('depositWalletsBody');
         
         if (!wallets || wallets.length === 0) {
-            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay wallets de depósito</td></tr>';
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="7">No hay wallets de depósito</td></tr>';
             return;
         }
         
+        const explorerUrl = this.explorerUrl || 'https://tonscan.org';
+        
         tbody.innerHTML = wallets.map(w => `
             <tr>
-                <td style="font-family: monospace; font-size: 11px;">${w.wallet_address?.slice(0, 20)}...</td>
+                <td style="font-family: monospace; font-size: 11px;">
+                    <span class="wallet-address-copy" onclick="AdminPanel.copyToClipboard('${w.wallet_address}')" title="Click para copiar">
+                        ${w.wallet_address?.slice(0, 20)}...
+                    </span>
+                </td>
                 <td><span class="status-badge ${w.status}">${w.status}</span></td>
                 <td>${w.assigned_to_user_id || '-'}</td>
-                <td>${w.expected_amount ? this.formatNumber(w.expected_amount, 4) + ' TON' : '-'}</td>
-                <td>${w.balance ? this.formatNumber(w.balance, 4) + ' TON' : '-'}</td>
+                <td>${w.deposit_amount ? this.formatNumber(w.deposit_amount, 4) + ' TON' : '-'}</td>
+                <td>${w.deposit_amount && !w.consolidated_at ? this.formatNumber(w.deposit_amount, 4) + ' TON' : '-'}</td>
                 <td>${this.formatDate(w.created_at)}</td>
+                <td>
+                    <div class="action-btns">
+                        <a href="${explorerUrl}/address/${w.wallet_address}" target="_blank" class="action-btn" title="Ver en TonScan">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                        ${w.deposit_amount && !w.consolidated_at ? `
+                            <button class="action-btn" onclick="AdminPanel.consolidateSingleWallet(${w.id})" title="Consolidar">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="17 1 21 5 17 9"></polyline>
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
             </tr>
         `).join('');
+    },
+    
+    async consolidateSingleWallet(walletId) {
+        if (!confirm('¿Consolidar fondos de esta wallet al hot wallet?')) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/wallets/${walletId}/consolidate`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(`Wallet consolidada: ${response.amount} TON`, 'success');
+                this.loadWallets();
+            } else {
+                this.showToast(response.error || 'Error al consolidar', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al consolidar wallet', 'error');
+        }
+    },
+    
+    async loadBlockchainHistory(txType = '') {
+        const tbody = document.getElementById('blockchainHistoryBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando historial...</td></tr>';
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/blockchain/history?type=${txType}&limit=50`);
+            
+            if (response.success && response.transactions) {
+                if (response.transactions.length === 0) {
+                    tbody.innerHTML = '<tr class="loading-row"><td colspan="7">No hay transacciones blockchain</td></tr>';
+                    return;
+                }
+                
+                const explorerUrl = response.explorerUrl || 'https://tonscan.org';
+                this.explorerUrl = explorerUrl;
+                
+                const typeLabels = {
+                    deposit: { label: 'Depósito', class: 'completed' },
+                    consolidation: { label: 'Consolidación', class: 'pending' },
+                    withdrawal: { label: 'Retiro', class: 'warning' }
+                };
+                
+                tbody.innerHTML = response.transactions.map(tx => `
+                    <tr>
+                        <td>${this.formatDateTime(tx.created_at)}</td>
+                        <td><span class="status-badge ${typeLabels[tx.tx_type]?.class || ''}">${typeLabels[tx.tx_type]?.label || tx.tx_type}</span></td>
+                        <td>${this.formatNumber(tx.amount, 4)} TON</td>
+                        <td style="font-family: monospace; font-size: 11px;">${tx.from_address}</td>
+                        <td style="font-family: monospace; font-size: 11px;">${tx.to_address}</td>
+                        <td><span class="status-badge ${tx.status}">${tx.status}</span></td>
+                        <td>
+                            ${tx.tx_hash ? `
+                                <a href="${explorerUrl}/tx/${tx.tx_hash}" target="_blank" class="tx-link" title="${tx.tx_hash}">
+                                    ${tx.tx_hash.slice(0, 10)}...
+                                </a>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading blockchain history:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Error al cargar historial</td></tr>';
+        }
+    },
+    
+    async loadPoolConfig() {
+        try {
+            const response = await this.fetchAPI('/api/admin/wallets/pool-config');
+            
+            if (response.success && response.config) {
+                document.getElementById('minPoolSize').value = response.config.minPoolSize || 10;
+                document.getElementById('autoFillThreshold').value = response.config.autoFillThreshold || 5;
+                document.getElementById('lowBalanceThreshold').value = response.config.lowBalanceThreshold || 1;
+            }
+        } catch (error) {
+            console.error('Error loading pool config:', error);
+        }
+    },
+    
+    async savePoolConfig() {
+        try {
+            const config = {
+                minPoolSize: parseInt(document.getElementById('minPoolSize').value) || 10,
+                autoFillThreshold: parseInt(document.getElementById('autoFillThreshold').value) || 5,
+                lowBalanceThreshold: parseFloat(document.getElementById('lowBalanceThreshold').value) || 1
+            };
+            
+            const response = await this.fetchAPI('/api/admin/wallets/pool-config', {
+                method: 'POST',
+                body: JSON.stringify(config)
+            });
+            
+            if (response.success) {
+                this.showToast('Configuración guardada', 'success');
+            } else {
+                this.showToast(response.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving pool config:', error);
+            this.showToast('Error al guardar configuración', 'error');
+        }
+    },
+    
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Copiado al portapapeles', 'success');
+        }).catch(err => {
+            console.error('Error copying:', err);
+        });
     },
     
     async fillWalletPool() {

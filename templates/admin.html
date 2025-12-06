@@ -1085,6 +1085,13 @@
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h3>Wallets de Depósito</h3>
+                            <select id="walletStatusFilter" class="filter-select">
+                                <option value="">Todos los estados</option>
+                                <option value="available">Disponibles</option>
+                                <option value="assigned">Asignadas</option>
+                                <option value="used">Usadas</option>
+                                <option value="consolidated">Consolidadas</option>
+                            </select>
                         </div>
                         <div class="data-table-container">
                             <table class="data-table" id="depositWalletsTable">
@@ -1096,14 +1103,79 @@
                                         <th>Monto Esperado</th>
                                         <th>Balance</th>
                                         <th>Creada</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="depositWalletsBody">
                                     <tr class="loading-row">
-                                        <td colspan="6">Cargando wallets...</td>
+                                        <td colspan="7">Cargando wallets...</td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>Historial Blockchain</h3>
+                            <div class="header-tabs">
+                                <button class="tab-btn active" data-blockchain-tab="all">Todas</button>
+                                <button class="tab-btn" data-blockchain-tab="deposits">Depósitos</button>
+                                <button class="tab-btn" data-blockchain-tab="consolidations">Consolidaciones</button>
+                                <button class="tab-btn" data-blockchain-tab="withdrawals">Retiros</button>
+                            </div>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="blockchainHistoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Monto</th>
+                                        <th>De</th>
+                                        <th>A</th>
+                                        <th>Estado</th>
+                                        <th>TX Hash</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blockchainHistoryBody">
+                                    <tr class="loading-row">
+                                        <td colspan="7">Cargando historial...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card pool-config-card">
+                        <div class="card-header">
+                            <h3>Configuración del Pool</h3>
+                        </div>
+                        <div class="pool-config-grid">
+                            <div class="config-item">
+                                <label>Tamaño mínimo del pool</label>
+                                <div class="config-input-group">
+                                    <input type="number" id="minPoolSize" value="10" min="5" max="100">
+                                    <span class="config-unit">wallets</span>
+                                </div>
+                            </div>
+                            <div class="config-item">
+                                <label>Auto-rellenar cuando sea menor a</label>
+                                <div class="config-input-group">
+                                    <input type="number" id="autoFillThreshold" value="5" min="1" max="50">
+                                    <span class="config-unit">wallets</span>
+                                </div>
+                            </div>
+                            <div class="config-item">
+                                <label>Umbral de balance bajo (Hot Wallet)</label>
+                                <div class="config-input-group">
+                                    <input type="number" id="lowBalanceThreshold" value="1" min="0.1" max="100" step="0.1">
+                                    <span class="config-unit">TON</span>
+                                </div>
+                            </div>
+                            <div class="config-actions">
+                                <button class="btn-primary" id="savePoolConfigBtn">Guardar Configuración</button>
+                            </div>
                         </div>
                     </div>
                 </section>

@@ -10142,11 +10142,15 @@ def admin_hot_wallet():
             except Exception as e:
                 logger.warning(f"Could not get hot wallet balance: {e}")
         
+        use_testnet = os.environ.get('TON_NETWORK', 'testnet').lower() == 'testnet'
+        explorer_url = 'https://testnet.tonscan.org' if use_testnet else 'https://tonscan.org'
+        
         return jsonify({
             'success': True,
             'address': hot_wallet_address,
             'balance': balance,
-            'status': 'ok' if balance > 0.1 else 'low'
+            'status': 'ok' if balance > 0.1 else 'low',
+            'explorerUrl': explorer_url
         })
     
     except Exception as e:
@@ -10190,8 +10194,12 @@ def admin_deposit_wallets():
                     cur.execute(count_query)
                 total = cur.fetchone()['total']
         
+        use_testnet = os.environ.get('TON_NETWORK', 'testnet').lower() == 'testnet'
+        explorer_url = 'https://testnet.tonscan.org' if use_testnet else 'https://tonscan.org'
+        
         return jsonify({
             'success': True,
+            'explorerUrl': explorer_url,
             'wallets': [{
                 'id': w['id'],
                 'wallet_address': w.get('wallet_address', ''),
@@ -10274,6 +10282,226 @@ def admin_consolidate_wallets():
     
     except Exception as e:
         logger.error(f"Error in consolidate wallets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/blockchain/history', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_blockchain_history():
+    """Admin: Obtener historial de transacciones blockchain."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        tx_type = request.args.get('type', '')
+        limit = min(int(request.args.get('limit', 50)), 200)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                transactions = []
+                
+                if tx_type in ['', 'deposits', 'all']:
+                    cur.execute("""
+                        SELECT 'deposit' as tx_type, dw.deposit_tx_hash as tx_hash, 
+                               dw.deposit_amount as amount, dw.wallet_address as from_address,
+                               (SELECT wallet_address FROM deposit_wallets WHERE status = 'hot_wallet' LIMIT 1) as to_address,
+                               dw.deposit_detected_at as created_at, 'confirmed' as status,
+                               u.username
+                        FROM deposit_wallets dw
+                        LEFT JOIN users u ON dw.assigned_to_user_id = u.telegram_id
+                        WHERE dw.deposit_tx_hash IS NOT NULL
+                        ORDER BY dw.deposit_detected_at DESC
+                        LIMIT %s
+                    """, (limit,))
+                    deposits = cur.fetchall()
+                    transactions.extend(deposits)
+                
+                if tx_type in ['', 'consolidations', 'all']:
+                    cur.execute("""
+                        SELECT 'consolidation' as tx_type, consolidation_tx_hash as tx_hash,
+                               deposit_amount as amount, wallet_address as from_address,
+                               %s as to_address, consolidated_at as created_at, 'confirmed' as status,
+                               NULL as username
+                        FROM deposit_wallets
+                        WHERE consolidation_tx_hash IS NOT NULL
+                        ORDER BY consolidated_at DESC
+                        LIMIT %s
+                    """, (os.environ.get('TON_WALLET_ADDRESS', ''), limit))
+                    consolidations = cur.fetchall()
+                    transactions.extend(consolidations)
+                
+                if tx_type in ['', 'withdrawals', 'all']:
+                    cur.execute("""
+                        SELECT 'withdrawal' as tx_type, tx_hash, amount_ton as amount,
+                               %s as from_address, wallet_address as to_address,
+                               processed_at as created_at, status, u.username
+                        FROM b3c_withdrawals w
+                        LEFT JOIN users u ON w.user_id = u.telegram_id
+                        WHERE tx_hash IS NOT NULL
+                        ORDER BY processed_at DESC
+                        LIMIT %s
+                    """, (os.environ.get('TON_WALLET_ADDRESS', ''), limit))
+                    withdrawals = cur.fetchall()
+                    transactions.extend(withdrawals)
+                
+                transactions.sort(key=lambda x: x['created_at'] or datetime.min, reverse=True)
+                transactions = transactions[:limit]
+        
+        use_testnet = os.environ.get('TON_NETWORK', 'testnet').lower() == 'testnet'
+        explorer_url = 'https://testnet.tonscan.org' if use_testnet else 'https://tonscan.org'
+        
+        return jsonify({
+            'success': True,
+            'explorerUrl': explorer_url,
+            'transactions': [{
+                'tx_type': tx['tx_type'],
+                'tx_hash': tx.get('tx_hash', ''),
+                'amount': float(tx.get('amount', 0) or 0),
+                'from_address': tx.get('from_address', '')[:20] + '...' if tx.get('from_address') else '-',
+                'to_address': tx.get('to_address', '')[:20] + '...' if tx.get('to_address') else '-',
+                'created_at': str(tx.get('created_at', '')),
+                'status': tx.get('status', 'unknown'),
+                'username': tx.get('username', '')
+            } for tx in transactions],
+            'total': len(transactions)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting blockchain history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wallets/pool-config', methods=['GET', 'POST'])
+@require_telegram_auth
+@require_owner
+def admin_pool_config():
+    """Admin: Obtener o guardar configuración del pool de wallets."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS system_config (
+                        config_key VARCHAR(100) PRIMARY KEY,
+                        config_value TEXT,
+                        config_type VARCHAR(50),
+                        description TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_by VARCHAR(100)
+                    )
+                """)
+                conn.commit()
+                
+                if request.method == 'GET':
+                    cur.execute("SELECT config_key, config_value FROM system_config WHERE config_key LIKE 'pool_%' OR config_key LIKE 'wallet_%'")
+                    rows = cur.fetchall()
+                    config = {row['config_key']: row['config_value'] for row in rows}
+                    
+                    return jsonify({
+                        'success': True,
+                        'config': {
+                            'minPoolSize': int(config.get('pool_min_size', 10)),
+                            'autoFillThreshold': int(config.get('pool_auto_fill_threshold', 5)),
+                            'lowBalanceThreshold': float(config.get('wallet_low_balance_threshold', 1.0))
+                        }
+                    })
+                
+                else:
+                    data = request.get_json() or {}
+                    
+                    min_pool_size = int(data.get('minPoolSize', 10))
+                    auto_fill_threshold = int(data.get('autoFillThreshold', 5))
+                    low_balance_threshold = float(data.get('lowBalanceThreshold', 1.0))
+                    
+                    if min_pool_size < 1 or min_pool_size > 1000:
+                        return jsonify({'success': False, 'error': 'Tamaño mínimo del pool debe ser entre 1 y 1000'}), 400
+                    if auto_fill_threshold < 0 or auto_fill_threshold > min_pool_size:
+                        return jsonify({'success': False, 'error': 'Umbral de auto-rellenado debe ser entre 0 y el tamaño mínimo'}), 400
+                    if low_balance_threshold < 0 or low_balance_threshold > 100:
+                        return jsonify({'success': False, 'error': 'Umbral de balance bajo debe ser entre 0 y 100'}), 400
+                    
+                    configs = [
+                        ('pool_min_size', str(min_pool_size)),
+                        ('pool_auto_fill_threshold', str(auto_fill_threshold)),
+                        ('wallet_low_balance_threshold', str(low_balance_threshold))
+                    ]
+                    
+                    for key, value in configs:
+                        cur.execute("""
+                            INSERT INTO system_config (config_key, config_value, updated_at) 
+                            VALUES (%s, %s, CURRENT_TIMESTAMP)
+                            ON CONFLICT (config_key) DO UPDATE SET config_value = %s, updated_at = CURRENT_TIMESTAMP
+                        """, (key, value, value))
+                    
+                    conn.commit()
+                    
+                    try:
+                        from tracking.wallet_pool_service import wallet_pool_service
+                        if wallet_pool_service:
+                            wallet_pool_service.reload_config()
+                    except Exception as reload_err:
+                        logger.warning(f"Could not reload wallet pool config: {reload_err}")
+                    
+                    user_id = getattr(request, 'user_id', '0')
+                    log_admin_action(user_id, 'Admin', 'update_pool_config', 'system_config', 
+                                   None, f"Updated pool config: {data}")
+                    
+                    return jsonify({'success': True, 'message': 'Configuración guardada y aplicada'})
+    
+    except Exception as e:
+        logger.error(f"Error with pool config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wallets/<int:wallet_id>/consolidate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_consolidate_single_wallet(wallet_id):
+    """Admin: Consolidar una wallet individual."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        try:
+            from tracking.wallet_pool_service import wallet_pool_service
+            if wallet_pool_service:
+                with db_manager.get_connection() as conn:
+                    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                        cur.execute("SELECT * FROM deposit_wallets WHERE id = %s", (wallet_id,))
+                        wallet = cur.fetchone()
+                        
+                        if not wallet:
+                            return jsonify({'success': False, 'error': 'Wallet no encontrada'}), 404
+                        
+                        if wallet.get('consolidated_at'):
+                            return jsonify({'success': False, 'error': 'Wallet ya consolidada'}), 400
+                
+                result = wallet_pool_service.consolidate_wallet(wallet_id)
+                
+                if result.get('success'):
+                    user_id = getattr(request, 'user_id', '0')
+                    log_admin_action(user_id, 'Admin', 'consolidate_single_wallet', 'deposit_wallets', 
+                                   str(wallet_id), f"Consolidated wallet {wallet_id}")
+                    
+                    return jsonify({
+                        'success': True,
+                        'amount': result.get('amount', 0),
+                        'tx_hash': result.get('tx_hash', ''),
+                        'message': 'Wallet consolidada exitosamente'
+                    })
+                else:
+                    return jsonify({'success': False, 'error': result.get('error', 'Error desconocido')})
+            else:
+                return jsonify({'success': False, 'error': 'Wallet pool service no disponible'}), 500
+        except Exception as e:
+            logger.error(f"Error consolidating single wallet: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    except Exception as e:
+        logger.error(f"Error in consolidate single wallet: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

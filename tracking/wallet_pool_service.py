@@ -37,6 +37,8 @@ class WalletPoolService:
     CONSOLIDATION_FEE = Decimal('0.01')
     DEFAULT_EXPIRATION_MINUTES = 30
     MIN_POOL_SIZE = 10
+    AUTO_FILL_THRESHOLD = 5
+    LOW_BALANCE_THRESHOLD = Decimal('1.0')
     
     def __init__(self, db_manager, master_key: Optional[str] = None):
         """
@@ -56,7 +58,31 @@ class WalletPoolService:
             raise ValueError("CRITICAL: ENCRYPTION_MASTER_KEY must be set! Cannot create wallets without encryption key.")
         
         self.encryption_key = self._derive_key(self.master_key)
+        self.reload_config()
         logger.info(f"WalletPoolService initialized - TONSDK: {TONSDK_AVAILABLE}, Testnet: {self.use_testnet}, HotWallet: {self.hot_wallet[:20] if self.hot_wallet else 'NOT SET'}...")
+    
+    def reload_config(self):
+        """Reload pool configuration from database."""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT config_key, config_value FROM system_config 
+                        WHERE config_key IN ('pool_min_size', 'pool_auto_fill_threshold', 'wallet_low_balance_threshold')
+                    """)
+                    rows = cur.fetchall()
+                    config = {row[0]: row[1] for row in rows}
+                    
+                    if 'pool_min_size' in config:
+                        self.MIN_POOL_SIZE = int(config['pool_min_size'])
+                    if 'pool_auto_fill_threshold' in config:
+                        self.AUTO_FILL_THRESHOLD = int(config['pool_auto_fill_threshold'])
+                    if 'wallet_low_balance_threshold' in config:
+                        self.LOW_BALANCE_THRESHOLD = Decimal(config['wallet_low_balance_threshold'])
+                    
+                    logger.info(f"Pool config reloaded: min_size={self.MIN_POOL_SIZE}, auto_fill={self.AUTO_FILL_THRESHOLD}, low_balance={self.LOW_BALANCE_THRESHOLD}")
+        except Exception as e:
+            logger.warning(f"Could not reload pool config (using defaults): {e}")
     
     def _derive_key(self, master_key: str) -> bytes:
         """Derivar clave de 32 bytes (AES-256) del master key usando SHA-256."""

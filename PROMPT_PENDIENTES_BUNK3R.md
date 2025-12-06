@@ -24,8 +24,8 @@ Esperando tu respuesta...
 | Última actualización | 6 Diciembre 2025 |
 | Sección actual | 27-29 |
 | Total secciones | 3 |
-| Completadas | 3 ✅ (27.1 Dashboard, 27.2 Usuarios 95%, 27.3 Transacciones) |
-| Pendientes | Secciones 27.4 en adelante ⏳ |
+| Completadas | 4 ✅ (27.1 Dashboard, 27.2 Usuarios 95%, 27.3 Transacciones, 27.4 Wallets) |
+| Pendientes | Secciones 27.5 en adelante ⏳ |
 | En progreso | Ninguna 🔄 |
 | Crítico | 0 🔴 |
 
@@ -279,35 +279,41 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.4: WALLETS Y BLOCKCHAIN ⏳
+## FASE 27.4: WALLETS Y BLOCKCHAIN ✅
 ## ═══════════════════════════════════════
 
 ### 27.4.1 - Hot Wallet
-- [ ] Balance actual en TON (tiempo real)
-- [ ] Dirección de la hot wallet
-- [ ] Botón para ver en TonScan
-- [ ] Historial de transacciones entrantes/salientes
-- [ ] Alerta si balance bajo (configurable)
+- [x] Balance actual en TON (tiempo real)
+- [x] Dirección de la hot wallet
+- [x] Botón para ver en TonScan
+- [x] Historial de transacciones entrantes/salientes
+- [x] Alerta si balance bajo (configurable)
 
 ### 27.4.2 - Wallets de Depósito
-- [ ] Lista de todas las wallets generadas
-- [ ] Estado: Disponible, Asignada, Usada, Consolidada
-- [ ] Balance de cada wallet
-- [ ] Usuario asignado (si aplica)
-- [ ] Consolidar fondos manualmente
-- [ ] Consolidar todas las wallets con balance
+- [x] Lista de todas las wallets generadas
+- [x] Estado: Disponible, Asignada, Usada, Consolidada
+- [x] Balance de cada wallet
+- [x] Usuario asignado (si aplica)
+- [x] Consolidar fondos manualmente (individual)
+- [x] Consolidar todas las wallets con balance
+- [x] Filtro por estado
+- [x] Link a TonScan por wallet
 
 ### 27.4.3 - Pool de Wallets
-- [ ] Estadísticas del pool
-- [ ] Wallets disponibles vs usadas
-- [ ] Generar más wallets (llenar pool)
-- [ ] Configurar tamaño mínimo del pool
+- [x] Estadísticas del pool
+- [x] Wallets disponibles vs usadas
+- [x] Generar más wallets (llenar pool)
+- [x] Configurar tamaño mínimo del pool
+- [x] Configurar umbral de auto-rellenado
+- [x] Configurar umbral de balance bajo
 
 ### 27.4.4 - Historial Blockchain
-- [ ] Todas las transacciones on-chain
-- [ ] Consolidaciones realizadas
-- [ ] Retiros enviados
-- [ ] Estado de confirmaciones
+- [x] Todas las transacciones on-chain
+- [x] Consolidaciones realizadas
+- [x] Retiros enviados
+- [x] Estado de confirmaciones
+- [x] Tabs para filtrar por tipo
+- [x] Link a TonScan por transacción
 
 ---
 
