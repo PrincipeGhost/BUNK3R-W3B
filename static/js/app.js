@@ -29,6 +29,34 @@ const App = {
     _intervals: [],
     _eventListeners: [],
     _abortControllers: [],
+    _sessionId: Math.random().toString(36).substring(2, 10),
+    
+    sendLog(action, details = {}, type = 'info') {
+        const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
+        const isTelegram = !!window.Telegram?.WebApp?.initData;
+        const platform = isTelegram ? 'telegram' : (isMobile ? 'mobile-browser' : 'desktop');
+        
+        const logData = {
+            action,
+            type,
+            details: {
+                ...details,
+                timestamp: new Date().toISOString(),
+                url: window.location.href
+            },
+            sessionId: this._sessionId,
+            isTelegram,
+            platform
+        };
+        
+        console.log(`[CLIENT LOG] ${action}:`, details);
+        
+        fetch('/api/client/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(logData)
+        }).catch(() => {});
+    },
     
     registerInterval(intervalId) {
         this._intervals.push(intervalId);
@@ -4236,15 +4264,18 @@ const App = {
     },
 
     async buyB3CWithTonConnect(tonAmount) {
+        this.sendLog('DEPOSIT_START', { tonAmount, walletConnected: !!this.connectedWallet });
         console.log('[B3C PURCHASE] Starting purchase for', tonAmount, 'TON');
         
         if (!this.tonConnectUI) {
+            this.sendLog('DEPOSIT_ERROR', { error: 'TON Connect not initialized' }, 'error');
             console.error('[B3C PURCHASE] TON Connect UI not initialized');
             this.showToast('TON Connect no disponible. Recarga la pagina.', 'error');
             return;
         }
 
         if (!this.connectedWallet) {
+            this.sendLog('WALLET_CONNECT_ATTEMPT', { reason: 'No wallet connected' });
             console.log('[B3C PURCHASE] Wallet not connected, attempting to connect...');
             this.showToast('Conectando wallet...', 'info');
             try {
@@ -4265,11 +4296,14 @@ const App = {
                 });
                 
                 if (!this.connectedWallet) {
+                    this.sendLog('WALLET_CONNECT_FAILED', { error: 'Wallet null after connect' }, 'error');
                     this.showToast('Wallet no conectada', 'error');
                     return;
                 }
+                this.sendLog('WALLET_CONNECT_SUCCESS', { address: this.connectedWallet?.account?.address?.substring(0, 20) });
                 console.log('[B3C PURCHASE] Wallet connected successfully');
             } catch (e) {
+                this.sendLog('WALLET_CONNECT_ERROR', { error: e.message }, 'error');
                 console.error('[B3C PURCHASE] Wallet connection failed:', e);
                 if (e.message?.includes('timeout')) {
                     this.showToast('Tiempo agotado. Intenta de nuevo.', 'error');
@@ -4282,6 +4316,7 @@ const App = {
 
         try {
             this.showToast(`Preparando compra de B3C por ${tonAmount} TON...`, 'info');
+            this.sendLog('DEPOSIT_CREATE_ORDER', { tonAmount });
             console.log('[B3C PURCHASE] Creating purchase order...');
 
             const response = await this.apiRequest('/api/b3c/buy/create', {

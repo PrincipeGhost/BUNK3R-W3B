@@ -5637,29 +5637,125 @@ def admin_system_settings():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/client/log', methods=['POST'])
+def receive_client_log():
+    """Recibir logs del cliente (frontend) para monitoreo."""
+    try:
+        data = request.get_json() or {}
+        
+        user_id = '0'
+        if hasattr(request, 'telegram_user') and request.telegram_user:
+            user_id = str(request.telegram_user.get('id', 0))
+        
+        log_type = data.get('type', 'info')
+        action = data.get('action', 'unknown')
+        details = data.get('details', {})
+        session_id = data.get('sessionId', '')
+        
+        user_agent = request.headers.get('User-Agent', '')
+        is_mobile = any(x in user_agent.lower() for x in ['mobile', 'android', 'iphone', 'ipad'])
+        is_telegram = 'telegram' in user_agent.lower() or data.get('isTelegram', False)
+        platform = data.get('platform', 'unknown')
+        
+        logger.info(f"[CLIENT LOG] user={user_id} action={action} type={log_type} mobile={is_mobile} telegram={is_telegram} details={details}")
+        
+        if db_manager:
+            try:
+                with db_manager.get_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            INSERT INTO client_logs (user_id, session_id, log_type, action, details, 
+                                                    user_agent, platform, is_mobile, is_telegram)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (user_id, session_id, log_type, action, 
+                              psycopg2.extras.Json(details), user_agent, platform, is_mobile, is_telegram))
+                        conn.commit()
+            except Exception as db_err:
+                logger.error(f"Error saving client log: {db_err}")
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error receiving client log: {e}")
+        return jsonify({'success': True})
+
+
+@app.route('/api/admin/client-logs', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_client_logs():
+    """Admin: Obtener logs de cliente para monitoreo de depositos."""
+    try:
+        action_filter = request.args.get('action', 'all')
+        limit = min(int(request.args.get('limit', 100)), 500)
+        mobile_only = request.args.get('mobile', 'false') == 'true'
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'DB no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT id, user_id, session_id, log_type, action, details,
+                           platform, is_mobile, is_telegram, created_at
+                    FROM client_logs
+                    WHERE 1=1
+                """
+                params = []
+                
+                if action_filter != 'all':
+                    query += " AND action LIKE %s"
+                    params.append(f"%{action_filter}%")
+                
+                if mobile_only:
+                    query += " AND is_mobile = true"
+                
+                query += " ORDER BY created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                logs = cur.fetchall()
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'count': len(logs)
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting client logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/logs', methods=['GET'])
 @require_telegram_auth
 @require_owner
 def admin_get_logs():
-    """Admin: Obtener logs del sistema."""
+    """Admin: Obtener logs del sistema (redirige a client-logs)."""
     try:
-        level_filter = request.args.get('level', 'all')
+        if not db_manager:
+            return jsonify({'success': True, 'logs': []})
         
-        sample_logs = [
-            {'time': '15:30:45', 'level': 'info', 'message': 'Sistema iniciado correctamente'},
-            {'time': '15:30:46', 'level': 'info', 'message': 'Conexion a base de datos establecida'},
-            {'time': '15:31:00', 'level': 'info', 'message': 'Usuario autenticado: @demo_user'},
-            {'time': '15:32:15', 'level': 'warning', 'message': 'Rate limit alcanzado para IP 192.168.1.1'},
-            {'time': '15:33:00', 'level': 'info', 'message': 'Transaccion procesada: 10 TON'},
-        ]
-        
-        if level_filter != 'all':
-            sample_logs = [l for l in sample_logs if l['level'] == level_filter]
-        
-        return jsonify({
-            'success': True,
-            'logs': sample_logs
-        })
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT log_type as level, action as message, 
+                           TO_CHAR(created_at, 'HH24:MI:SS') as time,
+                           is_mobile, is_telegram, details
+                    FROM client_logs
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """)
+                logs = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs
+                })
         
     except Exception as e:
         logger.error(f"Error getting logs: {e}")
