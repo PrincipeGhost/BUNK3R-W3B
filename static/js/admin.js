@@ -311,6 +311,26 @@ const AdminPanel = {
             });
         });
         
+        document.getElementById('contentSearch')?.addEventListener('input', this.debounce(() => {
+            this.loadContentPosts();
+        }, 500));
+        
+        document.getElementById('contentTypeFilter')?.addEventListener('change', () => {
+            this.loadContentPosts();
+        });
+        
+        document.getElementById('storiesStatusFilter')?.addEventListener('change', () => {
+            this.loadStories();
+        });
+        
+        document.getElementById('hashtagSearch')?.addEventListener('input', this.debounce(() => {
+            this.loadHashtags();
+        }, 500));
+        
+        document.getElementById('hashtagStatusFilter')?.addEventListener('change', () => {
+            this.loadHashtags();
+        });
+        
         this.initPeriodDates();
     },
     
@@ -1635,16 +1655,25 @@ const AdminPanel = {
         const tbody = document.getElementById('contentTableBody');
         tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando contenido...</td></tr>';
         
+        const search = document.getElementById('contentSearch')?.value || '';
+        const contentType = document.getElementById('contentTypeFilter')?.value || '';
+        
         try {
-            const postsResponse = await this.fetchAPI('/api/admin/content/posts?limit=50');
+            let url = '/api/admin/content/posts?limit=50';
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (contentType) url += `&content_type=${encodeURIComponent(contentType)}`;
+            
+            const postsResponse = await this.fetchAPI(url);
             
             if (postsResponse.success && postsResponse.posts) {
-                if (postsResponse.posts.length === 0) {
+                const posts = postsResponse.posts;
+                
+                if (posts.length === 0) {
                     tbody.innerHTML = '<tr class="loading-row"><td colspan="8">No hay publicaciones</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = postsResponse.posts.map(post => `
+                tbody.innerHTML = posts.map(post => `
                     <tr>
                         <td>${post.id}</td>
                         <td>@${this.escapeHtml(post.username || 'N/A')}</td>
@@ -1755,20 +1784,29 @@ const AdminPanel = {
         const tbody = document.getElementById('hashtagsTableBody');
         tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando hashtags...</td></tr>';
         
+        const search = document.getElementById('hashtagSearch')?.value || '';
+        const statusFilter = document.getElementById('hashtagStatusFilter')?.value || '';
+        
         try {
-            const response = await this.fetchAPI('/api/admin/hashtags');
+            let url = '/api/admin/hashtags?limit=50';
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+            
+            const response = await this.fetchAPI(url);
             
             if (response.success && response.hashtags) {
-                if (response.hashtags.length === 0) {
+                const hashtags = response.hashtags;
+                
+                if (hashtags.length === 0) {
                     tbody.innerHTML = '<tr class="loading-row"><td colspan="5">No hay hashtags</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = response.hashtags.map(tag => `
+                tbody.innerHTML = hashtags.map(tag => `
                     <tr>
                         <td>${tag.id}</td>
-                        <td>#${this.escapeHtml(tag.name)}</td>
-                        <td>${tag.usage_count || 0}</td>
+                        <td>#${this.escapeHtml(tag.tag || tag.name || '')}</td>
+                        <td>${tag.posts_count || tag.usage_count || 0}</td>
                         <td>
                             <span class="status-badge ${tag.is_blocked ? 'danger' : (tag.is_promoted ? 'success' : 'active')}">
                                 ${tag.is_blocked ? 'Bloqueado' : (tag.is_promoted ? 'Promovido' : 'Activo')}
@@ -1933,7 +1971,9 @@ const AdminPanel = {
                 document.getElementById('reportsCount').textContent = response.reports.length;
                 
                 if (response.reports.length === 0) {
-                    container.innerHTML = '<div class="empty-state">No hay reportes pendientes</div>';
+                    const statusText = status === 'pending' ? 'pendientes' : 
+                                      status === 'reviewed' ? 'revisados' : 'descartados';
+                    container.innerHTML = `<div class="empty-state">No hay reportes ${statusText}</div>`;
                     return;
                 }
                 
@@ -1942,17 +1982,33 @@ const AdminPanel = {
                         <div class="report-content">
                             <div class="report-header">
                                 <strong>Reporte #${report.id}</strong>
-                                <span class="status-badge ${report.status}">${report.status}</span>
+                                <span class="status-badge ${report.status === 'pending' ? 'warning' : report.status === 'reviewed' ? 'success' : 'inactive'}">${this.getReportStatusText(report.status)}</span>
+                                ${report.content_type ? `<span class="content-type-badge">${report.content_type}</span>` : ''}
                             </div>
-                            <p>${this.escapeHtml(report.reason)}</p>
+                            <div class="report-reason">
+                                <strong>Motivo:</strong> ${this.escapeHtml(report.reason)}
+                            </div>
+                            ${report.content_preview ? `
+                                <div class="report-preview">
+                                    <strong>Contenido:</strong> ${this.escapeHtml(report.content_preview.slice(0, 150))}${report.content_preview.length > 150 ? '...' : ''}
+                                </div>
+                            ` : ''}
                             <div class="report-meta">
-                                <span>Reportado por: ${this.escapeHtml(report.reporter_username || 'Anónimo')}</span>
-                                <span>${this.formatDate(report.created_at)}</span>
+                                <span><strong>Reportado por:</strong> @${this.escapeHtml(report.reporter_username || 'Anónimo')}</span>
+                                ${report.reported_username ? `<span><strong>Autor:</strong> @${this.escapeHtml(report.reported_username)}</span>` : ''}
+                                <span><strong>Fecha:</strong> ${this.formatDateTime(report.created_at)}</span>
+                                ${report.post_id ? `<span><strong>Post ID:</strong> #${report.post_id}</span>` : ''}
                             </div>
                         </div>
                         <div class="report-actions">
-                            <button class="action-btn" onclick="AdminPanel.reviewReport(${report.id}, 'reviewed')">Aprobar</button>
-                            <button class="action-btn danger" onclick="AdminPanel.reviewReport(${report.id}, 'dismissed')">Descartar</button>
+                            ${report.post_id ? `<button class="action-btn" onclick="AdminPanel.viewPost(${report.post_id})">Ver Publicacion</button>` : ''}
+                            ${status === 'pending' ? `
+                                <button class="action-btn success" onclick="AdminPanel.reviewReport(${report.id}, 'reviewed')">Resolver</button>
+                                <button class="action-btn warning" onclick="AdminPanel.reviewReport(${report.id}, 'dismissed')">Descartar</button>
+                                ${report.post_id ? `<button class="action-btn danger" onclick="AdminPanel.deletePostAndResolveReport(${report.post_id}, ${report.id})">Eliminar Post</button>` : ''}
+                            ` : `
+                                <span class="resolved-info">Resuelto: ${this.formatDateTime(report.resolved_at || report.updated_at)}</span>
+                            `}
                         </div>
                     </div>
                 `).join('');
@@ -1960,6 +2016,15 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error loading reports:', error);
             container.innerHTML = '<div class="empty-state">Error al cargar reportes</div>';
+        }
+    },
+    
+    getReportStatusText(status) {
+        switch(status) {
+            case 'pending': return 'Pendiente';
+            case 'reviewed': return 'Resuelto';
+            case 'dismissed': return 'Descartado';
+            default: return status;
         }
     },
     
@@ -1979,6 +2044,39 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error:', error);
             this.showToast('Error al actualizar reporte', 'error');
+        }
+    },
+    
+    async deletePostAndResolveReport(postId, reportId) {
+        if (!confirm('¿Está seguro de eliminar esta publicación y resolver el reporte?')) {
+            return;
+        }
+        
+        try {
+            const deleteResponse = await this.fetchAPI(`/api/admin/content/posts/${postId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!deleteResponse.success) {
+                this.showToast(deleteResponse.error || 'Error al eliminar publicación', 'error');
+                return;
+            }
+            
+            const resolveResponse = await this.fetchAPI(`/api/admin/reports/${reportId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: 'reviewed' })
+            });
+            
+            if (resolveResponse.success) {
+                this.showToast('Publicación eliminada y reporte resuelto', 'success');
+                this.loadReports();
+            } else {
+                this.showToast('Publicación eliminada, pero error al resolver reporte', 'warning');
+                this.loadReports();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al procesar la solicitud', 'error');
         }
     },
     

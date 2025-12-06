@@ -1237,6 +1237,68 @@
     gap: 15px;
     padding: 20px;
     border-bottom: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
+}
+
+.report-item .report-content {
+    flex: 1;
+    min-width: 300px;
+}
+
+.report-item .report-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.report-item .report-reason {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+}
+
+.report-item .report-preview {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 8px;
+    padding: 10px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-warning);
+}
+
+.report-item .report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.report-item .report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.content-type-badge {
+    background: var(--accent-info);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.resolved-info {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
 }
 
 /* Logs */

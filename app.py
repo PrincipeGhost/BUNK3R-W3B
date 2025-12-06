@@ -6791,35 +6791,74 @@ def admin_content_stats():
 @require_telegram_auth
 @require_owner
 def admin_content_posts():
-    """Admin: Listar publicaciones para moderación."""
+    """Admin: Listar publicaciones para moderación con filtros."""
     try:
         if not db_manager:
-            return jsonify({'success': True, 'posts': []})
+            return jsonify({'success': True, 'posts': [], 'total': 0})
         
         limit = request.args.get('limit', 50, type=int)
+        search = request.args.get('search', '').strip()
+        content_type = request.args.get('content_type', '').strip()
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("""
+                query = """
                     SELECT p.id, p.user_id, p.content_type, p.caption, p.content_url,
                            p.reactions_count, p.comments_count, p.shares_count,
                            p.is_active, p.created_at,
                            u.username, u.first_name
                     FROM posts p
                     LEFT JOIN users u ON p.user_id = u.telegram_id
-                    ORDER BY p.created_at DESC
-                    LIMIT %s
-                """, (limit,))
+                    WHERE 1=1
+                """
+                params = []
+                
+                if search:
+                    query += " AND (LOWER(p.caption) LIKE LOWER(%s) OR LOWER(u.username) LIKE LOWER(%s))"
+                    search_pattern = f"%{search}%"
+                    params.extend([search_pattern, search_pattern])
+                
+                if content_type:
+                    query += " AND p.content_type = %s"
+                    params.append(content_type)
+                
+                query += " ORDER BY p.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
                 posts = cur.fetchall()
+                
+                count_query = "SELECT COUNT(*) as total FROM posts p LEFT JOIN users u ON p.user_id = u.telegram_id WHERE 1=1"
+                count_params = []
+                
+                if search:
+                    count_query += " AND (LOWER(p.caption) LIKE LOWER(%s) OR LOWER(u.username) LIKE LOWER(%s))"
+                    count_params.extend([f"%{search}%", f"%{search}%"])
+                
+                if content_type:
+                    count_query += " AND p.content_type = %s"
+                    count_params.append(content_type)
+                
+                cur.execute(count_query, count_params)
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
+        
+        result = []
+        for p in posts:
+            p_dict = dict(p)
+            if p_dict.get('created_at'):
+                p_dict['created_at'] = p_dict['created_at'].isoformat()
+            result.append(p_dict)
         
         return jsonify({
             'success': True,
-            'posts': [dict(p) for p in posts]
+            'posts': result,
+            'total': total
         })
         
     except Exception as e:
         logger.error(f"Error getting content posts: {e}")
-        return jsonify({'success': True, 'posts': []})
+        return jsonify({'success': True, 'posts': [], 'total': 0})
 
 
 @app.route('/api/admin/content/posts/<int:post_id>', methods=['DELETE'])
@@ -7031,26 +7070,63 @@ def admin_get_reported_content():
 @require_telegram_auth
 @require_owner
 def admin_get_hashtags():
-    """Admin: Obtener lista de hashtags con estadísticas."""
+    """Admin: Obtener lista de hashtags con estadísticas y filtros."""
     try:
         if not db_manager:
-            return jsonify({'success': True, 'hashtags': []})
+            return jsonify({'success': True, 'hashtags': [], 'total': 0})
         
         limit = request.args.get('limit', 50, type=int)
         sort = request.args.get('sort', 'posts_count')
+        search = request.args.get('search', '').strip()
+        status = request.args.get('status', '').strip()
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 order_by = 'posts_count DESC' if sort == 'posts_count' else 'created_at DESC'
-                cur.execute(f"""
+                
+                query = """
                     SELECT h.id, h.tag, h.posts_count, h.created_at,
                            COALESCE(h.is_blocked, false) as is_blocked,
                            COALESCE(h.is_promoted, false) as is_promoted
                     FROM hashtags h
-                    ORDER BY {order_by}
-                    LIMIT %s
-                """, (limit,))
+                    WHERE 1=1
+                """
+                params = []
+                
+                if search:
+                    query += " AND LOWER(h.tag) LIKE LOWER(%s)"
+                    params.append(f"%{search}%")
+                
+                if status == 'blocked':
+                    query += " AND COALESCE(h.is_blocked, false) = true"
+                elif status == 'promoted':
+                    query += " AND COALESCE(h.is_promoted, false) = true"
+                elif status == 'active':
+                    query += " AND COALESCE(h.is_blocked, false) = false"
+                
+                query += f" ORDER BY {order_by} LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
                 hashtags = cur.fetchall()
+                
+                count_query = "SELECT COUNT(*) as total FROM hashtags h WHERE 1=1"
+                count_params = []
+                
+                if search:
+                    count_query += " AND LOWER(h.tag) LIKE LOWER(%s)"
+                    count_params.append(f"%{search}%")
+                
+                if status == 'blocked':
+                    count_query += " AND COALESCE(h.is_blocked, false) = true"
+                elif status == 'promoted':
+                    count_query += " AND COALESCE(h.is_promoted, false) = true"
+                elif status == 'active':
+                    count_query += " AND COALESCE(h.is_blocked, false) = false"
+                
+                cur.execute(count_query, count_params)
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
         
         result = []
         for h in hashtags:
@@ -7059,11 +7135,11 @@ def admin_get_hashtags():
                 h_dict['created_at'] = h_dict['created_at'].isoformat()
             result.append(h_dict)
         
-        return jsonify({'success': True, 'hashtags': result})
+        return jsonify({'success': True, 'hashtags': result, 'total': total})
         
     except Exception as e:
         logger.error(f"Error getting hashtags: {e}")
-        return jsonify({'success': True, 'hashtags': []})
+        return jsonify({'success': True, 'hashtags': [], 'total': 0})
 
 
 @app.route('/api/admin/hashtags/<int:hashtag_id>/block', methods=['POST'])
@@ -7153,26 +7229,48 @@ def admin_promote_hashtag(hashtag_id):
 @require_telegram_auth
 @require_owner
 def admin_get_stories():
-    """Admin: Obtener stories activas para moderación."""
+    """Admin: Obtener stories para moderación con filtros."""
     try:
         if not db_manager:
-            return jsonify({'success': True, 'stories': []})
+            return jsonify({'success': True, 'stories': [], 'total': 0})
         
         limit = request.args.get('limit', 50, type=int)
+        status = request.args.get('status', 'active').strip()
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("""
+                query = """
                     SELECT s.id, s.user_id, s.media_type, s.media_url, s.views_count,
                            s.is_active, s.expires_at, s.created_at,
                            u.username, u.first_name
                     FROM stories s
                     LEFT JOIN users u ON s.user_id = u.telegram_id::text
-                    WHERE s.is_active = true AND s.expires_at > NOW()
-                    ORDER BY s.created_at DESC
-                    LIMIT %s
-                """, (limit,))
+                    WHERE 1=1
+                """
+                params = []
+                
+                if status == 'active':
+                    query += " AND s.is_active = true AND s.expires_at > NOW()"
+                elif status == 'expired':
+                    query += " AND (s.is_active = false OR s.expires_at <= NOW())"
+                
+                query += " ORDER BY s.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
                 stories = cur.fetchall()
+                
+                count_query = "SELECT COUNT(*) as total FROM stories s WHERE 1=1"
+                count_params = []
+                
+                if status == 'active':
+                    count_query += " AND s.is_active = true AND s.expires_at > NOW()"
+                elif status == 'expired':
+                    count_query += " AND (s.is_active = false OR s.expires_at <= NOW())"
+                
+                cur.execute(count_query, count_params)
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
         
         result = []
         for s in stories:
@@ -7183,11 +7281,11 @@ def admin_get_stories():
                 s_dict['expires_at'] = s_dict['expires_at'].isoformat()
             result.append(s_dict)
         
-        return jsonify({'success': True, 'stories': result})
+        return jsonify({'success': True, 'stories': result, 'total': total})
         
     except Exception as e:
         logger.error(f"Error getting stories: {e}")
-        return jsonify({'success': True, 'stories': []})
+        return jsonify({'success': True, 'stories': [], 'total': 0})
 
 
 @app.route('/api/admin/stories/<int:story_id>', methods=['DELETE'])
