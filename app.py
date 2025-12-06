@@ -7709,6 +7709,168 @@ def admin_bots_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/bots/usage', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_usage():
+    """Admin: Obtener datos de uso de bots en el tiempo."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        days = int(request.args.get('days', 30))
+        days = min(days, 90)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+                        COUNT(*) as count
+                    FROM user_bots
+                    WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 day')
+                    GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+                    ORDER BY date
+                """, (days,))
+                usage_data = [dict(row) for row in cur.fetchall()]
+                
+                from datetime import datetime, timedelta
+                today = datetime.now().date()
+                date_set = {d['date'] for d in usage_data}
+                
+                complete_data = []
+                for i in range(days, -1, -1):
+                    date_str = (today - timedelta(days=i)).strftime('%Y-%m-%d')
+                    existing = next((d for d in usage_data if d['date'] == date_str), None)
+                    if existing:
+                        complete_data.append(existing)
+                    else:
+                        complete_data.append({'date': date_str, 'count': 0})
+                
+                return jsonify({
+                    'success': True,
+                    'data': complete_data
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bots usage: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/bots/revenue', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_revenue():
+    """Admin: Obtener ingresos por bots."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(bt.price), 0) as total
+                    FROM user_bots ub
+                    JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                """)
+                total_revenue = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(bt.price), 0) as total
+                    FROM user_bots ub
+                    JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    WHERE ub.created_at >= DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                month_revenue = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(bt.price), 0) as total
+                    FROM user_bots ub
+                    JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    WHERE ub.created_at >= CURRENT_DATE - INTERVAL '7 days'
+                """)
+                week_revenue = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT 
+                        bt.id,
+                        bt.bot_name as name,
+                        bt.icon,
+                        bt.price,
+                        COUNT(ub.id) as count,
+                        COALESCE(bt.price * COUNT(ub.id), 0) as revenue
+                    FROM bot_types bt
+                    LEFT JOIN user_bots ub ON ub.bot_type = bt.bot_type
+                    GROUP BY bt.id, bt.bot_name, bt.icon, bt.price
+                    ORDER BY revenue DESC
+                """)
+                breakdown = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'data': {
+                        'total': total_revenue,
+                        'month': month_revenue,
+                        'week': week_revenue,
+                        'breakdown': breakdown
+                    }
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bots revenue: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/bots/purchases', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_purchases():
+    """Admin: Obtener historial de compras de bots."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        per_page = min(per_page, 50)
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM user_bots")
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT 
+                        ub.id,
+                        ub.user_id,
+                        ub.bot_type,
+                        ub.created_at,
+                        bt.bot_name,
+                        bt.icon,
+                        bt.price,
+                        u.username
+                    FROM user_bots ub
+                    LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    LEFT JOIN users u ON ub.user_id = u.telegram_id
+                    ORDER BY ub.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (per_page, offset))
+                purchases = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'data': purchases,
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bots purchases: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/products', methods=['GET'])
 @require_telegram_auth
 @require_owner

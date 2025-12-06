@@ -4076,12 +4076,18 @@ Fin del reporte
     },
     
     botsListenersInitialized: false,
+    botsPurchasePage: 1,
+    botsPurchasePerPage: 10,
     
     async loadBots() {
         try {
-            const [botsRes, statsRes] = await Promise.all([
+            const period = document.getElementById('botsChartPeriod')?.value || '30';
+            
+            const [botsRes, statsRes, usageRes, revenueRes] = await Promise.all([
                 this.fetchAPI('/api/admin/bots'),
-                this.fetchAPI('/api/admin/bots/stats')
+                this.fetchAPI('/api/admin/bots/stats'),
+                this.fetchAPI(`/api/admin/bots/usage?days=${period}`),
+                this.fetchAPI('/api/admin/bots/revenue')
             ]);
             
             if (statsRes.success && statsRes.summary) {
@@ -4099,6 +4105,16 @@ Fin del reporte
                 this.renderBotsTable(botsRes.bots || []);
             }
             
+            if (usageRes.success) {
+                this.initBotsUsageChart(usageRes.data || []);
+            }
+            
+            if (revenueRes.success) {
+                this.renderBotsRevenue(revenueRes.data || {});
+            }
+            
+            this.loadBotsPurchaseHistory();
+            
             if (!this.botsListenersInitialized) {
                 this.setupBotsEventListeners();
                 this.botsListenersInitialized = true;
@@ -4108,6 +4124,127 @@ Fin del reporte
             console.error('Error loading bots:', error);
             this.showToast('Error al cargar bots', 'error');
         }
+    },
+    
+    initBotsUsageChart(usageData) {
+        const ctx = document.getElementById('botsUsageChart');
+        if (!ctx) return;
+        
+        const labels = usageData.map(d => d.date);
+        const data = usageData.map(d => d.count);
+        
+        if (this.charts.botsUsage) {
+            this.charts.botsUsage.data.labels = labels;
+            this.charts.botsUsage.data.datasets[0].data = data;
+            this.charts.botsUsage.update();
+        } else {
+            this.charts.botsUsage = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Activaciones de Bots',
+                        data: data,
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#8B5CF6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#848E9C', maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#848E9C' },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    },
+    
+    renderBotsRevenue(revenueData) {
+        document.getElementById('botsRevenueTotal').textContent = this.formatNumber(revenueData.total || 0) + ' B3C';
+        document.getElementById('botsRevenueMonth').textContent = this.formatNumber(revenueData.month || 0) + ' B3C';
+        document.getElementById('botsRevenueWeek').textContent = this.formatNumber(revenueData.week || 0) + ' B3C';
+        
+        const breakdown = revenueData.breakdown || [];
+        const container = document.getElementById('botsRevenueBreakdown');
+        
+        if (!breakdown || breakdown.length === 0) {
+            container.innerHTML = '<div class="empty-state">No hay datos de ingresos por bot</div>';
+            return;
+        }
+        
+        container.innerHTML = breakdown.map(bot => `
+            <div class="revenue-breakdown-item">
+                <div class="revenue-breakdown-icon">${this.escapeHtml(bot.icon || '🤖')}</div>
+                <div class="revenue-breakdown-info">
+                    <div class="revenue-breakdown-name">${this.escapeHtml(bot.name || '-')}</div>
+                    <div class="revenue-breakdown-amount">${this.formatNumber(bot.revenue || 0)} B3C</div>
+                    <div class="revenue-breakdown-count">${this.formatNumber(bot.count || 0)} compras</div>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    async loadBotsPurchaseHistory() {
+        try {
+            const response = await this.fetchAPI(`/api/admin/bots/purchases?page=${this.botsPurchasePage}&per_page=${this.botsPurchasePerPage}`);
+            
+            if (response.success) {
+                this.renderBotsPurchaseHistory(response.data || [], response.total || 0);
+            }
+        } catch (error) {
+            console.error('Error loading purchase history:', error);
+        }
+    },
+    
+    renderBotsPurchaseHistory(purchases, total) {
+        const tbody = document.getElementById('botsPurchaseHistoryBody');
+        const pageInfo = document.getElementById('botsPurchasePageInfo');
+        const prevBtn = document.getElementById('botsPurchasePrevBtn');
+        const nextBtn = document.getElementById('botsPurchaseNextBtn');
+        
+        if (!tbody) return;
+        
+        if (!purchases || purchases.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No hay compras de bots registradas</td></tr>';
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+            if (pageInfo) pageInfo.textContent = 'Sin resultados';
+            return;
+        }
+        
+        tbody.innerHTML = purchases.map(p => `
+            <tr>
+                <td>${this.formatDate(p.created_at)}</td>
+                <td>${this.escapeHtml(p.username || p.user_id || '-')}</td>
+                <td>
+                    <span class="bot-purchase-name">
+                        ${this.escapeHtml(p.icon || '🤖')} ${this.escapeHtml(p.bot_name || '-')}
+                    </span>
+                </td>
+                <td class="price-cell">${this.formatNumber(p.price || 0)} B3C</td>
+            </tr>
+        `).join('');
+        
+        const totalPages = Math.ceil(total / this.botsPurchasePerPage) || 1;
+        if (pageInfo) pageInfo.textContent = `Pagina ${this.botsPurchasePage} de ${totalPages}`;
+        if (prevBtn) prevBtn.disabled = this.botsPurchasePage <= 1;
+        if (nextBtn) nextBtn.disabled = this.botsPurchasePage >= totalPages;
     },
     
     renderBotsTable(bots) {
@@ -4219,6 +4356,22 @@ Fin del reporte
         
         document.getElementById('createBotBtn')?.addEventListener('click', () => {
             this.showCreateBotModal();
+        });
+        
+        document.getElementById('botsChartPeriod')?.addEventListener('change', () => {
+            this.loadBots();
+        });
+        
+        document.getElementById('botsPurchasePrevBtn')?.addEventListener('click', () => {
+            if (this.botsPurchasePage > 1) {
+                this.botsPurchasePage--;
+                this.loadBotsPurchaseHistory();
+            }
+        });
+        
+        document.getElementById('botsPurchaseNextBtn')?.addEventListener('click', () => {
+            this.botsPurchasePage++;
+            this.loadBotsPurchaseHistory();
         });
     },
     

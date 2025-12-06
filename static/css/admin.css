@@ -3181,6 +3181,131 @@ textarea.form-control {
     }
 }
 
+/* Bots Dashboard Grid */
+.bots-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 25px;
+}
+
+.bots-dashboard-grid .dashboard-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.bots-dashboard-grid .chart-container {
+    padding: 20px;
+    height: 250px;
+}
+
+.bot-stats-chart {
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Bots Revenue Section */
+.bots-revenue-container {
+    padding: 20px;
+}
+
+.revenue-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.revenue-item {
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+}
+
+.revenue-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.revenue-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.revenue-value.gold {
+    color: var(--accent-primary);
+}
+
+.revenue-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.revenue-breakdown-item {
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.revenue-breakdown-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(139, 92, 246, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.revenue-breakdown-info {
+    flex: 1;
+}
+
+.revenue-breakdown-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.revenue-breakdown-amount {
+    font-size: 13px;
+    color: var(--accent-primary);
+    font-weight: 600;
+}
+
+.revenue-breakdown-count {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 1200px) {
+    .bots-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .revenue-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .revenue-breakdown {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Logs Section */
 .logs-stats-grid {
     display: grid;
