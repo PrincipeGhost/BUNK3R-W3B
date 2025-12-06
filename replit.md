@@ -67,7 +67,39 @@ El usuario decidió NO usar pool de liquidez (DEX). En su lugar:
 - `POST /api/b3c/transfer` - Transferir B3C entre usuarios (P2P)
 - `POST /api/b3c/admin/price` - Actualizar precio fijo (admin)
 
-## Cambios Recientes (5 Diciembre 2025)
+## Cambios Recientes (6 Diciembre 2025)
+
+### SECCIÓN 27.5 - Admin Panel Content Endpoints FIX (COMPLETADO)
+**Fixes aplicados a endpoints de moderación de contenido:**
+
+1. **FIX: Column mismatch en admin_content_posts** - `app.py` línea 6810
+   - Error: Query usaba `p.reactions_count` que no existe en tabla `posts`
+   - Fix: Cambiado a `p.likes_count` que es el nombre correcto de la columna
+   
+2. **FIX: Type casting en JOIN** - `app.py` líneas 6814, 6834
+   - Error: JOIN `p.user_id = u.telegram_id` fallaba por tipos incompatibles (varchar vs bigint)
+   - Fix: Agregado cast explícito `u.telegram_id::text` para compatibilidad de tipos
+
+**Endpoints verificados funcionando:**
+- `GET /api/admin/content/posts` - Lista posts con filtros (search, content_type)
+- `GET /api/admin/content/posts/<id>` - Detalle de post
+- `DELETE /api/admin/content/posts/<id>` - Eliminar post
+- `POST /api/admin/content/posts/<id>/warn` - Advertir autor
+- `POST /api/admin/content/posts/<id>/ban-author` - Banear autor
+- `GET /api/admin/content/reported` - Posts reportados
+- `GET /api/admin/content/stats` - Estadísticas de contenido
+- `GET /api/admin/hashtags` - Hashtags con filtros
+- `POST /api/admin/hashtags/<id>/block` - Bloquear hashtag
+- `POST /api/admin/hashtags/<id>/unblock` - Desbloquear hashtag
+- `POST /api/admin/hashtags/<id>/promote` - Promover hashtag
+- `GET /api/admin/stories` - Stories con filtros
+- `DELETE /api/admin/stories/<id>` - Eliminar story
+
+**Consistencia de totales verificada:**
+- Todos los endpoints con filtros aplican los mismos filtros al count_query
+- El total siempre refleja el número de items que cumplen los filtros aplicados
+
+## Cambios Anteriores (5 Diciembre 2025)
 
 ### SECCIÓN 17 - Pagos TON Connect (COMPLETADO)
 - Corregido error TON_CONNECT_SDK_ERROR en payload de transacciones

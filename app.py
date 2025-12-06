@@ -6804,11 +6804,11 @@ def admin_content_posts():
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 query = """
                     SELECT p.id, p.user_id, p.content_type, p.caption, p.content_url,
-                           p.reactions_count, p.comments_count, p.shares_count,
+                           p.likes_count, p.comments_count, p.shares_count,
                            p.is_active, p.created_at,
                            u.username, u.first_name
                     FROM posts p
-                    LEFT JOIN users u ON p.user_id = u.telegram_id
+                    LEFT JOIN users u ON p.user_id = u.telegram_id::text
                     WHERE 1=1
                 """
                 params = []
@@ -6828,7 +6828,7 @@ def admin_content_posts():
                 cur.execute(query, params)
                 posts = cur.fetchall()
                 
-                count_query = "SELECT COUNT(*) as total FROM posts p LEFT JOIN users u ON p.user_id = u.telegram_id WHERE 1=1"
+                count_query = "SELECT COUNT(*) as total FROM posts p LEFT JOIN users u ON p.user_id = u.telegram_id::text WHERE 1=1"
                 count_params = []
                 
                 if search:
