@@ -562,6 +562,7 @@ class WalletPoolService:
     def _credit_b3c_to_user_atomic(self, cur, user_id: str, ton_amount: float, purchase_id: str) -> dict:
         """
         Acreditar B3C al usuario usando el cursor existente (para transacción atómica).
+        USA EL b3c_amount ORIGINAL calculado al crear la orden, no recalcula.
         
         Args:
             cur: Cursor de la base de datos
@@ -573,36 +574,27 @@ class WalletPoolService:
             dict con b3c_amount si es exitoso, None si falla
         """
         try:
-            commission_rate = Decimal('0.05')
-            ton_decimal = Decimal(str(ton_amount))
-            commission = ton_decimal * commission_rate
-            net_ton = ton_decimal - commission
+            cur.execute("""
+                SELECT b3c_amount, commission_ton FROM b3c_purchases 
+                WHERE purchase_id = %s
+            """, (purchase_id,))
+            purchase_data = cur.fetchone()
             
-            fixed_price_usd = Decimal(os.environ.get('B3C_FIXED_PRICE_USD', '0.10'))
-            ton_usd_price = Decimal('5.0')
+            if not purchase_data:
+                logger.error(f"[B3C CREDIT ATOMIC] Purchase {purchase_id} not found")
+                return None
             
-            try:
-                response = requests.get(
-                    'https://api.coingecko.com/api/v3/simple/price',
-                    params={'ids': 'the-open-network', 'vs_currencies': 'usd'},
-                    timeout=5
-                )
-                if response.status_code == 200:
-                    ton_usd_price = Decimal(str(response.json().get('the-open-network', {}).get('usd', 5.0)))
-            except:
-                pass
+            b3c_amount = Decimal(str(purchase_data[0]))
+            commission = Decimal(str(purchase_data[1]))
             
-            net_usd = net_ton * ton_usd_price
-            b3c_amount = net_usd / fixed_price_usd
+            logger.info(f"[B3C CREDIT ATOMIC] Using original b3c_amount={b3c_amount} from order creation (purchase {purchase_id})")
             
             cur.execute("""
                 UPDATE b3c_purchases 
                 SET status = 'confirmed',
-                    b3c_amount = %s,
-                    commission_ton = %s,
                     confirmed_at = NOW()
                 WHERE purchase_id = %s
-            """, (float(b3c_amount), float(commission), purchase_id))
+            """, (purchase_id,))
             
             cur.execute("""
                 INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id, created_at)
@@ -625,6 +617,7 @@ class WalletPoolService:
     def _credit_b3c_to_user(self, user_id: str, ton_amount: float, purchase_id: str) -> bool:
         """
         Acreditar B3C al usuario después de confirmar depósito.
+        USA EL b3c_amount ORIGINAL calculado al crear la orden, no recalcula.
         
         Args:
             user_id: ID del usuario
@@ -635,38 +628,29 @@ class WalletPoolService:
             True si se acreditó correctamente
         """
         try:
-            commission_rate = Decimal('0.05')
-            ton_decimal = Decimal(str(ton_amount))
-            commission = ton_decimal * commission_rate
-            net_ton = ton_decimal - commission
-            
-            fixed_price_usd = Decimal(os.environ.get('B3C_FIXED_PRICE_USD', '0.10'))
-            ton_usd_price = Decimal('5.0')
-            
-            try:
-                response = requests.get(
-                    'https://api.coingecko.com/api/v3/simple/price',
-                    params={'ids': 'the-open-network', 'vs_currencies': 'usd'},
-                    timeout=5
-                )
-                if response.status_code == 200:
-                    ton_usd_price = Decimal(str(response.json().get('the-open-network', {}).get('usd', 5.0)))
-            except:
-                pass
-            
-            net_usd = net_ton * ton_usd_price
-            b3c_amount = net_usd / fixed_price_usd
-            
             with self.db.get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
+                        SELECT b3c_amount, commission_ton FROM b3c_purchases 
+                        WHERE purchase_id = %s
+                    """, (purchase_id,))
+                    purchase_data = cur.fetchone()
+                    
+                    if not purchase_data:
+                        logger.error(f"[B3C CREDIT] Purchase {purchase_id} not found")
+                        return False
+                    
+                    b3c_amount = Decimal(str(purchase_data[0]))
+                    commission = Decimal(str(purchase_data[1]))
+                    
+                    logger.info(f"[B3C CREDIT] Using original b3c_amount={b3c_amount} from order creation (purchase {purchase_id})")
+                    
+                    cur.execute("""
                         UPDATE b3c_purchases 
                         SET status = 'confirmed',
-                            b3c_amount = %s,
-                            commission_ton = %s,
                             confirmed_at = NOW()
                         WHERE purchase_id = %s
-                    """, (float(b3c_amount), float(commission), purchase_id))
+                    """, (purchase_id,))
                     
                     cur.execute("""
                         INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id)
