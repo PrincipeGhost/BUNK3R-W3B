@@ -12418,7 +12418,7 @@ def get_support_tickets():
         per_page = int(request.args.get('per_page', 20))
         offset = (page - 1) * per_page
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 where_clauses = []
                 params = []
@@ -12493,7 +12493,7 @@ def get_support_tickets():
 def get_ticket_detail(ticket_id):
     """Get single ticket with messages"""
     try:
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     SELECT t.*, u.username, u.first_name, u.last_name, u.telegram_id
@@ -12537,7 +12537,7 @@ def update_ticket(ticket_id):
         status = data.get('status')
         priority = data.get('priority')
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 updates = []
                 params = []
@@ -12589,7 +12589,7 @@ def reply_to_ticket(ticket_id):
         
         admin_id = session.get('admin_id', 0)
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     INSERT INTO ticket_messages (ticket_id, sender_id, message, is_admin, attachment_url)
@@ -12622,7 +12622,7 @@ def reply_to_ticket(ticket_id):
 def get_response_templates():
     """Get response templates"""
     try:
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     SELECT * FROM response_templates
@@ -12654,7 +12654,7 @@ def create_response_template():
         if not name or not content:
             return jsonify({'success': False, 'error': 'Name and content are required'}), 400
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     INSERT INTO response_templates (name, content)
@@ -12686,7 +12686,7 @@ def get_faqs():
         status = request.args.get('status', '')
         search = request.args.get('search', '')
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 where_clauses = []
                 params = []
@@ -12739,7 +12739,7 @@ def create_faq():
         if not question or not answer:
             return jsonify({'success': False, 'error': 'Question and answer are required'}), 400
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     INSERT INTO faqs (question, answer, category, display_order, is_published)
@@ -12772,7 +12772,7 @@ def update_faq(faq_id):
         display_order = data.get('display_order', 0)
         is_published = data.get('is_published', True)
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     UPDATE faqs
@@ -12803,7 +12803,7 @@ def update_faq(faq_id):
 def delete_faq(faq_id):
     """Delete FAQ"""
     try:
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM faqs WHERE id = %s", (faq_id,))
                 conn.commit()
@@ -12828,7 +12828,7 @@ def get_mass_messages():
         per_page = int(request.args.get('per_page', 20))
         offset = (page - 1) * per_page
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 where_clause = ""
                 params = []
@@ -12887,7 +12887,7 @@ def send_mass_message():
         
         admin_id = session.get('admin_id', 0)
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 status = 'scheduled' if send_type == 'scheduled' else 'sent'
                 sent_at = None if send_type == 'scheduled' else 'NOW()'
@@ -12961,7 +12961,7 @@ def send_mass_message():
 def get_scheduled_messages():
     """Get scheduled messages"""
     try:
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     SELECT * FROM mass_messages
@@ -12986,7 +12986,7 @@ def get_scheduled_messages():
 def cancel_scheduled_message(message_id):
     """Cancel scheduled message"""
     try:
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     UPDATE mass_messages
@@ -13018,7 +13018,7 @@ def get_public_faqs():
     try:
         category = request.args.get('category', '')
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 where_clause = "is_published = true"
                 params = []
@@ -13053,7 +13053,7 @@ def get_user_notifications():
     try:
         user_id = request.telegram_user.get('id')
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     SELECT * FROM user_notifications
@@ -13089,7 +13089,7 @@ def mark_support_notifications_read():
         data = request.json
         notification_ids = data.get('notification_ids', [])
         
-        with get_db_connection() as conn:
+        with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 if notification_ids:
                     cur.execute("""
