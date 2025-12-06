@@ -3300,7 +3300,7 @@ const App = {
             const statusClass = isActive ? 'online' : 'offline';
             const statusText = isActive ? 'Activo' : 'Inactivo';
             
-            if (bot.botType === 'tracking_manager') {
+            if (bot.botType === 'tracking_manager' || bot.botType === 'multi_browser') {
                 return `
                     <div class="bot-card active-bot owner-bot clickable" data-bot-id="${bot.id}" onclick="App.openBotPanel('${this.escapeHtml(bot.botType)}')">
                         <div class="bot-avatar">${bot.icon || '🤖'}</div>
@@ -3340,6 +3340,66 @@ const App = {
             document.getElementById('tracking-module').classList.remove('hidden');
             this.previousSection = 'bots';
             this.loadTrackings();
+        } else if (botType === 'multi_browser') {
+            document.getElementById('bots-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('multi-browser-module').classList.remove('hidden');
+            this.previousSection = 'bots';
+            this.initMultiBrowsers();
+        }
+    },
+    
+    multiBrowserInitialized: false,
+    
+    initMultiBrowsers() {
+        if (this.multiBrowserInitialized) {
+            return;
+        }
+        
+        const browsers = document.querySelectorAll('.phone-browser');
+        browsers.forEach((browser, index) => {
+            const iframe = browser.querySelector('.browser-iframe');
+            const urlInput = browser.querySelector('.browser-url-input');
+            const goBtn = browser.querySelector('.browser-go-btn');
+            const refreshBtn = browser.querySelector('.browser-refresh-btn');
+            
+            const goHandler = () => {
+                let url = urlInput.value.trim();
+                if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = 'https://' + url;
+                }
+                if (url) {
+                    iframe.src = url;
+                    urlInput.value = url;
+                }
+            };
+            
+            const keypressHandler = (e) => {
+                if (e.key === 'Enter') {
+                    goHandler();
+                }
+            };
+            
+            const refreshHandler = () => {
+                if (iframe.src && iframe.src !== 'about:blank') {
+                    iframe.src = iframe.src;
+                }
+            };
+            
+            this.registerEventListener(goBtn, 'click', goHandler);
+            this.registerEventListener(urlInput, 'keypress', keypressHandler);
+            this.registerEventListener(refreshBtn, 'click', refreshHandler);
+        });
+        
+        this.multiBrowserInitialized = true;
+    },
+    
+    closeMultiBrowserModule() {
+        document.getElementById('multi-browser-module').classList.add('hidden');
+        if (this.previousSection === 'bots') {
+            document.getElementById('bots-screen').classList.remove('hidden');
+        } else {
+            document.getElementById('home-screen').classList.remove('hidden');
         }
     },
     
