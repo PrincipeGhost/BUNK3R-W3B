@@ -153,21 +153,35 @@ const PublicationsManager = {
         const composeAvatar = document.getElementById('compose-avatar');
         const composePlaceholder = document.getElementById('compose-placeholder');
         
-        if (composeAvatar && typeof App !== 'undefined' && App.user) {
-            const user = App.user;
-            if (user.profile_pic) {
-                composeAvatar.style.backgroundImage = `url(${user.profile_pic})`;
-                composeAvatar.textContent = '';
-            } else {
-                const initial = (user.first_name || user.username || 'U')[0].toUpperCase();
-                composeAvatar.textContent = initial;
+        const updateComposeBar = (user) => {
+            if (composeAvatar && user) {
+                if (user.profile_pic) {
+                    composeAvatar.style.backgroundImage = `url(${user.profile_pic})`;
+                    composeAvatar.textContent = '';
+                } else {
+                    const initial = (user.first_name || user.username || 'U')[0].toUpperCase();
+                    composeAvatar.style.backgroundImage = 'none';
+                    composeAvatar.textContent = initial;
+                }
+                
+                if (composePlaceholder) {
+                    const name = user.first_name || user.username || 'amigo';
+                    composePlaceholder.textContent = `¿Que estas pensando, ${name}?`;
+                }
             }
-            
-            if (composePlaceholder) {
-                const name = user.first_name || user.username || 'amigo';
-                composePlaceholder.textContent = `¿Que estas pensando, ${name}?`;
-            }
+        };
+        
+        if (typeof App !== 'undefined' && App.user) {
+            updateComposeBar(App.user);
+        } else {
+            setTimeout(() => {
+                if (typeof App !== 'undefined' && App.user) {
+                    updateComposeBar(App.user);
+                }
+            }, 1000);
         }
+        
+        window.updateComposeBarUser = updateComposeBar;
     },
     
     async loadTrendingHashtags() {
@@ -805,7 +819,7 @@ const PublicationsManager = {
         container.innerHTML = addStoryHtml + storiesHtml;
     },
     
-    showCreateModal() {
+    showCreateModal(initialType = null) {
         const modal = document.getElementById('create-publication-modal');
         if (modal) {
             modal.classList.remove('hidden');
@@ -815,6 +829,21 @@ const PublicationsManager = {
             this.updateMediaPreview();
             document.getElementById('caption-input').value = '';
             this.updateCaptionCounter();
+            
+            if (initialType === 'image' || initialType === 'video') {
+                setTimeout(() => {
+                    const fileInput = document.getElementById('publication-files');
+                    if (fileInput) {
+                        if (initialType === 'image') {
+                            fileInput.accept = 'image/*';
+                        } else if (initialType === 'video') {
+                            fileInput.accept = 'video/*';
+                        }
+                        fileInput.click();
+                        fileInput.accept = 'image/*,video/*';
+                    }
+                }, 100);
+            }
         }
     },
     
@@ -2240,7 +2269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global alias for HTML onclick handlers
 const Publications = {
-    openCreateModal: () => PublicationsManager.showCreateModal(),
+    openCreateModal: (type) => PublicationsManager.showCreateModal(type),
     closeCreateModal: () => PublicationsManager.hideCreateModal(),
     submitPost: () => PublicationsManager.publishPost(),
     closeViewModal: () => PublicationsManager.closeViewModal?.() || document.getElementById('view-post-modal')?.classList.add('hidden'),
