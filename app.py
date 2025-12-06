@@ -13365,6 +13365,129 @@ def ai_clear():
 # ==================== END AI CHAT SECTION ====================
 
 
+# ==================== WORKSPACE SECTION ====================
+
+@app.route('/workspace')
+def workspace():
+    """BUNK3R AI Workspace - IDE interface"""
+    return render_template('workspace.html')
+
+@app.route('/api/files/tree', methods=['GET'])
+def get_files_tree():
+    """Get project file tree"""
+    try:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        ignored = {'.git', '__pycache__', 'node_modules', '.replit', '.cache', '.upm', '.config', 'venv', '.local'}
+        
+        def scan_directory(path, relative_path=''):
+            items = []
+            try:
+                entries = sorted(os.listdir(path), key=lambda x: (not os.path.isdir(os.path.join(path, x)), x.lower()))
+                for entry in entries:
+                    if entry.startswith('.') and entry not in ['.env']:
+                        continue
+                    if entry in ignored:
+                        continue
+                    
+                    full_path = os.path.join(path, entry)
+                    rel_path = os.path.join(relative_path, entry) if relative_path else entry
+                    
+                    if os.path.isdir(full_path):
+                        children = scan_directory(full_path, rel_path)
+                        items.append({
+                            'name': entry,
+                            'path': rel_path,
+                            'type': 'folder',
+                            'children': children
+                        })
+                    else:
+                        items.append({
+                            'name': entry,
+                            'path': rel_path,
+                            'type': 'file'
+                        })
+            except PermissionError:
+                pass
+            return items
+        
+        tree = scan_directory(base_path)
+        total_files = sum(1 for item in tree if item['type'] == 'file')
+        
+        def count_files(items):
+            count = 0
+            for item in items:
+                if item['type'] == 'file':
+                    count += 1
+                elif item.get('children'):
+                    count += count_files(item['children'])
+            return count
+        
+        total_files = count_files(tree)
+        
+        return jsonify({'tree': tree, 'total_files': total_files})
+    except Exception as e:
+        logger.error(f"Error getting file tree: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/content', methods=['GET'])
+def get_file_content():
+    """Get file content"""
+    try:
+        file_path = request.args.get('path', '')
+        if not file_path:
+            return jsonify({'error': 'Path required'}), 400
+        
+        if '..' in file_path or file_path.startswith('/'):
+            return jsonify({'error': 'Invalid path'}), 400
+        
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.join(base_path, file_path)
+        
+        if not os.path.exists(full_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        if not os.path.isfile(full_path):
+            return jsonify({'error': 'Not a file'}), 400
+        
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return jsonify({'content': content, 'path': file_path})
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Binary file cannot be displayed'}), 400
+            
+    except Exception as e:
+        logger.error(f"Error reading file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/save', methods=['POST'])
+def save_file_content():
+    """Save file content"""
+    try:
+        data = request.json
+        file_path = data.get('path', '')
+        content = data.get('content', '')
+        
+        if not file_path:
+            return jsonify({'error': 'Path required'}), 400
+        
+        if '..' in file_path or file_path.startswith('/'):
+            return jsonify({'error': 'Invalid path'}), 400
+        
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.join(base_path, file_path)
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        return jsonify({'success': True, 'path': file_path})
+    except Exception as e:
+        logger.error(f"Error saving file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ==================== END WORKSPACE SECTION ====================
+
+
 deposit_scheduler = None
 
 def init_deposit_scheduler():
