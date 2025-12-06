@@ -30,6 +30,65 @@ class AIProvider(ABC):
         return self.available
 
 
+class DeepSeekV32Provider(AIProvider):
+    """DeepSeek V3.2 via Hugging Face - Main AI Model"""
+    
+    def __init__(self, api_key: str):
+        super().__init__(api_key)
+        self.name = "deepseek-v3.2"
+        self.model = "deepseek-ai/DeepSeek-V3.2"
+        self.base_url = "https://api-inference.huggingface.co/models"
+    
+    def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
+        try:
+            import requests
+            
+            prompt = ""
+            if system_prompt:
+                prompt = f"<|system|>\n{system_prompt}<|end|>\n"
+            
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role == "user":
+                    prompt += f"<|user|>\n{content}<|end|>\n"
+                elif role == "assistant":
+                    prompt += f"<|assistant|>\n{content}<|end|>\n"
+            
+            prompt += "<|assistant|>\n"
+            
+            response = requests.post(
+                f"{self.base_url}/{self.model}",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={
+                    "inputs": prompt,
+                    "parameters": {
+                        "max_new_tokens": 2048,
+                        "temperature": 0.7,
+                        "top_p": 0.9,
+                        "return_full_text": False,
+                        "do_sample": True
+                    }
+                },
+                timeout=120
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0:
+                    text = result[0].get("generated_text", "")
+                    return {"success": True, "response": text, "provider": self.name}
+                return {"success": False, "error": "Invalid response format", "provider": self.name}
+            elif response.status_code == 503:
+                return {"success": False, "error": "Model is loading, please wait", "provider": self.name}
+            else:
+                return {"success": False, "error": f"HTTP {response.status_code}: {response.text}", "provider": self.name}
+                
+        except Exception as e:
+            logger.error(f"DeepSeek V3.2 error: {e}")
+            return {"success": False, "error": str(e), "provider": self.name}
+
+
 class HuggingFaceProvider(AIProvider):
     """Hugging Face Inference API - Free tier ~1000 req/day"""
     
@@ -300,10 +359,15 @@ Si no sabes algo, admítelo honestamente."""
     def _initialize_providers(self):
         """Initialize all available AI providers"""
         
+        hf_key = os.environ.get('HUGGINGFACE_API_KEY', '')
+        if hf_key:
+            self.providers.append(DeepSeekV32Provider(hf_key))
+            logger.info("DeepSeek V3.2 (Main Model) provider initialized")
+        
         deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
         if deepseek_key:
             self.providers.append(DeepSeekProvider(deepseek_key))
-            logger.info("DeepSeek provider initialized")
+            logger.info("DeepSeek API provider initialized")
         
         groq_key = os.environ.get('GROQ_API_KEY', '')
         if groq_key:
@@ -320,10 +384,9 @@ Si no sabes algo, admítelo honestamente."""
             self.providers.append(CerebrasProvider(cerebras_key))
             logger.info("Cerebras provider initialized")
         
-        hf_key = os.environ.get('HUGGINGFACE_API_KEY', '')
         if hf_key:
             self.providers.append(HuggingFaceProvider(hf_key))
-            logger.info("HuggingFace provider initialized")
+            logger.info("HuggingFace Llama provider initialized")
         
         if not self.providers:
             logger.warning("No AI providers configured. Set API keys in environment variables.")
