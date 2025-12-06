@@ -622,11 +622,70 @@
                     
                     <div class="transactions-tabs">
                         <button class="tx-tab active" data-tab="all">Todas</button>
-                        <button class="tx-tab" data-tab="buy">Compras B3C</button>
+                        <button class="tx-tab" data-tab="purchases">Compras B3C</button>
                         <button class="tx-tab" data-tab="withdrawal">Retiros</button>
                         <button class="tx-tab" data-tab="transfer">Transferencias P2P</button>
                     </div>
                     
+                    <div id="purchasesSection" class="purchases-section" style="display: none;">
+                        <div class="purchases-stats">
+                            <div class="purchase-stat">
+                                <span class="stat-value" id="purchasesTotal">0</span>
+                                <span class="stat-label">Total Compras</span>
+                            </div>
+                            <div class="purchase-stat pending">
+                                <span class="stat-value" id="purchasesPending">0</span>
+                                <span class="stat-label">Pendientes</span>
+                            </div>
+                            <div class="purchase-stat confirmed">
+                                <span class="stat-value" id="purchasesConfirmed">0</span>
+                                <span class="stat-label">Confirmadas</span>
+                            </div>
+                            <div class="purchase-stat">
+                                <span class="stat-value" id="purchasesTotalTon">0</span>
+                                <span class="stat-label">TON Recibidos</span>
+                            </div>
+                        </div>
+                        
+                        <div class="section-toolbar">
+                            <div class="toolbar-left">
+                                <div class="filter-group">
+                                    <select id="purchaseStatusFilter">
+                                        <option value="">Todos los estados</option>
+                                        <option value="pending">Pendiente</option>
+                                        <option value="confirmed">Confirmada</option>
+                                        <option value="failed">Fallida</option>
+                                        <option value="expired">Expirada</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="purchasesTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>TON</th>
+                                        <th>B3C</th>
+                                        <th>Estado</th>
+                                        <th>Wallet Depósito</th>
+                                        <th>TX Hash</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchasesTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="9">Cargando compras...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div id="transactionsSection" class="transactions-content">
                     <div class="section-toolbar">
                         <div class="toolbar-left">
                             <div class="filter-group">
@@ -699,6 +758,7 @@
                     </div>
                     
                     <div class="pagination" id="txPagination"></div>
+                    </div>
                 </section>
                 
                 <section class="admin-section" id="section-wallets">
@@ -965,6 +1025,19 @@
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body" id="transactionDetailContent">
+                <div class="loading-spinner">Cargando...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="purchaseDetailModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h2>Detalle de Compra B3C</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="purchaseDetailContent">
                 <div class="loading-spinner">Cargando...</div>
             </div>
         </div>

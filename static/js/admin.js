@@ -204,9 +204,25 @@ const AdminPanel = {
                 document.querySelectorAll('.transactions-tabs .tx-tab').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 const tabType = btn.dataset.tab;
-                document.getElementById('txTypeFilter').value = tabType === 'all' ? '' : tabType;
-                this.loadTransactions();
+                
+                const purchasesSection = document.getElementById('purchasesSection');
+                const transactionsSection = document.getElementById('transactionsSection');
+                
+                if (tabType === 'purchases') {
+                    purchasesSection.style.display = 'block';
+                    transactionsSection.style.display = 'none';
+                    this.loadPurchases();
+                } else {
+                    purchasesSection.style.display = 'none';
+                    transactionsSection.style.display = 'block';
+                    document.getElementById('txTypeFilter').value = tabType === 'all' ? '' : tabType;
+                    this.loadTransactions();
+                }
             });
+        });
+        
+        document.getElementById('purchaseStatusFilter')?.addEventListener('change', () => {
+            this.loadPurchases();
         });
         
         document.getElementById('txSearch')?.addEventListener('input', this.debounce(() => {
@@ -1844,6 +1860,259 @@ const AdminPanel = {
             console.error('Error loading transaction:', error);
             content.innerHTML = '<div class="error-state">Error al cargar los datos</div>';
         }
+    },
+    
+    async loadPurchases() {
+        const tbody = document.getElementById('purchasesTableBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="9">Cargando compras...</td></tr>';
+        
+        try {
+            const status = document.getElementById('purchaseStatusFilter')?.value || '';
+            const response = await this.fetchAPI(`/api/admin/purchases?status=${status}`);
+            
+            if (response.success) {
+                this.renderPurchasesTable(response.purchases);
+                
+                if (response.stats) {
+                    document.getElementById('purchasesTotal').textContent = response.stats.totalPurchases || 0;
+                    document.getElementById('purchasesPending').textContent = response.stats.pendingCount || 0;
+                    document.getElementById('purchasesConfirmed').textContent = response.stats.confirmedCount || 0;
+                    document.getElementById('purchasesTotalTon').textContent = this.formatNumber(response.stats.totalTon || 0, 4);
+                }
+            } else {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="9">Error al cargar compras</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading purchases:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="9">Error al cargar compras</td></tr>';
+        }
+    },
+    
+    renderPurchasesTable(purchases) {
+        const tbody = document.getElementById('purchasesTableBody');
+        
+        if (!purchases || purchases.length === 0) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="9">No se encontraron compras</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = purchases.map(p => {
+            const statusClass = p.status === 'confirmed' ? 'success' : 
+                               (p.status === 'pending' ? 'warning' : 'danger');
+            const walletShort = p.depositWallet ? 
+                `${p.depositWallet.slice(0, 8)}...${p.depositWallet.slice(-6)}` : '-';
+            const txHashShort = p.txHash ? 
+                `${p.txHash.slice(0, 10)}...` : '-';
+            
+            return `
+                <tr>
+                    <td><code>${this.escapeHtml(p.purchaseId.slice(0, 8))}...</code></td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="username">@${this.escapeHtml(p.username)}</span>
+                        </div>
+                    </td>
+                    <td>${this.formatNumber(p.tonAmount, 4)} TON</td>
+                    <td>${this.formatNumber(p.b3cAmount, 2)} B3C</td>
+                    <td><span class="status-badge ${statusClass}">${p.statusLabel}</span></td>
+                    <td>
+                        ${p.depositWallet ? 
+                            `<span class="wallet-address" onclick="AdminPanel.copyToClipboard('${p.depositWallet}')" title="${p.depositWallet}">${walletShort}</span>` 
+                            : '-'}
+                    </td>
+                    <td>
+                        ${p.txHash ? 
+                            `<span class="tx-hash" onclick="AdminPanel.openTxHash('${p.txHash}')">${txHashShort}</span>` 
+                            : '-'}
+                    </td>
+                    <td>${this.formatDate(p.createdAt)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="action-btn" onclick="AdminPanel.viewPurchase('${p.purchaseId}')">Ver</button>
+                            ${p.status === 'pending' ? 
+                                `<button class="action-btn credit" onclick="AdminPanel.creditPurchase('${p.purchaseId}')">Acreditar</button>` 
+                                : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+    
+    async viewPurchase(purchaseId) {
+        const modal = document.getElementById('purchaseDetailModal');
+        const content = document.getElementById('purchaseDetailContent');
+        
+        modal.classList.add('active');
+        content.innerHTML = '<div class="loading-spinner">Cargando...</div>';
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/purchases/${purchaseId}`);
+            
+            if (response.success && response.purchase) {
+                const p = response.purchase;
+                const statusClass = p.status === 'confirmed' ? 'success' : 
+                                   (p.status === 'pending' ? 'warning' : 'danger');
+                
+                content.innerHTML = `
+                    <div class="tx-detail-grid">
+                        <div class="tx-detail-header">
+                            <div class="tx-type-badge buy">Compra B3C</div>
+                            <span class="status-badge ${statusClass}">${p.statusLabel}</span>
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Información de la Compra</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">ID Compra:</span>
+                                <span class="detail-value"><code>${this.escapeHtml(p.purchaseId)}</code></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">TON Enviados:</span>
+                                <span class="detail-value">${p.tonAmount.toFixed(4)} TON</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">B3C a Recibir:</span>
+                                <span class="detail-value">${p.b3cAmount.toFixed(2)} B3C</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Comisión:</span>
+                                <span class="detail-value">${p.commissionTon.toFixed(4)} TON</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha:</span>
+                                <span class="detail-value">${this.formatDateTime(p.createdAt)}</span>
+                            </div>
+                            ${p.confirmedAt ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Confirmada:</span>
+                                <span class="detail-value">${this.formatDateTime(p.confirmedAt)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Usuario</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Username:</span>
+                                <span class="detail-value">@${this.escapeHtml(p.username)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Nombre:</span>
+                                <span class="detail-value">${this.escapeHtml(p.userFullName)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Telegram ID:</span>
+                                <span class="detail-value">${p.telegramId || 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Balance Actual:</span>
+                                <span class="detail-value">${p.userBalance.toFixed(2)} B3C</span>
+                            </div>
+                        </div>
+                        
+                        ${p.depositWallet ? `
+                        <div class="tx-detail-section">
+                            <h4>Wallet de Depósito</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Dirección:</span>
+                                <span class="detail-value wallet-full">
+                                    <code>${this.escapeHtml(p.depositWallet)}</code>
+                                </span>
+                            </div>
+                            ${p.expectedAmount ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Monto Esperado:</span>
+                                <span class="detail-value">${p.expectedAmount.toFixed(4)} TON</span>
+                            </div>
+                            ` : ''}
+                            ${p.depositAmount ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Monto Recibido:</span>
+                                <span class="detail-value">${p.depositAmount.toFixed(4)} TON</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Estado Wallet:</span>
+                                <span class="detail-value">${p.walletStatus || 'N/A'}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${p.txHash ? `
+                        <div class="tx-detail-section">
+                            <h4>Blockchain</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">TX Hash:</span>
+                                <span class="detail-value tx-hash-full">
+                                    <code>${this.escapeHtml(p.txHash)}</code>
+                                </span>
+                            </div>
+                            <div class="detail-actions">
+                                <button class="btn-primary btn-sm" onclick="AdminPanel.openTxHash('${p.txHash}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                    </svg>
+                                    Ver en TonScan
+                                </button>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${p.status === 'pending' ? `
+                        <div class="tx-detail-section">
+                            <h4>Acciones</h4>
+                            <button class="btn-primary btn-full" onclick="AdminPanel.creditPurchase('${p.purchaseId}')">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Acreditar Manualmente
+                            </button>
+                            <p class="action-warning">Esta acción añadirá ${p.b3cAmount.toFixed(2)} B3C al balance del usuario.</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<div class="error-state">Error: ${response.error || 'No se pudo cargar la compra'}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading purchase:', error);
+            content.innerHTML = '<div class="error-state">Error al cargar los datos</div>';
+        }
+    },
+    
+    async creditPurchase(purchaseId) {
+        if (!confirm('¿Estás seguro de acreditar manualmente esta compra? Esta acción añadirá B3C al balance del usuario.')) {
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/purchases/${purchaseId}/credit`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Compra acreditada correctamente', 'success');
+                document.getElementById('purchaseDetailModal').classList.remove('active');
+                this.loadPurchases();
+            } else {
+                this.showToast(response.error || 'Error al acreditar la compra', 'error');
+            }
+        } catch (error) {
+            console.error('Error crediting purchase:', error);
+            this.showToast('Error al acreditar la compra', 'error');
+        }
+    },
+    
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Copiado al portapapeles', 'success');
+        }).catch(() => {
+            this.showToast('Error al copiar', 'error');
+        });
     },
     
     startAutoRefresh() {

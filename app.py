@@ -7094,6 +7094,308 @@ def admin_get_transaction_detail(tx_id):
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/api/admin/purchases', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_purchases():
+    """Admin: Obtener todas las compras de B3C."""
+    try:
+        status_filter = request.args.get('status', '')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        offset = (page - 1) * limit
+        
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'purchases': [],
+                'total': 0,
+                'page': 1,
+                'pages': 1
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT 
+                        bp.id,
+                        bp.purchase_id,
+                        bp.user_id,
+                        bp.ton_amount,
+                        bp.b3c_amount,
+                        bp.commission_ton,
+                        bp.status,
+                        bp.tx_hash,
+                        bp.created_at,
+                        bp.confirmed_at,
+                        u.username,
+                        u.first_name,
+                        u.last_name,
+                        u.telegram_id,
+                        dw.wallet_address as deposit_wallet,
+                        dw.expected_amount as expected_amount
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id::integer = u.id
+                    LEFT JOIN deposit_wallets dw ON dw.assigned_to_purchase_id = bp.purchase_id
+                    WHERE 1=1
+                """
+                count_query = "SELECT COUNT(*) FROM b3c_purchases WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if status_filter:
+                    query += " AND bp.status = %s"
+                    count_query += " AND status = %s"
+                    params.append(status_filter)
+                    count_params.append(status_filter)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()[0] or 0
+                
+                query += " ORDER BY bp.created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                purchases = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_purchases,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+                        COUNT(*) FILTER (WHERE status = 'confirmed') as confirmed_count,
+                        COUNT(*) FILTER (WHERE status = 'failed') as failed_count,
+                        COUNT(*) FILTER (WHERE status = 'expired') as expired_count,
+                        COALESCE(SUM(ton_amount) FILTER (WHERE status = 'confirmed'), 0) as total_ton,
+                        COALESCE(SUM(b3c_amount) FILTER (WHERE status = 'confirmed'), 0) as total_b3c
+                    FROM b3c_purchases
+                """)
+                stats = cur.fetchone()
+        
+        pages = max(1, (total + limit - 1) // limit)
+        
+        status_labels = {
+            'pending': 'Pendiente',
+            'confirmed': 'Confirmada',
+            'failed': 'Fallida',
+            'expired': 'Expirada'
+        }
+        
+        return jsonify({
+            'success': True,
+            'purchases': [{
+                'id': p['id'],
+                'purchaseId': p['purchase_id'],
+                'userId': p['user_id'],
+                'username': p['username'] or f"User {p['user_id']}",
+                'userFullName': f"{p['first_name'] or ''} {p['last_name'] or ''}".strip() or 'N/A',
+                'telegramId': p['telegram_id'],
+                'tonAmount': float(p['ton_amount']),
+                'b3cAmount': float(p['b3c_amount']),
+                'commissionTon': float(p['commission_ton']),
+                'status': p['status'],
+                'statusLabel': status_labels.get(p['status'], p['status']),
+                'txHash': p['tx_hash'],
+                'depositWallet': p['deposit_wallet'],
+                'expectedAmount': float(p['expected_amount']) if p['expected_amount'] else None,
+                'createdAt': p['created_at'].isoformat() if p['created_at'] else None,
+                'confirmedAt': p['confirmed_at'].isoformat() if p['confirmed_at'] else None
+            } for p in purchases],
+            'total': total,
+            'page': page,
+            'pages': pages,
+            'stats': {
+                'totalPurchases': stats['total_purchases'] or 0,
+                'pendingCount': stats['pending_count'] or 0,
+                'confirmedCount': stats['confirmed_count'] or 0,
+                'failedCount': stats['failed_count'] or 0,
+                'expiredCount': stats['expired_count'] or 0,
+                'totalTon': float(stats['total_ton'] or 0),
+                'totalB3C': float(stats['total_b3c'] or 0)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting purchases: {e}")
+        return jsonify({
+            'success': True,
+            'purchases': [],
+            'total': 0,
+            'page': 1,
+            'pages': 1
+        })
+
+
+@app.route('/api/admin/purchases/<purchase_id>/credit', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_credit_purchase(purchase_id):
+    """Admin: Acreditar manualmente una compra de B3C pendiente."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        admin_user = request.telegram_user
+        admin_user_id = str(admin_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT bp.*, u.username, u.first_name
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id::integer = u.id
+                    WHERE bp.purchase_id = %s
+                """, (purchase_id,))
+                purchase = cur.fetchone()
+                
+                if not purchase:
+                    return jsonify({'success': False, 'error': 'Compra no encontrada'}), 404
+                
+                if purchase['status'] == 'confirmed':
+                    return jsonify({'success': False, 'error': 'Esta compra ya fue acreditada'}), 400
+                
+                user_id = purchase['user_id']
+                b3c_amount = float(purchase['b3c_amount'])
+                
+                cur.execute("""
+                    SELECT b3c_balance FROM users WHERE id = %s
+                """, (int(user_id),))
+                user_row = cur.fetchone()
+                balance_before = float(user_row['b3c_balance']) if user_row and user_row['b3c_balance'] else 0
+                balance_after = balance_before + b3c_amount
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET b3c_balance = b3c_balance + %s,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (b3c_amount, int(user_id)))
+                
+                cur.execute("""
+                    UPDATE b3c_purchases 
+                    SET status = 'confirmed',
+                        confirmed_at = NOW()
+                    WHERE purchase_id = %s
+                """, (purchase_id,))
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, transaction_type, amount, balance_before, balance_after, description, reference_id)
+                    VALUES (%s, 'buy', %s, %s, %s, %s, %s)
+                """, (
+                    user_id,
+                    b3c_amount,
+                    balance_before,
+                    balance_after,
+                    f'Compra B3C acreditada manualmente por admin',
+                    purchase_id
+                ))
+                
+                cur.execute("""
+                    UPDATE deposit_wallets 
+                    SET status = 'used'
+                    WHERE assigned_to_purchase_id = %s
+                """, (purchase_id,))
+                
+                conn.commit()
+                
+                logger.info(f"[ADMIN] Compra {purchase_id} acreditada manualmente por admin {admin_user_id}. Usuario {user_id} recibió {b3c_amount} B3C")
+                
+                if security_manager:
+                    security_manager.log_activity(
+                        admin_user_id,
+                        'admin_credit_purchase',
+                        f'Acreditó compra {purchase_id}: {b3c_amount} B3C a usuario {user_id}',
+                        request.remote_addr
+                    )
+                
+        return jsonify({
+            'success': True,
+            'message': f'Compra acreditada correctamente. {b3c_amount} B3C fueron añadidos al usuario.',
+            'credited': {
+                'purchaseId': purchase_id,
+                'userId': user_id,
+                'username': purchase['username'],
+                'b3cAmount': b3c_amount,
+                'balanceBefore': balance_before,
+                'balanceAfter': balance_after
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error crediting purchase: {e}")
+        return jsonify({'success': False, 'error': 'Error al acreditar la compra'}), 500
+
+
+@app.route('/api/admin/purchases/<purchase_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_purchase_detail(purchase_id):
+    """Admin: Obtener detalle de una compra específica."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        bp.*,
+                        u.username,
+                        u.first_name,
+                        u.last_name,
+                        u.telegram_id,
+                        u.b3c_balance,
+                        dw.wallet_address as deposit_wallet,
+                        dw.expected_amount,
+                        dw.deposit_amount,
+                        dw.status as wallet_status
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id::integer = u.id
+                    LEFT JOIN deposit_wallets dw ON dw.assigned_to_purchase_id = bp.purchase_id
+                    WHERE bp.purchase_id = %s
+                """, (purchase_id,))
+                purchase = cur.fetchone()
+                
+                if not purchase:
+                    return jsonify({'success': False, 'error': 'Compra no encontrada'}), 404
+        
+        status_labels = {
+            'pending': 'Pendiente',
+            'confirmed': 'Confirmada',
+            'failed': 'Fallida',
+            'expired': 'Expirada'
+        }
+        
+        return jsonify({
+            'success': True,
+            'purchase': {
+                'id': purchase['id'],
+                'purchaseId': purchase['purchase_id'],
+                'userId': purchase['user_id'],
+                'username': purchase['username'] or f"User {purchase['user_id']}",
+                'userFullName': f"{purchase['first_name'] or ''} {purchase['last_name'] or ''}".strip() or 'N/A',
+                'telegramId': purchase['telegram_id'],
+                'userBalance': float(purchase['b3c_balance']) if purchase['b3c_balance'] else 0,
+                'tonAmount': float(purchase['ton_amount']),
+                'b3cAmount': float(purchase['b3c_amount']),
+                'commissionTon': float(purchase['commission_ton']),
+                'status': purchase['status'],
+                'statusLabel': status_labels.get(purchase['status'], purchase['status']),
+                'txHash': purchase['tx_hash'],
+                'depositWallet': purchase['deposit_wallet'],
+                'expectedAmount': float(purchase['expected_amount']) if purchase['expected_amount'] else None,
+                'depositAmount': float(purchase['deposit_amount']) if purchase['deposit_amount'] else None,
+                'walletStatus': purchase['wallet_status'],
+                'createdAt': purchase['created_at'].isoformat() if purchase['created_at'] else None,
+                'confirmedAt': purchase['confirmed_at'].isoformat() if purchase['confirmed_at'] else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting purchase detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/activity', methods=['GET'])
 @require_telegram_auth
 @require_owner
