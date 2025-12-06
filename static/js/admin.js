@@ -3426,11 +3426,17 @@ const AdminPanel = {
         }, 30000);
     },
     
+    demoSessionToken: localStorage.getItem('demo_session_token') || null,
+    
     async fetchAPI(url, options = {}) {
         const headers = {
             'Content-Type': 'application/json',
             'X-Demo-Mode': 'true'
         };
+        
+        if (this.demoSessionToken) {
+            headers['X-Demo-Session'] = this.demoSessionToken;
+        }
         
         try {
             const response = await fetch(url, {
@@ -3438,10 +3444,87 @@ const AdminPanel = {
                 headers: { ...headers, ...options.headers }
             });
             
-            return await response.json();
+            const data = await response.json();
+            
+            if (data.code === 'DEMO_2FA_REQUIRED' || data.requiresDemo2FA) {
+                this.show2FAModal();
+                return { success: false, error: 'Se requiere verificación 2FA' };
+            }
+            
+            return data;
         } catch (error) {
             console.error('API Error:', error);
             return { success: false, error: error.message };
+        }
+    },
+    
+    show2FAModal() {
+        if (document.getElementById('admin2FAModal')) return;
+        
+        const modal = document.createElement('div');
+        modal.id = 'admin2FAModal';
+        modal.className = 'modal-overlay active';
+        modal.innerHTML = `
+            <div class="modal" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2>Verificación 2FA</h2>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                        Ingresa el código 2FA que aparece en la consola del servidor.
+                    </p>
+                    <input type="text" id="admin2FACode" placeholder="Código de 6 dígitos" 
+                           style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); color: var(--text-primary);"
+                           maxlength="6" autocomplete="off">
+                    <button id="admin2FASubmit" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--accent-gold); color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Verificar
+                    </button>
+                    <p id="admin2FAError" style="color: var(--accent-danger); margin-top: 12px; display: none; text-align: center;"></p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('admin2FACode').focus();
+        
+        document.getElementById('admin2FASubmit').addEventListener('click', () => this.verify2FA());
+        document.getElementById('admin2FACode').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.verify2FA();
+        });
+    },
+    
+    async verify2FA() {
+        const code = document.getElementById('admin2FACode').value.trim();
+        const errorEl = document.getElementById('admin2FAError');
+        
+        if (!code || code.length !== 6) {
+            errorEl.textContent = 'Ingresa un código de 6 dígitos';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/demo/2fa/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Demo-Mode': 'true' },
+                body: JSON.stringify({ code })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.session_token) {
+                this.demoSessionToken = data.session_token;
+                localStorage.setItem('demo_session_token', data.session_token);
+                document.getElementById('admin2FAModal').remove();
+                this.showToast('Verificación exitosa', 'success');
+                this.loadSectionData(this.currentSection);
+            } else {
+                errorEl.textContent = data.error || 'Código incorrecto';
+                errorEl.style.display = 'block';
+            }
+        } catch (error) {
+            errorEl.textContent = 'Error de conexión';
+            errorEl.style.display = 'block';
         }
     },
     
@@ -5278,6 +5361,19 @@ Fin del reporte
                 document.getElementById(`analytics-${tab}`)?.classList.add('active');
             });
         });
+    },
+    
+    getAuthHeaders() {
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Demo-Mode': 'true'
+        };
+        
+        if (this.demoSessionToken) {
+            headers['X-Demo-Session'] = this.demoSessionToken;
+        }
+        
+        return headers;
     }
 };
 
