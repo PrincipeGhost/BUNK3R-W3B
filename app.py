@@ -6817,6 +6817,382 @@ def admin_delete_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/content/posts/<int:post_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_post_detail(post_id):
+    """Admin: Obtener detalle de una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT p.*, u.username, u.first_name, u.last_name, u.avatar_url,
+                           u.is_banned as user_banned
+                    FROM posts p
+                    LEFT JOIN users u ON p.user_id = u.telegram_id::text
+                    WHERE p.id = %s
+                """, (post_id,))
+                post = cur.fetchone()
+                
+                if not post:
+                    return jsonify({'success': False, 'error': 'Publicación no encontrada'}), 404
+                
+                cur.execute("""
+                    SELECT COUNT(*) as report_count FROM content_reports 
+                    WHERE content_type = 'post' AND content_id = %s
+                """, (post_id,))
+                report_count = cur.fetchone()['report_count'] or 0
+                
+                cur.execute("""
+                    SELECT id, reporter_id, reason, description, status, created_at 
+                    FROM content_reports 
+                    WHERE content_type = 'post' AND content_id = %s
+                    ORDER BY created_at DESC
+                """, (post_id,))
+                reports = cur.fetchall()
+        
+        post_data = dict(post)
+        post_data['report_count'] = report_count
+        post_data['reports'] = [dict(r) for r in reports]
+        
+        if post_data.get('created_at'):
+            post_data['created_at'] = post_data['created_at'].isoformat()
+        
+        return jsonify({'success': True, 'post': post_data})
+        
+    except Exception as e:
+        logger.error(f"Error getting post detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/content/posts/<int:post_id>/warn', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_warn_post_author(post_id):
+    """Admin: Advertir al autor de una publicación."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Contenido inapropiado')
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                post = cur.fetchone()
+                
+                if not post:
+                    return jsonify({'success': False, 'error': 'Publicación no encontrada'}), 404
+                
+                user_id = post['user_id']
+                
+                cur.execute("""
+                    INSERT INTO admin_warnings (user_id, admin_id, reason, post_id, created_at)
+                    VALUES (%s, %s, %s, %s, NOW())
+                """, (user_id, admin_id, reason, post_id))
+                
+                cur.execute("""
+                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, details, created_at)
+                    VALUES (%s, 'warn_user', 'post', %s, %s, NOW())
+                """, (admin_id, str(post_id), reason))
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Advertencia enviada al usuario'})
+        
+    except Exception as e:
+        logger.error(f"Error warning post author: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/content/posts/<int:post_id>/ban-author', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_ban_post_author(post_id):
+    """Admin: Banear al autor de una publicación por contenido inapropiado."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Contenido inapropiado')
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                post = cur.fetchone()
+                
+                if not post:
+                    return jsonify({'success': False, 'error': 'Publicación no encontrada'}), 404
+                
+                user_id = post['user_id']
+                
+                cur.execute("""
+                    UPDATE users SET is_banned = true, ban_reason = %s, banned_at = NOW()
+                    WHERE telegram_id::text = %s
+                """, (reason, user_id))
+                
+                cur.execute("""
+                    UPDATE posts SET is_active = false WHERE user_id = %s
+                """, (user_id,))
+                
+                cur.execute("""
+                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, details, created_at)
+                    VALUES (%s, 'ban_user_content', 'user', %s, %s, NOW())
+                """, (admin_id, user_id, reason))
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Usuario baneado y contenido eliminado'})
+        
+    except Exception as e:
+        logger.error(f"Error banning post author: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/content/reported', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_reported_content():
+    """Admin: Obtener publicaciones reportadas con prioridad."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'posts': []})
+        
+        limit = request.args.get('limit', 50, type=int)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT p.id, p.user_id, p.content_type, p.caption, p.content_url,
+                           p.likes_count, p.comments_count, p.is_active, p.created_at,
+                           u.username, u.first_name,
+                           COUNT(cr.id) as report_count,
+                           ARRAY_AGG(DISTINCT cr.reason) as report_reasons
+                    FROM posts p
+                    LEFT JOIN users u ON p.user_id = u.telegram_id::text
+                    INNER JOIN content_reports cr ON cr.content_type = 'post' AND cr.content_id = p.id
+                    WHERE p.is_active = true AND cr.status = 'pending'
+                    GROUP BY p.id, p.user_id, p.content_type, p.caption, p.content_url,
+                             p.likes_count, p.comments_count, p.is_active, p.created_at,
+                             u.username, u.first_name
+                    ORDER BY report_count DESC, p.created_at DESC
+                    LIMIT %s
+                """, (limit,))
+                posts = cur.fetchall()
+        
+        result = []
+        for p in posts:
+            post_dict = dict(p)
+            if post_dict.get('created_at'):
+                post_dict['created_at'] = post_dict['created_at'].isoformat()
+            result.append(post_dict)
+        
+        return jsonify({'success': True, 'posts': result})
+        
+    except Exception as e:
+        logger.error(f"Error getting reported content: {e}")
+        return jsonify({'success': True, 'posts': []})
+
+
+@app.route('/api/admin/hashtags', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_hashtags():
+    """Admin: Obtener lista de hashtags con estadísticas."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'hashtags': []})
+        
+        limit = request.args.get('limit', 50, type=int)
+        sort = request.args.get('sort', 'posts_count')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                order_by = 'posts_count DESC' if sort == 'posts_count' else 'created_at DESC'
+                cur.execute(f"""
+                    SELECT h.id, h.tag, h.posts_count, h.created_at,
+                           COALESCE(h.is_blocked, false) as is_blocked,
+                           COALESCE(h.is_promoted, false) as is_promoted
+                    FROM hashtags h
+                    ORDER BY {order_by}
+                    LIMIT %s
+                """, (limit,))
+                hashtags = cur.fetchall()
+        
+        result = []
+        for h in hashtags:
+            h_dict = dict(h)
+            if h_dict.get('created_at'):
+                h_dict['created_at'] = h_dict['created_at'].isoformat()
+            result.append(h_dict)
+        
+        return jsonify({'success': True, 'hashtags': result})
+        
+    except Exception as e:
+        logger.error(f"Error getting hashtags: {e}")
+        return jsonify({'success': True, 'hashtags': []})
+
+
+@app.route('/api/admin/hashtags/<int:hashtag_id>/block', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_block_hashtag(hashtag_id):
+    """Admin: Bloquear un hashtag inapropiado."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE
+                """)
+                cur.execute("""
+                    UPDATE hashtags SET is_blocked = true WHERE id = %s
+                """, (hashtag_id,))
+                
+                cur.execute("""
+                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, details, created_at)
+                    VALUES (%s, 'block_hashtag', 'hashtag', %s, 'Hashtag bloqueado', NOW())
+                """, (admin_id, str(hashtag_id)))
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Hashtag bloqueado'})
+        
+    except Exception as e:
+        logger.error(f"Error blocking hashtag: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/hashtags/<int:hashtag_id>/unblock', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_unblock_hashtag(hashtag_id):
+    """Admin: Desbloquear un hashtag."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE hashtags SET is_blocked = false WHERE id = %s
+                """, (hashtag_id,))
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Hashtag desbloqueado'})
+        
+    except Exception as e:
+        logger.error(f"Error unblocking hashtag: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/hashtags/<int:hashtag_id>/promote', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_promote_hashtag(hashtag_id):
+    """Admin: Promover un hashtag manualmente."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS is_promoted BOOLEAN DEFAULT FALSE
+                """)
+                cur.execute("""
+                    UPDATE hashtags SET is_promoted = true WHERE id = %s
+                """, (hashtag_id,))
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Hashtag promovido'})
+        
+    except Exception as e:
+        logger.error(f"Error promoting hashtag: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/stories', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_stories():
+    """Admin: Obtener stories activas para moderación."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'stories': []})
+        
+        limit = request.args.get('limit', 50, type=int)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT s.id, s.user_id, s.media_type, s.media_url, s.views_count,
+                           s.is_active, s.expires_at, s.created_at,
+                           u.username, u.first_name
+                    FROM stories s
+                    LEFT JOIN users u ON s.user_id = u.telegram_id::text
+                    WHERE s.is_active = true AND s.expires_at > NOW()
+                    ORDER BY s.created_at DESC
+                    LIMIT %s
+                """, (limit,))
+                stories = cur.fetchall()
+        
+        result = []
+        for s in stories:
+            s_dict = dict(s)
+            if s_dict.get('created_at'):
+                s_dict['created_at'] = s_dict['created_at'].isoformat()
+            if s_dict.get('expires_at'):
+                s_dict['expires_at'] = s_dict['expires_at'].isoformat()
+            result.append(s_dict)
+        
+        return jsonify({'success': True, 'stories': result})
+        
+    except Exception as e:
+        logger.error(f"Error getting stories: {e}")
+        return jsonify({'success': True, 'stories': []})
+
+
+@app.route('/api/admin/stories/<int:story_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_story(story_id):
+    """Admin: Eliminar una story."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE stories SET is_active = false WHERE id = %s", (story_id,))
+                
+                cur.execute("""
+                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, details, created_at)
+                    VALUES (%s, 'delete_story', 'story', %s, 'Story eliminada por moderación', NOW())
+                """, (admin_id, str(story_id)))
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Story eliminada'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/user/<user_id>', methods=['GET'])
 @require_telegram_auth
 @require_owner
