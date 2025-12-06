@@ -4329,32 +4329,110 @@ const App = {
                 ]
             };
 
-            this.showToast('Abre tu wallet y confirma el pago...', 'info');
+            this.showToast('Abriendo wallet para confirmar...', 'info');
             console.log('[B3C PURCHASE] Sending transaction...');
 
-            const result = await this.tonConnectUI.sendTransaction(transaction);
-            console.log('[B3C PURCHASE] Transaction result:', result);
+            try {
+                const sendPromise = this.tonConnectUI.sendTransaction(transaction);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('WALLET_TIMEOUT')), 10000)
+                );
+                
+                const result = await Promise.race([sendPromise, timeoutPromise]);
+                console.log('[B3C PURCHASE] Transaction result:', result);
 
-            if (result && result.boc) {
-                this.showToast('Transaccion enviada! Verificando...', 'success');
-                await this.verifyB3CPurchaseAfterTx(purchaseId, result.boc);
-            } else {
-                console.warn('[B3C PURCHASE] No BOC in result, transaction may have failed');
-                this.showToast('Transaccion enviada. Verificando estado...', 'info');
+                if (result && result.boc) {
+                    this.showToast('Transaccion enviada! Verificando...', 'success');
+                    await this.verifyB3CPurchaseAfterTx(purchaseId, result.boc);
+                } else {
+                    console.warn('[B3C PURCHASE] No BOC in result');
+                    this.showManualDepositModal(depositAddress, tonAmount, purchaseId, response.expiresInMinutes || 30);
+                }
+            } catch (walletError) {
+                console.error('[B3C PURCHASE] Wallet error:', walletError);
+                if (walletError.message === 'WALLET_TIMEOUT' || walletError.message?.includes('timeout')) {
+                    console.log('[B3C PURCHASE] Wallet timeout, showing manual deposit option');
+                    this.showManualDepositModal(depositAddress, tonAmount, purchaseId, response.expiresInMinutes || 30);
+                } else if (walletError.message?.includes('Canceled') || walletError.message?.includes('cancel') || walletError.message?.includes('rejected')) {
+                    this.showToast('Compra cancelada', 'info');
+                } else if (walletError.message?.includes('User rejects') || walletError.message?.includes('user rejected')) {
+                    this.showToast('Transaccion rechazada', 'info');
+                } else {
+                    this.showManualDepositModal(depositAddress, tonAmount, purchaseId, response.expiresInMinutes || 30);
+                }
             }
         } catch (error) {
             console.error('[B3C PURCHASE] Error:', error);
-            const errorMsg = error.message || String(error);
-            
-            if (errorMsg.includes('Canceled') || errorMsg.includes('cancel') || errorMsg.includes('rejected')) {
-                this.showToast('Compra cancelada', 'info');
-            } else if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
-                this.showToast('Tiempo agotado. Intenta de nuevo.', 'error');
-            } else if (errorMsg.includes('User rejects') || errorMsg.includes('user rejected')) {
-                this.showToast('Transaccion rechazada por el usuario', 'info');
-            } else {
-                this.showToast('Error: ' + (errorMsg.substring(0, 50) || 'Intenta de nuevo'), 'error');
-            }
+            this.showToast('Error: ' + (error.message?.substring(0, 50) || 'Intenta de nuevo'), 'error');
+        }
+    },
+    
+    showManualDepositModal(address, amount, purchaseId, expiresMinutes) {
+        const existingModal = document.getElementById('manual-deposit-modal');
+        if (existingModal) existingModal.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'manual-deposit-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; background: var(--card-bg, #1a1a2e); border-radius: 16px; padding: 24px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">💳</div>
+                    <h3 style="color: #fff; margin: 0 0 8px 0;">Deposito Manual</h3>
+                    <p style="color: #888; font-size: 14px; margin: 0;">La wallet no respondio. Envia manualmente:</p>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="color: #888; font-size: 12px; margin-bottom: 4px;">Cantidad:</div>
+                    <div style="color: #ffd700; font-size: 24px; font-weight: bold;">${amount} TON</div>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="color: #888; font-size: 12px; margin-bottom: 8px;">Direccion de deposito:</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <code style="flex: 1; color: #4ecdc4; font-size: 11px; word-break: break-all; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px;">${address}</code>
+                        <button onclick="navigator.clipboard.writeText('${address}'); App.showToast('Copiado!', 'success');" 
+                                style="background: #4ecdc4; color: #000; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                            Copiar
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+                    <div style="color: #ffc107; font-size: 13px;">
+                        <strong>Importante:</strong> Tienes ${expiresMinutes} minutos para enviar exactamente ${amount} TON a esta direccion.
+                        El sistema detectara tu pago automaticamente.
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="App.openTonLink('${address}', ${amount});" 
+                            style="flex: 1; background: #0088cc; color: #fff; border: none; padding: 14px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 14px;">
+                        Abrir Wallet
+                    </button>
+                    <button onclick="document.getElementById('manual-deposit-modal').remove();" 
+                            style="flex: 1; background: rgba(255,255,255,0.1); color: #fff; border: none; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 14px;">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    },
+    
+    openTonLink(address, amount) {
+        const amountNano = Math.floor(amount * 1e9);
+        const tonLink = `ton://transfer/${address}?amount=${amountNano}`;
+        console.log('[TON LINK] Opening:', tonLink);
+        
+        if (window.Telegram?.WebApp?.openLink) {
+            window.Telegram.WebApp.openLink(tonLink);
+        } else {
+            window.open(tonLink, '_blank');
         }
     },
 
