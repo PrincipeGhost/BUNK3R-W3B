@@ -5467,6 +5467,337 @@ def admin_ban_user(user_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/users/<user_id>/detail', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_user_detail(user_id):
+    """Admin: Obtener detalle completo de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, telegram_id, username, first_name, last_name, credits,
+                           level, is_active, is_verified, wallet_address, created_at, last_seen,
+                           COALESCE(is_banned, false) as is_banned
+                    FROM users WHERE id = %s OR telegram_id::text = %s
+                """, (str(user_id), str(user_id)))
+                user = cur.fetchone()
+                
+                if not user:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                cur.execute("""
+                    SELECT DISTINCT ip_address, device_name, last_used_at, created_at
+                    FROM trusted_devices WHERE user_id = %s
+                    ORDER BY last_used_at DESC LIMIT 20
+                """, (str(user.get('telegram_id', user_id)),))
+                devices = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT id, transaction_type as type, amount, description, created_at
+                    FROM wallet_transactions WHERE user_id = %s
+                    ORDER BY created_at DESC LIMIT 50
+                """, (str(user.get('telegram_id', user_id)),))
+                transactions = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT id, content_type, caption, created_at, is_active
+                    FROM posts WHERE user_id = %s
+                    ORDER BY created_at DESC LIMIT 20
+                """, (str(user.get('telegram_id', user_id)),))
+                publications = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT id, note, created_by, created_at
+                    FROM admin_user_notes WHERE user_id = %s
+                    ORDER BY created_at DESC
+                """, (str(user_id),))
+                notes = cur.fetchall()
+        
+        ips_used = list(set([d['ip_address'] for d in devices if d.get('ip_address')]))
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': str(user['id']),
+                'telegram_id': user['telegram_id'],
+                'username': user.get('username'),
+                'first_name': user.get('first_name'),
+                'last_name': user.get('last_name'),
+                'credits': float(user.get('credits', 0)),
+                'level': user.get('level', 1),
+                'is_active': user.get('is_active', True),
+                'is_verified': user.get('is_verified', False),
+                'is_banned': user.get('is_banned', False),
+                'wallet_address': user.get('wallet_address'),
+                'created_at': str(user.get('created_at', '')),
+                'last_seen': str(user.get('last_seen', ''))
+            },
+            'devices': [{
+                'ip': d['ip_address'],
+                'device': d['device_name'],
+                'last_used': str(d['last_used_at']) if d.get('last_used_at') else None
+            } for d in devices],
+            'ips': ips_used,
+            'transactions': [{
+                'id': t['id'],
+                'type': t['type'],
+                'amount': float(t['amount']) if t.get('amount') else 0,
+                'description': t.get('description', ''),
+                'date': str(t['created_at'])
+            } for t in transactions],
+            'publications': [{
+                'id': p['id'],
+                'type': p['content_type'],
+                'caption': p.get('caption', '')[:100] if p.get('caption') else '',
+                'date': str(p['created_at']),
+                'active': p.get('is_active', True)
+            } for p in publications],
+            'notes': [{
+                'id': n['id'],
+                'note': n['note'],
+                'created_by': n.get('created_by'),
+                'date': str(n['created_at'])
+            } for n in notes]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/balance', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_adjust_user_balance(user_id):
+    """Admin: Ajustar balance B3C de un usuario."""
+    try:
+        data = request.get_json() or {}
+        amount = float(data.get('amount', 0))
+        reason = data.get('reason', 'Ajuste manual por admin')
+        
+        if amount == 0:
+            return jsonify({'success': False, 'error': 'El monto no puede ser 0'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    UPDATE users SET credits = credits + %s
+                    WHERE id = %s OR telegram_id::text = %s
+                    RETURNING id, credits
+                """, (amount, str(user_id), str(user_id)))
+                result = cur.fetchone()
+                
+                if not result:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions (user_id, transaction_type, amount, description)
+                    VALUES (%s, 'admin_adjustment', %s, %s)
+                """, (str(user_id), amount, f'{reason} (Admin: {admin_id})'))
+                
+                conn.commit()
+        
+        action = 'agregados' if amount > 0 else 'deducidos'
+        return jsonify({
+            'success': True,
+            'message': f'{abs(amount)} B3C {action} correctamente',
+            'new_balance': float(result['credits'])
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adjusting balance: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/note', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_add_user_note(user_id):
+    """Admin: Agregar nota interna sobre un usuario."""
+    try:
+        data = request.get_json() or {}
+        note = data.get('note', '').strip()
+        
+        if not note:
+            return jsonify({'success': False, 'error': 'La nota no puede estar vacía'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS admin_user_notes (
+                        id SERIAL PRIMARY KEY,
+                        user_id TEXT NOT NULL,
+                        note TEXT NOT NULL,
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cur.execute("""
+                    INSERT INTO admin_user_notes (user_id, note, created_by)
+                    VALUES (%s, %s, %s) RETURNING id
+                """, (str(user_id), note, admin_id))
+                note_id = cur.fetchone()[0]
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Nota agregada', 'note_id': note_id})
+        
+    except Exception as e:
+        logger.error(f"Error adding note: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/fraud/multiple-accounts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_fraud_multiple_accounts():
+    """Admin: Detectar múltiples cuentas usando misma IP."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'suspicious': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT ip_address, COUNT(DISTINCT user_id) as user_count,
+                           ARRAY_AGG(DISTINCT user_id) as user_ids
+                    FROM trusted_devices
+                    WHERE ip_address IS NOT NULL AND ip_address != ''
+                    GROUP BY ip_address
+                    HAVING COUNT(DISTINCT user_id) > 1
+                    ORDER BY user_count DESC
+                    LIMIT 50
+                """)
+                results = cur.fetchall()
+        
+        suspicious = []
+        for r in results:
+            suspicious.append({
+                'ip': r['ip_address'],
+                'user_count': r['user_count'],
+                'user_ids': r['user_ids']
+            })
+        
+        return jsonify({'success': True, 'suspicious': suspicious, 'count': len(suspicious)})
+        
+    except Exception as e:
+        logger.error(f"Error detecting multiple accounts: {e}")
+        return jsonify({'success': True, 'suspicious': []})
+
+
+@app.route('/api/admin/fraud/ip-blacklist', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_ip_blacklist():
+    """Admin: Obtener lista de IPs bloqueadas."""
+    try:
+        if not db_manager:
+            return jsonify({'success': True, 'blacklist': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS ip_blacklist (
+                        id SERIAL PRIMARY KEY,
+                        ip_address TEXT UNIQUE NOT NULL,
+                        reason TEXT,
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cur.execute("""
+                    SELECT id, ip_address, reason, created_by, created_at
+                    FROM ip_blacklist ORDER BY created_at DESC
+                """)
+                ips = cur.fetchall()
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'blacklist': [{
+                'id': ip['id'],
+                'ip': ip['ip_address'],
+                'reason': ip.get('reason'),
+                'created_by': ip.get('created_by'),
+                'date': str(ip['created_at'])
+            } for ip in ips]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting IP blacklist: {e}")
+        return jsonify({'success': True, 'blacklist': []})
+
+
+@app.route('/api/admin/fraud/ip-blacklist', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_add_ip_blacklist():
+    """Admin: Agregar IP a la blacklist."""
+    try:
+        data = request.get_json() or {}
+        ip = data.get('ip', '').strip()
+        reason = data.get('reason', 'Sin razón especificada')
+        
+        if not ip:
+            return jsonify({'success': False, 'error': 'IP requerida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO ip_blacklist (ip_address, reason, created_by)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (ip_address) DO UPDATE SET reason = EXCLUDED.reason
+                    RETURNING id
+                """, (ip, reason, admin_id))
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': f'IP {ip} agregada a blacklist'})
+        
+    except Exception as e:
+        logger.error(f"Error adding IP to blacklist: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/fraud/ip-blacklist/<int:ip_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_remove_ip_blacklist(ip_id):
+    """Admin: Remover IP de la blacklist."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM ip_blacklist WHERE id = %s RETURNING ip_address", (ip_id,))
+                result = cur.fetchone()
+                if not result:
+                    return jsonify({'success': False, 'error': 'IP no encontrada'}), 404
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': f'IP {result[0]} removida de blacklist'})
+        
+    except Exception as e:
+        logger.error(f"Error removing IP from blacklist: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/admin/realtime/online', methods=['GET'])
@@ -5520,12 +5851,12 @@ def admin_get_sessions():
             with db_manager.get_connection() as conn:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute("""
-                        SELECT td.user_id, td.device_name, td.last_used, td.ip_address,
+                        SELECT td.user_id, td.device_name, td.last_used_at, td.ip_address,
                                u.first_name, u.username
                         FROM trusted_devices td
                         LEFT JOIN users u ON td.user_id = u.user_id
-                        WHERE td.last_used >= NOW() - INTERVAL '24 hours'
-                        ORDER BY td.last_used DESC
+                        WHERE td.last_used_at >= NOW() - INTERVAL '24 hours'
+                        ORDER BY td.last_used_at DESC
                         LIMIT 100
                     """)
                     for row in cur.fetchall():
@@ -5535,7 +5866,7 @@ def admin_get_sessions():
                             'first_name': row['first_name'],
                             'device': row['device_name'],
                             'ip': row['ip_address'],
-                            'last_activity': row['last_used'].isoformat() if row['last_used'] else None
+                            'last_activity': row['last_used_at'].isoformat() if row['last_used_at'] else None
                         })
         
         return jsonify({'success': True, 'sessions': sessions})
@@ -5769,7 +6100,7 @@ def admin_get_all_users():
                     FROM users 
                     WHERE 1=1
                 """
-                count_query = "SELECT COUNT(*) FROM users WHERE 1=1"
+                count_query = "SELECT COUNT(*) as total FROM users WHERE 1=1"
                 params = []
                 count_params = []
                 
@@ -5791,7 +6122,7 @@ def admin_get_all_users():
                     count_query += " AND is_verified = true"
                 
                 cur.execute(count_query, count_params)
-                total = cur.fetchone()[0] or 0
+                total = cur.fetchone()['total'] or 0
                 
                 query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
                 params.extend([limit, offset])
@@ -6029,8 +6360,8 @@ def admin_delete_post(post_id):
 @app.route('/api/admin/user/<user_id>', methods=['GET'])
 @require_telegram_auth
 @require_owner
-def admin_get_user_detail(user_id):
-    """Admin: Obtener detalle de un usuario."""
+def admin_get_user_basic(user_id):
+    """Admin: Obtener detalle básico de un usuario (legacy endpoint)."""
     try:
         if not db_manager:
             return jsonify({'success': False, 'error': 'Database not available'}), 500
@@ -6043,15 +6374,15 @@ def admin_get_user_detail(user_id):
                            created_at, last_seen, bio, avatar_url,
                            COALESCE(is_banned, false) as is_banned,
                            two_factor_enabled, security_score
-                    FROM users WHERE id = %s
-                """, (user_id,))
+                    FROM users WHERE id = %s OR telegram_id::text = %s
+                """, (str(user_id), str(user_id)))
                 user = cur.fetchone()
                 
                 if not user:
                     return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
                 
-                cur.execute("SELECT COUNT(*) FROM wallet_transactions WHERE user_id = %s", (user_id,))
-                total_tx = cur.fetchone()[0] or 0
+                cur.execute("SELECT COUNT(*) as total FROM wallet_transactions WHERE user_id = %s", (user_id,))
+                total_tx = cur.fetchone()['total'] or 0
                 
                 user_data = {
                     'user_id': str(user['id']),
