@@ -602,31 +602,35 @@
                     </div>
                 </div>
                 
-                <!-- Barra de Composicion de Post -->
+                <!-- Barra de Composicion de Post Inline -->
                 <div class="compose-post-bar" id="compose-post-bar">
                     <div class="compose-avatar" id="compose-avatar"></div>
-                    <div class="compose-input-wrapper" onclick="PublicationsManager.showCreateModal()">
-                        <span class="compose-placeholder" id="compose-placeholder">¿Que estas pensando?</span>
+                    <div class="compose-content">
+                        <textarea class="compose-textarea" id="compose-textarea" placeholder="¿Que estas pensando?" rows="1"></textarea>
+                        <div class="compose-media-preview hidden" id="compose-media-preview"></div>
                     </div>
+                </div>
+                <div class="compose-toolbar" id="compose-toolbar">
                     <div class="compose-actions">
-                        <button class="compose-action-btn" onclick="PublicationsManager.showCreateModal('image')" title="Agregar imagen">
+                        <button class="compose-action-btn" id="compose-image-btn" title="Agregar imagen">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                 <polyline points="21 15 16 10 5 21"></polyline>
                             </svg>
+                            <span>Foto</span>
                         </button>
-                        <button class="compose-action-btn" onclick="PublicationsManager.showCreateModal('video')" title="Agregar video">
+                        <button class="compose-action-btn" id="compose-video-btn" title="Agregar video">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                                 <polygon points="23 7 16 12 23 17 23 7"></polygon>
                                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                             </svg>
-                        </button>
-                        <button class="compose-action-btn emoji-btn" onclick="PublicationsManager.showCreateModal()" title="Agregar emoji">
-                            <span style="font-size: 18px;">😊</span>
+                            <span>Video</span>
                         </button>
                     </div>
+                    <button class="compose-publish-btn hidden" id="compose-publish-btn">Publicar</button>
                 </div>
+                <input type="file" id="compose-file-input" accept="image/*,video/*" multiple style="display:none;">
                 
                 <!-- Trending Hashtags -->
                 <div class="trending-hashtags-bar hidden" id="trending-hashtags-bar">

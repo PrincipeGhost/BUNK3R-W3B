@@ -149,9 +149,15 @@ const PublicationsManager = {
         this.setupPullToRefresh();
     },
     
+    inlineFiles: [],
+    
     initComposeBar() {
         const composeAvatar = document.getElementById('compose-avatar');
-        const composePlaceholder = document.getElementById('compose-placeholder');
+        const composeTextarea = document.getElementById('compose-textarea');
+        const composeFileInput = document.getElementById('compose-file-input');
+        const composeImageBtn = document.getElementById('compose-image-btn');
+        const composeVideoBtn = document.getElementById('compose-video-btn');
+        const composePublishBtn = document.getElementById('compose-publish-btn');
         
         const updateComposeBar = (user) => {
             if (composeAvatar && user) {
@@ -164,12 +170,46 @@ const PublicationsManager = {
                     composeAvatar.textContent = initial;
                 }
                 
-                if (composePlaceholder) {
+                if (composeTextarea) {
                     const name = user.first_name || user.username || 'amigo';
-                    composePlaceholder.textContent = `¿Que estas pensando, ${name}?`;
+                    composeTextarea.placeholder = `¿Que estas pensando, ${name}?`;
                 }
             }
         };
+        
+        if (composeTextarea) {
+            composeTextarea.addEventListener('input', () => {
+                composeTextarea.style.height = 'auto';
+                composeTextarea.style.height = Math.min(composeTextarea.scrollHeight, 150) + 'px';
+                this.updatePublishButton();
+            });
+        }
+        
+        if (composeImageBtn) {
+            composeImageBtn.addEventListener('click', () => {
+                if (composeFileInput) {
+                    composeFileInput.accept = 'image/*';
+                    composeFileInput.click();
+                }
+            });
+        }
+        
+        if (composeVideoBtn) {
+            composeVideoBtn.addEventListener('click', () => {
+                if (composeFileInput) {
+                    composeFileInput.accept = 'video/*';
+                    composeFileInput.click();
+                }
+            });
+        }
+        
+        if (composeFileInput) {
+            composeFileInput.addEventListener('change', (e) => this.handleInlineFileSelect(e));
+        }
+        
+        if (composePublishBtn) {
+            composePublishBtn.addEventListener('click', () => this.publishInlinePost());
+        }
         
         if (typeof App !== 'undefined' && App.user) {
             updateComposeBar(App.user);
@@ -182,6 +222,153 @@ const PublicationsManager = {
         }
         
         window.updateComposeBarUser = updateComposeBar;
+    },
+    
+    handleInlineFileSelect(e) {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        
+        const maxFiles = 10;
+        if (this.inlineFiles.length + files.length > maxFiles) {
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.show(`Maximo ${maxFiles} archivos`, 'warning');
+            }
+            return;
+        }
+        
+        files.forEach(file => {
+            if (file.size > 100 * 1024 * 1024) {
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.show('Archivo muy grande (max 100MB)', 'error');
+                }
+                return;
+            }
+            this.inlineFiles.push(file);
+        });
+        
+        this.renderInlineMediaPreview();
+        this.updatePublishButton();
+        
+        e.target.value = '';
+    },
+    
+    renderInlineMediaPreview() {
+        const preview = document.getElementById('compose-media-preview');
+        if (!preview) return;
+        
+        if (this.inlineFiles.length === 0) {
+            preview.classList.add('hidden');
+            preview.innerHTML = '';
+            return;
+        }
+        
+        preview.classList.remove('hidden');
+        preview.innerHTML = this.inlineFiles.map((file, index) => {
+            const url = URL.createObjectURL(file);
+            const isVideo = file.type.startsWith('video/');
+            return `
+                <div class="compose-media-item" data-index="${index}">
+                    ${isVideo 
+                        ? `<video src="${url}" muted></video><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:20px;">▶</div>`
+                        : `<img src="${url}" alt="Preview">`
+                    }
+                    <button class="compose-media-remove" onclick="PublicationsManager.removeInlineFile(${index})">&times;</button>
+                </div>
+            `;
+        }).join('');
+    },
+    
+    removeInlineFile(index) {
+        this.inlineFiles.splice(index, 1);
+        this.renderInlineMediaPreview();
+        this.updatePublishButton();
+    },
+    
+    updatePublishButton() {
+        const textarea = document.getElementById('compose-textarea');
+        const publishBtn = document.getElementById('compose-publish-btn');
+        if (!publishBtn) return;
+        
+        const hasText = textarea && textarea.value.trim().length > 0;
+        const hasFiles = this.inlineFiles.length > 0;
+        
+        if (hasText || hasFiles) {
+            publishBtn.classList.remove('hidden');
+        } else {
+            publishBtn.classList.add('hidden');
+        }
+    },
+    
+    async publishInlinePost() {
+        const textarea = document.getElementById('compose-textarea');
+        const publishBtn = document.getElementById('compose-publish-btn');
+        const caption = textarea ? textarea.value.trim() : '';
+        
+        if (!caption && this.inlineFiles.length === 0) {
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.show('Escribe algo o agrega media', 'warning');
+            }
+            return;
+        }
+        
+        if (publishBtn) {
+            publishBtn.disabled = true;
+            publishBtn.textContent = 'Publicando...';
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('caption', caption);
+            formData.append('content_type', this.inlineFiles.length > 0 ? 'media' : 'text');
+            
+            if (this.inlineFiles.length > 0) {
+                for (let i = 0; i < this.inlineFiles.length; i++) {
+                    const file = this.inlineFiles[i];
+                    const encrypted = await CryptoModule.encryptFile(file);
+                    formData.append('files', encrypted.encryptedData, `encrypted_${i}.bin`);
+                    formData.append(`encryption_key_${i}`, encrypted.encryptionKey);
+                    formData.append(`iv_${i}`, encrypted.iv);
+                    formData.append(`original_type_${i}`, encrypted.originalType);
+                    formData.append(`original_name_${i}`, encrypted.originalName);
+                }
+                formData.append('file_count', this.inlineFiles.length.toString());
+            }
+            
+            const response = await fetch('/api/publications/create', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.show('Publicado!', 'success');
+                }
+                
+                if (textarea) {
+                    textarea.value = '';
+                    textarea.style.height = 'auto';
+                }
+                this.inlineFiles = [];
+                this.renderInlineMediaPreview();
+                this.updatePublishButton();
+                
+                await this.loadFeed(true);
+            } else {
+                throw new Error(result.error || 'Error al publicar');
+            }
+        } catch (error) {
+            console.error('Error publishing:', error);
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.show(error.message || 'Error al publicar', 'error');
+            }
+        } finally {
+            if (publishBtn) {
+                publishBtn.disabled = false;
+                publishBtn.textContent = 'Publicar';
+            }
+        }
     },
     
     async loadTrendingHashtags() {
