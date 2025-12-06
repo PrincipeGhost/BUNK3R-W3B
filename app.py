@@ -873,6 +873,60 @@ def health_check():
     })
 
 
+@app.route('/api/proxy')
+def browser_proxy():
+    """Proxy para cargar páginas externas en el multi-browser evitando X-Frame-Options."""
+    import requests as req
+    from urllib.parse import urlparse
+    
+    url = request.args.get('url', '')
+    if not url:
+        return '<html><body style="background:#1a1a1a;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>Ingresa una URL para navegar</p></body></html>', 200
+    
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'https://' + url
+    
+    try:
+        parsed = urlparse(url)
+        if not parsed.netloc:
+            return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>URL inválida</p></body></html>', 400
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
+        
+        resp = req.get(url, headers=headers, timeout=10, allow_redirects=True)
+        content_type = resp.headers.get('Content-Type', 'text/html')
+        
+        if 'text/html' in content_type:
+            content = resp.text
+            base_tag = f'<base href="{url}">'
+            if '<head>' in content:
+                content = content.replace('<head>', f'<head>{base_tag}', 1)
+            elif '<HEAD>' in content:
+                content = content.replace('<HEAD>', f'<HEAD>{base_tag}', 1)
+            else:
+                content = base_tag + content
+            
+            response = Response(content, status=resp.status_code)
+            response.headers['Content-Type'] = content_type
+        else:
+            response = Response(resp.content, status=resp.status_code)
+            response.headers['Content-Type'] = content_type
+        
+        return response
+        
+    except req.exceptions.Timeout:
+        return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>Tiempo de espera agotado</p></body></html>', 504
+    except req.exceptions.ConnectionError:
+        return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>No se pudo conectar al sitio</p></body></html>', 502
+    except Exception as e:
+        logger.error(f"Proxy error: {e}")
+        return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><p>Error: {str(e)}</p></body></html>', 500
+
+
 # ============================================================
 # ENDPOINTS PARA 2FA (Two-Factor Authentication)
 # ============================================================

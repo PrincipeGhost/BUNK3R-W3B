@@ -3363,15 +3363,19 @@ const App = {
             const goBtn = browser.querySelector('.browser-go-btn');
             const refreshBtn = browser.querySelector('.browser-refresh-btn');
             
+            browser._currentUrl = '';
+            
             const goHandler = () => {
                 let url = urlInput.value.trim();
-                if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+                if (!url) return;
+                
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
                     url = 'https://' + url;
                 }
-                if (url) {
-                    iframe.src = url;
-                    urlInput.value = url;
-                }
+                
+                browser._currentUrl = url;
+                urlInput.value = url;
+                iframe.src = '/api/proxy?url=' + encodeURIComponent(url);
             };
             
             const keypressHandler = (e) => {
@@ -3381,8 +3385,8 @@ const App = {
             };
             
             const refreshHandler = () => {
-                if (iframe.src && iframe.src !== 'about:blank') {
-                    iframe.src = iframe.src;
+                if (browser._currentUrl) {
+                    iframe.src = '/api/proxy?url=' + encodeURIComponent(browser._currentUrl);
                 }
             };
             
