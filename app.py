@@ -5490,11 +5490,20 @@ def admin_get_user_detail(user_id):
                     return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
                 
                 cur.execute("""
-                    SELECT DISTINCT ip_address, device_name, last_used_at, created_at
+                    SELECT DISTINCT ip_address, device_name, device_type, user_agent, 
+                           last_used_at, created_at, is_active
                     FROM trusted_devices WHERE user_id = %s
-                    ORDER BY last_used_at DESC LIMIT 20
+                    ORDER BY last_used_at DESC NULLS LAST LIMIT 20
                 """, (str(user.get('telegram_id', user_id)),))
                 devices = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT DISTINCT ip_address, activity_type, created_at
+                    FROM security_activity_log 
+                    WHERE user_id = %s AND ip_address IS NOT NULL AND ip_address != ''
+                    ORDER BY created_at DESC LIMIT 50
+                """, (str(user.get('telegram_id', user_id)),))
+                ip_history = cur.fetchall()
                 
                 cur.execute("""
                     SELECT id, transaction_type as type, amount, description, created_at
@@ -5516,8 +5525,34 @@ def admin_get_user_detail(user_id):
                     ORDER BY created_at DESC
                 """, (str(user_id),))
                 notes = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT id, activity_type, description, ip_address, created_at
+                    FROM security_activity_log WHERE user_id = %s
+                    ORDER BY created_at DESC LIMIT 30
+                """, (str(user.get('telegram_id', user_id)),))
+                activity_log = cur.fetchall()
+                
+                ips_from_devices = [d['ip_address'] for d in devices if d.get('ip_address')]
+                ips_from_history = [ip['ip_address'] for ip in ip_history if ip.get('ip_address')]
+                all_ips = list(set(ips_from_devices + ips_from_history))
+                
+                fraud_alerts = []
+                if all_ips:
+                    cur.execute("""
+                        SELECT DISTINCT user_id, ip_address 
+                        FROM trusted_devices 
+                        WHERE ip_address = ANY(%s) AND user_id != %s
+                    """, (all_ips, str(user.get('telegram_id', user_id))))
+                    other_users_same_ip = cur.fetchall()
+                    if other_users_same_ip:
+                        fraud_alerts.append({
+                            'type': 'multiple_accounts',
+                            'message': f'IP compartida con {len(set([u["user_id"] for u in other_users_same_ip]))} otros usuarios',
+                            'ips': list(set([u['ip_address'] for u in other_users_same_ip]))
+                        })
         
-        ips_used = list(set([d['ip_address'] for d in devices if d.get('ip_address')]))
+        ips_used = all_ips if all_ips else []
         
         return jsonify({
             'success': True,
@@ -5539,9 +5574,21 @@ def admin_get_user_detail(user_id):
             'devices': [{
                 'ip': d['ip_address'],
                 'device': d['device_name'],
-                'last_used': str(d['last_used_at']) if d.get('last_used_at') else None
+                'device_type': d.get('device_type'),
+                'user_agent': d.get('user_agent'),
+                'is_active': d.get('is_active', True),
+                'last_used': str(d['last_used_at']) if d.get('last_used_at') else None,
+                'created_at': str(d['created_at']) if d.get('created_at') else None
             } for d in devices],
             'ips': ips_used,
+            'activity_log': [{
+                'id': a['id'],
+                'type': a['activity_type'],
+                'description': a.get('description', ''),
+                'ip': a.get('ip_address'),
+                'date': str(a['created_at'])
+            } for a in activity_log],
+            'fraud_alerts': fraud_alerts,
             'transactions': [{
                 'id': t['id'],
                 'type': t['type'],
@@ -5657,6 +5704,94 @@ def admin_add_user_note(user_id):
         
     except Exception as e:
         logger.error(f"Error adding note: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/logout', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_logout_user(user_id):
+    """Admin: Cerrar todas las sesiones de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE trusted_devices SET is_active = false
+                    WHERE user_id = %s
+                """, (str(user_id),))
+                devices_closed = cur.rowcount
+                
+                cur.execute("""
+                    INSERT INTO security_activity_log (user_id, activity_type, description)
+                    VALUES (%s, 'ADMIN_LOGOUT', %s)
+                """, (str(user_id), f'Sesiones cerradas por admin {admin_id}'))
+                
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'{devices_closed} sesiones cerradas',
+            'sessions_closed': devices_closed
+        })
+        
+    except Exception as e:
+        logger.error(f"Error closing user sessions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/notify', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_notify_user(user_id):
+    """Admin: Enviar notificación a un usuario."""
+    try:
+        data = request.get_json() or {}
+        message = data.get('message', '').strip()
+        notification_type = data.get('type', 'admin')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'El mensaje no puede estar vacío'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM users WHERE id = %s OR telegram_id::text = %s
+                """, (str(user_id), str(user_id)))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                cur.execute("""
+                    INSERT INTO notifications (user_id, type, message, is_read, created_at)
+                    VALUES (%s, %s, %s, false, NOW())
+                    RETURNING id
+                """, (str(user_id), notification_type, f'[Admin] {message}'))
+                notification_id = cur.fetchone()[0]
+                
+                cur.execute("""
+                    INSERT INTO admin_user_notes (user_id, note, created_by)
+                    VALUES (%s, %s, %s)
+                """, (str(user_id), f'[NOTIFICACIÓN ENVIADA] {message}', admin_id))
+                
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Notificación enviada',
+            'notification_id': notification_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending notification: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
