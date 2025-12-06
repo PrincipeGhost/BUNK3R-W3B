@@ -151,6 +151,8 @@ try:
     logger.info("Payments tables initialized")
     db_manager.initialize_b3c_tables()
     logger.info("B3C tables initialized")
+    db_manager.initialize_ai_tables()
+    logger.info("AI chat tables initialized")
     vn_manager = VirtualNumbersManager(db_manager)
     logger.info("Virtual numbers manager initialized")
 except Exception as e:
@@ -13303,6 +13305,64 @@ def mark_support_notifications_read():
 
 
 # ==================== END SUPPORT SECTION ====================
+
+
+# ==================== AI CHAT SECTION ====================
+from tracking.ai_service import get_ai_service
+
+@app.route('/api/ai/chat', methods=['POST'])
+@require_telegram_auth
+def ai_chat():
+    """Send message to AI and get response"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        data = request.json
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        ai = get_ai_service(db_manager)
+        result = ai.chat(user_id, message)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
+        return jsonify({'success': False, 'error': 'Error processing message'}), 500
+
+@app.route('/api/ai/history', methods=['GET'])
+@require_telegram_auth
+def ai_history():
+    """Get AI chat history"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        ai = get_ai_service(db_manager)
+        history = ai.get_conversation_history(user_id)
+        providers = ai.get_available_providers()
+        
+        return jsonify({
+            'success': True,
+            'history': history,
+            'providers': providers
+        })
+    except Exception as e:
+        logger.error(f"AI history error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai/clear', methods=['POST'])
+@require_telegram_auth
+def ai_clear():
+    """Clear AI chat history"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        ai = get_ai_service(db_manager)
+        ai.clear_conversation(user_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"AI clear error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== END AI CHAT SECTION ====================
 
 
 deposit_scheduler = None
