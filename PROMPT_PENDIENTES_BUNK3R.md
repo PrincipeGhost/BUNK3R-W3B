@@ -78,6 +78,46 @@ Actualizar replit.md con:
 
 ---
 
+### 6. ⚠️ REGLA CRÍTICA: TODO DEBE FUNCIONAR AL 100% ⚠️
+
+**PROHIBIDO DEJAR COSAS SIN FUNCIONALIDAD:**
+El agente NUNCA debe crear elementos de UI que no funcionen. TODO lo que se implemente DEBE:
+
+1. **Botones:** Cada botón DEBE tener su evento y ejecutar una acción real
+2. **Links/Navegación:** Cada link DEBE llevar a una página/sección que EXISTA
+3. **Formularios:** Cada formulario DEBE enviar datos al backend correctamente
+4. **Modales:** Cada modal DEBE abrirse, cerrarse y funcionar completamente
+5. **Tablas:** Los datos DEBEN cargarse de la base de datos real, NO datos mock
+6. **Filtros/Búsquedas:** DEBEN filtrar datos realmente, no ser solo visuales
+7. **Paginación:** DEBE funcionar con datos reales
+8. **Gráficos:** DEBEN mostrar datos reales de la BD
+9. **Acciones:** Aprobar, rechazar, banear, etc. DEBEN ejecutarse en el backend
+10. **Exportaciones:** DEBEN generar archivos descargables reales
+
+**ANTES DE MARCAR CUALQUIER TAREA COMO COMPLETADA:**
+- [ ] Verificar que TODOS los botones funcionan
+- [ ] Verificar que TODAS las páginas/secciones existen
+- [ ] Verificar que los datos vienen de la BD (no hardcodeados)
+- [ ] Verificar que las acciones modifican la BD correctamente
+- [ ] Verificar en consola que NO hay errores JS
+- [ ] Verificar en logs del servidor que NO hay errores 500
+- [ ] Probar cada funcionalidad como usuario real
+
+**SI ALGO NO SE PUEDE IMPLEMENTAR COMPLETAMENTE:**
+- Informar al usuario ANTES de crear el elemento
+- NO crear botones/links que digan "Próximamente" o no hagan nada
+- Mejor no crear el elemento hasta que pueda funcionar
+
+**CERO TOLERANCIA A:**
+- Botones que no hacen nada
+- Links que llevan a páginas 404
+- Formularios que no envían datos
+- Tablas con datos falsos/hardcodeados
+- Acciones que solo muestran toast pero no ejecutan nada
+- Gráficos con datos inventados
+
+---
+
 ## SECCIONES DE TRABAJO PENDIENTES
 
 ### Leyenda de Estados:
