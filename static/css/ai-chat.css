@@ -366,16 +366,23 @@
 }
 
 #ai-chat-screen .ai-chat-container {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    height: calc(100vh - 140px);
-    max-height: calc(100vh - 140px);
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
+    position: static !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    width: 100% !important;
+    height: calc(100vh - 140px) !important;
+    max-height: calc(100vh - 140px) !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    animation: none !important;
+    bottom: unset !important;
+    right: unset !important;
+    left: 0 !important;
+    top: 0 !important;
 }
 
 #ai-chat-screen .ai-chat-messages {
