@@ -46,7 +46,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python run.py"
+args = "python app.py"
 waitForPort = 5000
 
 [[ports]]
@@ -54,7 +54,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 35229
+localPort = 36105
 externalPort = 3000
 
 [[ports]]

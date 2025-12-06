@@ -154,36 +154,36 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.1: DASHBOARD PRINCIPAL ⏳
+## FASE 27.1: DASHBOARD PRINCIPAL ✅
 ## ═══════════════════════════════════════
 
 **Pantalla de inicio del admin con resumen de TODO**
 
 ### 27.1.1 - Métricas en Tiempo Real (Cards superiores)
-- [ ] Total de usuarios registrados
-- [ ] Usuarios activos HOY
-- [ ] Total B3C en circulación
-- [ ] Balance Hot Wallet (TON)
-- [ ] Transacciones últimas 24h
-- [ ] Ingresos del día (comisiones)
+- [x] Total de usuarios registrados
+- [x] Usuarios activos HOY
+- [x] Total B3C en circulación
+- [x] Balance Hot Wallet (TON)
+- [x] Transacciones últimas 24h
+- [x] Ingresos del día (comisiones)
 
 ### 27.1.2 - Gráficos del Dashboard
-- [ ] Gráfico de usuarios nuevos (últimos 30 días)
-- [ ] Gráfico de transacciones (últimos 7 días)
-- [ ] Gráfico de ingresos por comisiones
-- [ ] Gráfico de uso por sección de la app
+- [x] Gráfico de usuarios nuevos (últimos 30 días)
+- [x] Gráfico de transacciones (últimos 7 días)
+- [x] Gráfico de ingresos por comisiones
+- [x] Gráfico de uso por sección de la app
 
 ### 27.1.3 - Actividad Reciente (Feed en vivo)
-- [ ] Últimas 10 transacciones
-- [ ] Últimos 5 usuarios registrados
-- [ ] Últimas alertas del sistema
-- [ ] Auto-refresh cada 30 segundos
+- [x] Últimas 10 transacciones
+- [x] Últimos 5 usuarios registrados
+- [x] Últimas alertas del sistema
+- [x] Auto-refresh cada 30 segundos
 
 ### 27.1.4 - Alertas Críticas
-- [ ] Banner rojo si hay errores del sistema
-- [ ] Alerta si hot wallet tiene bajo balance
-- [ ] Alerta de retiros pendientes de aprobar
-- [ ] Alerta de reportes de contenido sin revisar
+- [x] Banner rojo si hay errores del sistema
+- [x] Alerta si hot wallet tiene bajo balance
+- [x] Alerta de retiros pendientes de aprobar
+- [x] Alerta de reportes de contenido sin revisar
 
 ---
 
