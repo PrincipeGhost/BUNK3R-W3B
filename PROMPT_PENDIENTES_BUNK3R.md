@@ -627,6 +627,496 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
+## FASE 27.16: CENTRO DE VIGILANCIA EN TIEMPO REAL ⏳
+## ═══════════════════════════════════════
+
+**Pantalla para ver qué están haciendo los usuarios AHORA MISMO**
+
+### 27.16.1 - Usuarios Conectados Ahora
+- [ ] Lista de usuarios online en este momento
+- [ ] Indicador verde "En línea" / amarillo "Inactivo" / gris "Desconectado"
+- [ ] Tiempo que llevan conectados
+- [ ] Última acción realizada
+- [ ] Click para ver perfil completo
+- [ ] Contador total de usuarios online
+
+### 27.16.2 - Feed de Actividad en Vivo
+- [ ] Stream en tiempo real de TODAS las acciones
+- [ ] Tipos: Login, Logout, Publicación, Compra, Venta, Mensaje, etc.
+- [ ] Timestamp de cada acción
+- [ ] Usuario que realizó la acción
+- [ ] Filtrar por tipo de acción
+- [ ] Filtrar por usuario específico
+- [ ] Pausar/Reanudar feed
+- [ ] Auto-scroll o manual
+
+### 27.16.3 - Mapa de Usuarios (Opcional)
+- [ ] Mapa mundial con ubicación de usuarios conectados
+- [ ] Puntos en países donde hay usuarios
+- [ ] Hover muestra cantidad por país
+- [ ] Click en país filtra lista
+
+### 27.16.4 - Alertas en Tiempo Real
+- [ ] Popup cuando ocurre algo crítico
+- [ ] Nuevo usuario registrado
+- [ ] Compra grande (>X TON)
+- [ ] Múltiples logins fallidos
+- [ ] Usuario reportado
+- [ ] Sonido opcional para alertas
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.17: PERFIL COMPLETO DEL USUARIO (VISTA 360°) ⏳
+## ═══════════════════════════════════════
+
+**Al hacer clic en un usuario, ver ABSOLUTAMENTE TODO sobre él**
+
+### 27.17.1 - Header del Perfil Admin
+- [ ] Avatar grande del usuario
+- [ ] Username y nombre completo
+- [ ] Badges: Verificado, Baneado, VIP, Sospechoso
+- [ ] Fecha de registro
+- [ ] Última conexión (hace X minutos/horas)
+- [ ] Estado actual: Online/Offline
+- [ ] Botones de acción rápida (Banear, Mensaje, Impersonar)
+
+### 27.17.2 - Resumen Ejecutivo
+- [ ] Card con estadísticas clave del usuario:
+  - Total gastado en B3C
+  - Total publicaciones
+  - Total seguidores/seguidos
+  - Nivel de actividad (Alto/Medio/Bajo)
+  - Score de riesgo (ver FASE 27.18)
+  - Días desde registro
+  - Días desde última actividad
+
+### 27.17.3 - Timeline de Actividad Completa
+- [ ] TODAS las acciones del usuario en orden cronológico
+- [ ] Infinito scroll o paginación
+- [ ] Iconos por tipo de acción
+- [ ] Filtrar por: Fecha, Tipo de acción
+- [ ] Buscar en actividad
+- [ ] Exportar timeline completo
+
+### 27.17.4 - Información de Cuenta
+- [ ] Telegram ID
+- [ ] Username de Telegram
+- [ ] Email (si existe)
+- [ ] Teléfono (si existe)
+- [ ] Bio del perfil
+- [ ] Website
+- [ ] Fecha de nacimiento
+- [ ] Género
+
+### 27.17.5 - Información de Acceso
+- [ ] Historial COMPLETO de IPs usadas (con fechas)
+- [ ] País/Ciudad de cada IP (geolocalización)
+- [ ] Dispositivos usados (con User-Agent parseado)
+- [ ] Navegadores usados
+- [ ] Sistema operativo
+- [ ] Lista de sesiones activas ahora
+- [ ] Historial de sesiones pasadas
+
+### 27.17.6 - Información de Wallet
+- [ ] Wallet principal conectada (completa)
+- [ ] Wallet de respaldo (si existe)
+- [ ] Balance actual en B3C
+- [ ] Balance en TON vinculado
+- [ ] Link a TonScan para ver wallet
+- [ ] Historial de wallets conectadas/desconectadas
+
+### 27.17.7 - Información de Seguridad
+- [ ] 2FA activado: Sí/No
+- [ ] Fecha de activación 2FA
+- [ ] Dispositivos de confianza
+- [ ] Intentos de login fallidos recientes
+- [ ] Alertas de seguridad del usuario
+- [ ] Score de seguridad
+
+### 27.17.8 - Transacciones del Usuario
+- [ ] Tabla con TODAS las transacciones
+- [ ] Tipos: Compras, Ventas, Transferencias enviadas/recibidas, Retiros
+- [ ] Montos, fechas, estados
+- [ ] Total gastado histórico
+- [ ] Total recibido histórico
+- [ ] Gráfico de actividad financiera
+
+### 27.17.9 - Contenido del Usuario
+- [ ] Grid de todas sus publicaciones
+- [ ] Preview de cada publicación
+- [ ] Likes, comentarios, shares de cada una
+- [ ] Stories subidas
+- [ ] Contenido eliminado (si se guarda)
+- [ ] Comentarios que ha dejado en otras publicaciones
+
+### 27.17.10 - Interacciones Sociales
+- [ ] Lista de seguidores (con links)
+- [ ] Lista de seguidos (con links)
+- [ ] Usuarios que más interactúa
+- [ ] Mensajes enviados/recibidos (cantidad, no contenido)
+- [ ] Usuarios bloqueados por él
+- [ ] Usuarios que lo bloquearon
+
+### 27.17.11 - Compras y Servicios Usados
+- [ ] Números virtuales comprados
+- [ ] Bots utilizados
+- [ ] Compras en marketplace
+- [ ] Ventas en marketplace
+- [ ] Total gastado en cada servicio
+
+### 27.17.12 - Notas y Etiquetas del Admin
+- [ ] Notas internas sobre el usuario
+- [ ] Agregar nueva nota (con fecha y admin que la escribió)
+- [ ] Etiquetas asignadas (ver FASE 27.20)
+- [ ] Historial de acciones admin sobre este usuario
+- [ ] Historial de baneos/advertencias
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.18: SISTEMA DE PUNTUACIÓN DE RIESGO ⏳
+## ═══════════════════════════════════════
+
+**Sistema automático para detectar usuarios problemáticos**
+
+### 27.18.1 - Score de Riesgo (0-100)
+- [ ] Algoritmo que calcula puntuación automática
+- [ ] Factores que SUMAN riesgo:
+  - Múltiples IPs en poco tiempo (+15)
+  - Cambio frecuente de wallet (+20)
+  - Contenido reportado (+10 por reporte)
+  - Transacciones sospechosas (+25)
+  - Cuenta nueva con alta actividad (+10)
+  - IP en lista de proxies/VPN (+15)
+  - Patrones de bot/automatización (+30)
+  - Login desde países de alto riesgo (+10)
+  - Intentos de login fallidos (+5 cada uno)
+
+### 27.18.2 - Factores que RESTAN riesgo
+- [ ] 2FA activado (-20)
+- [ ] Cuenta verificada (-15)
+- [ ] Antigüedad de cuenta (-5 por año)
+- [ ] Historial limpio (-10)
+- [ ] Transacciones exitosas (-1 por cada 10)
+
+### 27.18.3 - Niveles de Riesgo
+- [ ] 0-20: 🟢 Bajo (verde)
+- [ ] 21-40: 🟡 Moderado (amarillo)
+- [ ] 41-60: 🟠 Elevado (naranja)
+- [ ] 61-80: 🔴 Alto (rojo)
+- [ ] 81-100: ⚫ Crítico (negro)
+
+### 27.18.4 - Dashboard de Riesgo
+- [ ] Lista de usuarios ordenados por score de riesgo
+- [ ] Alertas automáticas para score > 60
+- [ ] Filtrar por nivel de riesgo
+- [ ] Ver detalle de por qué tiene ese score
+- [ ] Acción rápida: Revisar / Banear / Ignorar
+
+### 27.18.5 - Configuración del Sistema de Riesgo
+- [ ] Ajustar peso de cada factor
+- [ ] Definir umbrales de alerta
+- [ ] Activar/desactivar factores específicos
+- [ ] Acciones automáticas por nivel (ej: banear si > 90)
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.19: MODO SHADOW (IMPERSONACIÓN AVANZADA) ⏳
+## ═══════════════════════════════════════
+
+**Ver la app EXACTAMENTE como la ve el usuario**
+
+### 27.19.1 - Activar Modo Shadow
+- [ ] Botón "Ver como este usuario" en perfil
+- [ ] Requiere 2FA para activar
+- [ ] Se registra en logs de admin
+- [ ] Tiempo límite de sesión shadow (30 min)
+
+### 27.19.2 - Vista Shadow
+- [ ] Ver la app completa como si fueras el usuario
+- [ ] Ver su feed personalizado
+- [ ] Ver sus mensajes (solo lectura)
+- [ ] Ver sus transacciones
+- [ ] Ver su perfil como él lo ve
+- [ ] Banner visible "Modo Shadow: @usuario" 
+
+### 27.19.3 - Limitaciones de Seguridad
+- [ ] NO puede realizar acciones (solo lectura)
+- [ ] NO puede enviar mensajes
+- [ ] NO puede hacer transacciones
+- [ ] NO puede cambiar configuración del usuario
+- [ ] TODO queda registrado en logs
+
+### 27.19.4 - Uso para Debugging
+- [ ] Ver exactamente lo que reporta el usuario
+- [ ] Reproducir bugs que solo él ve
+- [ ] Verificar que los permisos funcionan bien
+- [ ] Botón "Reportar bug desde vista shadow"
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.20: SISTEMA DE ETIQUETAS Y CLASIFICACIÓN ⏳
+## ═══════════════════════════════════════
+
+**Organizar y clasificar usuarios con etiquetas personalizadas**
+
+### 27.20.1 - Etiquetas Predefinidas
+- [ ] 🐋 Ballena (gasta mucho)
+- [ ] ⭐ VIP
+- [ ] 🔍 En revisión
+- [ ] ⚠️ Advertido
+- [ ] 🚨 Sospechoso
+- [ ] 🤖 Posible bot
+- [ ] 👑 Influencer
+- [ ] 🆕 Nuevo
+- [ ] 💎 Premium
+- [ ] 🔒 Cuenta segura
+
+### 27.20.2 - Etiquetas Personalizadas
+- [ ] Crear nuevas etiquetas
+- [ ] Definir color de la etiqueta
+- [ ] Definir icono/emoji
+- [ ] Descripción de la etiqueta
+- [ ] Eliminar etiquetas no usadas
+
+### 27.20.3 - Asignar Etiquetas
+- [ ] Asignar múltiples etiquetas a un usuario
+- [ ] Desde el perfil del usuario
+- [ ] Desde la lista de usuarios (selección múltiple)
+- [ ] Etiquetas automáticas (basadas en reglas)
+
+### 27.20.4 - Filtrar por Etiquetas
+- [ ] En lista de usuarios, filtrar por etiqueta
+- [ ] Combinación de etiquetas (AND/OR)
+- [ ] Ver solo usuarios con X etiqueta
+- [ ] Estadísticas por etiqueta
+
+### 27.20.5 - Reglas Automáticas de Etiquetado
+- [ ] Si gasta > X B3C → Etiqueta "Ballena"
+- [ ] Si tiene > X seguidores → Etiqueta "Influencer"
+- [ ] Si score riesgo > 60 → Etiqueta "Sospechoso"
+- [ ] Configurar reglas personalizadas
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.21: COMUNICACIÓN DIRECTA CON USUARIOS ⏳
+## ═══════════════════════════════════════
+
+**Enviar mensajes y notificaciones directas a usuarios**
+
+### 27.21.1 - Mensaje Individual
+- [ ] Enviar mensaje directo a un usuario
+- [ ] Aparece en sus notificaciones como "Mensaje del equipo BUNK3R"
+- [ ] Template de mensajes predefinidos
+- [ ] Mensaje personalizado
+- [ ] Adjuntar imagen (opcional)
+
+### 27.21.2 - Mensaje Masivo
+- [ ] Enviar a TODOS los usuarios
+- [ ] Enviar a usuarios filtrados (por país, etiqueta, etc.)
+- [ ] Programar envío
+- [ ] Vista previa antes de enviar
+- [ ] Confirmar cantidad de destinatarios
+
+### 27.21.3 - Tipos de Mensaje
+- [ ] Informativo (icono azul)
+- [ ] Advertencia (icono amarillo)
+- [ ] Urgente (icono rojo)
+- [ ] Promocional (icono dorado)
+- [ ] Actualización (icono verde)
+
+### 27.21.4 - Historial de Mensajes
+- [ ] Log de todos los mensajes enviados
+- [ ] Quién envió, a quién, cuándo
+- [ ] Estadísticas de lectura (si se implementa)
+- [ ] Buscar en historial
+
+### 27.21.5 - Notificaciones Telegram
+- [ ] Enviar notificación via bot de Telegram
+- [ ] Solo si el usuario tiene bot vinculado
+- [ ] Para mensajes urgentes
+- [ ] Respeta configuración del usuario
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.22: DETECTOR DE CUENTAS RELACIONADAS ⏳
+## ═══════════════════════════════════════
+
+**Encontrar multicuentas y cuentas vinculadas**
+
+### 27.22.1 - Detección por IP
+- [ ] Usuarios que comparten la misma IP
+- [ ] Lista agrupada por IP
+- [ ] Alerta automática si > 2 cuentas por IP
+- [ ] Marcar IPs de lugares públicos (cafés, universidades)
+
+### 27.22.2 - Detección por Dispositivo
+- [ ] Usuarios con el mismo device fingerprint
+- [ ] Mismo User-Agent exacto
+- [ ] Mismo tamaño de pantalla + idioma + zona horaria
+
+### 27.22.3 - Detección por Wallet
+- [ ] Usuarios que usaron la misma wallet
+- [ ] Wallets que transfirieron entre sí frecuentemente
+- [ ] Patrón de "wallet intermedia"
+
+### 27.22.4 - Detección por Comportamiento
+- [ ] Usuarios que se siguen mutuamente inmediatamente
+- [ ] Mismo patrón de horarios de conexión
+- [ ] Mismas palabras/frases en bio o publicaciones
+- [ ] Nombres similares (variaciones)
+
+### 27.22.5 - Vista de Relaciones
+- [ ] Gráfico visual de conexiones entre usuarios
+- [ ] Nodos = usuarios, líneas = relación
+- [ ] Color de línea según tipo de relación
+- [ ] Click en nodo para ver perfil
+
+### 27.22.6 - Acciones sobre Multicuentas
+- [ ] Marcar como "cuentas relacionadas"
+- [ ] Banear todas las cuentas relacionadas
+- [ ] Permitir (marcar como válido, ej: familia)
+- [ ] Fusionar cuentas (transferir datos a una)
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.23: GESTIÓN DE VERIFICACIONES ⏳
+## ═══════════════════════════════════════
+
+**Aprobar o rechazar solicitudes de verificación de usuarios**
+
+### 27.23.1 - Cola de Verificaciones
+- [ ] Lista de solicitudes pendientes
+- [ ] Ordenar por fecha de solicitud
+- [ ] Filtrar por tipo de verificación
+- [ ] Contador de pendientes
+
+### 27.23.2 - Detalle de Solicitud
+- [ ] Información del usuario solicitante
+- [ ] Documentos subidos (si aplica)
+- [ ] Razón de la solicitud
+- [ ] Historial del usuario
+- [ ] Score de riesgo
+
+### 27.23.3 - Tipos de Verificación
+- [ ] Verificación básica (email/teléfono)
+- [ ] Verificación de identidad (documento)
+- [ ] Verificación de creador (influencer)
+- [ ] Verificación de negocio
+
+### 27.23.4 - Acciones
+- [ ] Aprobar verificación
+- [ ] Rechazar con razón
+- [ ] Pedir más información
+- [ ] Escalar a otro admin
+
+### 27.23.5 - Historial de Verificaciones
+- [ ] Todas las verificaciones procesadas
+- [ ] Aprobadas vs rechazadas
+- [ ] Estadísticas
+- [ ] Tiempo promedio de respuesta
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.24: REPORTES Y EXPORTACIONES AVANZADAS ⏳
+## ═══════════════════════════════════════
+
+**Generar reportes detallados para análisis**
+
+### 27.24.1 - Reportes de Usuarios
+- [ ] Reporte de usuarios activos
+- [ ] Reporte de usuarios inactivos (no login en X días)
+- [ ] Reporte de usuarios nuevos por período
+- [ ] Reporte de usuarios por país
+- [ ] Reporte de usuarios por nivel de riesgo
+
+### 27.24.2 - Reportes Financieros
+- [ ] Ingresos por período (día/semana/mes)
+- [ ] Desglose por tipo de transacción
+- [ ] Top usuarios por volumen
+- [ ] Comparativa entre períodos
+- [ ] Proyecciones
+
+### 27.24.3 - Reportes de Contenido
+- [ ] Publicaciones por período
+- [ ] Contenido reportado vs moderado
+- [ ] Usuarios más activos creando contenido
+- [ ] Hashtags trending
+
+### 27.24.4 - Reportes de Seguridad
+- [ ] Intentos de acceso fallidos
+- [ ] IPs bloqueadas
+- [ ] Alertas de seguridad
+- [ ] Acciones admin realizadas
+
+### 27.24.5 - Formatos de Exportación
+- [ ] CSV (Excel compatible)
+- [ ] PDF con gráficos
+- [ ] JSON (para sistemas externos)
+- [ ] Programar reportes automáticos (email)
+
+### 27.24.6 - Dashboard de Reportes
+- [ ] Selector de tipo de reporte
+- [ ] Selector de rango de fechas
+- [ ] Filtros adicionales
+- [ ] Vista previa antes de exportar
+- [ ] Historial de reportes generados
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.25: MONITOREO DE PATRONES Y ANOMALÍAS ⏳
+## ═══════════════════════════════════════
+
+**Detectar comportamientos anómalos automáticamente**
+
+### 27.25.1 - Patrones de Transacción
+- [ ] Alerta si usuario hace X transacciones en Y minutos
+- [ ] Alerta si monto total supera umbral en período
+- [ ] Patrón de "lavado" (múltiples transferencias pequeñas)
+- [ ] Transacciones a horas inusuales
+
+### 27.25.2 - Patrones de Acceso
+- [ ] Login desde nuevo país
+- [ ] Cambio de dispositivo frecuente
+- [ ] Sesiones simultáneas desde diferentes lugares
+- [ ] Velocidad de cambio de IP imposible (ej: España a Japón en 5 min)
+
+### 27.25.3 - Patrones de Contenido
+- [ ] Spam (muchas publicaciones en poco tiempo)
+- [ ] Contenido repetitivo
+- [ ] Links sospechosos
+- [ ] Palabras clave de alerta
+
+### 27.25.4 - Patrones de Interacción
+- [ ] Seguimiento masivo (follow/unfollow)
+- [ ] Likes masivos automatizados
+- [ ] Comentarios repetitivos
+- [ ] Comportamiento de bot
+
+### 27.25.5 - Configuración de Alertas
+- [ ] Definir umbrales para cada patrón
+- [ ] Activar/desactivar detección
+- [ ] Acciones automáticas (alertar, banear, limitar)
+- [ ] Whitelist de usuarios excluidos
+
+### 27.25.6 - Dashboard de Anomalías
+- [ ] Lista de anomalías detectadas hoy
+- [ ] Clasificar por severidad
+- [ ] Marcar como revisada
+- [ ] Tomar acción o descartar
+- [ ] Estadísticas de anomalías por tipo
+
+---
+
+## ═══════════════════════════════════════
 ## DISEÑO Y UI DEL PANEL ADMIN
 ## ═══════════════════════════════════════
 
@@ -644,10 +1134,20 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ```
 SIDEBAR:
 ├── Dashboard
+├── 👁️ VIGILANCIA (NUEVO)
+│   ├── En Tiempo Real
+│   ├── Feed de Actividad
+│   ├── Mapa de Usuarios
+│   └── Alertas
 ├── Usuarios
-│   ├── Lista
+│   ├── Lista Completa
+│   ├── Perfiles 360°
 │   ├── Baneados
-│   └── Sesiones
+│   ├── Sesiones Activas
+│   ├── Por Riesgo
+│   ├── Por Etiqueta
+│   └── Multicuentas
+├── 🎭 Modo Shadow
 ├── Transacciones
 │   ├── Todas
 │   ├── Compras B3C
@@ -663,10 +1163,29 @@ SIDEBAR:
 │   └── Hashtags
 ├── Números Virtuales
 ├── Bots
+├── 🏷️ Etiquetas
+│   ├── Gestionar Etiquetas
+│   └── Reglas Automáticas
+├── ⚠️ Riesgo
+│   ├── Dashboard Riesgo
+│   ├── Configurar Factores
+│   └── Alertas Activas
+├── 📨 Comunicación
+│   ├── Enviar Mensaje
+│   ├── Mensajes Masivos
+│   └── Historial
+├── ✅ Verificaciones
+│   ├── Pendientes
+│   └── Historial
 ├── Logs
 │   ├── Acciones Admin
 │   ├── Errores
-│   └── Logins
+│   ├── Logins
+│   └── Anomalías
+├── 📊 Reportes
+│   ├── Generar Reporte
+│   ├── Programados
+│   └── Historial
 ├── Analytics
 ├── Soporte
 │   ├── Tickets
@@ -726,21 +1245,42 @@ SIDEBAR:
 
 ## ORDEN DE IMPLEMENTACIÓN SUGERIDO:
 
+### Prioridad 1 - Control de Usuarios (CRÍTICO)
 1. **FASE 27.1** - Dashboard Principal (base del panel)
 2. **FASE 27.2** - Gestión de Usuarios (crítico para seguridad)
-3. **FASE 27.3** - Transacciones y Finanzas (crítico para operación)
-4. **FASE 27.4** - Wallets y Blockchain
-5. **FASE 27.8** - Logs y Auditoría
-6. **FASE 27.15** - Acceso y Sesiones
-7. **FASE 27.5** - Contenido y Publicaciones
-8. **FASE 27.6** - Números Virtuales
-9. **FASE 27.7** - Gestión de Bots
-10. **FASE 27.9** - Analytics
-11. **FASE 27.10** - Soporte y Tickets
-12. **FASE 27.11** - Marketplace
-13. **FASE 27.12** - Configuración
-14. **FASE 27.13** - Notificaciones Admin
-15. **FASE 27.14** - Backup y Mantenimiento
+3. **FASE 27.17** - Perfil 360° del Usuario (vista completa)
+4. **FASE 27.16** - Centro de Vigilancia en Tiempo Real
+5. **FASE 27.18** - Sistema de Puntuación de Riesgo
+6. **FASE 27.19** - Modo Shadow (Impersonación)
+7. **FASE 27.15** - Acceso y Sesiones
+
+### Prioridad 2 - Finanzas y Transacciones
+8. **FASE 27.3** - Transacciones y Finanzas
+9. **FASE 27.4** - Wallets y Blockchain
+
+### Prioridad 3 - Organización y Comunicación
+10. **FASE 27.20** - Sistema de Etiquetas
+11. **FASE 27.21** - Comunicación Directa
+12. **FASE 27.22** - Detector de Multicuentas
+13. **FASE 27.23** - Gestión de Verificaciones
+
+### Prioridad 4 - Logs y Seguridad
+14. **FASE 27.8** - Logs y Auditoría
+15. **FASE 27.25** - Monitoreo de Anomalías
+16. **FASE 27.24** - Reportes Avanzados
+
+### Prioridad 5 - Contenido y Servicios
+17. **FASE 27.5** - Contenido y Publicaciones
+18. **FASE 27.6** - Números Virtuales
+19. **FASE 27.7** - Gestión de Bots
+20. **FASE 27.11** - Marketplace
+
+### Prioridad 6 - Extras
+21. **FASE 27.9** - Analytics
+22. **FASE 27.10** - Soporte y Tickets
+23. **FASE 27.12** - Configuración
+24. **FASE 27.13** - Notificaciones Admin
+25. **FASE 27.14** - Backup y Mantenimiento
 
 ---
 
