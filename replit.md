@@ -117,7 +117,7 @@ Rediseño completo del UI al estilo neo-bank profesional (Binance/Revolut/N26):
 - Todos los colores azules (#4299e1, #63b3ed, rgba(66,153,225)) reemplazados por gold
 - Gradientes actualizados a tonos dorados
 
-### SECCIÓN 22 - Auditoría de Seguridad (EN PROGRESO)
+### SECCIÓN 22 - Auditoría de Seguridad (COMPLETADO)
 Mejoras de seguridad implementadas:
 
 **Cambios realizados (5 Diciembre 2025):**
@@ -130,6 +130,38 @@ Mejoras de seguridad implementadas:
 - ADMIN_TOKEN obligatorio en producción (fail-fast si no está configurado)
 - Confirmado que escapeHtml() se usa consistentemente para prevenir XSS
 - Verificado SERIALIZABLE isolation level en transferencias P2P
+
+**Fixes de Seguridad (6 Diciembre 2025):**
+
+1. **FIX CRÍTICO 1: Modo Demo bypass** - `app.py`
+   - X-Demo-Mode header bloqueado en producción con 403
+   - Logging de intentos bloqueados para auditoría
+
+2. **FIX CRÍTICO 2: Protección CSRF** - `app.py`
+   - Middleware global `csrf_middleware()` registrado con `@app.before_request`
+   - Verifica Origin/Referer para requests POST/PUT/DELETE/PATCH
+   - Lista `CSRF_EXEMPT_ENDPOINTS` para endpoints públicos que no requieren verificación
+
+3. **FIX CRÍTICO 3: Rate limiting endpoints B3C** - `app.py`
+   - Rate limiting en `/api/b3c/config`, `/api/b3c/network`, `/api/b3c/testnet/guide`
+   - Endpoint `/api/b3c/last-purchase` requiere autenticación completa (@require_telegram_auth + @require_owner)
+
+4. **FIX ALTO 1: Sanitización XSS** - `tracking/database.py`
+   - Función `sanitize_location_name()` con `html.escape()` y regex
+   - Aplicado en `generate_route_history_events()` para nombres de checkpoints
+
+5. **FIX ALTO 2: Race condition purchase_bot** - `tracking/database.py`
+   - Cambiado de SERIALIZABLE a FOR UPDATE lock (evita corrupción del pool)
+   - Retry con exponential backoff para SerializationFailure y DeadlockDetected
+
+6. **FIX ALTO 3: Validación wallet TON** - `tracking/security.py`
+   - Validación de formato wallet (prefijos: EQ, UQ, 0:, kQ)
+   - Validación de longitud (48-66 caracteres)
+
+7. **FIX MEDIO: Headers de seguridad** - `app.py`
+   - Middleware `add_security_headers()` con `@app.after_request`
+   - Headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy
+   - HSTS solo en producción
 
 ### SECCIÓN 24 - Sistema de Wallets Únicas por Compra (COMPLETADO)
 Sistema de wallets temporales para identificación 100% segura de pagos B3C:

@@ -473,6 +473,60 @@ def rate_limit(action: str = 'default', use_ip: bool = False):
 import time
 
 
+def verify_origin_referer() -> tuple:
+    """
+    Verifica Origin/Referer para protección CSRF.
+    Returns: (is_valid: bool, error_message: str or None)
+    """
+    if not IS_PRODUCTION:
+        return True, None
+    
+    origin = request.headers.get('Origin', '')
+    referer = request.headers.get('Referer', '')
+    host = request.host_url.rstrip('/')
+    
+    allowed_origins = {
+        host,
+        'https://web.telegram.org',
+        'https://telegram.org'
+    }
+    
+    if origin:
+        origin_base = origin.rstrip('/')
+        if origin_base not in allowed_origins and not origin_base.endswith('.telegram.org'):
+            return False, f"Origin no permitido: {origin}"
+    
+    if referer:
+        from urllib.parse import urlparse
+        referer_host = urlparse(referer).netloc
+        host_only = request.host.split(':')[0]
+        if referer_host not in [host_only, 'web.telegram.org', 'telegram.org'] and not referer_host.endswith('.telegram.org'):
+            return False, f"Referer no permitido: {referer_host}"
+    
+    return True, None
+
+
+def csrf_protect(f):
+    """
+    Decorador para protección CSRF en endpoints POST/PUT/DELETE.
+    Verifica Origin/Referer y requiere autenticación válida.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
+            is_valid, error = verify_origin_referer()
+            if not is_valid:
+                client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                logger.warning(f"CSRF: Blocked request from IP {client_ip}: {error}")
+                return jsonify({
+                    'error': 'Solicitud no autorizada',
+                    'code': 'CSRF_FAILED'
+                }), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def validate_telegram_webapp_data(init_data: str):
     """Valida los datos de Telegram Web App segun la documentacion oficial."""
     if not init_data or not BOT_TOKEN:
@@ -546,9 +600,14 @@ def require_telegram_auth(f):
     """Decorador para requerir autenticación de Telegram o modo demo."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        is_demo_mode = request.headers.get('X-Demo-Mode') == 'true'
+        demo_header_present = request.headers.get('X-Demo-Mode') == 'true'
         
-        if is_demo_mode:
+        if demo_header_present and IS_PRODUCTION:
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            logger.warning(f"SECURITY: Demo mode attempt blocked in production from IP: {client_ip}")
+            return jsonify({'error': 'Modo demo no disponible', 'code': 'DEMO_DISABLED'}), 403
+        
+        if demo_header_present and not IS_PRODUCTION:
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -598,9 +657,14 @@ def require_telegram_user(f):
     """Decorador para funciones que cualquier usuario autenticado de Telegram puede usar."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        is_demo_mode = request.headers.get('X-Demo-Mode') == 'true'
+        demo_header_present = request.headers.get('X-Demo-Mode') == 'true'
         
-        if is_demo_mode:
+        if demo_header_present and IS_PRODUCTION:
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            logger.warning(f"SECURITY: Demo mode attempt blocked in production from IP: {client_ip}")
+            return jsonify({'error': 'Modo demo no disponible', 'code': 'DEMO_DISABLED'}), 403
+        
+        if demo_header_present and not IS_PRODUCTION:
             request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
             request.telegram_data = {}
             request.is_owner = True
@@ -630,6 +694,64 @@ def require_telegram_user(f):
         
         return f(*args, **kwargs)
     return decorated_function
+
+
+CSRF_EXEMPT_ENDPOINTS = {
+    'static',
+    'index',
+    'health_check',
+    'tonconnect_manifest',
+    'get_b3c_price',
+    'get_b3c_network',
+    'api_b3c_calculate',
+    'calculate_b3c_sell',
+    'public_posts_feed',
+    'public_user_profile',
+    'public_comments'
+}
+
+
+@app.before_request
+def csrf_middleware():
+    """Middleware global para verificación CSRF en métodos que modifican datos."""
+    if request.method not in ['POST', 'PUT', 'DELETE', 'PATCH']:
+        return None
+    
+    if request.endpoint in CSRF_EXEMPT_ENDPOINTS:
+        return None
+    
+    if request.endpoint and request.endpoint.startswith('static'):
+        return None
+    
+    is_valid, error = verify_origin_referer()
+    if not is_valid:
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        logger.warning(f"CSRF Middleware: Blocked {request.method} to {request.path} from IP {client_ip}: {error}")
+        return jsonify({
+            'error': 'Solicitud no autorizada',
+            'code': 'CSRF_FAILED'
+        }), 403
+    
+    return None
+
+
+@app.after_request
+def add_security_headers(response):
+    """Agregar headers de seguridad a todas las respuestas."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    
+    if IS_PRODUCTION:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    
+    if request.endpoint and not request.endpoint.startswith('static'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+    
+    return response
 
 
 @app.route('/static/tonconnect-manifest.json')
@@ -3122,7 +3244,7 @@ def get_b3c_balance():
         user_id = '0'
         if hasattr(request, 'telegram_user') and request.telegram_user:
             user_id = str(request.telegram_user.get('id', 0))
-        elif request.headers.get('X-Demo-Mode') == 'true':
+        elif request.headers.get('X-Demo-Mode') == 'true' and not IS_PRODUCTION:
             user_id = '0'
         else:
             init_data = request.headers.get('X-Telegram-Init-Data', '')
@@ -3180,6 +3302,7 @@ def get_b3c_balance():
 
 
 @app.route('/api/b3c/config', methods=['GET'])
+@rate_limit('price_check', use_ip=True)
 def get_b3c_config():
     """Obtener configuracion del servicio B3C."""
     try:
@@ -3195,6 +3318,7 @@ def get_b3c_config():
 
 
 @app.route('/api/b3c/network', methods=['GET'])
+@rate_limit('price_check', use_ip=True)
 def get_b3c_network_status():
     """Verificar estado de la red TON."""
     try:
@@ -3207,6 +3331,7 @@ def get_b3c_network_status():
 
 
 @app.route('/api/b3c/testnet/guide', methods=['GET'])
+@rate_limit('price_check', use_ip=True)
 def get_testnet_setup_guide():
     """Obtener guia de configuracion para testnet."""
     try:
@@ -4274,8 +4399,11 @@ def get_pending_deposits():
 
 
 @app.route('/api/b3c/last-purchase', methods=['GET'])
+@require_telegram_auth
+@require_owner
+@rate_limit('price_check', use_ip=True)
 def get_last_b3c_purchase():
-    """Obtener logs de la última compra de B3C con información del usuario."""
+    """Obtener logs de la última compra de B3C con información del usuario (admin only)."""
     try:
         if not db_manager:
             return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500

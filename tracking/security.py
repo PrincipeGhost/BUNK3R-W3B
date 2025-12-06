@@ -520,6 +520,20 @@ class SecurityManager:
     def register_backup_wallet(self, user_id: str, backup_wallet: str) -> Dict:
         """Register a backup wallet for emergency recovery"""
         try:
+            import re
+            
+            if not backup_wallet or not isinstance(backup_wallet, str):
+                return {'success': False, 'error': 'Wallet inválida'}
+            
+            backup_wallet = backup_wallet.strip()
+            
+            ton_wallet_pattern = r'^(EQ|UQ|0:|kQ)[a-zA-Z0-9_-]{46,48}$'
+            if not re.match(ton_wallet_pattern, backup_wallet):
+                return {'success': False, 'error': 'Formato de wallet TON inválido. Debe comenzar con EQ, UQ, 0: o kQ'}
+            
+            if len(backup_wallet) < 48 or len(backup_wallet) > 66:
+                return {'success': False, 'error': 'Longitud de wallet inválida'}
+            
             primary = self.get_user_primary_wallet(user_id)
             if not primary:
                 return {'success': False, 'error': 'Debes tener una wallet primaria registrada primero'}

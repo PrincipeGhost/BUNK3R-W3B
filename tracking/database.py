@@ -432,10 +432,22 @@ class DatabaseManager:
                 logger.warning(f"No checkpoints provided for tracking {tracking_id}")
                 return False
             
+            import html
+            import re
+            
+            def sanitize_location_name(name: str) -> str:
+                """Sanitize location names to prevent XSS/injection."""
+                if not name:
+                    return ""
+                name = str(name).strip()[:100]
+                name = re.sub(r'[<>"\'\\/;`]', '', name)
+                name = html.escape(name)
+                return name
+            
             if isinstance(checkpoints[0], dict):
-                state_names = [cp.get("name", "") for cp in checkpoints if cp.get("name")]
+                state_names = [sanitize_location_name(cp.get("name", "")) for cp in checkpoints if cp.get("name")]
             else:
-                state_names = [str(cp) for cp in checkpoints if cp]
+                state_names = [sanitize_location_name(str(cp)) for cp in checkpoints if cp]
             
             if len(state_names) == 0:
                 logger.warning(f"No valid state names in checkpoints for tracking {tracking_id}")
@@ -1450,77 +1462,102 @@ class DatabaseManager:
             return False
     
     def purchase_bot(self, user_id: str, bot_type: str) -> dict:
-        """Comprar un bot - verifica créditos, descuenta y activa el bot"""
-        try:
-            with self.get_connection() as conn:
-                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    cur.execute(
-                        "SELECT credits FROM users WHERE id = %s",
-                        (user_id,)
-                    )
-                    user = cur.fetchone()
-                    if not user:
-                        return {'success': False, 'error': 'Usuario no encontrado'}
-                    
-                    user_credits = user['credits'] or 0
-                    
-                    cur.execute(
-                        "SELECT bot_name, price, icon FROM bot_types WHERE bot_type = %s AND is_available = TRUE",
-                        (bot_type,)
-                    )
-                    bot = cur.fetchone()
-                    if not bot:
-                        return {'success': False, 'error': 'Bot no disponible'}
-                    
-                    bot_price = bot['price'] or 0
-                    
-                    if user_credits < bot_price:
-                        return {'success': False, 'error': 'Créditos insuficientes', 'required': bot_price, 'current': user_credits}
-                    
-                    cur.execute(
-                        "SELECT id FROM user_bots WHERE user_id = %s AND bot_type = %s AND is_active = TRUE",
-                        (user_id, bot_type)
-                    )
-                    if cur.fetchone():
-                        return {'success': False, 'error': 'Ya tienes este bot activo'}
-                    
-                    cur.execute(
-                        "UPDATE users SET credits = credits - %s WHERE id = %s",
-                        (bot_price, user_id)
-                    )
-                    
-                    cur.execute(
-                        """INSERT INTO user_bots (user_id, bot_name, bot_type, is_active)
-                           VALUES (%s, %s, %s, TRUE)""",
-                        (user_id, bot['bot_name'], bot_type)
-                    )
-                    
-                    cur.execute(
-                        """INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id)
-                           VALUES (%s, 'purchase', %s, %s, %s)""",
-                        (user_id, -bot_price, f"Compra de bot: {bot['bot_name']}", bot_type)
-                    )
-                    
-                    conn.commit()
-                    
-                    new_balance = user_credits - bot_price
-                    self.create_transaction_notification(
-                        user_id=user_id,
-                        amount=bot_price,
-                        transaction_type='bot_purchase',
-                        new_balance=new_balance
-                    )
-                    
-                    logger.info(f"User {user_id} purchased bot {bot_type} for {bot_price} credits")
-                    return {
-                        'success': True, 
-                        'message': f'Bot {bot["bot_name"]} activado correctamente',
-                        'bot_name': bot['bot_name'],
-                        'credits_remaining': new_balance
-                    }
-        except Exception as e:
-            logger.error(f"Error purchasing bot {bot_type} for user {user_id}: {e}")
-            return {'success': False, 'error': str(e)}
+        """Comprar un bot - verifica créditos, descuenta y activa el bot.
+        Usa FOR UPDATE lock para evitar race conditions con retry."""
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                with self.get_connection() as conn:
+                    try:
+                        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                            cur.execute(
+                                "SELECT credits FROM users WHERE id = %s FOR UPDATE",
+                                (user_id,)
+                            )
+                            user = cur.fetchone()
+                            if not user:
+                                return {'success': False, 'error': 'Usuario no encontrado'}
+                            
+                            user_credits = user['credits'] or 0
+                            
+                            cur.execute(
+                                "SELECT bot_name, price, icon FROM bot_types WHERE bot_type = %s AND is_available = TRUE",
+                                (bot_type,)
+                            )
+                            bot = cur.fetchone()
+                            if not bot:
+                                return {'success': False, 'error': 'Bot no disponible'}
+                            
+                            bot_price = bot['price'] or 0
+                            
+                            if user_credits < bot_price:
+                                return {'success': False, 'error': 'Créditos insuficientes', 'required': bot_price, 'current': user_credits}
+                            
+                            cur.execute(
+                                "SELECT id FROM user_bots WHERE user_id = %s AND bot_type = %s AND is_active = TRUE",
+                                (user_id, bot_type)
+                            )
+                            if cur.fetchone():
+                                return {'success': False, 'error': 'Ya tienes este bot activo'}
+                            
+                            cur.execute(
+                                "UPDATE users SET credits = credits - %s WHERE id = %s",
+                                (bot_price, user_id)
+                            )
+                            
+                            cur.execute(
+                                """INSERT INTO user_bots (user_id, bot_name, bot_type, is_active)
+                                   VALUES (%s, %s, %s, TRUE)""",
+                                (user_id, bot['bot_name'], bot_type)
+                            )
+                            
+                            cur.execute(
+                                """INSERT INTO wallet_transactions (user_id, transaction_type, amount, description, reference_id)
+                                   VALUES (%s, 'purchase', %s, %s, %s)""",
+                                (user_id, -bot_price, f"Compra de bot: {bot['bot_name']}", bot_type)
+                            )
+                            
+                            conn.commit()
+                            
+                            new_balance = user_credits - bot_price
+                            self.create_transaction_notification(
+                                user_id=user_id,
+                                amount=bot_price,
+                                transaction_type='bot_purchase',
+                                new_balance=new_balance
+                            )
+                            
+                            logger.info(f"User {user_id} purchased bot {bot_type} for {bot_price} credits")
+                            return {
+                                'success': True, 
+                                'message': f'Bot {bot["bot_name"]} activado correctamente',
+                                'bot_name': bot['bot_name'],
+                                'credits_remaining': new_balance
+                            }
+                    except psycopg2.errors.SerializationFailure:
+                        conn.rollback()
+                        if attempt < max_retries - 1:
+                            import time
+                            time.sleep(0.1 * (attempt + 1))
+                            continue
+                        raise
+                    except psycopg2.errors.DeadlockDetected:
+                        conn.rollback()
+                        if attempt < max_retries - 1:
+                            import time
+                            time.sleep(0.1 * (attempt + 1))
+                            continue
+                        raise
+            except (psycopg2.errors.SerializationFailure, psycopg2.errors.DeadlockDetected):
+                if attempt == max_retries - 1:
+                    logger.warning(f"Purchase bot failed after {max_retries} retries for user {user_id}")
+                    return {'success': False, 'error': 'Operación ocupada, intenta de nuevo'}
+            except Exception as e:
+                logger.error(f"Error purchasing bot {bot_type} for user {user_id}: {e}")
+                return {'success': False, 'error': 'Error al procesar compra'}
+        
+        return {'success': False, 'error': 'Operación ocupada, intenta de nuevo'}
     
     def initialize_bot_types(self) -> bool:
         """Inicializar tabla de tipos de bots disponibles"""
