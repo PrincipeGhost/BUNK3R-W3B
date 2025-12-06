@@ -2078,3 +2078,203 @@ Las opciones se agrupan en cards/secciones visuales:
 10. **Décimo:** Sección Ayuda y Cerrar Sesión
 
 ---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 30: FIXES DE SEGURIDAD Y VULNERABILIDADES 🔴
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Agregado:** 6 Diciembre 2025  
+**Estado:** EN PROGRESO 🔄
+
+---
+
+### OBJETIVO PRINCIPAL:
+Resolver todas las vulnerabilidades de seguridad detectadas en el análisis del proyecto, organizadas por severidad para asegurar la integridad y protección de los usuarios y sus fondos.
+
+---
+
+## ═══════════════════════════════════════
+## FASE 30.1: VULNERABILIDADES CRÍTICAS 🔴
+## ═══════════════════════════════════════
+
+### 30.1.1 - Eliminar/Proteger Modo Demo ✅
+**Problema:** El header `X-Demo-Mode: true` otorga acceso de OWNER sin validación.
+**Riesgo:** Cualquier atacante puede obtener privilegios de administrador.
+**Ubicación:** `app.py` líneas 549, 601, 3125
+
+**Solución:**
+- [x] Eliminar modo demo en producción
+- [x] Si se mantiene, solo permitir en desarrollo (verificar `IS_PRODUCTION`)
+- [x] Agregar logging cuando se intente usar en producción
+
+---
+
+### 30.1.2 - Implementar Protección CSRF ⏳
+**Problema:** No hay tokens CSRF en formularios/endpoints.
+**Riesgo:** Ataques Cross-Site Request Forgery en operaciones financieras.
+**Ubicación:** `app.py` - todos los endpoints POST/PUT/DELETE
+
+**Solución:**
+- [ ] Implementar tokens CSRF para operaciones críticas
+- [ ] Validar origen de requests (Origin/Referer headers)
+- [ ] Agregar header `SameSite` a cookies
+
+---
+
+### 30.1.3 - Proteger Endpoints Públicos de B3C ⏳
+**Problema:** Endpoints de precio/cálculo son públicos sin rate limiting estricto.
+**Riesgo:** Scraping de precios, análisis de patrones, DoS.
+**Ubicación:** `/api/b3c/price`, `/api/b3c/network`, `/api/b3c/calculate/*`
+
+**Solución:**
+- [ ] Agregar rate limiting más estricto (10/min por IP)
+- [ ] Considerar autenticación opcional
+- [ ] Agregar headers de cache para reducir carga
+
+---
+
+## ═══════════════════════════════════════
+## FASE 30.2: VULNERABILIDADES ALTAS 🟠
+## ═══════════════════════════════════════
+
+### 30.2.1 - Corregir SQL Injection Potencial ⏳
+**Problema:** Construcción de SQL con f-strings en lugar de queries parametrizadas.
+**Riesgo:** Inyección SQL, pérdida de datos, acceso no autorizado.
+**Ubicación:** `tracking/database.py` - función `generate_route_history_events`
+
+**Solución:**
+- [ ] Revisar todas las funciones con SQL
+- [ ] Reemplazar f-strings por queries parametrizadas (%s)
+- [ ] Agregar tests de seguridad
+
+---
+
+### 30.2.2 - Agregar SERIALIZABLE a Compra de Bots ⏳
+**Problema:** La función de compra de bots no previene race conditions.
+**Riesgo:** Doble gasto, usuarios obtienen bots gratis.
+**Ubicación:** `tracking/database.py` líneas 1455-1506
+
+**Solución:**
+- [ ] Agregar `conn.set_session(isolation_level='SERIALIZABLE')`
+- [ ] Usar `SELECT ... FOR UPDATE` en balance check
+- [ ] Agregar rollback explícito en errores
+
+---
+
+### 30.2.3 - Validar Wallet en register_backup_wallet ⏳
+**Problema:** No se valida formato de wallet antes de guardar.
+**Riesgo:** Wallets inválidas guardadas, errores en retiros.
+**Ubicación:** `app.py` endpoint `/api/security/wallet/backup`
+
+**Solución:**
+- [ ] Usar `validate_ton_address()` antes de guardar
+- [ ] Rechazar wallets con formato inválido
+- [ ] Agregar tests unitarios
+
+---
+
+### 30.2.4 - Mejorar Manejo de Excepciones ⏳
+**Problema:** Muchos `except Exception` devuelven `str(e)` exponiendo detalles internos.
+**Riesgo:** Exposición de información sensible a atacantes.
+**Ubicación:** Múltiples archivos
+
+**Solución:**
+- [ ] Usar `sanitize_error()` consistentemente
+- [ ] No exponer stack traces al usuario
+- [ ] Logging detallado interno, mensaje genérico externo
+
+---
+
+## ═══════════════════════════════════════
+## FASE 30.3: VULNERABILIDADES MEDIAS 🟡
+## ═══════════════════════════════════════
+
+### 30.3.1 - Agregar Headers de Seguridad ⏳
+**Problema:** Faltan headers de seguridad HTTP estándar.
+**Riesgo:** XSS, clickjacking, MITM attacks.
+**Ubicación:** `app.py` - respuestas HTTP
+
+**Solución:**
+- [ ] Agregar `X-Content-Type-Options: nosniff`
+- [ ] Agregar `X-Frame-Options: DENY` (o SAMEORIGIN si necesario)
+- [ ] Agregar `Strict-Transport-Security` en producción
+- [ ] Agregar `Content-Security-Policy` básico
+- [ ] Agregar `X-XSS-Protection: 1; mode=block`
+
+---
+
+### 30.3.2 - Rate Limiting Consistente ⏳
+**Problema:** Algunos endpoints financieros no tienen rate limiting.
+**Riesgo:** Abuso de API, DoS en endpoints críticos.
+**Ubicación:** Varios endpoints en `app.py`
+
+**Solución:**
+- [ ] Revisar todos los endpoints y agregar rate limiting donde falte
+- [ ] Endpoints financieros: máximo 10-30 req/min
+- [ ] Endpoints de lectura: máximo 60-100 req/min
+
+---
+
+### 30.3.3 - Corregir Errores de Tipado (LSP) ⏳
+**Problema:** 311 errores de tipado detectados por el linter.
+**Riesgo:** Bugs difíciles de detectar en runtime.
+**Ubicación:** `app.py` (302), `tracking/security.py` (9)
+
+**Solución:**
+- [ ] Agregar type hints correctos a funciones
+- [ ] Corregir returns de `None` donde se espera otro tipo
+- [ ] Usar Optional[] donde aplique
+
+---
+
+### 30.3.4 - Proteger Health Endpoint ⏳
+**Problema:** `/api/health` expone estado de la base de datos.
+**Riesgo:** Información útil para atacantes sobre disponibilidad.
+**Ubicación:** `app.py` líneas 655-681
+
+**Solución:**
+- [ ] Limitar información expuesta
+- [ ] Considerar autenticación básica o IP whitelist
+- [ ] Solo exponer `ready: true/false`
+
+---
+
+## ═══════════════════════════════════════
+## FASE 30.4: MEJORAS DE SEGURIDAD 🟢
+## ═══════════════════════════════════════
+
+### 30.4.1 - Sistema de Logs de Auditoría ⏳
+- [ ] Registrar todas las acciones de admin
+- [ ] Registrar cambios de configuración
+- [ ] Registrar intentos de acceso fallidos
+- [ ] Tabla `admin_audit_log` con timestamps
+
+### 30.4.2 - Límites Acumulados Diarios ⏳
+- [ ] Implementar límite diario de retiros por usuario
+- [ ] Alertar al admin si se supera umbral
+- [ ] Permitir override manual por admin
+
+### 30.4.3 - Alertas de Seguridad en Tiempo Real ⏳
+- [ ] Notificación Telegram a owner cuando:
+  - Múltiples intentos de login fallidos
+  - Retiro grande (>X TON)
+  - Cambio de wallet primaria
+  - Acceso desde nueva IP/país
+
+### 30.4.4 - Verificación Adicional para Retiros Grandes ⏳
+- [ ] Requerir confirmación 2FA para retiros >100 TON
+- [ ] Delay de 24h para retiros >500 TON (con opción de cancelar)
+- [ ] Notificación obligatoria al usuario
+
+---
+
+## CRITERIOS DE ACEPTACIÓN GENERAL:
+
+- [ ] Todos los fixes críticos implementados
+- [ ] Tests manuales de cada corrección
+- [ ] Sin regresiones en funcionalidades existentes
+- [ ] Logs verificados sin errores
+- [ ] Documentación actualizada
+
+---
