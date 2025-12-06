@@ -5422,7 +5422,7 @@ def admin_get_stats():
                 cur.execute("SELECT COUNT(*) FROM users")
                 total_users = cur.fetchone()[0] or 0
                 
-                cur.execute("SELECT COUNT(*) FROM user_bots WHERE active = true")
+                cur.execute("SELECT COUNT(*) FROM user_bots WHERE is_active = true")
                 active_bots = cur.fetchone()[0] or 0
                 
                 cur.execute("SELECT COUNT(*) FROM wallet_transactions")
@@ -5792,7 +5792,7 @@ def admin_manage_bots():
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute("""
                         SELECT bt.*, 
-                               (SELECT COUNT(*) FROM user_bots ub WHERE ub.bot_type_id = bt.id) as users_count
+                               (SELECT COUNT(*) FROM user_bots ub WHERE ub.bot_type = bt.bot_type) as users_count
                         FROM bot_types bt
                         ORDER BY bt.created_at DESC
                     """)
