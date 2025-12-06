@@ -4236,33 +4236,60 @@ const App = {
     },
 
     async buyB3CWithTonConnect(tonAmount) {
+        console.log('[B3C PURCHASE] Starting purchase for', tonAmount, 'TON');
+        
+        if (!this.tonConnectUI) {
+            console.error('[B3C PURCHASE] TON Connect UI not initialized');
+            this.showToast('TON Connect no disponible. Recarga la pagina.', 'error');
+            return;
+        }
+
         if (!this.connectedWallet) {
-            this.showToast('Conecta tu wallet primero', 'error');
+            console.log('[B3C PURCHASE] Wallet not connected, attempting to connect...');
+            this.showToast('Conectando wallet...', 'info');
             try {
-                await this.connectWallet();
+                await this.tonConnectUI.openModal();
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Connection timeout'));
+                    }, 60000);
+                    
+                    const unsubscribe = this.tonConnectUI.onStatusChange((wallet) => {
+                        if (wallet) {
+                            clearTimeout(timeout);
+                            this.connectedWallet = wallet;
+                            unsubscribe();
+                            resolve(wallet);
+                        }
+                    });
+                });
+                
                 if (!this.connectedWallet) {
                     this.showToast('Wallet no conectada', 'error');
                     return;
                 }
+                console.log('[B3C PURCHASE] Wallet connected successfully');
             } catch (e) {
+                console.error('[B3C PURCHASE] Wallet connection failed:', e);
+                if (e.message?.includes('timeout')) {
+                    this.showToast('Tiempo agotado. Intenta de nuevo.', 'error');
+                } else {
+                    this.showToast('Error al conectar wallet', 'error');
+                }
                 return;
             }
         }
 
-        if (!this.tonConnectUI) {
-            this.showToast('TON Connect no disponible', 'error');
-            return;
-        }
-
         try {
             this.showToast(`Preparando compra de B3C por ${tonAmount} TON...`, 'info');
+            console.log('[B3C PURCHASE] Creating purchase order...');
 
             const response = await this.apiRequest('/api/b3c/buy/create', {
                 method: 'POST',
                 body: JSON.stringify({ tonAmount })
             });
 
-            console.log('Buy create response:', JSON.stringify(response));
+            console.log('[B3C PURCHASE] Create response:', JSON.stringify(response));
 
             if (!response.success) {
                 this.showToast(response.error || 'Error al crear compra', 'error');
@@ -4271,7 +4298,7 @@ const App = {
 
             const depositAddress = response.depositAddress || response.hotWallet;
             if (!depositAddress) {
-                console.error('Missing deposit address in response:', response);
+                console.error('[B3C PURCHASE] Missing deposit address in response:', response);
                 this.showToast('Error: Direccion de deposito no disponible', 'error');
                 return;
             }
@@ -4280,9 +4307,10 @@ const App = {
             const amountToSend = response.amountToSend || tonAmount;
             const amountNano = Math.floor(amountToSend * 1e9).toString();
 
-            console.log('Creating transaction with unique wallet:', {
+            console.log('[B3C PURCHASE] Transaction details:', {
                 address: depositAddress,
                 amount: amountNano,
+                purchaseId: purchaseId,
                 useUniqueWallet: response.useUniqueWallet,
                 expiresInMinutes: response.expiresInMinutes
             });
@@ -4301,21 +4329,31 @@ const App = {
                 ]
             };
 
-            this.showToast('Confirma el pago en tu wallet...', 'info');
+            this.showToast('Abre tu wallet y confirma el pago...', 'info');
+            console.log('[B3C PURCHASE] Sending transaction...');
 
             const result = await this.tonConnectUI.sendTransaction(transaction);
+            console.log('[B3C PURCHASE] Transaction result:', result);
 
             if (result && result.boc) {
                 this.showToast('Transaccion enviada! Verificando...', 'success');
-
                 await this.verifyB3CPurchaseAfterTx(purchaseId, result.boc);
+            } else {
+                console.warn('[B3C PURCHASE] No BOC in result, transaction may have failed');
+                this.showToast('Transaccion enviada. Verificando estado...', 'info');
             }
         } catch (error) {
-            console.error('B3C purchase error:', error);
-            if (error.message?.includes('Canceled') || error.message?.includes('cancel')) {
+            console.error('[B3C PURCHASE] Error:', error);
+            const errorMsg = error.message || String(error);
+            
+            if (errorMsg.includes('Canceled') || errorMsg.includes('cancel') || errorMsg.includes('rejected')) {
                 this.showToast('Compra cancelada', 'info');
+            } else if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+                this.showToast('Tiempo agotado. Intenta de nuevo.', 'error');
+            } else if (errorMsg.includes('User rejects') || errorMsg.includes('user rejected')) {
+                this.showToast('Transaccion rechazada por el usuario', 'info');
             } else {
-                this.showToast('Error: ' + (error.message || 'Intenta de nuevo'), 'error');
+                this.showToast('Error: ' + (errorMsg.substring(0, 50) || 'Intenta de nuevo'), 'error');
             }
         }
     },
@@ -5240,24 +5278,24 @@ const App = {
                             <div class="neo-package-item test" onclick="App.selectPackage(0.5)">
                                 <span class="neo-package-badge">Prueba</span>
                                 <span class="neo-package-amount">0.5 TON</span>
-                                <span class="neo-package-estimate" id="pkg-est-05">~7 B3C</span>
+                                <span class="neo-package-estimate" id="pkg-est-05">Calculando...</span>
                             </div>
                             <div class="neo-package-item" onclick="App.selectPackage(1)">
                                 <span class="neo-package-amount">1 TON</span>
-                                <span class="neo-package-estimate" id="pkg-est-1">~14 B3C</span>
+                                <span class="neo-package-estimate" id="pkg-est-1">Calculando...</span>
                             </div>
                             <div class="neo-package-item popular" onclick="App.selectPackage(5)">
                                 <span class="neo-package-badge">Popular</span>
                                 <span class="neo-package-amount">5 TON</span>
-                                <span class="neo-package-estimate" id="pkg-est-5">~73 B3C</span>
+                                <span class="neo-package-estimate" id="pkg-est-5">Calculando...</span>
                             </div>
                             <div class="neo-package-item" onclick="App.selectPackage(10)">
                                 <span class="neo-package-amount">10 TON</span>
-                                <span class="neo-package-estimate" id="pkg-est-10">~147 B3C</span>
+                                <span class="neo-package-estimate" id="pkg-est-10">Calculando...</span>
                             </div>
                             <div class="neo-package-item" onclick="App.selectPackage(20)">
                                 <span class="neo-package-amount">20 TON</span>
-                                <span class="neo-package-estimate" id="pkg-est-20">~294 B3C</span>
+                                <span class="neo-package-estimate" id="pkg-est-20">Calculando...</span>
                             </div>
                         </div>
                         
@@ -5280,7 +5318,13 @@ const App = {
             if (e.target === modal) this.closeB3CModal('b3c-packages-modal');
         });
         
-        this.updatePackageEstimates();
+        if (!this.b3cPriceData) {
+            this.loadB3CPrice().then(() => {
+                this.updatePackageEstimates();
+            });
+        } else {
+            this.updatePackageEstimates();
+        }
     },
     
     async addSecondaryWallet(type) {
@@ -5310,14 +5354,14 @@ const App = {
     },
     
     updatePackageEstimates() {
-        // Actualizar estimaciones de paquetes
-        if (this.b3cPrice) {
+        const priceData = this.b3cPriceData;
+        if (priceData && priceData.price_ton && priceData.price_ton > 0) {
             const packages = [0.5, 1, 5, 10, 20];
             packages.forEach(ton => {
-                const b3c = Math.floor((ton * 0.95) / this.b3cPrice);
+                const b3c = Math.floor((ton * 0.95) / priceData.price_ton);
                 const id = ton === 0.5 ? 'pkg-est-05' : `pkg-est-${ton}`;
                 const el = document.getElementById(id);
-                if (el) el.textContent = `~${b3c} B3C`;
+                if (el) el.textContent = `~${b3c.toLocaleString()} B3C`;
             });
         }
     },

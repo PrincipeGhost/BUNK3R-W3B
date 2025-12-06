@@ -632,6 +632,20 @@ def require_telegram_user(f):
     return decorated_function
 
 
+@app.route('/static/tonconnect-manifest.json')
+def tonconnect_manifest():
+    """Generate TON Connect manifest dynamically based on current host."""
+    host = request.host_url.rstrip('/')
+    manifest = {
+        "url": host,
+        "name": "BUNK3R",
+        "iconUrl": f"{host}/static/images/logo.png",
+        "termsOfUseUrl": f"{host}/terms",
+        "privacyPolicyUrl": f"{host}/privacy"
+    }
+    return jsonify(manifest)
+
+
 @app.route('/')
 def index():
     """Página principal - siempre carga, la validación se hace en el frontend con el SDK de Telegram."""
