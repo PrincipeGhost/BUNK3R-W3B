@@ -22,10 +22,10 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 6 Diciembre 2025 |
-| Sección actual | 27-28 |
-| Total secciones | 2 |
+| Sección actual | 27-29 |
+| Total secciones | 3 |
 | Completadas | 0 ✅ |
-| Pendientes | 2 ⏳ |
+| Pendientes | 3 ⏳ |
 | En progreso | 0 🔄 |
 | Crítico | 1 🔴 |
 
@@ -1001,5 +1001,540 @@ Rediseñar completamente la pantalla de perfil de usuario para que:
 
 ### Backend
 - `app.py` - Endpoints de perfil
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 29: CONFIGURACIÓN COMPLETA DEL USUARIO ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Agregado:** 6 Diciembre 2025  
+**Estado:** PENDIENTE
+
+---
+
+### OBJETIVO PRINCIPAL:
+Rediseñar completamente la pantalla de Configuración/Ajustes del usuario para que:
+1. Use el mismo estilo visual profesional de la app (colores oscuros + dorado)
+2. TODAS las opciones tengan funcionalidad REAL (no botones muertos)
+3. Organización clara por categorías
+4. Diseño moderno tipo Telegram/Binance Settings
+5. Cada sección lleve a su propia página o modal funcional
+
+---
+
+### PALETA DE COLORES A USAR (Consistente con la app):
+```css
+--bg-primary: #0B0E11;      /* Fondo principal */
+--bg-secondary: #1E2329;    /* Cards, secciones */
+--bg-tertiary: #2B3139;     /* Inputs, toggles */
+--text-primary: #EAECEF;    /* Texto principal */
+--text-secondary: #848E9C;  /* Texto secundario */
+--accent-gold: #F0B90B;     /* Dorado - acentos, iconos activos */
+--success: #0ECB81;         /* Verde - toggles activos */
+--danger: #F6465D;          /* Rojo - eliminar, cerrar sesión */
+--border-color: #2B3139;    /* Bordes sutiles */
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.1: ESTRUCTURA PRINCIPAL ⏳
+## ═══════════════════════════════════════
+
+### 29.1.1 - Header de Configuración
+- [ ] Botón de volver (flecha izquierda)
+- [ ] Título "Configuración" centrado
+- [ ] Fondo oscuro consistente (#0B0E11)
+
+### 29.1.2 - Perfil Mini en la parte superior
+- [ ] Avatar del usuario (circular, 50px)
+- [ ] Username (@usuario)
+- [ ] Nombre completo debajo
+- [ ] Flecha para ir al perfil completo
+- [ ] Click lleva a la pantalla de perfil
+
+### 29.1.3 - Organización por Categorías
+Las opciones se agrupan en cards/secciones visuales:
+- [ ] **Cuenta** - Información personal, verificación
+- [ ] **Seguridad** - 2FA, dispositivos, contraseña
+- [ ] **Privacidad** - Quién puede ver tu contenido
+- [ ] **Notificaciones** - Qué alertas recibir
+- [ ] **Apariencia** - Tema, idioma
+- [ ] **Wallet** - Configuración de billetera
+- [ ] **Datos y Almacenamiento** - Caché, descargas
+- [ ] **Ayuda** - FAQ, soporte, sobre la app
+- [ ] **Cerrar Sesión** - Botón rojo al final
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.2: SECCIÓN CUENTA ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Cuenta
+**Página separada con opciones de la cuenta**
+
+### 29.2.1 - Información Personal
+- [ ] **Foto de perfil** - Click para cambiar (modal con cámara/galería)
+- [ ] **Username** - Mostrar actual, opción para cambiar (si permitido)
+- [ ] **Nombre** - Editable
+- [ ] **Bio** - Editable (máx 150 caracteres)
+- [ ] **Fecha de nacimiento** - Opcional
+- [ ] **Género** - Opcional (selector)
+- [ ] Botón "Guardar cambios" (funcional)
+
+### 29.2.2 - Información de Contacto
+- [ ] **Email** - Mostrar si existe, opción para agregar/cambiar
+- [ ] Verificación de email (enviar código)
+- [ ] **Teléfono** - Opcional, para recuperación
+
+### 29.2.3 - Verificación de Cuenta
+- [ ] Estado de verificación (verificado/no verificado)
+- [ ] Badge de verificado (si aplica)
+- [ ] Botón "Solicitar verificación" (si no está verificado)
+- [ ] Requisitos para verificación
+
+### 29.2.4 - Cuenta de Telegram
+- [ ] Mostrar ID de Telegram
+- [ ] Username de Telegram vinculado
+- [ ] Estado: Conectado
+- [ ] Información de cuándo se conectó
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.3: SECCIÓN SEGURIDAD ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Seguridad
+**Página separada con todas las opciones de seguridad**
+
+### 29.3.1 - Indicador de Seguridad
+- [ ] Barra de progreso visual del nivel de seguridad
+- [ ] Porcentaje (ej: 75%)
+- [ ] Nivel: Alto/Medio/Bajo con colores
+- [ ] Tips para mejorar seguridad
+
+### 29.3.2 - Autenticación de Dos Factores (2FA)
+- [ ] Toggle para activar/desactivar 2FA
+- [ ] Si está desactivado: botón "Configurar 2FA"
+- [ ] Si está activado: mostrar "Activo" con check verde
+- [ ] Opción para regenerar códigos de respaldo
+- [ ] Modal de configuración con QR funcional
+- [ ] Verificación con código de 6 dígitos
+
+### 29.3.3 - Dispositivos de Confianza
+- [ ] Lista de dispositivos donde has iniciado sesión
+- [ ] Mostrar: Nombre del dispositivo, IP, Última vez activo
+- [ ] Botón "Cerrar sesión" en cada dispositivo
+- [ ] Botón "Cerrar todas las sesiones" (excepto actual)
+- [ ] Dispositivo actual marcado con badge "Este dispositivo"
+
+### 29.3.4 - Wallet Conectada
+- [ ] Mostrar wallet principal conectada (parcial: UQA...x4F5)
+- [ ] Estado: Conectada/No conectada
+- [ ] Botón para desconectar wallet
+- [ ] Botón para conectar wallet de respaldo
+- [ ] Historial de wallets usadas
+
+### 29.3.5 - Actividad de Seguridad
+- [ ] Últimas 10 acciones de seguridad
+- [ ] Fecha, Tipo (Login, Cambio de config, etc.)
+- [ ] IP y dispositivo
+- [ ] Alertas de actividad sospechosa
+
+### 29.3.6 - Bloqueo de Cuenta
+- [ ] Opción para bloquear cuenta temporalmente
+- [ ] Requiere 2FA para desbloquear
+- [ ] Mensaje de confirmación antes de bloquear
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.4: SECCIÓN PRIVACIDAD ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Privacidad
+**Página separada con opciones de privacidad**
+
+### 29.4.1 - Visibilidad del Perfil
+- [ ] **Cuenta privada** - Toggle (solo seguidores ven tu contenido)
+- [ ] **Mostrar estado en línea** - Toggle
+- [ ] **Mostrar última conexión** - Toggle
+- [ ] **Mostrar cuando escribes** - Toggle
+
+### 29.4.2 - Quién puede contactarte
+- [ ] **Mensajes directos** - Todos / Solo seguidores / Nadie
+- [ ] **Solicitudes de mensaje** - Permitir / No permitir
+- [ ] **Comentarios en publicaciones** - Todos / Seguidores / Desactivados
+
+### 29.4.3 - Contenido
+- [ ] **Quién puede ver tus publicaciones** - Todos / Seguidores
+- [ ] **Quién puede ver tu lista de seguidores** - Todos / Solo tú
+- [ ] **Quién puede ver tu lista de seguidos** - Todos / Solo tú
+- [ ] **Permitir compartir tus publicaciones** - Toggle
+
+### 29.4.4 - Bloqueos y Restricciones
+- [ ] **Usuarios bloqueados** - Ver lista y gestionar
+- [ ] Buscar usuario para bloquear
+- [ ] Desbloquear desde la lista
+- [ ] **Palabras silenciadas** - Lista de palabras a ocultar en comentarios
+
+### 29.4.5 - Datos y Privacidad
+- [ ] **Descargar mis datos** - Exportar toda tu información
+- [ ] **Eliminar cuenta** - Con confirmación y advertencias
+- [ ] Período de gracia antes de eliminación definitiva
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.5: SECCIÓN NOTIFICACIONES ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Notificaciones
+**Página separada con todas las preferencias de notificación**
+
+### 29.5.1 - Notificaciones Push
+- [ ] **Activar notificaciones push** - Toggle principal
+- [ ] Permiso del navegador/app
+
+### 29.5.2 - Actividad Social
+- [ ] **Likes** - Toggle (alguien da like a tu publicación)
+- [ ] **Comentarios** - Toggle (alguien comenta tu publicación)
+- [ ] **Menciones** - Toggle (alguien te menciona)
+- [ ] **Nuevos seguidores** - Toggle
+- [ ] **Solicitudes de seguimiento** - Toggle (si cuenta privada)
+
+### 29.5.3 - Mensajes
+- [ ] **Mensajes nuevos** - Toggle
+- [ ] **Solicitudes de mensaje** - Toggle
+
+### 29.5.4 - Stories
+- [ ] **Reacciones a tu story** - Toggle
+- [ ] **Menciones en stories** - Toggle
+
+### 29.5.5 - Transacciones
+- [ ] **Compras de B3C** - Toggle
+- [ ] **Ventas/Transferencias recibidas** - Toggle
+- [ ] **Retiros procesados** - Toggle
+- [ ] **Alertas de precio B3C** - Toggle
+
+### 29.5.6 - Bots y Servicios
+- [ ] **Notificaciones de bots** - Toggle
+- [ ] **Números virtuales** - Toggle (SMS recibido)
+- [ ] **Marketplace** - Toggle (ventas, mensajes)
+
+### 29.5.7 - Sistema
+- [ ] **Actualizaciones de la app** - Toggle
+- [ ] **Ofertas y promociones** - Toggle
+- [ ] **Tips y tutoriales** - Toggle
+
+### 29.5.8 - Sonidos
+- [ ] **Sonido de notificación** - Toggle
+- [ ] **Vibración** - Toggle
+- [ ] Selector de tono de notificación
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.6: SECCIÓN APARIENCIA ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Apariencia
+**Página separada con opciones visuales**
+
+### 29.6.1 - Tema
+- [ ] **Tema oscuro** - Opción (actual, predeterminado)
+- [ ] **Tema claro** - Opción (futuro)
+- [ ] **Automático** - Seguir sistema
+- [ ] Preview visual de cada tema
+
+### 29.6.2 - Color de Acento
+- [ ] Selector de color de acento (dorado por defecto)
+- [ ] Opciones: Dorado, Azul, Verde, Morado, Rojo
+- [ ] Vista previa en tiempo real
+
+### 29.6.3 - Idioma
+- [ ] Selector de idioma
+- [ ] Opciones: Español, English, Português
+- [ ] Cambio inmediato sin reiniciar
+
+### 29.6.4 - Tamaño de Texto
+- [ ] Slider para ajustar tamaño de fuente
+- [ ] Pequeño / Normal / Grande / Muy grande
+- [ ] Vista previa del cambio
+
+### 29.6.5 - Animaciones
+- [ ] **Animaciones de UI** - Toggle
+- [ ] **Efectos de transición** - Toggle
+- [ ] Para usuarios que prefieren menos movimiento
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.7: SECCIÓN WALLET ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Wallet
+**Página separada con configuración de billetera**
+
+### 29.7.1 - Wallet Principal
+- [ ] Dirección wallet conectada (parcial)
+- [ ] Botón "Ver completa" (copia al portapapeles)
+- [ ] Balance actual en B3C
+- [ ] Balance en TON (si aplica)
+- [ ] Botón "Desconectar wallet"
+
+### 29.7.2 - Wallet de Respaldo
+- [ ] Estado: Configurada / No configurada
+- [ ] Botón "Agregar wallet de respaldo"
+- [ ] Para recuperación de cuenta
+
+### 29.7.3 - Preferencias de Transacción
+- [ ] **Confirmación antes de enviar** - Toggle
+- [ ] **Monto máximo sin confirmación** - Input numérico
+- [ ] **Notificar transacciones mayores a X** - Input
+
+### 29.7.4 - Historial
+- [ ] Link a "Ver historial de transacciones"
+- [ ] Exportar historial (CSV)
+
+### 29.7.5 - Seguridad de Wallet
+- [ ] **Requerir 2FA para retiros** - Toggle (recomendado)
+- [ ] **Lista blanca de direcciones** - Agregar direcciones seguras
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.8: SECCIÓN DATOS Y ALMACENAMIENTO ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Datos y Almacenamiento
+**Página separada con opciones de datos**
+
+### 29.8.1 - Uso de Datos
+- [ ] **Ahorro de datos** - Toggle (cargar imágenes en baja calidad)
+- [ ] **Precargar contenido** - Toggle
+- [ ] **Reproducir videos automáticamente** - Siempre / Wi-Fi / Nunca
+
+### 29.8.2 - Almacenamiento Local
+- [ ] Espacio usado por la app
+- [ ] Desglose: Imágenes, Videos, Caché
+- [ ] Botón "Limpiar caché"
+- [ ] Botón "Limpiar todo" (con confirmación)
+
+### 29.8.3 - Descargas
+- [ ] **Calidad de descarga de imágenes** - Original / Comprimida
+- [ ] **Ubicación de descargas** - Mostrar ruta
+
+### 29.8.4 - Sincronización
+- [ ] **Sincronizar contactos** - Toggle (para encontrar amigos)
+- [ ] Última sincronización: fecha/hora
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.9: SECCIÓN AYUDA ⏳
+## ═══════════════════════════════════════
+
+**Ruta:** Configuración > Ayuda
+**Página separada con recursos de ayuda**
+
+### 29.9.1 - Centro de Ayuda
+- [ ] Link a FAQ completo
+- [ ] Búsqueda de preguntas frecuentes
+- [ ] Categorías: Cuenta, Wallet, Seguridad, etc.
+
+### 29.9.2 - Contactar Soporte
+- [ ] Botón "Abrir ticket de soporte"
+- [ ] Formulario con asunto y descripción
+- [ ] Adjuntar capturas de pantalla
+- [ ] Ver tickets anteriores
+
+### 29.9.3 - Reportar un Problema
+- [ ] Formulario para reportar bugs
+- [ ] Incluir logs automáticamente (opcional)
+- [ ] Categoría del problema
+
+### 29.9.4 - Sobre BUNK3R
+- [ ] Versión de la app
+- [ ] Changelog / Novedades
+- [ ] Términos y condiciones
+- [ ] Política de privacidad
+- [ ] Licencias de código abierto
+
+### 29.9.5 - Comunidad
+- [ ] Link a canal de Telegram oficial
+- [ ] Link a Twitter/X
+- [ ] Link a Discord (si existe)
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.10: CERRAR SESIÓN Y ELIMINAR ⏳
+## ═══════════════════════════════════════
+
+### 29.10.1 - Cerrar Sesión
+- [ ] Botón "Cerrar sesión" (rojo, al final de la lista)
+- [ ] Confirmación antes de cerrar
+- [ ] Limpia tokens y datos locales
+- [ ] Redirige a pantalla de login
+
+### 29.10.2 - Cerrar Todas las Sesiones
+- [ ] Opción para cerrar en todos los dispositivos
+- [ ] Requiere 2FA si está activo
+- [ ] Confirmación con contraseña/código
+
+### 29.10.3 - Eliminar Cuenta (en sección Privacidad)
+- [ ] Advertencia clara de lo que se perderá
+- [ ] Lista de datos que se eliminarán
+- [ ] Período de gracia de 30 días
+- [ ] Posibilidad de cancelar eliminación
+- [ ] Requiere 2FA y confirmación por Telegram
+
+---
+
+## ═══════════════════════════════════════
+## DISEÑO Y UI DE CONFIGURACIÓN
+## ═══════════════════════════════════════
+
+### Estilo de Items de Configuración
+```
+┌─────────────────────────────────────────┐
+│ 🔒  Seguridad                     >     │
+│     Protege tu cuenta                   │
+└─────────────────────────────────────────┘
+```
+- Icono a la izquierda (SVG, color dorado)
+- Título principal (texto blanco)
+- Subtítulo/descripción (texto gris)
+- Flecha derecha para navegar
+- Para toggles: switch en lugar de flecha
+
+### Estilo de Toggle Switch
+- Fondo inactivo: #2B3139
+- Fondo activo: #0ECB81 (verde)
+- Círculo: blanco
+- Animación suave al cambiar
+
+### Estilo de Secciones/Cards
+```css
+.settings-section {
+    background: #1E2329;
+    border-radius: 12px;
+    margin: 8px 16px;
+    overflow: hidden;
+}
+
+.settings-item {
+    padding: 16px;
+    border-bottom: 1px solid #2B3139;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+```
+
+### Navegación
+- Cada sección principal abre una nueva página (no modal)
+- Botón de volver en cada sub-página
+- Breadcrumb opcional: Configuración > Seguridad
+- Animación de slide al navegar
+
+---
+
+## CRITERIOS DE ACEPTACIÓN SECCIÓN 29:
+
+### Funcionalidad
+- [ ] TODOS los toggles guardan en base de datos
+- [ ] TODOS los botones ejecutan su acción
+- [ ] TODOS los links llevan a páginas que existen
+- [ ] Cambios se reflejan inmediatamente
+- [ ] 2FA se configura y funciona correctamente
+- [ ] Dispositivos se listan y se pueden cerrar sesión
+- [ ] Cerrar sesión realmente cierra la sesión
+- [ ] Eliminación de cuenta funciona con período de gracia
+
+### Diseño
+- [ ] Colores consistentes con el resto de la app
+- [ ] Diseño profesional tipo Telegram Settings
+- [ ] Responsive en móvil
+- [ ] Iconos SVG consistentes (no emojis en producción)
+- [ ] Tipografía clara y legible
+- [ ] Espaciado correcto entre elementos
+- [ ] Transiciones suaves
+
+### Datos
+- [ ] Preferencias se cargan desde la BD
+- [ ] Cambios se guardan en la BD
+- [ ] Estado de toggles refleja valores reales
+- [ ] No hay datos hardcodeados
+
+### Sin errores
+- [ ] Todos los botones funcionan
+- [ ] No hay errores en consola
+- [ ] No hay errores 500 en servidor
+- [ ] Todas las páginas existen y cargan
+
+---
+
+## ARCHIVOS A MODIFICAR:
+
+### Frontend
+- `templates/index.html` - Estructura HTML de configuración
+- `static/js/app.js` - Lógica JavaScript
+- `static/css/styles.css` - Estilos CSS
+
+### Backend
+- `app.py` - Endpoints de configuración
+- `tracking/database.py` - Métodos de BD para preferencias
+- `tracking/security.py` - Lógica de seguridad
+
+### Endpoints Necesarios
+- `GET /api/settings/account` - Obtener info de cuenta
+- `PUT /api/settings/account` - Actualizar info de cuenta
+- `GET /api/settings/privacy` - Obtener preferencias de privacidad
+- `PUT /api/settings/privacy` - Actualizar privacidad
+- `GET /api/settings/notifications` - Obtener preferencias de notificaciones
+- `PUT /api/settings/notifications` - Actualizar notificaciones
+- `GET /api/settings/appearance` - Obtener preferencias de apariencia
+- `PUT /api/settings/appearance` - Actualizar apariencia
+- `GET /api/settings/wallet` - Obtener config de wallet
+- `PUT /api/settings/wallet` - Actualizar config wallet
+- `GET /api/settings/blocked-users` - Lista de usuarios bloqueados
+- `POST /api/settings/block-user` - Bloquear usuario
+- `DELETE /api/settings/unblock-user/:id` - Desbloquear usuario
+- `POST /api/settings/logout` - Cerrar sesión
+- `POST /api/settings/logout-all` - Cerrar todas las sesiones
+- `POST /api/settings/delete-account` - Iniciar eliminación de cuenta
+- `POST /api/settings/cancel-deletion` - Cancelar eliminación
+
+### Tablas de BD (verificar/crear)
+- `user_preferences` - Preferencias generales del usuario
+- `user_privacy_settings` - Configuraciones de privacidad
+- `notification_preferences` - Preferencias de notificaciones
+- `blocked_users` - Usuarios bloqueados
+- `account_deletions` - Solicitudes de eliminación pendientes
+
+---
+
+## ORDEN DE IMPLEMENTACIÓN SUGERIDO:
+
+1. **Primero:** Estructura HTML y navegación entre páginas
+2. **Segundo:** Estilos CSS para items, toggles, cards
+3. **Tercero:** Sección Seguridad (ya hay endpoints)
+4. **Cuarto:** Sección Notificaciones (ya hay endpoints)
+5. **Quinto:** Sección Cuenta (crear endpoints)
+6. **Sexto:** Sección Privacidad (crear endpoints)
+7. **Séptimo:** Sección Wallet (integrar con lo existente)
+8. **Octavo:** Sección Apariencia (tema, idioma)
+9. **Noveno:** Sección Datos y Almacenamiento
+10. **Décimo:** Sección Ayuda y Cerrar Sesión
 
 ---
