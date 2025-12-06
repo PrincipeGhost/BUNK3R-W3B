@@ -202,9 +202,24 @@ const AIChat = {
         return document.getElementById('ai-provider-indicator');
     },
     
+    getApiHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (typeof App !== 'undefined') {
+            if (App.isDemoMode) {
+                headers['X-Demo-Mode'] = 'true';
+                if (App.demoSessionToken) {
+                    headers['X-Demo-Session'] = App.demoSessionToken;
+                }
+            } else if (App.initData) {
+                headers['X-Telegram-Init-Data'] = App.initData;
+            }
+        }
+        return headers;
+    },
+    
     async loadHistory() {
         try {
-            const response = await fetch('/api/ai/history');
+            const response = await fetch('/api/ai/history', { headers: this.getApiHeaders() });
             const data = await response.json();
             
             if (data.success && data.history && data.history.length > 0) {
@@ -339,7 +354,7 @@ const AIChat = {
         try {
             const response = await fetch('/api/ai/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getApiHeaders(),
                 body: JSON.stringify({ message })
             });
             
@@ -371,7 +386,7 @@ const AIChat = {
         if (!confirm('Limpiar todo el historial del chat?')) return;
         
         try {
-            await fetch('/api/ai/clear', { method: 'POST' });
+            await fetch('/api/ai/clear', { method: 'POST', headers: this.getApiHeaders() });
             this.messages = [];
             
             const container = this.getMessagesContainer();
