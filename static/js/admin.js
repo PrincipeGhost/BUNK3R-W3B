@@ -598,14 +598,21 @@ const AdminPanel = {
         const modal = document.getElementById('userDetailModal');
         const content = document.getElementById('userDetailContent');
         
-        content.innerHTML = 'Cargando...';
+        content.innerHTML = '<div class="loading-state">Cargando información completa...</div>';
         modal.classList.add('active');
         
         try {
-            const response = await this.fetchAPI(`/api/admin/user/${userId}`);
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/detail`);
             
             if (response.success && response.user) {
                 const user = response.user;
+                const ips = response.ips || [];
+                const devices = response.devices || [];
+                const activityLog = response.activity_log || [];
+                const notes = response.notes || [];
+                const transactions = response.transactions || [];
+                const fraudAlerts = response.fraud_alerts || [];
+                
                 content.innerHTML = `
                     <div class="user-detail-header">
                         <div class="user-detail-avatar">${(user.first_name || 'U')[0].toUpperCase()}</div>
@@ -613,60 +620,327 @@ const AdminPanel = {
                             <h3>${this.escapeHtml(user.first_name || 'Sin nombre')}</h3>
                             <div class="username">@${this.escapeHtml(user.username || 'N/A')}</div>
                             <div class="user-id">ID: ${user.user_id}</div>
+                            ${fraudAlerts.length > 0 ? `<span class="fraud-alert-badge">Alertas de fraude: ${fraudAlerts.length}</span>` : ''}
                         </div>
                     </div>
                     
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <label>Fecha de registro</label>
-                            <div class="value">${this.formatDate(user.created_at)}</div>
-                        </div>
-                        <div class="detail-item">
-                            <label>Última conexión</label>
-                            <div class="value">${this.formatDate(user.last_seen)}</div>
-                        </div>
-                        <div class="detail-item">
-                            <label>Balance B3C</label>
-                            <div class="value">${this.formatNumber(user.credits || 0)} B3C</div>
-                        </div>
-                        <div class="detail-item">
-                            <label>Estado</label>
-                            <div class="value">
-                                <span class="status-badge ${user.is_banned ? 'banned' : 'active'}">
-                                    ${user.is_banned ? 'Baneado' : 'Activo'}
-                                </span>
+                    <div class="user-detail-tabs">
+                        <button class="tab-btn active" data-tab="info">Info</button>
+                        <button class="tab-btn" data-tab="ips">IPs (${ips.length})</button>
+                        <button class="tab-btn" data-tab="devices">Dispositivos (${devices.length})</button>
+                        <button class="tab-btn" data-tab="activity">Actividad (${activityLog.length})</button>
+                        <button class="tab-btn" data-tab="transactions">Transacciones (${transactions.length})</button>
+                        <button class="tab-btn" data-tab="notes">Notas (${notes.length})</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="tab-info">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label>Fecha de registro</label>
+                                <div class="value">${this.formatDate(user.created_at)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Última conexión</label>
+                                <div class="value">${this.formatDate(user.last_seen)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Balance B3C</label>
+                                <div class="value">${this.formatNumber(user.credits || 0)} B3C</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Estado</label>
+                                <div class="value">
+                                    <span class="status-badge ${user.is_banned ? 'banned' : 'active'}">
+                                        ${user.is_banned ? 'Baneado' : 'Activo'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Idioma</label>
+                                <div class="value">${user.language_code || 'N/A'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Wallet</label>
+                                <div class="value" style="font-family: monospace; font-size: 11px; word-break: break-all;">
+                                    ${user.wallet_address || 'No conectada'}
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <label>IP Actual</label>
+                                <div class="value">${user.last_ip || 'N/A'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Total Transacciones</label>
+                                <div class="value">${user.total_transactions || 0}</div>
                             </div>
                         </div>
-                        <div class="detail-item">
-                            <label>Idioma</label>
-                            <div class="value">${user.language_code || 'N/A'}</div>
-                        </div>
-                        <div class="detail-item">
-                            <label>Wallet</label>
-                            <div class="value" style="font-family: monospace; font-size: 11px; word-break: break-all;">
-                                ${user.wallet_address || 'No conectada'}
+                        ${fraudAlerts.length > 0 ? `
+                            <div class="fraud-alerts-section">
+                                <h4>Alertas de Fraude</h4>
+                                <div class="fraud-alerts-list">
+                                    ${fraudAlerts.map(alert => `
+                                        <div class="fraud-alert-item ${alert.level}">
+                                            <span class="alert-type">${this.escapeHtml(alert.type)}</span>
+                                            <span class="alert-desc">${this.escapeHtml(alert.description)}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="tab-content" id="tab-ips">
+                        ${ips.length > 0 ? `
+                            <table class="mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>IP</th>
+                                        <th>País</th>
+                                        <th>Primera vez</th>
+                                        <th>Última vez</th>
+                                        <th>Usos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${ips.map(ip => `
+                                        <tr>
+                                            <td><code>${this.escapeHtml(ip.ip_address)}</code></td>
+                                            <td>${this.escapeHtml(ip.country || 'N/A')}</td>
+                                            <td>${this.formatDate(ip.first_seen)}</td>
+                                            <td>${this.formatDate(ip.last_seen)}</td>
+                                            <td>${ip.login_count || 1}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div class="empty-state">Sin historial de IPs</div>'}
+                    </div>
+                    
+                    <div class="tab-content" id="tab-devices">
+                        ${devices.length > 0 ? `
+                            <table class="mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dispositivo</th>
+                                        <th>Navegador</th>
+                                        <th>SO</th>
+                                        <th>Última actividad</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${devices.map(d => `
+                                        <tr>
+                                            <td>${this.escapeHtml(d.device_name || 'Desconocido')}</td>
+                                            <td>${this.escapeHtml(d.browser || 'N/A')}</td>
+                                            <td>${this.escapeHtml(d.os || 'N/A')}</td>
+                                            <td>${this.formatDate(d.last_activity)}</td>
+                                            <td><span class="status-badge ${d.is_trusted ? 'active' : 'pending'}">${d.is_trusted ? 'Confiado' : 'Nuevo'}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div class="empty-state">Sin dispositivos registrados</div>'}
+                    </div>
+                    
+                    <div class="tab-content" id="tab-activity">
+                        ${activityLog.length > 0 ? `
+                            <div class="activity-log-list">
+                                ${activityLog.map(log => `
+                                    <div class="activity-log-item">
+                                        <span class="log-time">${this.formatDate(log.created_at)}</span>
+                                        <span class="log-type ${log.activity_type}">${this.escapeHtml(log.activity_type)}</span>
+                                        <span class="log-desc">${this.escapeHtml(log.description || '')}</span>
+                                        <span class="log-ip">${this.escapeHtml(log.ip_address || '')}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div class="empty-state">Sin actividad registrada</div>'}
+                    </div>
+                    
+                    <div class="tab-content" id="tab-transactions">
+                        ${transactions.length > 0 ? `
+                            <table class="mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Monto</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${transactions.map(tx => `
+                                        <tr>
+                                            <td>${this.escapeHtml(tx.type)}</td>
+                                            <td>${this.formatNumber(tx.amount, 4)} ${tx.currency || 'B3C'}</td>
+                                            <td><span class="status-badge ${tx.status}">${tx.status}</span></td>
+                                            <td>${this.formatDate(tx.created_at)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div class="empty-state">Sin transacciones</div>'}
+                    </div>
+                    
+                    <div class="tab-content" id="tab-notes">
+                        <div class="add-note-form">
+                            <textarea id="newNoteText" placeholder="Agregar nota interna sobre este usuario..." rows="2"></textarea>
+                            <button class="btn-primary" onclick="AdminPanel.addUserNote('${user.user_id}')">Agregar Nota</button>
                         </div>
+                        ${notes.length > 0 ? `
+                            <div class="notes-list">
+                                ${notes.map(note => `
+                                    <div class="note-item">
+                                        <div class="note-header">
+                                            <span class="note-admin">${this.escapeHtml(note.admin_name || 'Admin')}</span>
+                                            <span class="note-date">${this.formatDate(note.created_at)}</span>
+                                        </div>
+                                        <div class="note-content">${this.escapeHtml(note.content)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div class="empty-state" style="margin-top: 16px;">Sin notas</div>'}
                     </div>
                     
                     <div class="user-actions">
                         <button class="btn-secondary" onclick="AdminPanel.adjustBalance('${user.user_id}')">
                             Ajustar Balance
                         </button>
-                        <button class="btn-secondary" onclick="AdminPanel.viewUserTransactions('${user.user_id}')">
-                            Ver Transacciones
+                        <button class="btn-secondary" onclick="AdminPanel.sendNotification('${user.user_id}')">
+                            Enviar Notificación
+                        </button>
+                        <button class="btn-warning" onclick="AdminPanel.logoutUser('${user.user_id}')">
+                            Cerrar Sesiones
                         </button>
                         <button class="btn-danger" onclick="AdminPanel.banUser('${user.user_id}', ${!user.is_banned})">
                             ${user.is_banned ? 'Desbanear' : 'Banear Usuario'}
                         </button>
                     </div>
                 `;
+                
+                this.setupUserDetailTabs();
             } else {
                 content.innerHTML = '<div class="empty-state">Error al cargar usuario</div>';
             }
         } catch (error) {
             console.error('Error loading user:', error);
             content.innerHTML = '<div class="empty-state">Error al cargar usuario</div>';
+        }
+    },
+    
+    setupUserDetailTabs() {
+        const tabs = document.querySelectorAll('.user-detail-tabs .tab-btn');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+            });
+        });
+    },
+    
+    async addUserNote(userId) {
+        const noteText = document.getElementById('newNoteText')?.value?.trim();
+        if (!noteText) {
+            this.showToast('Escribe una nota antes de guardar', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/note`, {
+                method: 'POST',
+                body: JSON.stringify({ content: noteText })
+            });
+            
+            if (response.success) {
+                this.showToast('Nota agregada correctamente', 'success');
+                this.viewUser(userId);
+            } else {
+                this.showToast(response.error || 'Error al agregar nota', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al agregar nota', 'error');
+        }
+    },
+    
+    async logoutUser(userId) {
+        if (!confirm('¿Cerrar todas las sesiones activas de este usuario?')) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/logout`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(`Sesiones cerradas: ${response.sessions_closed || 0}`, 'success');
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesiones', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesiones', 'error');
+        }
+    },
+    
+    async sendNotification(userId) {
+        const title = prompt('Título de la notificación:');
+        if (!title) return;
+        
+        const message = prompt('Mensaje de la notificación:');
+        if (!message) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/notify`, {
+                method: 'POST',
+                body: JSON.stringify({ title, message })
+            });
+            
+            if (response.success) {
+                this.showToast('Notificación enviada correctamente', 'success');
+            } else {
+                this.showToast(response.error || 'Error al enviar notificación', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al enviar notificación', 'error');
+        }
+    },
+    
+    async adjustBalance(userId) {
+        const amountStr = prompt('Cantidad a ajustar (usa - para restar):');
+        if (!amountStr) return;
+        
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount)) {
+            this.showToast('Cantidad inválida', 'error');
+            return;
+        }
+        
+        const reason = prompt('Razón del ajuste:');
+        if (!reason) {
+            this.showToast('Debes proporcionar una razón', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/balance`, {
+                method: 'POST',
+                body: JSON.stringify({ amount, reason })
+            });
+            
+            if (response.success) {
+                this.showToast(`Balance ajustado. Nuevo balance: ${this.formatNumber(response.new_balance)} B3C`, 'success');
+                this.viewUser(userId);
+            } else {
+                this.showToast(response.error || 'Error al ajustar balance', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al ajustar balance', 'error');
         }
     },
     
