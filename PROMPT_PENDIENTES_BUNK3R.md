@@ -171,42 +171,150 @@ Ejemplos:
 
 ---
 
-## REGLAS DE GUARDADO Y MEMORIA
+## 💾 SISTEMA DE PERSISTENCIA Y MEMORIA
 
-### 📍 GUARDADO OBLIGATORIO AL 90%
+### ⚠️ REGLA SUPREMA DE PERSISTENCIA
 
 ```
 ╔═══════════════════════════════════════════════════════════════════╗
-║           ⚠️ REGLA CRÍTICA DE CONTEXTO ⚠️                        ║
+║     🧠 EL AGENTE DEBE GUARDAR TODO, SIEMPRE, INMEDIATAMENTE 🧠    ║
 ╠═══════════════════════════════════════════════════════════════════╣
 ║                                                                   ║
-║  Cuando el agente detecte que está cerca del 90% de su contexto: ║
-║                                                                   ║
-║  1. PARAR inmediatamente el trabajo actual                        ║
-║  2. GUARDAR el estado en este archivo                             ║
-║  3. ACTUALIZAR qué se completó y qué falta                        ║
-║  4. DOCUMENTAR dónde quedó exactamente                            ║
-║  5. CREAR archivo de memoria persistente                          ║
-║                                                                   ║
-║  FORMATO DE GUARDADO:                                             ║
-║  ─────────────────────                                            ║
-║  ## PUNTO DE GUARDADO - [Fecha]                                   ║
-║  - Última sección trabajada: [X]                                  ║
-║  - Estado: [Completada/En progreso al X%]                         ║
-║  - Archivos modificados: [lista]                                  ║
-║  - Próximo paso: [descripción]                                    ║
-║  - Errores pendientes: [si hay]                                   ║
+║  La memoria del agente SE PIERDE entre sesiones.                  ║
+║  Este archivo ES la memoria del proyecto.                         ║
+║  Si no está escrito aquí, NO EXISTE para el próximo agente.       ║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝
 ```
 
-### 📝 ACTUALIZACIÓN INMEDIATA
+---
 
-Después de CADA sección completada:
-1. Cambiar `⏳` por `✅` en la sección correspondiente
-2. Actualizar el tablero de inicio
-3. Agregar fecha de completado
-4. Documentar cambios en `replit.md`
+### 📍 CUÁNDO GUARDAR (OBLIGATORIO)
+
+| Momento | Acción de Guardado |
+|---------|-------------------|
+| Al COMPLETAR cualquier tarea | Actualizar `⏳` → `✅` inmediatamente |
+| Al COMPLETAR un checkbox | Cambiar `[ ]` → `[x]` inmediatamente |
+| Al EMPEZAR una sección | Marcar como `🔄 En progreso` |
+| Al DETECTAR un error | Documentarlo en la sección de errores |
+| Al MODIFICAR un archivo | Agregarlo al historial de cambios |
+| Al AGREGAR dependencia | Documentar en requirements/package |
+| Al 90% del contexto | PARAR y guardar TODO |
+| ANTES de terminar sesión | Actualizar punto de guardado |
+
+---
+
+### 📝 ACTUALIZACIÓN INMEDIATA DESPUÉS DE CADA TAREA
+
+El agente DEBE ejecutar estos pasos **inmediatamente** después de completar cualquier tarea:
+
+```
+PASO 1: Actualizar este archivo (PROMPT_PENDIENTES_BUNK3R.md)
+────────────────────────────────────────────────────────────
+✓ Cambiar el símbolo de la tarea: ⏳ → ✅ o [ ] → [x]
+✓ Agregar fecha de completado si es sección completa
+✓ Actualizar contadores en el TABLERO DE INICIO
+✓ Mover tarea de "EN PROGRESO" a "COMPLETADAS"
+
+PASO 2: Actualizar replit.md
+────────────────────────────
+✓ Agregar entrada en "Cambios Recientes"
+✓ Listar archivos modificados
+✓ Documentar decisiones técnicas importantes
+
+PASO 3: Guardar contexto en memoria persistente
+───────────────────────────────────────────────
+✓ Crear/actualizar .local/state/memory/persisted_information.md
+✓ Incluir: qué se hizo, qué falta, próximo paso
+```
+
+---
+
+### 🔴 GUARDADO DE EMERGENCIA AL 90%
+
+Cuando el agente detecte que su contexto está cerca del límite:
+
+```
+╔═══════════════════════════════════════════════════════════════════╗
+║                    🚨 PROTOCOLO DE EMERGENCIA 🚨                  ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  1. DETENER inmediatamente cualquier trabajo en curso             ║
+║                                                                   ║
+║  2. GUARDAR en este archivo:                                      ║
+║     - Última línea de código modificada                           ║
+║     - Último archivo tocado                                       ║
+║     - Estado exacto de la tarea (% completado)                    ║
+║     - Errores encontrados                                         ║
+║     - Decisiones tomadas                                          ║
+║                                                                   ║
+║  3. ACTUALIZAR el PUNTO DE GUARDADO al final del archivo          ║
+║                                                                   ║
+║  4. CREAR memoria persistente en:                                 ║
+║     .local/state/memory/persisted_information.md                  ║
+║                                                                   ║
+║  5. INFORMAR al usuario que se pausó por límite de contexto       ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+### 📋 FORMATO DEL PUNTO DE GUARDADO
+
+Al final de este archivo siempre debe existir esta sección actualizada:
+
+```markdown
+## PUNTO DE GUARDADO
+
+**Fecha:** [DD/MM/YYYY HH:MM]
+**Sesión:** [Número de sesión del día]
+**Agente activo:** [FRONTEND/BACKEND/ADMIN/BLOCKCHAIN]
+
+### Última tarea trabajada
+- Sección: [27.X.X]
+- Nombre: [Nombre de la tarea]
+- Estado: [Completada / En progreso X%]
+- Archivos modificados: [lista]
+
+### Próximos pasos
+1. [Siguiente acción inmediata]
+2. [Acción posterior]
+
+### Errores pendientes
+- [ ] [Error 1 si hay]
+- [ ] [Error 2 si hay]
+
+### Notas para el próximo agente
+[Cualquier información importante que el próximo agente necesite saber]
+```
+
+---
+
+### 🔄 HISTORIAL DE CAMBIOS (Actualizar con cada modificación)
+
+El agente debe mantener un log de cambios recientes:
+
+```markdown
+### CAMBIOS RECIENTES (Últimos 10)
+
+| Fecha | Sección | Cambio | Archivos |
+|-------|---------|--------|----------|
+| DD/MM | 27.X.X | Descripción | archivo1.js, archivo2.py |
+```
+
+---
+
+### ⚠️ ERRORES QUE NUNCA DEBEN OCURRIR
+
+```
+❌ Cerrar sesión sin actualizar este archivo
+❌ Completar tarea sin cambiar ⏳ → ✅
+❌ Modificar archivo sin documentarlo
+❌ Perder contexto sin guardar estado
+❌ Dejar sección "En progreso" sin especificar %
+❌ No actualizar el tablero de inicio
+```
 
 ---
 
