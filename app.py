@@ -7852,7 +7852,7 @@ def admin_bots_purchases():
                         u.username
                     FROM user_bots ub
                     LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
-                    LEFT JOIN users u ON ub.user_id = u.telegram_id
+                    LEFT JOIN users u ON ub.user_id::bigint = u.telegram_id
                     ORDER BY ub.created_at DESC
                     LIMIT %s OFFSET %s
                 """, (per_page, offset))
@@ -7913,7 +7913,7 @@ def admin_bot_logs(bot_id):
                         bt.price,
                         bt.icon
                     FROM user_bots ub
-                    LEFT JOIN users u ON ub.user_id = u.telegram_id
+                    LEFT JOIN users u ON ub.user_id::bigint = u.telegram_id
                     LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
                     WHERE ub.bot_type = %s
                     ORDER BY ub.created_at DESC
