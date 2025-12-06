@@ -6388,6 +6388,148 @@ def admin_export_transactions():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/financial/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_financial_stats():
+    """Admin: Dashboard financiero con métricas de B3C, TON y comisiones."""
+    try:
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'totalB3CSold': 0,
+                    'totalTONReceived': 0,
+                    'totalCommissions': 0,
+                    'monthVolume': 0,
+                    'lastMonthVolume': 0,
+                    'volumeChange': 0,
+                    'pendingWithdrawals': 0,
+                    'pendingWithdrawalsAmount': 0,
+                    'dailyRevenue': [],
+                    'dailyVolume': []
+                }
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE 0 END), 0) as total_b3c_sold,
+                           COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount * 0.1 ELSE 0 END), 0) as total_ton_received,
+                           COALESCE(SUM(CASE WHEN transaction_type IN ('deposit', 'withdrawal') THEN amount * 0.02 ELSE 0 END), 0) as total_commissions
+                    FROM wallet_transactions
+                """)
+                totals = cur.fetchone()
+                total_b3c_sold = float(totals['total_b3c_sold']) if totals else 0
+                total_ton_received = float(totals['total_ton_received']) if totals else 0
+                total_commissions = float(totals['total_commissions']) if totals else 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as month_volume
+                    FROM wallet_transactions
+                    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                month_vol = cur.fetchone()
+                month_volume = float(month_vol['month_volume']) if month_vol else 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as last_month_volume
+                    FROM wallet_transactions
+                    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+                    AND created_at < DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                last_month_vol = cur.fetchone()
+                last_month_volume = float(last_month_vol['last_month_volume']) if last_month_vol else 0
+                
+                volume_change = 0
+                if last_month_volume > 0:
+                    volume_change = round(((month_volume - last_month_volume) / last_month_volume) * 100, 1)
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'withdrawal' AND status = 'pending'
+                """)
+                pending = cur.fetchone()
+                pending_withdrawals = int(pending['count']) if pending else 0
+                pending_withdrawals_amount = float(pending['total']) if pending else 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, 
+                           COALESCE(SUM(amount * 0.02), 0) as revenue
+                    FROM wallet_transactions
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                revenue_data = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, 
+                           COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                volume_data = cur.fetchall()
+        
+        from datetime import datetime, timedelta
+        
+        daily_revenue = []
+        daily_volume = []
+        revenue_dict = {row['date'].isoformat(): float(row['revenue']) for row in revenue_data} if revenue_data else {}
+        volume_dict = {row['date'].isoformat(): float(row['volume']) for row in volume_data} if volume_data else {}
+        
+        for i in range(30):
+            date = (datetime.now() - timedelta(days=29-i)).date()
+            date_str = date.isoformat()
+            daily_revenue.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'amount': revenue_dict.get(date_str, 0)
+            })
+            daily_volume.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'amount': volume_dict.get(date_str, 0)
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalB3CSold': total_b3c_sold,
+                'totalTONReceived': total_ton_received,
+                'totalCommissions': total_commissions,
+                'monthVolume': month_volume,
+                'lastMonthVolume': last_month_volume,
+                'volumeChange': volume_change,
+                'pendingWithdrawals': pending_withdrawals,
+                'pendingWithdrawalsAmount': pending_withdrawals_amount,
+                'dailyRevenue': daily_revenue,
+                'dailyVolume': daily_volume
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting financial stats: {e}")
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalB3CSold': 0,
+                'totalTONReceived': 0,
+                'totalCommissions': 0,
+                'monthVolume': 0,
+                'lastMonthVolume': 0,
+                'volumeChange': 0,
+                'pendingWithdrawals': 0,
+                'pendingWithdrawalsAmount': 0,
+                'dailyRevenue': [],
+                'dailyVolume': []
+            }
+        })
+
+
 @app.route('/api/admin/content/stats', methods=['GET'])
 @require_telegram_auth
 @require_owner

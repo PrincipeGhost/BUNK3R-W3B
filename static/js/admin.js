@@ -198,6 +198,28 @@ const AdminPanel = {
         document.getElementById('revenueChartPeriod')?.addEventListener('change', () => {
             this.initCharts();
         });
+        
+        document.querySelectorAll('.transactions-tabs .tx-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.transactions-tabs .tx-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const tabType = btn.dataset.tab;
+                document.getElementById('txTypeFilter').value = tabType === 'all' ? '' : tabType;
+                this.loadTransactions();
+            });
+        });
+        
+        document.getElementById('txSearch')?.addEventListener('input', this.debounce(() => {
+            this.loadTransactions();
+        }, 500));
+        
+        document.getElementById('txDateFrom')?.addEventListener('change', () => {
+            this.loadTransactions();
+        });
+        
+        document.getElementById('txDateTo')?.addEventListener('change', () => {
+            this.loadTransactions();
+        });
     },
     
     async loadDashboard() {
@@ -971,6 +993,8 @@ const AdminPanel = {
         const tbody = document.getElementById('transactionsTableBody');
         tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando transacciones...</td></tr>';
         
+        await this.loadFinancialDashboard();
+        
         try {
             const type = document.getElementById('txTypeFilter')?.value || '';
             const status = document.getElementById('txStatusFilter')?.value || '';
@@ -989,6 +1013,118 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error loading transactions:', error);
             tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Error al cargar transacciones</td></tr>';
+        }
+    },
+    
+    async loadFinancialDashboard() {
+        try {
+            const response = await this.fetchAPI('/api/admin/financial/stats');
+            
+            if (response.success && response.data) {
+                const data = response.data;
+                
+                document.getElementById('finTotalB3C').textContent = this.formatNumber(data.totalB3CSold || 0, 2);
+                document.getElementById('finTotalTON').textContent = this.formatNumber(data.totalTONReceived || 0, 4);
+                document.getElementById('finTotalCommissions').textContent = this.formatNumber(data.totalCommissions || 0, 4);
+                document.getElementById('finMonthVolume').textContent = this.formatNumber(data.monthVolume || 0, 2);
+                
+                const changeEl = document.getElementById('finVolumeChange');
+                if (changeEl) {
+                    const change = data.volumeChange || 0;
+                    changeEl.className = `financial-change ${change >= 0 ? 'positive' : 'negative'}`;
+                    changeEl.querySelector('span').textContent = `${change >= 0 ? '+' : ''}${change}%`;
+                }
+                
+                document.getElementById('finPendingWithdrawals').textContent = data.pendingWithdrawals || 0;
+                document.getElementById('finPendingAmount').textContent = `${this.formatNumber(data.pendingWithdrawalsAmount || 0, 2)} B3C`;
+                
+                const pendingCard = document.getElementById('pendingWithdrawalsCard');
+                if (pendingCard) {
+                    pendingCard.classList.toggle('has-pending', data.pendingWithdrawals > 0);
+                }
+                
+                const maxVolume = Math.max(data.monthVolume || 1, data.lastMonthVolume || 1);
+                const currentPercent = maxVolume > 0 ? ((data.monthVolume || 0) / maxVolume) * 100 : 0;
+                const lastPercent = maxVolume > 0 ? ((data.lastMonthVolume || 0) / maxVolume) * 100 : 0;
+                
+                document.getElementById('finCurrentMonthBar').style.width = `${currentPercent}%`;
+                document.getElementById('finLastMonthBar').style.width = `${lastPercent}%`;
+                document.getElementById('finCurrentMonthValue').textContent = this.formatNumber(data.monthVolume || 0, 2) + ' B3C';
+                document.getElementById('finLastMonthValue').textContent = this.formatNumber(data.lastMonthVolume || 0, 2) + ' B3C';
+                
+                this.initFinancialCharts(data.dailyRevenue || [], data.dailyVolume || []);
+            }
+        } catch (error) {
+            console.error('Error loading financial dashboard:', error);
+        }
+    },
+    
+    initFinancialCharts(revenueData, volumeData) {
+        const revenueCtx = document.getElementById('finRevenueChart');
+        const volumeCtx = document.getElementById('finVolumeChart');
+        
+        if (revenueCtx) {
+            if (this.charts.finRevenue) {
+                this.charts.finRevenue.data.labels = revenueData.map(d => d.label);
+                this.charts.finRevenue.data.datasets[0].data = revenueData.map(d => d.amount);
+                this.charts.finRevenue.update();
+            } else {
+                this.charts.finRevenue = new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: revenueData.map(d => d.label),
+                        datasets: [{
+                            label: 'Comisiones (TON)',
+                            data: revenueData.map(d => d.amount),
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C', maxTicksLimit: 10 } },
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } }
+                        }
+                    }
+                });
+            }
+        }
+        
+        if (volumeCtx) {
+            if (this.charts.finVolume) {
+                this.charts.finVolume.data.labels = volumeData.map(d => d.label);
+                this.charts.finVolume.data.datasets[0].data = volumeData.map(d => d.amount);
+                this.charts.finVolume.update();
+            } else {
+                this.charts.finVolume = new Chart(volumeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: volumeData.map(d => d.label),
+                        datasets: [{
+                            label: 'Volumen (B3C)',
+                            data: volumeData.map(d => d.amount),
+                            backgroundColor: 'rgba(240, 185, 11, 0.6)',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#848E9C', maxTicksLimit: 10 } },
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } }
+                        }
+                    }
+                });
+            }
         }
     },
     

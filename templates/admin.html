@@ -504,6 +504,129 @@
                 </section>
                 
                 <section class="admin-section" id="section-transactions">
+                    <div class="financial-dashboard">
+                        <div class="financial-metrics">
+                            <div class="financial-card">
+                                <div class="financial-icon b3c">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 6v12"></path>
+                                        <path d="M8 10h8"></path>
+                                        <path d="M8 14h8"></path>
+                                    </svg>
+                                </div>
+                                <div class="financial-content">
+                                    <span class="financial-value" id="finTotalB3C">-</span>
+                                    <span class="financial-label">B3C Vendidos (Total)</span>
+                                </div>
+                            </div>
+                            <div class="financial-card">
+                                <div class="financial-icon ton">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                        <polyline points="2 17 12 22 22 17"></polyline>
+                                        <polyline points="2 12 12 17 22 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="financial-content">
+                                    <span class="financial-value" id="finTotalTON">-</span>
+                                    <span class="financial-label">TON Recibidos</span>
+                                </div>
+                                <span class="financial-unit">TON</span>
+                            </div>
+                            <div class="financial-card">
+                                <div class="financial-icon commission">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                </div>
+                                <div class="financial-content">
+                                    <span class="financial-value" id="finTotalCommissions">-</span>
+                                    <span class="financial-label">Comisiones Ganadas</span>
+                                </div>
+                                <span class="financial-unit">TON</span>
+                            </div>
+                            <div class="financial-card">
+                                <div class="financial-icon volume">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="financial-content">
+                                    <span class="financial-value" id="finMonthVolume">-</span>
+                                    <span class="financial-label">Volumen Este Mes</span>
+                                </div>
+                                <div class="financial-change" id="finVolumeChange">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                        <polyline points="17 6 23 6 23 12"></polyline>
+                                    </svg>
+                                    <span>0%</span>
+                                </div>
+                            </div>
+                            <div class="financial-card warning" id="pendingWithdrawalsCard">
+                                <div class="financial-icon pending">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="financial-content">
+                                    <span class="financial-value" id="finPendingWithdrawals">0</span>
+                                    <span class="financial-label">Retiros Pendientes</span>
+                                </div>
+                                <span class="financial-amount" id="finPendingAmount">0 B3C</span>
+                            </div>
+                        </div>
+                        
+                        <div class="financial-charts">
+                            <div class="financial-chart-card">
+                                <div class="card-header">
+                                    <h3>Ingresos por Comisiones (30 días)</h3>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="finRevenueChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="financial-chart-card">
+                                <div class="card-header">
+                                    <h3>Volumen de Transacciones (30 días)</h3>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="finVolumeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="financial-comparison">
+                            <div class="comparison-title">Comparativa Mensual</div>
+                            <div class="comparison-bars">
+                                <div class="comparison-item">
+                                    <span class="comparison-label">Mes Anterior</span>
+                                    <div class="comparison-bar-container">
+                                        <div class="comparison-bar last-month" id="finLastMonthBar"></div>
+                                    </div>
+                                    <span class="comparison-value" id="finLastMonthValue">0</span>
+                                </div>
+                                <div class="comparison-item">
+                                    <span class="comparison-label">Mes Actual</span>
+                                    <div class="comparison-bar-container">
+                                        <div class="comparison-bar current-month" id="finCurrentMonthBar"></div>
+                                    </div>
+                                    <span class="comparison-value" id="finCurrentMonthValue">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="transactions-tabs">
+                        <button class="tx-tab active" data-tab="all">Todas</button>
+                        <button class="tx-tab" data-tab="buy">Compras B3C</button>
+                        <button class="tx-tab" data-tab="withdrawal">Retiros</button>
+                        <button class="tx-tab" data-tab="transfer">Transferencias P2P</button>
+                    </div>
+                    
                     <div class="section-toolbar">
                         <div class="toolbar-left">
                             <div class="filter-group">
@@ -524,6 +647,7 @@
                             <input type="date" id="txDateFrom" class="date-input">
                             <span class="date-separator">a</span>
                             <input type="date" id="txDateTo" class="date-input">
+                            <input type="text" id="txSearch" class="search-input" placeholder="Buscar TX hash o ID...">
                         </div>
                         <div class="toolbar-right">
                             <button class="btn-secondary" id="exportTxBtn">
@@ -532,7 +656,7 @@
                                     <polyline points="7 10 12 15 17 10"></polyline>
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
                                 </svg>
-                                Exportar
+                                Exportar CSV
                             </button>
                         </div>
                     </div>
