@@ -3426,16 +3426,19 @@ const AdminPanel = {
         }, 30000);
     },
     
-    demoSessionToken: localStorage.getItem('demo_session_token') || null,
+    getDemoSessionToken() {
+        return localStorage.getItem('demo_session_token') || null;
+    },
     
     async fetchAPI(url, options = {}) {
+        const token = this.getDemoSessionToken();
         const headers = {
             'Content-Type': 'application/json',
             'X-Demo-Mode': 'true'
         };
         
-        if (this.demoSessionToken) {
-            headers['X-Demo-Session'] = this.demoSessionToken;
+        if (token) {
+            headers['X-Demo-Session'] = token;
         }
         
         try {
@@ -3443,6 +3446,11 @@ const AdminPanel = {
                 ...options,
                 headers: { ...headers, ...options.headers }
             });
+            
+            if (response.status === 401) {
+                this.show2FAModal();
+                return { success: false, error: 'Se requiere verificación 2FA' };
+            }
             
             const data = await response.json();
             
@@ -5364,13 +5372,14 @@ Fin del reporte
     },
     
     getAuthHeaders() {
+        const token = this.getDemoSessionToken();
         const headers = {
             'Content-Type': 'application/json',
             'X-Demo-Mode': 'true'
         };
         
-        if (this.demoSessionToken) {
-            headers['X-Demo-Session'] = this.demoSessionToken;
+        if (token) {
+            headers['X-Demo-Session'] = token;
         }
         
         return headers;
@@ -5455,10 +5464,15 @@ const SupportModule = {
     
     updateTicketStats(stats) {
         if (!stats) return;
-        document.querySelector('.stat-open')?.textContent = stats.open || 0;
-        document.querySelector('.stat-pending')?.textContent = stats.pending || 0;
-        document.querySelector('.stat-resolved')?.textContent = stats.resolved || 0;
-        document.querySelector('.stat-avg-time')?.textContent = stats.avg_response_time || '0h';
+        const openEl = document.querySelector('.stat-open');
+        const pendingEl = document.querySelector('.stat-pending');
+        const resolvedEl = document.querySelector('.stat-resolved');
+        const avgTimeEl = document.querySelector('.stat-avg-time');
+        
+        if (openEl) openEl.textContent = stats.open || 0;
+        if (pendingEl) pendingEl.textContent = stats.pending || 0;
+        if (resolvedEl) resolvedEl.textContent = stats.resolved || 0;
+        if (avgTimeEl) avgTimeEl.textContent = stats.avg_response_time || '0h';
     },
     
     getStatusLabel(status) {
