@@ -37,7 +37,7 @@ class DeepSeekV32Provider(AIProvider):
         super().__init__(api_key)
         self.name = "deepseek-v3.2"
         self.model = "deepseek-ai/DeepSeek-V3.2"
-        self.base_url = "https://api-inference.huggingface.co/models"
+        self.base_url = "https://router.huggingface.co/hf"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
         try:
@@ -96,7 +96,7 @@ class HuggingFaceProvider(AIProvider):
         super().__init__(api_key)
         self.name = "huggingface"
         self.model = "meta-llama/Meta-Llama-3-8B-Instruct"
-        self.base_url = "https://api-inference.huggingface.co/models"
+        self.base_url = "https://router.huggingface.co/hf"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
         try:
