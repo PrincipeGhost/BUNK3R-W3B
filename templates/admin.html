@@ -1632,32 +1632,136 @@
                 </section>
                 
                 <section class="admin-section" id="section-logs">
+                    <div class="logs-stats-grid">
+                        <div class="log-stat-card">
+                            <div class="log-stat-icon admin-actions">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="log-stat-content">
+                                <span class="log-stat-value" id="logsAdminCount">-</span>
+                                <span class="log-stat-label">Acciones Admin</span>
+                            </div>
+                        </div>
+                        <div class="log-stat-card">
+                            <div class="log-stat-icon security">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                            </div>
+                            <div class="log-stat-content">
+                                <span class="log-stat-value" id="logsSecurityCount">-</span>
+                                <span class="log-stat-label">Eventos Seguridad</span>
+                            </div>
+                        </div>
+                        <div class="log-stat-card">
+                            <div class="log-stat-icon warnings">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="log-stat-content">
+                                <span class="log-stat-value" id="logsWarningsCount">-</span>
+                                <span class="log-stat-label">Advertencias</span>
+                            </div>
+                        </div>
+                        <div class="log-stat-card">
+                            <div class="log-stat-icon errors">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                                </svg>
+                            </div>
+                            <div class="log-stat-content">
+                                <span class="log-stat-value" id="logsErrorsCount">-</span>
+                                <span class="log-stat-label">Errores</span>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="logs-tabs">
                         <button class="tab-btn active" data-log="admin">Acciones Admin</button>
-                        <button class="tab-btn" data-log="errors">Errores</button>
-                        <button class="tab-btn" data-log="logins">Logins</button>
                         <button class="tab-btn" data-log="security">Seguridad</button>
                     </div>
                     
                     <div class="section-toolbar">
                         <div class="toolbar-left">
-                            <select id="logLevelFilter">
-                                <option value="">Todos los niveles</option>
-                                <option value="info">Info</option>
-                                <option value="warning">Warning</option>
-                                <option value="error">Error</option>
-                                <option value="critical">Critical</option>
+                            <div class="search-box">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" id="logSearch" placeholder="Buscar en logs...">
+                            </div>
+                            <select id="logActionFilter" class="log-filter-select">
+                                <option value="">Todas las acciones</option>
                             </select>
                             <input type="date" id="logDateFrom" class="date-input">
+                            <span class="date-separator">a</span>
                             <input type="date" id="logDateTo" class="date-input">
                         </div>
                         <div class="toolbar-right">
-                            <button class="btn-secondary" id="exportLogsBtn">Exportar</button>
+                            <button class="btn-secondary" id="refreshLogsBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                            <div class="export-dropdown">
+                                <button class="btn-secondary" id="exportLogsBtn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Exportar
+                                </button>
+                                <div class="export-menu" id="exportLogsMenu">
+                                    <button class="export-option" data-format="csv">CSV</button>
+                                    <button class="export-option" data-format="json">JSON</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="logs-container" id="logsContainer">
-                        <div class="log-entry">Cargando logs...</div>
+                    <div class="data-table-container">
+                        <table class="data-table" id="logsTable">
+                            <thead id="logsTableHead">
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Administrador</th>
+                                    <th>Acción</th>
+                                    <th>Objetivo</th>
+                                    <th>Descripción</th>
+                                    <th>IP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="6">Cargando logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="pagination" id="logsPagination">
+                        <button class="pagination-btn" id="logsPrevBtn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span class="pagination-info" id="logsPageInfo">Página 1 de 1</span>
+                        <button class="pagination-btn" id="logsNextBtn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
                     </div>
                 </section>
                 

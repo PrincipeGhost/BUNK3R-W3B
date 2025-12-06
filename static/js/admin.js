@@ -14,6 +14,7 @@ const AdminPanel = {
     init() {
         this.setupNavigation();
         this.setupEventListeners();
+        this.setupLogsEventListeners();
         this.loadDashboard();
         this.startAutoRefresh();
     },
@@ -187,14 +188,6 @@ const AdminPanel = {
                 document.querySelectorAll('.reports-tabs .tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.loadReports(btn.dataset.status);
-            });
-        });
-        
-        document.querySelectorAll('.logs-tabs .tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.logs-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.loadLogs(btn.dataset.log);
             });
         });
         
@@ -2173,31 +2166,390 @@ const AdminPanel = {
         }
     },
     
-    async loadLogs(logType = 'admin') {
-        const container = document.getElementById('logsContainer');
-        container.innerHTML = '<div class="log-entry">Cargando logs...</div>';
+    logsCurrentType: 'admin',
+    logsPage: 1,
+    logsPerPage: 20,
+    logsTotalPages: 1,
+    
+    async loadLogs(logType = null) {
+        if (logType) {
+            this.logsCurrentType = logType;
+            this.logsPage = 1;
+        }
+        
+        const tbody = document.getElementById('logsTableBody');
+        const thead = document.getElementById('logsTableHead');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando logs...</td></tr>';
         
         try {
-            const response = await this.fetchAPI(`/api/admin/logs?type=${logType}&limit=100`);
+            await this.loadLogsStats();
             
-            if (response.success && response.logs) {
-                if (response.logs.length === 0) {
-                    container.innerHTML = '<div class="log-entry">No hay logs disponibles</div>';
-                    return;
-                }
-                
-                container.innerHTML = response.logs.map(log => `
-                    <div class="log-entry">
-                        <span class="log-time">${this.formatDateTime(log.timestamp)}</span>
-                        <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
-                        <span class="log-message">${this.escapeHtml(log.message)}</span>
-                    </div>
-                `).join('');
+            if (this.logsCurrentType === 'admin') {
+                await this.loadAdminLogs();
+            } else if (this.logsCurrentType === 'security') {
+                await this.loadSecurityLogs();
             }
         } catch (error) {
             console.error('Error loading logs:', error);
-            container.innerHTML = '<div class="log-entry">Error al cargar logs</div>';
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar logs</td></tr>';
         }
+    },
+    
+    async loadLogsStats() {
+        try {
+            const [adminStats, securityStats] = await Promise.all([
+                this.fetchAPI('/api/admin/logs/admin?page=1&per_page=1'),
+                this.fetchAPI('/api/admin/logs/security?page=1&per_page=1')
+            ]);
+            
+            document.getElementById('logsAdminCount').textContent = this.formatNumber(adminStats.total || 0);
+            document.getElementById('logsSecurityCount').textContent = this.formatNumber(securityStats.total || 0);
+            
+            let warningsCount = 0;
+            let errorsCount = 0;
+            
+            if (securityStats.activityTypes) {
+                securityStats.activityTypes.forEach(at => {
+                    if (at.activity_type.includes('FAILED') || at.activity_type.includes('BLOCKED')) {
+                        warningsCount += at.count;
+                    }
+                    if (at.activity_type.includes('ERROR') || at.activity_type.includes('LOCKOUT')) {
+                        errorsCount += at.count;
+                    }
+                });
+            }
+            
+            document.getElementById('logsWarningsCount').textContent = this.formatNumber(warningsCount);
+            document.getElementById('logsErrorsCount').textContent = this.formatNumber(errorsCount);
+        } catch (error) {
+            console.error('Error loading logs stats:', error);
+        }
+    },
+    
+    async loadAdminLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        const thead = document.getElementById('logsTableHead');
+        
+        thead.innerHTML = `
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Administrador</th>
+                <th>Acción</th>
+                <th>Objetivo</th>
+                <th>Descripción</th>
+                <th>IP</th>
+            </tr>
+        `;
+        
+        const search = document.getElementById('logSearch')?.value || '';
+        const actionFilter = document.getElementById('logActionFilter')?.value || '';
+        const dateFrom = document.getElementById('logDateFrom')?.value || '';
+        const dateTo = document.getElementById('logDateTo')?.value || '';
+        
+        let url = `/api/admin/logs/admin?page=${this.logsPage}&per_page=${this.logsPerPage}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (actionFilter) url += `&action_type=${encodeURIComponent(actionFilter)}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+        
+        const response = await this.fetchAPI(url);
+        
+        if (response.success && response.logs) {
+            this.logsTotalPages = response.pages || 1;
+            this.updateLogsPagination();
+            this.updateAdminActionFilter(response.actionTypes || []);
+            
+            if (response.logs.length === 0) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay logs disponibles</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = response.logs.map(log => `
+                <tr>
+                    <td>${this.formatDateTime(log.created_at)}</td>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar-sm">${(log.admin_name || 'A')[0].toUpperCase()}</div>
+                            <span>${this.escapeHtml(log.admin_name || 'Admin')}</span>
+                        </div>
+                    </td>
+                    <td><span class="action-badge ${this.getActionBadgeClass(log.action_type)}">${this.formatActionType(log.action_type)}</span></td>
+                    <td>${log.target_type ? `<span class="target-type">${log.target_type}</span> ${log.target_id || ''}` : '-'}</td>
+                    <td class="log-description">${this.escapeHtml(log.description || '-')}</td>
+                    <td><code class="ip-address">${log.ip_address || '-'}</code></td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar logs</td></tr>';
+        }
+    },
+    
+    async loadSecurityLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        const thead = document.getElementById('logsTableHead');
+        
+        thead.innerHTML = `
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Usuario</th>
+                <th>Tipo Actividad</th>
+                <th>Descripción</th>
+                <th>Dispositivo</th>
+                <th>IP</th>
+            </tr>
+        `;
+        
+        const search = document.getElementById('logSearch')?.value || '';
+        const actionFilter = document.getElementById('logActionFilter')?.value || '';
+        const dateFrom = document.getElementById('logDateFrom')?.value || '';
+        const dateTo = document.getElementById('logDateTo')?.value || '';
+        
+        let url = `/api/admin/logs/security?page=${this.logsPage}&per_page=${this.logsPerPage}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (actionFilter) url += `&activity_type=${encodeURIComponent(actionFilter)}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+        
+        const response = await this.fetchAPI(url);
+        
+        if (response.success && response.logs) {
+            this.logsTotalPages = response.pages || 1;
+            this.updateLogsPagination();
+            this.updateSecurityActivityFilter(response.activityTypes || []);
+            
+            if (response.logs.length === 0) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay logs de seguridad</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = response.logs.map(log => `
+                <tr class="${this.getSecurityRowClass(log.activity_type)}">
+                    <td>${this.formatDateTime(log.created_at)}</td>
+                    <td>${log.user_id || '-'}</td>
+                    <td><span class="security-badge ${this.getSecurityBadgeClass(log.activity_type)}">${this.formatActivityType(log.activity_type)}</span></td>
+                    <td class="log-description">${this.escapeHtml(log.description || '-')}</td>
+                    <td><code class="device-id">${log.device_id ? log.device_id.substring(0, 8) + '...' : '-'}</code></td>
+                    <td><code class="ip-address">${log.ip_address || '-'}</code></td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar logs de seguridad</td></tr>';
+        }
+    },
+    
+    updateLogsPagination() {
+        const prevBtn = document.getElementById('logsPrevBtn');
+        const nextBtn = document.getElementById('logsNextBtn');
+        const pageInfo = document.getElementById('logsPageInfo');
+        
+        if (prevBtn) prevBtn.disabled = this.logsPage <= 1;
+        if (nextBtn) nextBtn.disabled = this.logsPage >= this.logsTotalPages;
+        if (pageInfo) pageInfo.textContent = `Página ${this.logsPage} de ${this.logsTotalPages}`;
+    },
+    
+    updateAdminActionFilter(actionTypes) {
+        const filter = document.getElementById('logActionFilter');
+        if (!filter || this.logsCurrentType !== 'admin') return;
+        
+        const currentValue = filter.value;
+        filter.innerHTML = '<option value="">Todas las acciones</option>';
+        actionTypes.forEach(at => {
+            filter.innerHTML += `<option value="${at.action_type}" ${at.action_type === currentValue ? 'selected' : ''}>${this.formatActionType(at.action_type)} (${at.count})</option>`;
+        });
+    },
+    
+    updateSecurityActivityFilter(activityTypes) {
+        const filter = document.getElementById('logActionFilter');
+        if (!filter || this.logsCurrentType !== 'security') return;
+        
+        const currentValue = filter.value;
+        filter.innerHTML = '<option value="">Todos los tipos</option>';
+        activityTypes.forEach(at => {
+            filter.innerHTML += `<option value="${at.activity_type}" ${at.activity_type === currentValue ? 'selected' : ''}>${this.formatActivityType(at.activity_type)} (${at.count})</option>`;
+        });
+    },
+    
+    formatActionType(actionType) {
+        const actionMap = {
+            'user_ban': 'Baneo Usuario',
+            'user_unban': 'Desbaneo Usuario',
+            'user_warn': 'Advertencia',
+            'post_delete': 'Eliminar Post',
+            'story_delete': 'Eliminar Story',
+            'hashtag_block': 'Bloquear Hashtag',
+            'hashtag_unblock': 'Desbloquear Hashtag',
+            'withdrawal_approve': 'Aprobar Retiro',
+            'withdrawal_reject': 'Rechazar Retiro',
+            'bot_activate': 'Activar Bot',
+            'bot_deactivate': 'Desactivar Bot',
+            'settings_update': 'Actualizar Config',
+            'login': 'Inicio Sesión'
+        };
+        return actionMap[actionType] || actionType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    },
+    
+    formatActivityType(activityType) {
+        const activityMap = {
+            'WALLET_ACCESS': 'Acceso Wallet',
+            'WALLET_FAILED_ATTEMPT': 'Intento Fallido',
+            'WALLET_LOCKOUT': 'Bloqueo Wallet',
+            'WALLET_UNLOCK': 'Desbloqueo Wallet',
+            'DEVICE_TRUST': 'Dispositivo Confiable',
+            'DEVICE_UNTRUST': 'Remover Dispositivo',
+            'SECURITY_CODE_GENERATE': 'Generar Código',
+            'SECURITY_CODE_VERIFY': 'Verificar Código',
+            'LOGIN_SUCCESS': 'Login Exitoso',
+            'LOGIN_FAILED': 'Login Fallido',
+            'SUSPICIOUS_ACTIVITY': 'Actividad Sospechosa',
+            'IP_BLOCKED': 'IP Bloqueada'
+        };
+        return activityMap[activityType] || activityType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    },
+    
+    getActionBadgeClass(actionType) {
+        if (actionType.includes('ban') || actionType.includes('delete') || actionType.includes('reject')) {
+            return 'danger';
+        }
+        if (actionType.includes('warn') || actionType.includes('block')) {
+            return 'warning';
+        }
+        if (actionType.includes('approve') || actionType.includes('activate') || actionType.includes('unban')) {
+            return 'success';
+        }
+        return 'info';
+    },
+    
+    getSecurityBadgeClass(activityType) {
+        if (activityType.includes('LOCKOUT') || activityType.includes('BLOCKED') || activityType.includes('SUSPICIOUS')) {
+            return 'danger';
+        }
+        if (activityType.includes('FAILED')) {
+            return 'warning';
+        }
+        if (activityType.includes('SUCCESS') || activityType.includes('TRUST') || activityType.includes('VERIFY')) {
+            return 'success';
+        }
+        return 'info';
+    },
+    
+    getSecurityRowClass(activityType) {
+        if (activityType.includes('LOCKOUT') || activityType.includes('BLOCKED')) {
+            return 'log-row-danger';
+        }
+        if (activityType.includes('FAILED') || activityType.includes('SUSPICIOUS')) {
+            return 'log-row-warning';
+        }
+        return '';
+    },
+    
+    async exportLogs(format = 'csv') {
+        try {
+            const logType = this.logsCurrentType;
+            const dateFrom = document.getElementById('logDateFrom')?.value || '';
+            const dateTo = document.getElementById('logDateTo')?.value || '';
+            
+            let url = `/api/admin/logs/export?type=${logType}&format=${format}`;
+            if (dateFrom) url += `&date_from=${dateFrom}`;
+            if (dateTo) url += `&date_to=${dateTo}`;
+            
+            this.showToast('Preparando exportación...', 'info');
+            
+            const response = await fetch(url, {
+                headers: {
+                    'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '',
+                    'X-Admin-Token': localStorage.getItem('admin_token') || ''
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Error en la exportación');
+            }
+            
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `logs_${logType}_${new Date().toISOString().split('T')[0]}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            this.showToast('Exportación completada', 'success');
+        } catch (error) {
+            console.error('Error exporting logs:', error);
+            this.showToast('Error al exportar logs', 'error');
+        }
+    },
+    
+    setupLogsEventListeners() {
+        document.querySelectorAll('.logs-tabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.logs-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.loadLogs(btn.dataset.log);
+            });
+        });
+        
+        document.getElementById('logSearch')?.addEventListener('input', this.debounce(() => {
+            this.logsPage = 1;
+            this.loadLogs();
+        }, 500));
+        
+        document.getElementById('logActionFilter')?.addEventListener('change', () => {
+            this.logsPage = 1;
+            this.loadLogs();
+        });
+        
+        document.getElementById('logDateFrom')?.addEventListener('change', () => {
+            this.logsPage = 1;
+            this.loadLogs();
+        });
+        
+        document.getElementById('logDateTo')?.addEventListener('change', () => {
+            this.logsPage = 1;
+            this.loadLogs();
+        });
+        
+        document.getElementById('refreshLogsBtn')?.addEventListener('click', () => {
+            this.loadLogs();
+            this.showToast('Logs actualizados', 'success');
+        });
+        
+        document.getElementById('logsPrevBtn')?.addEventListener('click', () => {
+            if (this.logsPage > 1) {
+                this.logsPage--;
+                this.loadLogs();
+            }
+        });
+        
+        document.getElementById('logsNextBtn')?.addEventListener('click', () => {
+            if (this.logsPage < this.logsTotalPages) {
+                this.logsPage++;
+                this.loadLogs();
+            }
+        });
+        
+        document.getElementById('exportLogsBtn')?.addEventListener('click', () => {
+            const menu = document.getElementById('exportLogsMenu');
+            if (menu) {
+                menu.classList.toggle('show');
+            }
+        });
+        
+        document.querySelectorAll('.export-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const format = btn.dataset.format;
+                this.exportLogs(format);
+                document.getElementById('exportLogsMenu')?.classList.remove('show');
+            });
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.export-dropdown')) {
+                document.getElementById('exportLogsMenu')?.classList.remove('show');
+            }
+        });
     },
     
     async loadSettings() {
