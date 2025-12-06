@@ -119,6 +119,16 @@
                         </svg>
                         <span>Números Virtuales</span>
                     </a>
+                    <a href="#bots" class="nav-item" data-section="bots">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <path d="M12 7v4"></path>
+                            <circle cx="8" cy="16" r="1"></circle>
+                            <circle cx="16" cy="16" r="1"></circle>
+                        </svg>
+                        <span>Bots</span>
+                    </a>
                 </div>
                 
                 <div class="nav-section">
@@ -1502,6 +1512,122 @@
                         <button class="btn-secondary" id="vnPrevBtn" disabled>Anterior</button>
                         <span class="page-info" id="vnPageInfo">Página 1</span>
                         <button class="btn-secondary" id="vnNextBtn">Siguiente</button>
+                    </div>
+                </section>
+                
+                <section class="admin-section" id="section-bots">
+                    <div class="bots-stats-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon bots">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                                    <circle cx="12" cy="5" r="2"></circle>
+                                    <path d="M12 7v4"></path>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="botsTotalCount">-</span>
+                                <span class="metric-label">Total Bots</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon online">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="botsActiveCount">-</span>
+                                <span class="metric-label">Bots Activos</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon users">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="botsUsersCount">-</span>
+                                <span class="metric-label">Usuarios con Bots</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon revenue">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="botsTotalRevenue">-</span>
+                                <span class="metric-label">Ingresos Totales (B3C)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-toolbar">
+                        <div class="toolbar-left">
+                            <select id="botStatusFilter">
+                                <option value="">Todos los estados</option>
+                                <option value="active">Activos</option>
+                                <option value="inactive">Inactivos</option>
+                            </select>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn-primary" id="createBotBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Crear Bot
+                            </button>
+                            <button class="btn-secondary" id="refreshBotsBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table-container">
+                        <table class="data-table" id="botsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Icono</th>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Descripción</th>
+                                    <th>Precio (B3C)</th>
+                                    <th>Usuarios</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="botsTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="9">Cargando bots...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="dashboard-card" style="margin-top: 20px;">
+                        <div class="card-header">
+                            <h3>Estadísticas por Bot</h3>
+                        </div>
+                        <div class="bot-stats-chart" id="botStatsContainer">
+                            <div class="loading-state">Cargando estadísticas...</div>
+                        </div>
                     </div>
                 </section>
                 

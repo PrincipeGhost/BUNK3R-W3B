@@ -64,6 +64,7 @@ const AdminPanel = {
             content: 'Contenido',
             reports: 'Reportes',
             virtualnumbers: 'Números Virtuales',
+            bots: 'Gestión de Bots',
             logs: 'Logs',
             settings: 'Configuración'
         };
@@ -105,6 +106,9 @@ const AdminPanel = {
                 break;
             case 'virtualnumbers':
                 this.loadVirtualNumbers();
+                break;
+            case 'bots':
+                this.loadBots();
                 break;
             case 'logs':
                 this.loadLogs();
@@ -3717,6 +3721,366 @@ Fin del reporte
                 this.loadVNOrders();
             }
         });
+    },
+    
+    botsListenersInitialized: false,
+    
+    async loadBots() {
+        try {
+            const [botsRes, statsRes] = await Promise.all([
+                this.fetchAPI('/api/admin/bots'),
+                this.fetchAPI('/api/admin/bots/stats')
+            ]);
+            
+            if (statsRes.success && statsRes.summary) {
+                document.getElementById('botsTotalCount').textContent = this.formatNumber(statsRes.summary.totalBots || 0);
+                document.getElementById('botsActiveCount').textContent = this.formatNumber(statsRes.summary.activeBots || 0);
+                document.getElementById('botsUsersCount').textContent = this.formatNumber(statsRes.summary.totalUsersUsingBots || 0);
+                
+                const totalRevenue = (statsRes.botStats || []).reduce((sum, bot) => sum + (bot.total_revenue || 0), 0);
+                document.getElementById('botsTotalRevenue').textContent = this.formatNumber(totalRevenue);
+                
+                this.renderBotStats(statsRes.botStats || []);
+            }
+            
+            if (botsRes.success) {
+                this.renderBotsTable(botsRes.bots || []);
+            }
+            
+            if (!this.botsListenersInitialized) {
+                this.setupBotsEventListeners();
+                this.botsListenersInitialized = true;
+            }
+            
+        } catch (error) {
+            console.error('Error loading bots:', error);
+            this.showToast('Error al cargar bots', 'error');
+        }
+    },
+    
+    renderBotsTable(bots) {
+        const tbody = document.getElementById('botsTableBody');
+        if (!tbody) return;
+        
+        const filter = document.getElementById('botStatusFilter')?.value || '';
+        let filteredBots = bots;
+        
+        if (filter === 'active') {
+            filteredBots = bots.filter(b => b.is_available);
+        } else if (filter === 'inactive') {
+            filteredBots = bots.filter(b => !b.is_available);
+        }
+        
+        if (filteredBots.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No hay bots registrados</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = filteredBots.map(bot => `
+            <tr data-bot-id="${bot.id}">
+                <td>${bot.id}</td>
+                <td class="bot-icon">${this.escapeHtml(bot.icon || '🤖')}</td>
+                <td class="bot-name">${this.escapeHtml(bot.bot_name || '-')}</td>
+                <td>${this.escapeHtml(bot.bot_type || '-')}</td>
+                <td class="description-cell" title="${this.escapeHtml(bot.description || '')}">${this.escapeHtml(this.truncate(bot.description || '-', 40))}</td>
+                <td class="price-cell">${this.formatNumber(bot.price || 0)} B3C</td>
+                <td class="users-cell">${this.formatNumber(bot.users_count || 0)}</td>
+                <td>
+                    <span class="status-badge ${bot.is_available ? 'active' : 'inactive'}">
+                        ${bot.is_available ? 'Activo' : 'Inactivo'}
+                    </span>
+                </td>
+                <td class="actions-cell">
+                    <button class="action-btn toggle-btn" data-bot-id="${bot.id}" title="${bot.is_available ? 'Desactivar' : 'Activar'}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            ${bot.is_available ? 
+                                '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>' :
+                                '<circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line>'}
+                        </svg>
+                    </button>
+                    <button class="action-btn edit-btn" data-bot-id="${bot.id}" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="action-btn delete-btn danger" data-bot-id="${bot.id}" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        tbody.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.toggleBot(btn.dataset.botId));
+        });
+        
+        tbody.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.showEditBotModal(btn.dataset.botId));
+        });
+        
+        tbody.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.deleteBot(btn.dataset.botId));
+        });
+    },
+    
+    renderBotStats(botStats) {
+        const container = document.getElementById('botStatsContainer');
+        if (!container) return;
+        
+        if (botStats.length === 0) {
+            container.innerHTML = '<div class="empty-state">No hay estadísticas disponibles</div>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="bot-stats-list">
+                ${botStats.map(bot => `
+                    <div class="bot-stat-item">
+                        <div class="bot-stat-icon">${this.escapeHtml(bot.icon || '🤖')}</div>
+                        <div class="bot-stat-info">
+                            <span class="bot-stat-name">${this.escapeHtml(bot.bot_name || '-')}</span>
+                            <div class="bot-stat-details">
+                                <span class="stat-detail"><strong>${this.formatNumber(bot.total_users || 0)}</strong> usuarios</span>
+                                <span class="stat-detail"><strong>${this.formatNumber(bot.active_users || 0)}</strong> activos</span>
+                                <span class="stat-detail"><strong>${this.formatNumber(bot.total_revenue || 0)}</strong> B3C</span>
+                            </div>
+                        </div>
+                        <span class="status-badge ${bot.is_available ? 'active' : 'inactive'}">${bot.is_available ? 'Activo' : 'Inactivo'}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    },
+    
+    setupBotsEventListeners() {
+        document.getElementById('refreshBotsBtn')?.addEventListener('click', () => {
+            this.loadBots();
+        });
+        
+        document.getElementById('botStatusFilter')?.addEventListener('change', () => {
+            this.loadBots();
+        });
+        
+        document.getElementById('createBotBtn')?.addEventListener('click', () => {
+            this.showCreateBotModal();
+        });
+    },
+    
+    showCreateBotModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.id = 'createBotModal';
+        modal.innerHTML = `
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Crear Nuevo Bot</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nombre del Bot</label>
+                        <input type="text" id="newBotName" placeholder="Ej: Bot de Trading">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <input type="text" id="newBotType" placeholder="Ej: trading" value="general">
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <textarea id="newBotDescription" rows="3" placeholder="Descripción del bot..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Icono (emoji)</label>
+                        <input type="text" id="newBotIcon" placeholder="🤖" value="🤖" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio (B3C)</label>
+                        <input type="number" id="newBotPrice" placeholder="0" value="0" min="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary modal-cancel">Cancelar</button>
+                    <button class="btn-primary" id="confirmCreateBot">Crear Bot</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+        modal.querySelector('.modal-overlay').addEventListener('click', () => modal.remove());
+        modal.querySelector('.modal-cancel').addEventListener('click', () => modal.remove());
+        
+        modal.querySelector('#confirmCreateBot').addEventListener('click', async () => {
+            const name = document.getElementById('newBotName').value.trim();
+            const type = document.getElementById('newBotType').value.trim() || 'general';
+            const description = document.getElementById('newBotDescription').value.trim();
+            const icon = document.getElementById('newBotIcon').value.trim() || '🤖';
+            const price = parseInt(document.getElementById('newBotPrice').value) || 0;
+            
+            if (!name) {
+                this.showToast('El nombre es requerido', 'error');
+                return;
+            }
+            
+            try {
+                const response = await this.fetchAPI('/api/admin/bots', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, type, description, icon, price })
+                });
+                
+                if (response.success) {
+                    this.showToast('Bot creado correctamente', 'success');
+                    modal.remove();
+                    this.loadBots();
+                } else {
+                    this.showToast(response.error || 'Error al crear bot', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating bot:', error);
+                this.showToast('Error al crear bot', 'error');
+            }
+        });
+    },
+    
+    async showEditBotModal(botId) {
+        try {
+            const response = await this.fetchAPI('/api/admin/bots');
+            if (!response.success) {
+                this.showToast('Error al cargar datos del bot', 'error');
+                return;
+            }
+            
+            const bot = response.bots.find(b => b.id == botId);
+            if (!bot) {
+                this.showToast('Bot no encontrado', 'error');
+                return;
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.id = 'editBotModal';
+            modal.innerHTML = `
+                <div class="modal-overlay"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Editar Bot: ${this.escapeHtml(bot.bot_name)}</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Nombre del Bot</label>
+                            <input type="text" id="editBotName" value="${this.escapeHtml(bot.bot_name || '')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción</label>
+                            <textarea id="editBotDescription" rows="3">${this.escapeHtml(bot.description || '')}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Icono (emoji)</label>
+                            <input type="text" id="editBotIcon" value="${this.escapeHtml(bot.icon || '🤖')}" maxlength="4">
+                        </div>
+                        <div class="form-group">
+                            <label>Precio (B3C)</label>
+                            <input type="number" id="editBotPrice" value="${bot.price || 0}" min="0">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary modal-cancel">Cancelar</button>
+                        <button class="btn-primary" id="confirmEditBot">Guardar Cambios</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+            modal.querySelector('.modal-overlay').addEventListener('click', () => modal.remove());
+            modal.querySelector('.modal-cancel').addEventListener('click', () => modal.remove());
+            
+            modal.querySelector('#confirmEditBot').addEventListener('click', async () => {
+                const name = document.getElementById('editBotName').value.trim();
+                const description = document.getElementById('editBotDescription').value.trim();
+                const icon = document.getElementById('editBotIcon').value.trim() || '🤖';
+                const price = parseInt(document.getElementById('editBotPrice').value) || 0;
+                
+                if (!name) {
+                    this.showToast('El nombre es requerido', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await this.fetchAPI(`/api/admin/bots/${botId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ name, description, icon, price })
+                    });
+                    
+                    if (response.success) {
+                        this.showToast('Bot actualizado correctamente', 'success');
+                        modal.remove();
+                        this.loadBots();
+                    } else {
+                        this.showToast(response.error || 'Error al actualizar bot', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error updating bot:', error);
+                    this.showToast('Error al actualizar bot', 'error');
+                }
+            });
+        } catch (error) {
+            console.error('Error loading bot for edit:', error);
+            this.showToast('Error al cargar datos del bot', 'error');
+        }
+    },
+    
+    async toggleBot(botId) {
+        try {
+            const response = await this.fetchAPI(`/api/admin/bots/${botId}/toggle`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Estado actualizado', 'success');
+                this.loadBots();
+            } else {
+                this.showToast(response.error || 'Error al cambiar estado', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling bot:', error);
+            this.showToast('Error al cambiar estado del bot', 'error');
+        }
+    },
+    
+    async deleteBot(botId) {
+        if (!confirm('¿Estás seguro de eliminar este bot? Esta acción no se puede deshacer.')) {
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/bots/${botId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Bot eliminado correctamente', 'success');
+                this.loadBots();
+            } else {
+                this.showToast(response.error || 'Error al eliminar bot', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting bot:', error);
+            this.showToast('Error al eliminar bot', 'error');
+        }
+    },
+    
+    truncate(str, maxLength) {
+        if (!str || str.length <= maxLength) return str;
+        return str.substring(0, maxLength) + '...';
     },
     
     async loadVNOrders() {
