@@ -5178,6 +5178,18 @@ def admin_dashboard_stats():
                 users_change = 0
                 if prev_users_week > 0:
                     users_change = round(((new_users_week - prev_users_week) / prev_users_week) * 100, 1)
+                
+                hot_wallet_balance = 0
+                try:
+                    cur.execute("""
+                        SELECT COALESCE(SUM(deposit_amount), 0) 
+                        FROM deposit_wallets 
+                        WHERE deposit_amount > 0 AND consolidated_at IS NULL
+                    """)
+                    hot_wallet_balance = float(cur.fetchone()[0] or 0)
+                except Exception as hw_err:
+                    logger.warning(f"Could not get hot wallet balance: {hw_err}")
+                    hot_wallet_balance = 0
         
         return jsonify({
             'success': True,
@@ -5185,7 +5197,7 @@ def admin_dashboard_stats():
                 'totalUsers': total_users,
                 'activeToday': active_today,
                 'totalB3C': float(total_b3c),
-                'hotWalletBalance': 0,
+                'hotWalletBalance': hot_wallet_balance,
                 'transactions24h': tx_24h,
                 'revenueToday': float(revenue_today),
                 'usersChange': users_change
@@ -5283,6 +5295,77 @@ def admin_dashboard_alerts():
     except Exception as e:
         logger.error(f"Error getting dashboard alerts: {e}")
         return jsonify({'success': True, 'data': []})
+
+
+@app.route('/api/admin/dashboard/charts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_dashboard_charts():
+    """Obtener datos para gráficos del dashboard."""
+    try:
+        period = request.args.get('period', '30')
+        try:
+            days = int(period)
+            if days not in [7, 30, 90]:
+                days = 30
+        except:
+            days = 30
+        
+        users_data = []
+        transactions_data = []
+        
+        if db_manager:
+            with db_manager.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT DATE(created_at) as date, COUNT(*) as count
+                        FROM users
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        GROUP BY DATE(created_at)
+                        ORDER BY date ASC
+                    """ % days)
+                    users_by_date = {row['date'].isoformat(): row['count'] for row in cur.fetchall()}
+                    
+                    cur.execute("""
+                        SELECT DATE(created_at) as date, COUNT(*) as count
+                        FROM wallet_transactions
+                        WHERE created_at >= NOW() - INTERVAL '%s days'
+                        GROUP BY DATE(created_at)
+                        ORDER BY date ASC
+                    """ % days)
+                    tx_by_date = {row['date'].isoformat(): row['count'] for row in cur.fetchall()}
+        else:
+            users_by_date = {}
+            tx_by_date = {}
+        
+        from datetime import timedelta
+        today = datetime.now().date()
+        
+        for i in range(days - 1, -1, -1):
+            date = today - timedelta(days=i)
+            date_str = date.isoformat()
+            users_data.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'count': users_by_date.get(date_str, 0)
+            })
+            transactions_data.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'count': tx_by_date.get(date_str, 0)
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'users': users_data,
+                'transactions': transactions_data
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting chart data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/admin/users/<user_id>/ban', methods=['POST'])

@@ -186,6 +186,14 @@ const AdminPanel = {
                 btn.classList.add('active');
             });
         });
+        
+        document.getElementById('usersChartPeriod')?.addEventListener('change', () => {
+            this.initCharts();
+        });
+        
+        document.getElementById('txChartPeriod')?.addEventListener('change', () => {
+            this.initCharts();
+        });
     },
     
     async loadDashboard() {
@@ -208,7 +216,7 @@ const AdminPanel = {
                 this.renderAlerts(alerts.data);
             }
             
-            this.initCharts();
+            await this.initCharts();
             
         } catch (error) {
             console.error('Error loading dashboard:', error);
@@ -290,10 +298,107 @@ const AdminPanel = {
         `).join('');
     },
     
-    initCharts() {
+    async initCharts() {
         const usersCtx = document.getElementById('usersChart');
         const txCtx = document.getElementById('transactionsChart');
         
+        const usersPeriod = document.getElementById('usersChartPeriod')?.value || '30';
+        const txPeriod = parseInt(document.getElementById('txChartPeriod')?.value || '7');
+        
+        try {
+            const chartData = await this.fetchAPI(`/api/admin/dashboard/charts?period=${usersPeriod}`);
+            
+            if (chartData.success && chartData.data) {
+                const usersLabels = chartData.data.users.map(d => d.label);
+                const usersData = chartData.data.users.map(d => d.count);
+                const txLabels = chartData.data.transactions.slice(-txPeriod).map(d => d.label);
+                const txData = chartData.data.transactions.slice(-txPeriod).map(d => d.count);
+                
+                if (usersCtx) {
+                    if (this.charts.users) {
+                        this.charts.users.data.labels = usersLabels;
+                        this.charts.users.data.datasets[0].data = usersData;
+                        this.charts.users.update();
+                    } else {
+                        this.charts.users = new Chart(usersCtx, {
+                            type: 'line',
+                            data: {
+                                labels: usersLabels,
+                                datasets: [{
+                                    label: 'Nuevos usuarios',
+                                    data: usersData,
+                                    borderColor: '#F0B90B',
+                                    backgroundColor: 'rgba(240, 185, 11, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    x: {
+                                        grid: { color: 'rgba(255,255,255,0.05)' },
+                                        ticks: { color: '#848E9C' }
+                                    },
+                                    y: {
+                                        grid: { color: 'rgba(255,255,255,0.05)' },
+                                        ticks: { color: '#848E9C' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+                
+                if (txCtx) {
+                    if (this.charts.transactions) {
+                        this.charts.transactions.data.labels = txLabels;
+                        this.charts.transactions.data.datasets[0].data = txData;
+                        this.charts.transactions.update();
+                    } else {
+                        this.charts.transactions = new Chart(txCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: txLabels,
+                                datasets: [{
+                                    label: 'Transacciones',
+                                    data: txData,
+                                    backgroundColor: 'rgba(240, 185, 11, 0.6)',
+                                    borderRadius: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: '#848E9C' }
+                                    },
+                                    y: {
+                                        grid: { color: 'rgba(255,255,255,0.05)' },
+                                        ticks: { color: '#848E9C' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading chart data:', error);
+            this.initFallbackCharts(usersCtx, txCtx);
+        }
+    },
+    
+    initFallbackCharts(usersCtx, txCtx) {
         if (usersCtx && !this.charts.users) {
             this.charts.users = new Chart(usersCtx, {
                 type: 'line',
@@ -301,7 +406,7 @@ const AdminPanel = {
                     labels: this.getLast30Days(),
                     datasets: [{
                         label: 'Nuevos usuarios',
-                        data: Array(30).fill(0).map(() => Math.floor(Math.random() * 10)),
+                        data: Array(30).fill(0),
                         borderColor: '#F0B90B',
                         backgroundColor: 'rgba(240, 185, 11, 0.1)',
                         fill: true,
@@ -311,18 +416,10 @@ const AdminPanel = {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#848E9C' }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#848E9C' }
-                        }
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } }
                     }
                 }
             });
@@ -335,7 +432,7 @@ const AdminPanel = {
                     labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
                     datasets: [{
                         label: 'Transacciones',
-                        data: [12, 19, 8, 15, 12, 8, 5],
+                        data: [0, 0, 0, 0, 0, 0, 0],
                         backgroundColor: 'rgba(240, 185, 11, 0.6)',
                         borderRadius: 6
                     }]
@@ -343,18 +440,10 @@ const AdminPanel = {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#848E9C' }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#848E9C' }
-                        }
+                        x: { grid: { display: false }, ticks: { color: '#848E9C' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#848E9C' } }
                     }
                 }
             });
