@@ -7871,6 +7871,89 @@ def admin_bots_purchases():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/bots/<int:bot_id>/logs', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bot_logs(bot_id):
+    """Admin: Obtener logs de actividad de un bot específico."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        per_page = min(per_page, 100)
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT bot_type FROM bot_types WHERE id = %s", (bot_id,))
+                bot = cur.fetchone()
+                if not bot:
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                bot_type = bot['bot_type']
+                
+                cur.execute("""
+                    SELECT COUNT(*) as total FROM user_bots WHERE bot_type = %s
+                """, (bot_type,))
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT 
+                        ub.id,
+                        ub.user_id,
+                        ub.bot_type,
+                        ub.bot_name,
+                        ub.is_active,
+                        ub.created_at,
+                        ub.config,
+                        u.username,
+                        u.first_name,
+                        bt.price,
+                        bt.icon
+                    FROM user_bots ub
+                    LEFT JOIN users u ON ub.user_id = u.telegram_id
+                    LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    WHERE ub.bot_type = %s
+                    ORDER BY ub.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (bot_type, per_page, offset))
+                logs = [dict(row) for row in cur.fetchall()]
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                cur.execute("""
+                    SELECT COUNT(*) as active_count 
+                    FROM user_bots 
+                    WHERE bot_type = %s AND is_active = TRUE
+                """, (bot_type,))
+                active_count = cur.fetchone()['active_count'] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as today_count 
+                    FROM user_bots 
+                    WHERE bot_type = %s AND created_at >= CURRENT_DATE
+                """, (bot_type,))
+                today_count = cur.fetchone()['today_count'] or 0
+                
+                return jsonify({
+                    'success': True,
+                    'data': logs,
+                    'total': total,
+                    'active_count': active_count,
+                    'today_count': today_count,
+                    'page': page,
+                    'per_page': per_page
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bot logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/products', methods=['GET'])
 @require_telegram_auth
 @require_owner

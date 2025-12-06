@@ -4472,27 +4472,59 @@ Fin del reporte
             modal.id = 'editBotModal';
             modal.innerHTML = `
                 <div class="modal-overlay"></div>
-                <div class="modal-content">
+                <div class="modal-content" style="max-width: 600px;">
                     <div class="modal-header">
-                        <h3>Editar Bot: ${this.escapeHtml(bot.bot_name)}</h3>
+                        <h3>${this.escapeHtml(bot.icon || '🤖')} ${this.escapeHtml(bot.bot_name)}</h3>
                         <button class="modal-close">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <div class="form-group">
-                            <label>Nombre del Bot</label>
-                            <input type="text" id="editBotName" value="${this.escapeHtml(bot.bot_name || '')}">
+                        <div class="bot-modal-tabs">
+                            <button class="bot-modal-tab active" data-tab="config">Configuración</button>
+                            <button class="bot-modal-tab" data-tab="logs">Logs de Actividad</button>
                         </div>
-                        <div class="form-group">
-                            <label>Descripción</label>
-                            <textarea id="editBotDescription" rows="3">${this.escapeHtml(bot.description || '')}</textarea>
+                        
+                        <div class="bot-modal-panel active" id="botConfigPanel">
+                            <div class="form-group">
+                                <label>Nombre del Bot</label>
+                                <input type="text" id="editBotName" value="${this.escapeHtml(bot.bot_name || '')}">
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="editBotDescription" rows="3">${this.escapeHtml(bot.description || '')}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Icono (emoji)</label>
+                                <input type="text" id="editBotIcon" value="${this.escapeHtml(bot.icon || '🤖')}" maxlength="4">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio (B3C)</label>
+                                <input type="number" id="editBotPrice" value="${bot.price || 0}" min="0">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Icono (emoji)</label>
-                            <input type="text" id="editBotIcon" value="${this.escapeHtml(bot.icon || '🤖')}" maxlength="4">
-                        </div>
-                        <div class="form-group">
-                            <label>Precio (B3C)</label>
-                            <input type="number" id="editBotPrice" value="${bot.price || 0}" min="0">
+                        
+                        <div class="bot-modal-panel" id="botLogsPanel">
+                            <div class="bot-logs-stats">
+                                <div class="bot-log-stat">
+                                    <span class="bot-log-stat-value" id="botLogsTotalUsers">-</span>
+                                    <span class="bot-log-stat-label">Total Usuarios</span>
+                                </div>
+                                <div class="bot-log-stat">
+                                    <span class="bot-log-stat-value" id="botLogsActiveUsers">-</span>
+                                    <span class="bot-log-stat-label">Activos</span>
+                                </div>
+                                <div class="bot-log-stat">
+                                    <span class="bot-log-stat-value" id="botLogsTodayUsers">-</span>
+                                    <span class="bot-log-stat-label">Hoy</span>
+                                </div>
+                            </div>
+                            <div class="bot-logs-list" id="botLogsList">
+                                <div class="bot-logs-empty">Cargando logs...</div>
+                            </div>
+                            <div class="bot-logs-pagination" id="botLogsPagination" style="display: none;">
+                                <button id="botLogsPrev" disabled>Anterior</button>
+                                <span id="botLogsPageInfo">1 / 1</span>
+                                <button id="botLogsNext" disabled>Siguiente</button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -4503,6 +4535,69 @@ Fin del reporte
             `;
             
             document.body.appendChild(modal);
+            
+            let botLogsPage = 1;
+            const botLogsPerPage = 20;
+            let botLogsTotal = 0;
+            
+            modal.querySelectorAll('.bot-modal-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    modal.querySelectorAll('.bot-modal-tab').forEach(t => t.classList.remove('active'));
+                    modal.querySelectorAll('.bot-modal-panel').forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    const tabName = tab.dataset.tab;
+                    if (tabName === 'config') {
+                        modal.querySelector('#botConfigPanel').classList.add('active');
+                    } else if (tabName === 'logs') {
+                        modal.querySelector('#botLogsPanel').classList.add('active');
+                        loadBotLogs();
+                    }
+                });
+            });
+            
+            const loadBotLogs = async () => {
+                try {
+                    const logsResponse = await this.fetchAPI(`/api/admin/bots/${botId}/logs?page=${botLogsPage}&per_page=${botLogsPerPage}`);
+                    if (logsResponse.success) {
+                        botLogsTotal = logsResponse.total || 0;
+                        const activeCount = logsResponse.active_count || 0;
+                        const todayCount = logsResponse.today_count || 0;
+                        
+                        document.getElementById('botLogsTotalUsers').textContent = botLogsTotal;
+                        document.getElementById('botLogsActiveUsers').textContent = activeCount;
+                        document.getElementById('botLogsTodayUsers').textContent = todayCount;
+                        
+                        this.renderBotLogs(logsResponse.data || []);
+                        
+                        const totalPages = Math.ceil(botLogsTotal / botLogsPerPage) || 1;
+                        document.getElementById('botLogsPageInfo').textContent = `${botLogsPage} / ${totalPages}`;
+                        document.getElementById('botLogsPrev').disabled = botLogsPage <= 1;
+                        document.getElementById('botLogsNext').disabled = botLogsPage >= totalPages;
+                        
+                        if (botLogsTotal > botLogsPerPage) {
+                            document.getElementById('botLogsPagination').style.display = 'flex';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading bot logs:', error);
+                    document.getElementById('botLogsList').innerHTML = '<div class="bot-logs-empty">Error al cargar logs</div>';
+                }
+            };
+            
+            modal.querySelector('#botLogsPrev')?.addEventListener('click', () => {
+                if (botLogsPage > 1) {
+                    botLogsPage--;
+                    loadBotLogs();
+                }
+            });
+            
+            modal.querySelector('#botLogsNext')?.addEventListener('click', () => {
+                const totalPages = Math.ceil(botLogsTotal / botLogsPerPage);
+                if (botLogsPage < totalPages) {
+                    botLogsPage++;
+                    loadBotLogs();
+                }
+            });
             
             modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
             modal.querySelector('.modal-overlay').addEventListener('click', () => modal.remove());
@@ -4541,6 +4636,35 @@ Fin del reporte
             console.error('Error loading bot for edit:', error);
             this.showToast('Error al cargar datos del bot', 'error');
         }
+    },
+    
+    renderBotLogs(logs) {
+        const container = document.getElementById('botLogsList');
+        if (!logs || logs.length === 0) {
+            container.innerHTML = '<div class="bot-logs-empty">No hay logs de actividad para este bot</div>';
+            return;
+        }
+        
+        container.innerHTML = logs.map(log => {
+            const username = log.username || log.first_name || `Usuario ${log.user_id}`;
+            const isActive = log.is_active;
+            const iconClass = isActive ? 'active' : 'inactive';
+            const statusClass = isActive ? 'active' : 'inactive';
+            const statusText = isActive ? 'Activo' : 'Inactivo';
+            const icon = log.icon || '🤖';
+            
+            return `
+                <div class="bot-log-item">
+                    <div class="bot-log-icon ${iconClass}">${icon}</div>
+                    <div class="bot-log-content">
+                        <div class="bot-log-user">@${this.escapeHtml(username)}</div>
+                        <div class="bot-log-action">Adquirió el bot</div>
+                    </div>
+                    <span class="bot-log-status ${statusClass}">${statusText}</span>
+                    <div class="bot-log-time">${this.timeAgo(log.created_at)}</div>
+                </div>
+            `;
+        }).join('');
     },
     
     async toggleBot(botId) {
