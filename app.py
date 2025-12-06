@@ -4542,7 +4542,7 @@ def get_pending_deposits():
                 cur.execute("""
                     SELECT d.*, u.username, u.first_name
                     FROM b3c_deposits d
-                    LEFT JOIN users u ON d.user_id = u.user_id
+                    LEFT JOIN users u ON d.user_id = u.id
                     WHERE d.status = 'pending'
                     ORDER BY d.created_at DESC
                 """)
@@ -5458,9 +5458,9 @@ def admin_dashboard_alerts():
                 with db_manager.get_connection() as conn:
                     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                         cur.execute("""
-                            SELECT id, alert_type, message, created_at, resolved
+                            SELECT id, alert_type, description, created_at, is_resolved
                             FROM security_alerts
-                            WHERE resolved = false
+                            WHERE is_resolved = false
                             ORDER BY created_at DESC
                             LIMIT 10
                         """)
@@ -5468,7 +5468,7 @@ def admin_dashboard_alerts():
                             alerts.append({
                                 'id': row['id'],
                                 'level': 'warning' if row['alert_type'] == 'warning' else 'danger',
-                                'message': row['message'],
+                                'message': row['description'],
                                 'timestamp': row['created_at'].isoformat() if row['created_at'] else None
                             })
                         
@@ -6132,7 +6132,7 @@ def admin_realtime_online():
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT user_id, username, first_name, last_seen
+                    SELECT id, username, first_name, last_seen
                     FROM users
                     WHERE last_seen >= NOW() - INTERVAL '5 minutes'
                     ORDER BY last_seen DESC
@@ -6143,7 +6143,7 @@ def admin_realtime_online():
                 users_list = []
                 for u in users:
                     users_list.append({
-                        'user_id': u['user_id'],
+                        'user_id': u['id'],
                         'username': u['username'],
                         'first_name': u['first_name'],
                         'last_seen': u['last_seen'].isoformat() if u['last_seen'] else None
@@ -6174,7 +6174,7 @@ def admin_get_sessions():
                         SELECT td.user_id, td.device_name, td.last_used_at, td.ip_address,
                                u.first_name, u.username
                         FROM trusted_devices td
-                        LEFT JOIN users u ON td.user_id = u.user_id
+                        LEFT JOIN users u ON td.user_id = u.id
                         WHERE td.last_used_at >= NOW() - INTERVAL '24 hours'
                         ORDER BY td.last_used_at DESC
                         LIMIT 100
@@ -6630,14 +6630,18 @@ def admin_financial_stats():
                 if last_month_volume > 0:
                     volume_change = round(((month_volume - last_month_volume) / last_month_volume) * 100, 1)
                 
-                cur.execute("""
-                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
-                    FROM wallet_transactions
-                    WHERE transaction_type = 'withdrawal' AND status = 'pending'
-                """)
-                pending = cur.fetchone()
-                pending_withdrawals = int(pending['count']) if pending else 0
-                pending_withdrawals_amount = float(pending['total']) if pending else 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(*) as count, COALESCE(SUM(amount_ton), 0) as total
+                        FROM b3c_withdrawals
+                        WHERE status = 'pending'
+                    """)
+                    pending = cur.fetchone()
+                    pending_withdrawals = int(pending['count']) if pending else 0
+                    pending_withdrawals_amount = float(pending['total']) if pending else 0
+                except:
+                    pending_withdrawals = 0
+                    pending_withdrawals_amount = 0
                 
                 cur.execute("""
                     SELECT DATE(created_at) as date, 
@@ -8882,7 +8886,7 @@ def admin_get_b3c_withdrawals():
                     cur.execute("""
                         SELECT w.*, u.username, u.first_name 
                         FROM b3c_withdrawals w
-                        LEFT JOIN users u ON w.user_id = u.user_id
+                        LEFT JOIN users u ON w.user_id = u.id
                         ORDER BY w.created_at DESC
                         LIMIT 100
                     """)
@@ -8890,7 +8894,7 @@ def admin_get_b3c_withdrawals():
                     cur.execute("""
                         SELECT w.*, u.username, u.first_name 
                         FROM b3c_withdrawals w
-                        LEFT JOIN users u ON w.user_id = u.user_id
+                        LEFT JOIN users u ON w.user_id = u.id
                         WHERE w.status = %s
                         ORDER BY w.created_at DESC
                         LIMIT 100
@@ -9012,9 +9016,9 @@ def admin_get_b3c_withdrawal_detail(withdrawal_id):
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT w.*, u.username, u.first_name, u.telegram_id, u.b3c_balance
+                    SELECT w.*, u.username, u.first_name, u.telegram_id
                     FROM b3c_withdrawals w
-                    LEFT JOIN users u ON w.user_id = u.user_id
+                    LEFT JOIN users u ON w.user_id = u.id
                     WHERE w.withdrawal_id = %s
                 """, (withdrawal_id,))
                 withdrawal = cur.fetchone()
@@ -11949,9 +11953,10 @@ def admin_hot_wallet():
         balance = 0
         if hot_wallet_address:
             try:
-                from tracking.wallet_pool_service import wallet_pool_service
-                if wallet_pool_service:
-                    balance = wallet_pool_service.get_wallet_balance(hot_wallet_address)
+                from tracking.wallet_pool_service import get_wallet_pool_service
+                wallet_svc = get_wallet_pool_service(db_manager)
+                if wallet_svc:
+                    balance = wallet_svc.get_wallet_balance(hot_wallet_address)
             except Exception as e:
                 logger.warning(f"Could not get hot wallet balance: {e}")
         
@@ -12042,9 +12047,10 @@ def admin_fill_wallet_pool():
         count = min(int(data.get('count', 10)), 50)
         
         try:
-            from tracking.wallet_pool_service import wallet_pool_service
-            if wallet_pool_service:
-                created = wallet_pool_service.fill_pool(count)
+            from tracking.wallet_pool_service import get_wallet_pool_service
+            wallet_svc = get_wallet_pool_service(db_manager)
+            if wallet_svc:
+                created = wallet_svc.fill_pool(count)
                 
                 user_id = getattr(request, 'user_id', '0')
                 log_admin_action(user_id, 'Admin', 'fill_wallet_pool', 'deposit_wallets', 
@@ -12073,9 +12079,10 @@ def admin_consolidate_wallets():
     """Admin: Consolidar fondos de wallets de depósito al hot wallet."""
     try:
         try:
-            from tracking.wallet_pool_service import wallet_pool_service
-            if wallet_pool_service:
-                result = wallet_pool_service.consolidate_all_balances()
+            from tracking.wallet_pool_service import get_wallet_pool_service
+            wallet_svc = get_wallet_pool_service(db_manager)
+            if wallet_svc:
+                result = wallet_svc.consolidate_all_balances()
                 
                 user_id = getattr(request, 'user_id', '0')
                 log_admin_action(user_id, 'Admin', 'consolidate_wallets', 'deposit_wallets', 
@@ -12122,7 +12129,7 @@ def admin_blockchain_history():
                                dw.deposit_detected_at as created_at, 'confirmed' as status,
                                u.username
                         FROM deposit_wallets dw
-                        LEFT JOIN users u ON dw.assigned_to_user_id = u.telegram_id
+                        LEFT JOIN users u ON dw.assigned_to_user_id = u.id
                         WHERE dw.deposit_tx_hash IS NOT NULL
                         ORDER BY dw.deposit_detected_at DESC
                         LIMIT %s
@@ -12150,7 +12157,7 @@ def admin_blockchain_history():
                                %s as from_address, wallet_address as to_address,
                                processed_at as created_at, status, u.username
                         FROM b3c_withdrawals w
-                        LEFT JOIN users u ON w.user_id = u.telegram_id
+                        LEFT JOIN users u ON w.user_id = u.id
                         WHERE tx_hash IS NOT NULL
                         ORDER BY processed_at DESC
                         LIMIT %s
@@ -12252,9 +12259,10 @@ def admin_pool_config():
                     conn.commit()
                     
                     try:
-                        from tracking.wallet_pool_service import wallet_pool_service
-                        if wallet_pool_service:
-                            wallet_pool_service.reload_config()
+                        from tracking.wallet_pool_service import get_wallet_pool_service
+                        wallet_svc = get_wallet_pool_service(db_manager)
+                        if wallet_svc:
+                            wallet_svc.reload_config()
                     except Exception as reload_err:
                         logger.warning(f"Could not reload wallet pool config: {reload_err}")
                     
@@ -12279,8 +12287,9 @@ def admin_consolidate_single_wallet(wallet_id):
             return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
         try:
-            from tracking.wallet_pool_service import wallet_pool_service
-            if wallet_pool_service:
+            from tracking.wallet_pool_service import get_wallet_pool_service
+            wallet_svc = get_wallet_pool_service(db_manager)
+            if wallet_svc:
                 with db_manager.get_connection() as conn:
                     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                         cur.execute("SELECT * FROM deposit_wallets WHERE id = %s", (wallet_id,))
@@ -12292,7 +12301,7 @@ def admin_consolidate_single_wallet(wallet_id):
                         if wallet.get('consolidated_at'):
                             return jsonify({'success': False, 'error': 'Wallet ya consolidada'}), 400
                 
-                result = wallet_pool_service.consolidate_wallet(wallet_id)
+                result = wallet_svc.consolidate_wallet(wallet_id)
                 
                 if result.get('success'):
                     user_id = getattr(request, 'user_id', '0')
@@ -12383,15 +12392,7 @@ def admin_analytics_users():
                 returning_users = cur.fetchone()['count'] or 0
                 retention_rate = round((returning_users / max(active_week, 1)) * 100, 1)
                 
-                # Usuarios por país
-                cur.execute("""
-                    SELECT COALESCE(country, 'Desconocido') as country, COUNT(*) as count
-                    FROM users
-                    GROUP BY country
-                    ORDER BY count DESC
-                    LIMIT 10
-                """)
-                users_by_country = [dict(row) for row in cur.fetchall()]
+                users_by_country = [{'country': 'No disponible', 'count': total_users}]
                 
                 # Usuarios por dispositivo (basado en user_agent)
                 cur.execute("""
@@ -12520,20 +12521,24 @@ def admin_analytics_conversion():
                 """)
                 users_purchased_b3c = cur.fetchone()['count'] or 0
                 
-                # Usuarios que usaron números virtuales
-                cur.execute("""
-                    SELECT COUNT(DISTINCT user_id) as count
-                    FROM virtual_number_purchases
-                """)
-                users_used_vn = cur.fetchone()['count'] or 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT user_id) as count
+                        FROM virtual_number_orders
+                    """)
+                    users_used_vn = cur.fetchone()['count'] or 0
+                except:
+                    users_used_vn = 0
                 
-                # Usuarios que publicaron contenido
-                cur.execute("""
-                    SELECT COUNT(DISTINCT user_id) as count
-                    FROM publications
-                    WHERE is_active = true
-                """)
-                users_published = cur.fetchone()['count'] or 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT user_id) as count
+                        FROM posts
+                        WHERE is_hidden = false
+                    """)
+                    users_published = cur.fetchone()['count'] or 0
+                except:
+                    users_published = 0
                 
                 # Usuarios con wallet conectada
                 cur.execute("""
