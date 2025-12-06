@@ -7651,6 +7651,16 @@ def admin_get_b3c_withdrawals():
                     """, (status_filter,))
                 
                 withdrawals = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                        COUNT(*) FILTER (WHERE status = 'completed') as processed,
+                        COALESCE(SUM(b3c_amount), 0) as total_b3c
+                    FROM b3c_withdrawals
+                """)
+                stats_row = cur.fetchone()
         
         result = []
         for w in withdrawals:
@@ -7670,7 +7680,13 @@ def admin_get_b3c_withdrawals():
         return jsonify({
             'success': True,
             'withdrawals': result,
-            'count': len(result)
+            'count': len(result),
+            'stats': {
+                'totalWithdrawals': stats_row['total'] if stats_row else 0,
+                'pendingCount': stats_row['pending'] if stats_row else 0,
+                'processedCount': stats_row['processed'] if stats_row else 0,
+                'totalB3C': float(stats_row['total_b3c']) if stats_row else 0
+            }
         })
         
     except Exception as e:
@@ -7735,6 +7751,189 @@ def admin_process_b3c_withdrawal(withdrawal_id):
         
     except Exception as e:
         logger.error(f"Error processing B3C withdrawal: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/b3c/withdrawals/<withdrawal_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_b3c_withdrawal_detail(withdrawal_id):
+    """Admin: Obtener detalle de un retiro B3C."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT w.*, u.username, u.first_name, u.telegram_id, u.b3c_balance
+                    FROM b3c_withdrawals w
+                    LEFT JOIN users u ON w.user_id = u.user_id
+                    WHERE w.withdrawal_id = %s
+                """, (withdrawal_id,))
+                withdrawal = cur.fetchone()
+                
+                if not withdrawal:
+                    return jsonify({'success': False, 'error': 'Retiro no encontrado'}), 404
+        
+        return jsonify({
+            'success': True,
+            'withdrawal': {
+                'id': withdrawal['withdrawal_id'],
+                'withdrawalId': withdrawal['withdrawal_id'],
+                'userId': withdrawal['user_id'],
+                'username': withdrawal.get('username', 'Unknown'),
+                'userFullName': withdrawal.get('first_name', 'Unknown'),
+                'telegramId': withdrawal.get('telegram_id'),
+                'b3cAmount': float(withdrawal['b3c_amount']),
+                'tonAmount': float(withdrawal.get('ton_amount', 0) or 0),
+                'commission': float(withdrawal.get('commission', 0) or 0),
+                'destinationWallet': withdrawal['destination_wallet'],
+                'status': withdrawal['status'],
+                'txHash': withdrawal.get('tx_hash'),
+                'rejectionReason': withdrawal.get('rejection_reason'),
+                'createdAt': withdrawal['created_at'].isoformat() if withdrawal['created_at'] else None,
+                'processedAt': withdrawal['processed_at'].isoformat() if withdrawal.get('processed_at') else None,
+                'userBalance': float(withdrawal.get('b3c_balance', 0) or 0)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting B3C withdrawal detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/transfers', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_p2p_transfers():
+    """Admin: Obtener lista de transferencias P2P."""
+    try:
+        filter_type = request.args.get('filter', 'all')
+        search = request.args.get('search', '').strip()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                base_query = """
+                    SELECT t.*, 
+                           u1.username as from_username, u1.first_name as from_name, u1.telegram_id as from_telegram_id,
+                           u2.username as to_username, u2.first_name as to_name, u2.telegram_id as to_telegram_id
+                    FROM wallet_transactions t
+                    LEFT JOIN users u1 ON t.user_id = u1.user_id
+                    LEFT JOIN users u2 ON t.recipient_id = u2.user_id
+                    WHERE t.transaction_type = 'transfer'
+                """
+                
+                params = []
+                
+                if search:
+                    base_query += " AND (u1.username ILIKE %s OR u2.username ILIKE %s)"
+                    params.extend([f'%{search}%', f'%{search}%'])
+                
+                if filter_type == 'suspicious':
+                    base_query += " AND t.is_suspicious = TRUE"
+                elif filter_type == 'today':
+                    base_query += " AND t.created_at >= CURRENT_DATE"
+                
+                base_query += " ORDER BY t.created_at DESC LIMIT 100"
+                
+                cur.execute(base_query, params)
+                transfers = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as today,
+                        COUNT(*) FILTER (WHERE is_suspicious = TRUE) as suspicious,
+                        COALESCE(SUM(ABS(amount)), 0) as total_b3c
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'transfer'
+                """)
+                stats_row = cur.fetchone()
+        
+        result = []
+        for t in transfers:
+            result.append({
+                'id': t['transaction_id'],
+                'transferId': t['transaction_id'],
+                'fromUsername': t.get('from_username', 'Unknown'),
+                'fromUserName': t.get('from_name', ''),
+                'fromTelegramId': t.get('from_telegram_id'),
+                'toUsername': t.get('to_username', 'Unknown'),
+                'toUserName': t.get('to_name', ''),
+                'toTelegramId': t.get('to_telegram_id'),
+                'amount': abs(float(t['amount'])),
+                'note': t.get('description', ''),
+                'isSuspicious': t.get('is_suspicious', False),
+                'suspiciousReason': t.get('suspicious_reason'),
+                'createdAt': t['created_at'].isoformat() if t['created_at'] else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'transfers': result,
+            'stats': {
+                'totalTransfers': stats_row['total'] if stats_row else 0,
+                'todayCount': stats_row['today'] if stats_row else 0,
+                'suspiciousCount': stats_row['suspicious'] if stats_row else 0,
+                'totalB3C': float(stats_row['total_b3c']) if stats_row else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting P2P transfers: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/transfers/<transfer_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_p2p_transfer_detail(transfer_id):
+    """Admin: Obtener detalle de una transferencia P2P."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT t.*, 
+                           u1.username as from_username, u1.first_name as from_name, u1.telegram_id as from_telegram_id,
+                           u2.username as to_username, u2.first_name as to_name, u2.telegram_id as to_telegram_id
+                    FROM wallet_transactions t
+                    LEFT JOIN users u1 ON t.user_id = u1.user_id
+                    LEFT JOIN users u2 ON t.recipient_id = u2.user_id
+                    WHERE t.transaction_id = %s AND t.transaction_type = 'transfer'
+                """, (transfer_id,))
+                transfer = cur.fetchone()
+                
+                if not transfer:
+                    return jsonify({'success': False, 'error': 'Transferencia no encontrada'}), 404
+        
+        return jsonify({
+            'success': True,
+            'transfer': {
+                'id': transfer['transaction_id'],
+                'transferId': transfer['transaction_id'],
+                'fromUsername': transfer.get('from_username', 'Unknown'),
+                'fromUserName': transfer.get('from_name', ''),
+                'fromTelegramId': transfer.get('from_telegram_id'),
+                'toUsername': transfer.get('to_username', 'Unknown'),
+                'toUserName': transfer.get('to_name', ''),
+                'toTelegramId': transfer.get('to_telegram_id'),
+                'amount': abs(float(transfer['amount'])),
+                'note': transfer.get('description', ''),
+                'isSuspicious': transfer.get('is_suspicious', False),
+                'suspiciousReason': transfer.get('suspicious_reason'),
+                'createdAt': transfer['created_at'].isoformat() if transfer['created_at'] else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting P2P transfer detail: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

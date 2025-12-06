@@ -685,6 +685,118 @@
                         </div>
                     </div>
                     
+                    <div id="withdrawalsSection" class="withdrawals-section" style="display: none;">
+                        <div class="withdrawals-stats">
+                            <div class="withdrawal-stat pending">
+                                <span class="stat-value" id="withdrawalsPending">0</span>
+                                <span class="stat-label">Pendientes</span>
+                            </div>
+                            <div class="withdrawal-stat approved">
+                                <span class="stat-value" id="withdrawalsApproved">0</span>
+                                <span class="stat-label">Aprobados</span>
+                            </div>
+                            <div class="withdrawal-stat completed">
+                                <span class="stat-value" id="withdrawalsCompleted">0</span>
+                                <span class="stat-label">Completados</span>
+                            </div>
+                            <div class="withdrawal-stat">
+                                <span class="stat-value" id="withdrawalsTotalB3C">0</span>
+                                <span class="stat-label">Total B3C</span>
+                            </div>
+                        </div>
+                        
+                        <div class="section-toolbar">
+                            <div class="toolbar-left">
+                                <div class="filter-group">
+                                    <select id="withdrawalStatusFilter">
+                                        <option value="">Todos los estados</option>
+                                        <option value="pending">Pendiente</option>
+                                        <option value="approved">Aprobado</option>
+                                        <option value="completed">Completado</option>
+                                        <option value="rejected">Rechazado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="withdrawalsTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>Monto B3C</th>
+                                        <th>Wallet Destino</th>
+                                        <th>Estado</th>
+                                        <th>TX Hash</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="withdrawalsTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="8">Cargando retiros...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div id="p2pSection" class="p2p-section" style="display: none;">
+                        <div class="p2p-stats">
+                            <div class="p2p-stat">
+                                <span class="stat-value" id="p2pTotal">0</span>
+                                <span class="stat-label">Total Transferencias</span>
+                            </div>
+                            <div class="p2p-stat">
+                                <span class="stat-value" id="p2pToday">0</span>
+                                <span class="stat-label">Hoy</span>
+                            </div>
+                            <div class="p2p-stat">
+                                <span class="stat-value" id="p2pVolume">0</span>
+                                <span class="stat-label">Volumen Total B3C</span>
+                            </div>
+                            <div class="p2p-stat warning" id="p2pSuspiciousStat">
+                                <span class="stat-value" id="p2pSuspicious">0</span>
+                                <span class="stat-label">Sospechosas</span>
+                            </div>
+                        </div>
+                        
+                        <div class="section-toolbar">
+                            <div class="toolbar-left">
+                                <div class="filter-group">
+                                    <select id="p2pFilter">
+                                        <option value="">Todas</option>
+                                        <option value="suspicious">Solo Sospechosas</option>
+                                        <option value="large">Montos Grandes (>1000)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="p2pSearch" class="search-input" placeholder="Buscar usuario...">
+                            </div>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="p2pTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Emisor</th>
+                                        <th>Receptor</th>
+                                        <th>Monto B3C</th>
+                                        <th>Fecha</th>
+                                        <th>Alerta</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="p2pTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="7">Cargando transferencias...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
                     <div id="transactionsSection" class="transactions-content">
                     <div class="section-toolbar">
                         <div class="toolbar-left">
@@ -1038,6 +1150,75 @@
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body" id="purchaseDetailContent">
+                <div class="loading-spinner">Cargando...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="withdrawalDetailModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h2>Detalle de Retiro</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="withdrawalDetailContent">
+                <div class="loading-spinner">Cargando...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="processWithdrawalModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Procesar Retiro</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="processWithdrawalInfo">Monto: <strong id="processWithdrawalAmount">0</strong> B3C</p>
+                <p>Wallet: <code id="processWithdrawalWallet"></code></p>
+                <div class="form-group">
+                    <label for="processWithdrawalTxHash">TX Hash de la transacción:</label>
+                    <input type="text" id="processWithdrawalTxHash" class="form-control" placeholder="Ingresa el hash de la transacción...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="document.getElementById('processWithdrawalModal').classList.remove('active')">Cancelar</button>
+                <button class="btn-primary" id="confirmProcessWithdrawal">Marcar como Completado</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="rejectWithdrawalModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Rechazar Retiro</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de rechazar este retiro? Los B3C serán devueltos al usuario.</p>
+                <div class="form-group">
+                    <label for="rejectWithdrawalReason">Razón del rechazo:</label>
+                    <textarea id="rejectWithdrawalReason" class="form-control" placeholder="Escribe la razón..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="document.getElementById('rejectWithdrawalModal').classList.remove('active')">Cancelar</button>
+                <button class="btn-danger" id="confirmRejectWithdrawal">Rechazar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="p2pDetailModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h2>Detalle de Transferencia P2P</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="p2pDetailContent">
                 <div class="loading-spinner">Cargando...</div>
             </div>
         </div>

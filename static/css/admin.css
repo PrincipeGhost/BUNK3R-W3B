@@ -2373,6 +2373,137 @@
     }
 }
 
+/* Withdrawal and P2P Action Buttons */
+.action-btn.process {
+    background: var(--accent-success);
+    color: white;
+}
+
+.action-btn.process:hover {
+    background: #219150;
+}
+
+.action-btn.reject {
+    background: var(--accent-danger);
+    color: white;
+}
+
+.action-btn.reject:hover {
+    background: #c0392b;
+}
+
+/* Suspicious Row Styling */
+tr.suspicious {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+tr.suspicious:hover {
+    background: rgba(231, 76, 60, 0.15);
+}
+
+.suspicious-section {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid var(--accent-danger);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.suspicious-reason {
+    color: var(--accent-danger);
+}
+
+.rejection-reason {
+    color: var(--accent-danger);
+    font-style: italic;
+}
+
+/* Action Buttons Row */
+.action-buttons-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.action-buttons-row .btn-primary,
+.action-buttons-row .btn-danger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+}
+
+/* Transaction Type Badge - Withdrawal */
+.tx-type-badge.withdrawal {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* Transaction Type Badge - Transfer */
+.tx-type-badge.transfer {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+/* Status Badge Info */
+.status-badge.info {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+/* Form Controls in Modal */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+textarea.form-control {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Modal Footer */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-danger {
+    background: var(--accent-danger);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
 @media (max-width: 768px) {
     .admin-sidebar {
         transform: translateX(-100%);

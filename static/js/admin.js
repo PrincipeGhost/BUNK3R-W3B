@@ -207,15 +207,26 @@ const AdminPanel = {
                 
                 const purchasesSection = document.getElementById('purchasesSection');
                 const transactionsSection = document.getElementById('transactionsSection');
+                const withdrawalsSection = document.getElementById('withdrawalsSection');
+                const p2pSection = document.getElementById('p2pSection');
+                
+                purchasesSection.style.display = 'none';
+                transactionsSection.style.display = 'none';
+                withdrawalsSection.style.display = 'none';
+                p2pSection.style.display = 'none';
                 
                 if (tabType === 'purchases') {
                     purchasesSection.style.display = 'block';
-                    transactionsSection.style.display = 'none';
                     this.loadPurchases();
+                } else if (tabType === 'withdrawal') {
+                    withdrawalsSection.style.display = 'block';
+                    this.loadWithdrawals();
+                } else if (tabType === 'transfer') {
+                    p2pSection.style.display = 'block';
+                    this.loadP2PTransfers();
                 } else {
-                    purchasesSection.style.display = 'none';
                     transactionsSection.style.display = 'block';
-                    document.getElementById('txTypeFilter').value = tabType === 'all' ? '' : tabType;
+                    document.getElementById('txTypeFilter').value = '';
                     this.loadTransactions();
                 }
             });
@@ -224,6 +235,18 @@ const AdminPanel = {
         document.getElementById('purchaseStatusFilter')?.addEventListener('change', () => {
             this.loadPurchases();
         });
+        
+        document.getElementById('withdrawalStatusFilter')?.addEventListener('change', () => {
+            this.loadWithdrawals();
+        });
+        
+        document.getElementById('p2pFilter')?.addEventListener('change', () => {
+            this.loadP2PTransfers();
+        });
+        
+        document.getElementById('p2pSearch')?.addEventListener('input', this.debounce(() => {
+            this.loadP2PTransfers();
+        }, 500));
         
         document.getElementById('txSearch')?.addEventListener('input', this.debounce(() => {
             this.loadTransactions();
@@ -235,6 +258,14 @@ const AdminPanel = {
         
         document.getElementById('txDateTo')?.addEventListener('change', () => {
             this.loadTransactions();
+        });
+        
+        document.getElementById('confirmProcessWithdrawal')?.addEventListener('click', () => {
+            this.processWithdrawal();
+        });
+        
+        document.getElementById('confirmRejectWithdrawal')?.addEventListener('click', () => {
+            this.rejectWithdrawal();
         });
     },
     
@@ -2258,6 +2289,483 @@ const AdminPanel = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    },
+    
+    async loadWithdrawals() {
+        const tbody = document.getElementById('withdrawalsTableBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando retiros...</td></tr>';
+        
+        try {
+            const status = document.getElementById('withdrawalStatusFilter')?.value || '';
+            const response = await this.fetchAPI(`/api/admin/b3c/withdrawals?status=${status}`);
+            
+            if (response.success) {
+                this.renderWithdrawalsTable(response.withdrawals);
+                
+                if (response.stats) {
+                    document.getElementById('withdrawalsTotal').textContent = response.stats.totalWithdrawals || 0;
+                    document.getElementById('withdrawalsPending').textContent = response.stats.pendingCount || 0;
+                    document.getElementById('withdrawalsProcessed').textContent = response.stats.processedCount || 0;
+                    document.getElementById('withdrawalsTotalB3C').textContent = this.formatNumber(response.stats.totalB3C || 0, 2);
+                }
+            } else {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Error al cargar retiros</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading withdrawals:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Error al cargar retiros</td></tr>';
+        }
+    },
+    
+    renderWithdrawalsTable(withdrawals) {
+        const tbody = document.getElementById('withdrawalsTableBody');
+        
+        if (!withdrawals || withdrawals.length === 0) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="8">No se encontraron retiros</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = withdrawals.map(w => {
+            const statusClass = w.status === 'completed' ? 'success' : 
+                               (w.status === 'pending' ? 'warning' : 
+                               (w.status === 'processing' ? 'info' : 'danger'));
+            const statusLabel = w.status === 'completed' ? 'Completado' :
+                               (w.status === 'pending' ? 'Pendiente' :
+                               (w.status === 'processing' ? 'Procesando' : 
+                               (w.status === 'rejected' ? 'Rechazado' : w.status)));
+            const destination = w.destination || w.destinationWallet || '';
+            const walletShort = destination ? 
+                `${destination.slice(0, 8)}...${destination.slice(-6)}` : '-';
+            const withdrawalId = w.id || w.withdrawalId;
+            const b3cAmount = w.amount || w.b3cAmount || 0;
+            const createdAt = w.createdAt || w.created_at;
+            
+            return `
+                <tr>
+                    <td><code>${this.escapeHtml(withdrawalId.toString().slice(0, 8))}...</code></td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="username">@${this.escapeHtml(w.username || 'unknown')}</span>
+                        </div>
+                    </td>
+                    <td>${this.formatNumber(b3cAmount, 2)} B3C</td>
+                    <td>${this.formatNumber(w.tonAmount || 0, 4)} TON</td>
+                    <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td>
+                        ${destination ? 
+                            `<span class="wallet-address" onclick="AdminPanel.copyToClipboard('${destination}')" title="${destination}">${walletShort}</span>` 
+                            : '-'}
+                    </td>
+                    <td>${this.formatDate(createdAt)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="action-btn" onclick="AdminPanel.viewWithdrawal('${withdrawalId}')">Ver</button>
+                            ${w.status === 'pending' ? `
+                                <button class="action-btn process" onclick="AdminPanel.openProcessWithdrawal('${withdrawalId}')">Procesar</button>
+                                <button class="action-btn reject" onclick="AdminPanel.openRejectWithdrawal('${withdrawalId}')">Rechazar</button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+    
+    async viewWithdrawal(withdrawalId) {
+        const modal = document.getElementById('withdrawalDetailModal');
+        const content = document.getElementById('withdrawalDetailContent');
+        
+        modal.classList.add('active');
+        content.innerHTML = '<div class="loading-spinner">Cargando...</div>';
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/b3c/withdrawals/${withdrawalId}`);
+            
+            if (response.success && response.withdrawal) {
+                const w = response.withdrawal;
+                const statusClass = w.status === 'completed' ? 'success' : 
+                                   (w.status === 'pending' ? 'warning' : 
+                                   (w.status === 'processing' ? 'info' : 'danger'));
+                const statusLabel = w.status === 'completed' ? 'Completado' :
+                                   (w.status === 'pending' ? 'Pendiente' :
+                                   (w.status === 'processing' ? 'Procesando' : 
+                                   (w.status === 'rejected' ? 'Rechazado' : w.status)));
+                
+                content.innerHTML = `
+                    <div class="tx-detail-grid">
+                        <div class="tx-detail-header">
+                            <div class="tx-type-badge withdrawal">Retiro B3C</div>
+                            <span class="status-badge ${statusClass}">${statusLabel}</span>
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Información del Retiro</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">ID Retiro:</span>
+                                <span class="detail-value"><code>${this.escapeHtml(w.withdrawalId || w.id)}</code></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">B3C a Retirar:</span>
+                                <span class="detail-value">${(w.b3cAmount || 0).toFixed(2)} B3C</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">TON a Recibir:</span>
+                                <span class="detail-value">${(w.tonAmount || 0).toFixed(4)} TON</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Comisión:</span>
+                                <span class="detail-value">${(w.commission || 0).toFixed(4)} TON</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha Solicitud:</span>
+                                <span class="detail-value">${this.formatDateTime(w.createdAt)}</span>
+                            </div>
+                            ${w.processedAt ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha Procesado:</span>
+                                <span class="detail-value">${this.formatDateTime(w.processedAt)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Usuario</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Username:</span>
+                                <span class="detail-value">@${this.escapeHtml(w.username)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Nombre:</span>
+                                <span class="detail-value">${this.escapeHtml(w.userFullName || w.userName || '')}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Telegram ID:</span>
+                                <span class="detail-value">${w.telegramId || 'N/A'}</span>
+                            </div>
+                        </div>
+                        
+                        ${w.destinationWallet ? `
+                        <div class="tx-detail-section">
+                            <h4>Wallet de Destino</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Dirección:</span>
+                                <span class="detail-value wallet-full">
+                                    <code>${this.escapeHtml(w.destinationWallet)}</code>
+                                </span>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${w.txHash ? `
+                        <div class="tx-detail-section">
+                            <h4>Blockchain</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">TX Hash:</span>
+                                <span class="detail-value tx-hash-full">
+                                    <code>${this.escapeHtml(w.txHash)}</code>
+                                </span>
+                            </div>
+                            <div class="detail-actions">
+                                <button class="btn-primary btn-sm" onclick="AdminPanel.openTxHash('${w.txHash}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                    </svg>
+                                    Ver en TonScan
+                                </button>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${w.rejectionReason ? `
+                        <div class="tx-detail-section">
+                            <h4>Motivo de Rechazo</h4>
+                            <div class="detail-row">
+                                <span class="detail-value rejection-reason">${this.escapeHtml(w.rejectionReason)}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${w.status === 'pending' ? `
+                        <div class="tx-detail-section">
+                            <h4>Acciones</h4>
+                            <div class="action-buttons-row">
+                                <button class="btn-primary" onclick="AdminPanel.openProcessWithdrawal('${w.withdrawalId || w.id}')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    Procesar Retiro
+                                </button>
+                                <button class="btn-danger" onclick="AdminPanel.openRejectWithdrawal('${w.withdrawalId || w.id}')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Rechazar
+                                </button>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<div class="error-state">Error: ${response.error || 'No se pudo cargar el retiro'}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading withdrawal:', error);
+            content.innerHTML = '<div class="error-state">Error al cargar los datos</div>';
+        }
+    },
+    
+    openProcessWithdrawal(withdrawalId) {
+        const modal = document.getElementById('processWithdrawalModal');
+        modal.dataset.withdrawalId = withdrawalId;
+        document.getElementById('processWithdrawalTxHash').value = '';
+        modal.classList.add('active');
+    },
+    
+    async processWithdrawal() {
+        const modal = document.getElementById('processWithdrawalModal');
+        const withdrawalId = modal.dataset.withdrawalId;
+        const txHash = document.getElementById('processWithdrawalTxHash').value.trim();
+        
+        if (!txHash) {
+            this.showToast('Ingresa el hash de la transacción', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/b3c/withdrawals/${withdrawalId}/process`, {
+                method: 'POST',
+                body: JSON.stringify({ txHash: txHash, action: 'complete' })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Retiro procesado correctamente', 'success');
+                document.getElementById('processWithdrawalModal').classList.remove('active');
+                document.getElementById('withdrawalDetailModal').classList.remove('active');
+                this.loadWithdrawals();
+            } else {
+                this.showToast(response.error || 'Error al procesar el retiro', 'error');
+            }
+        } catch (error) {
+            console.error('Error processing withdrawal:', error);
+            this.showToast('Error al procesar el retiro', 'error');
+        }
+    },
+    
+    openRejectWithdrawal(withdrawalId) {
+        const modal = document.getElementById('rejectWithdrawalModal');
+        modal.dataset.withdrawalId = withdrawalId;
+        document.getElementById('rejectWithdrawalReason').value = '';
+        modal.classList.add('active');
+    },
+    
+    async rejectWithdrawal() {
+        const modal = document.getElementById('rejectWithdrawalModal');
+        const withdrawalId = modal.dataset.withdrawalId;
+        const reason = document.getElementById('rejectWithdrawalReason').value.trim();
+        
+        if (!reason) {
+            this.showToast('Ingresa el motivo del rechazo', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/b3c/withdrawals/${withdrawalId}/process`, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'reject', reason: reason })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Retiro rechazado', 'success');
+                document.getElementById('rejectWithdrawalModal').classList.remove('active');
+                document.getElementById('withdrawalDetailModal').classList.remove('active');
+                this.loadWithdrawals();
+            } else {
+                this.showToast(response.error || 'Error al rechazar el retiro', 'error');
+            }
+        } catch (error) {
+            console.error('Error rejecting withdrawal:', error);
+            this.showToast('Error al rechazar el retiro', 'error');
+        }
+    },
+    
+    async loadP2PTransfers() {
+        const tbody = document.getElementById('p2pTableBody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando transferencias...</td></tr>';
+        
+        try {
+            const filter = document.getElementById('p2pFilter')?.value || '';
+            const search = document.getElementById('p2pSearch')?.value || '';
+            const response = await this.fetchAPI(`/api/admin/transfers?filter=${filter}&search=${encodeURIComponent(search)}`);
+            
+            if (response.success) {
+                this.renderP2PTable(response.transfers);
+                
+                if (response.stats) {
+                    document.getElementById('p2pTotal').textContent = response.stats.totalTransfers || 0;
+                    document.getElementById('p2pToday').textContent = response.stats.todayCount || 0;
+                    document.getElementById('p2pSuspicious').textContent = response.stats.suspiciousCount || 0;
+                    document.getElementById('p2pTotalB3C').textContent = this.formatNumber(response.stats.totalB3C || 0, 2);
+                }
+            } else {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Error al cargar transferencias</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading P2P transfers:', error);
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Error al cargar transferencias</td></tr>';
+        }
+    },
+    
+    renderP2PTable(transfers) {
+        const tbody = document.getElementById('p2pTableBody');
+        
+        if (!transfers || transfers.length === 0) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="7">No se encontraron transferencias</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = transfers.map(t => {
+            const isSuspicious = t.isSuspicious || t.is_suspicious;
+            const suspiciousClass = isSuspicious ? 'suspicious' : '';
+            
+            return `
+                <tr class="${suspiciousClass}">
+                    <td><code>${this.escapeHtml((t.transferId || t.id).toString().slice(0, 8))}...</code></td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="username">@${this.escapeHtml(t.fromUsername)}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="username">@${this.escapeHtml(t.toUsername)}</span>
+                        </div>
+                    </td>
+                    <td>${this.formatNumber(t.amount, 2)} B3C</td>
+                    <td>
+                        ${isSuspicious ? 
+                            `<span class="status-badge danger" title="${this.escapeHtml(t.suspiciousReason || 'Actividad sospechosa')}">Sospechoso</span>` 
+                            : '<span class="status-badge success">Normal</span>'}
+                    </td>
+                    <td>${this.formatDateTime(t.createdAt)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="action-btn" onclick="AdminPanel.viewP2PTransfer('${t.transferId || t.id}')">Ver</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+    
+    async viewP2PTransfer(transferId) {
+        const modal = document.getElementById('p2pDetailModal');
+        const content = document.getElementById('p2pDetailContent');
+        
+        if (!modal) {
+            this.showToast('Modal no disponible', 'error');
+            return;
+        }
+        
+        modal.classList.add('active');
+        content.innerHTML = '<div class="loading-spinner">Cargando...</div>';
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/transfers/${transferId}`);
+            
+            if (response.success && response.transfer) {
+                const t = response.transfer;
+                const isSuspicious = t.isSuspicious || t.is_suspicious;
+                
+                content.innerHTML = `
+                    <div class="tx-detail-grid">
+                        <div class="tx-detail-header">
+                            <div class="tx-type-badge transfer">Transferencia P2P</div>
+                            ${isSuspicious ? 
+                                '<span class="status-badge danger">Sospechoso</span>' 
+                                : '<span class="status-badge success">Normal</span>'}
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Información de la Transferencia</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">ID Transferencia:</span>
+                                <span class="detail-value"><code>${this.escapeHtml(t.transferId || t.id)}</code></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Monto:</span>
+                                <span class="detail-value">${(t.amount || 0).toFixed(2)} B3C</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha:</span>
+                                <span class="detail-value">${this.formatDateTime(t.createdAt)}</span>
+                            </div>
+                            ${t.note ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Nota:</span>
+                                <span class="detail-value">${this.escapeHtml(t.note)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Remitente</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Username:</span>
+                                <span class="detail-value">@${this.escapeHtml(t.fromUsername)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Nombre:</span>
+                                <span class="detail-value">${this.escapeHtml(t.fromUserName || '')}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Telegram ID:</span>
+                                <span class="detail-value">${t.fromTelegramId || 'N/A'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="tx-detail-section">
+                            <h4>Destinatario</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Username:</span>
+                                <span class="detail-value">@${this.escapeHtml(t.toUsername)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Nombre:</span>
+                                <span class="detail-value">${this.escapeHtml(t.toUserName || '')}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Telegram ID:</span>
+                                <span class="detail-value">${t.toTelegramId || 'N/A'}</span>
+                            </div>
+                        </div>
+                        
+                        ${isSuspicious ? `
+                        <div class="tx-detail-section suspicious-section">
+                            <h4>Alerta de Actividad Sospechosa</h4>
+                            <div class="detail-row">
+                                <span class="detail-value suspicious-reason">${this.escapeHtml(t.suspiciousReason || 'Detectada actividad inusual en esta transferencia')}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<div class="error-state">Error: ${response.error || 'No se pudo cargar la transferencia'}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading P2P transfer:', error);
+            content.innerHTML = '<div class="error-state">Error al cargar los datos</div>';
+        }
+    },
+    
+    openTxHash(txHash) {
+        if (txHash) {
+            window.open(`https://tonscan.org/tx/${txHash}`, '_blank');
+        }
     }
 };
 
