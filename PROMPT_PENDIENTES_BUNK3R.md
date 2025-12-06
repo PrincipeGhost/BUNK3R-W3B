@@ -22,10 +22,10 @@ Esperando tu respuesta...
 |---------|-------|
 | Proyecto | BUNK3R-W3B |
 | Última actualización | 6 Diciembre 2025 |
-| Sección actual | 27 |
-| Total secciones | 1 |
+| Sección actual | 27-28 |
+| Total secciones | 2 |
 | Completadas | 0 ✅ |
-| Pendientes | 1 ⏳ |
+| Pendientes | 2 ⏳ |
 | En progreso | 0 🔄 |
 | Crítico | 1 🔴 |
 
@@ -748,5 +748,258 @@ SIDEBAR:
 Las API keys y secrets NUNCA se mostrarán ni gestionarán desde el panel. 
 Solo se mostrará si están configuradas (SÍ/NO) y se proporcionará un link 
 al panel de Secrets de Replit para configurarlas de forma segura.
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 28: REDISEÑO COMPLETO DEL PERFIL DE USUARIO ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Agregado:** 6 Diciembre 2025  
+**Estado:** PENDIENTE
+
+**Referencia visual:** Ver imagen del perfil actual en `attached_assets/`
+
+---
+
+### OBJETIVO PRINCIPAL:
+Rediseñar completamente la pantalla de perfil de usuario para que:
+1. Use el mismo estilo visual profesional de la app (colores oscuros + dorado)
+2. TODAS las funcionalidades estén implementadas y funcionando
+3. Se vea moderno y profesional tipo Instagram/Binance
+4. Reorganizar elementos que se ven desordenados
+
+---
+
+### PALETA DE COLORES A USAR (Consistente con la app):
+```css
+--bg-primary: #0B0E11;      /* Fondo principal */
+--bg-secondary: #1E2329;    /* Cards, modales */
+--bg-tertiary: #2B3139;     /* Inputs, bordes */
+--text-primary: #EAECEF;    /* Texto principal */
+--text-secondary: #848E9C;  /* Texto secundario */
+--accent-gold: #F0B90B;     /* Dorado - acentos */
+--success: #0ECB81;         /* Verde */
+--danger: #F6465D;          /* Rojo */
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.1: HEADER DEL PERFIL ⏳
+## ═══════════════════════════════════════
+
+### 28.1.1 - Avatar Mejorado
+- [ ] Avatar circular grande (80-100px)
+- [ ] Si tiene foto: mostrar foto real
+- [ ] Si no tiene foto: inicial con gradiente dorado
+- [ ] Borde dorado sutil alrededor
+- [ ] Botón de cámara para cambiar foto (funcional)
+- [ ] Preview antes de subir
+- [ ] Subida real a Cloudinary/servidor
+
+### 28.1.2 - Información Principal
+- [ ] Username (@demo_user) con estilo elegante
+- [ ] Nombre completo debajo (si existe)
+- [ ] Badge de verificado (si aplica)
+- [ ] Badge de DEV_MODE (solo si es developer)
+- [ ] Fecha de registro "Miembro desde Dic 2025"
+
+### 28.1.3 - Bio del Usuario
+- [ ] Área de biografía editable
+- [ ] Máximo 150 caracteres
+- [ ] Placeholder si está vacía
+- [ ] Links clickeables en bio
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.2: ESTADÍSTICAS DEL PERFIL ⏳
+## ═══════════════════════════════════════
+
+### 28.2.1 - Contadores (DEBEN SER CLICKEABLES)
+- [ ] **Publicaciones** - Al hacer clic: scroll a grid de publicaciones
+- [ ] **Seguidores** - Al hacer clic: abre modal con lista de seguidores
+- [ ] **Siguiendo** - Al hacer clic: abre modal con lista de seguidos
+- [ ] Números grandes, labels pequeños debajo
+- [ ] Formato: 1.2K para miles, 1.5M para millones
+
+### 28.2.2 - Modal de Seguidores/Siguiendo
+- [ ] Lista scrolleable de usuarios
+- [ ] Avatar + username + nombre
+- [ ] Botón Seguir/Dejar de seguir (funcional)
+- [ ] Búsqueda dentro del modal
+- [ ] Paginación/infinite scroll
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.3: BOTONES DE ACCIÓN ⏳
+## ═══════════════════════════════════════
+
+### 28.3.1 - Botón "Editar Perfil" (DEBE FUNCIONAR)
+- [ ] Abre modal/pantalla de edición
+- [ ] Campos editables:
+  - Foto de perfil
+  - Nombre
+  - Username (con validación de disponibilidad)
+  - Bio
+  - Ubicación (opcional)
+  - Website/link (opcional)
+- [ ] Guardar cambios en BD
+- [ ] Validaciones en tiempo real
+- [ ] Feedback de éxito/error
+
+### 28.3.2 - Botón "Compartir Perfil" (DEBE FUNCIONAR)
+- [ ] Genera link del perfil
+- [ ] Opciones: Copiar link, Compartir en Telegram
+- [ ] QR code del perfil (opcional)
+- [ ] Toast de confirmación al copiar
+
+### 28.3.3 - Perfil de OTRO usuario (cuando visitas otro perfil)
+- [ ] Botón "Seguir" / "Siguiendo" (toggle funcional)
+- [ ] Botón "Mensaje" (si hay sistema de mensajes)
+- [ ] Menú de 3 puntos: Reportar, Bloquear, Copiar link
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.4: TABS DE CONTENIDO ⏳
+## ═══════════════════════════════════════
+
+### 28.4.1 - Sistema de Tabs
+- [ ] Tab 1: Grid de publicaciones (icono grid 3x3)
+- [ ] Tab 2: Publicaciones guardadas (icono bookmark) - solo en perfil propio
+- [ ] Tab 3: Publicaciones con tags/menciones (icono usuario)
+- [ ] Indicador visual de tab activo (línea dorada)
+- [ ] Transición suave entre tabs
+
+### 28.4.2 - Grid de Publicaciones
+- [ ] Grid 3 columnas responsive
+- [ ] Thumbnails cuadrados
+- [ ] Overlay con icono si es video
+- [ ] Overlay con contador si es carrusel
+- [ ] Click abre publicación completa
+- [ ] Infinite scroll / paginación
+- [ ] Mensaje "Sin publicaciones" si está vacío (con icono elegante)
+
+### 28.4.3 - Publicaciones Guardadas
+- [ ] Solo visible en perfil propio
+- [ ] Grid igual que publicaciones
+- [ ] Mensaje si no hay guardadas
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.5: INFORMACIÓN ADICIONAL ⏳
+## ═══════════════════════════════════════
+
+### 28.5.1 - Sección de Wallet (opcional en perfil)
+- [ ] Balance B3C visible (si es propio)
+- [ ] Link rápido a wallet
+- [ ] Oculto en perfiles ajenos
+
+### 28.5.2 - Badges y Logros
+- [ ] Badge de verificado
+- [ ] Badge de early adopter
+- [ ] Badge de top seller (marketplace)
+- [ ] Badge de developer
+- [ ] Otros badges futuros
+
+### 28.5.3 - Links Externos
+- [ ] Website personal
+- [ ] Telegram
+- [ ] Twitter/X
+- [ ] Iconos clickeables
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.6: DISEÑO VISUAL MEJORADO ⏳
+## ═══════════════════════════════════════
+
+### 28.6.1 - Layout General
+- [ ] Fondo oscuro consistente (#0B0E11)
+- [ ] Espaciado uniforme
+- [ ] Sin bordes innecesarios
+- [ ] Jerarquía visual clara
+
+### 28.6.2 - Tipografía
+- [ ] Username: Bold, tamaño grande
+- [ ] Nombre: Regular, tamaño medio
+- [ ] Stats: Números bold, labels light
+- [ ] Bio: Regular, color secundario
+
+### 28.6.3 - Botones
+- [ ] Editar perfil: Borde dorado, fondo transparente
+- [ ] Compartir: Borde gris, fondo transparente
+- [ ] Seguir: Fondo dorado, texto negro
+- [ ] Siguiendo: Borde dorado, fondo transparente
+
+### 28.6.4 - Animaciones
+- [ ] Transición suave al cambiar tabs
+- [ ] Hover effects en botones
+- [ ] Loading skeleton mientras carga
+- [ ] Fade in de imágenes
+
+---
+
+## ═══════════════════════════════════════
+## FASE 28.7: ENDPOINTS BACKEND ⏳
+## ═══════════════════════════════════════
+
+### 28.7.1 - Endpoints necesarios
+- [ ] `GET /api/profile/:userId` - Obtener perfil
+- [ ] `PUT /api/profile` - Actualizar perfil propio
+- [ ] `POST /api/profile/avatar` - Subir avatar
+- [ ] `GET /api/profile/:userId/followers` - Lista de seguidores
+- [ ] `GET /api/profile/:userId/following` - Lista de seguidos
+- [ ] `POST /api/follow/:userId` - Seguir usuario
+- [ ] `DELETE /api/follow/:userId` - Dejar de seguir
+- [ ] `GET /api/profile/:userId/posts` - Publicaciones del usuario
+
+### 28.7.2 - Tablas de BD
+- [ ] Verificar tabla `users` tiene campos: bio, website, location
+- [ ] Verificar tabla `followers` existe y funciona
+- [ ] Verificar tabla `posts` relacionada con usuario
+
+---
+
+## CRITERIOS DE ACEPTACIÓN SECCIÓN 28:
+
+### Funcionalidad
+- [ ] Editar perfil guarda cambios en BD
+- [ ] Cambiar avatar funciona completamente
+- [ ] Seguir/dejar de seguir funciona
+- [ ] Contadores se actualizan en tiempo real
+- [ ] Modales de seguidores/siguiendo cargan datos reales
+- [ ] Grid de publicaciones muestra datos reales
+- [ ] Compartir perfil genera link funcional
+
+### Diseño
+- [ ] Colores consistentes con el resto de la app
+- [ ] Diseño profesional tipo Instagram/Binance
+- [ ] Responsive en móvil
+- [ ] Sin elementos desordenados o feos
+- [ ] Iconos SVG (no emojis)
+
+### Sin errores
+- [ ] Todos los botones funcionan
+- [ ] No hay errores en consola
+- [ ] No hay errores 500 en servidor
+- [ ] Todas las páginas/modales existen
+
+---
+
+## ARCHIVOS A MODIFICAR:
+
+### Frontend
+- `templates/index.html` - Sección de perfil
+- `static/js/app.js` - Lógica del perfil
+- `static/css/styles.css` - Estilos del perfil
+
+### Backend
+- `app.py` - Endpoints de perfil
 
 ---
