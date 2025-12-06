@@ -140,12 +140,34 @@ const PublicationsManager = {
     
     init() {
         this.setupEventListeners();
+        this.initComposeBar();
         this.loadFeed();
         this.loadStories();
         this.loadTrendingHashtags();
         this.setupInfiniteScroll();
         this.startFeedPolling();
         this.setupPullToRefresh();
+    },
+    
+    initComposeBar() {
+        const composeAvatar = document.getElementById('compose-avatar');
+        const composePlaceholder = document.getElementById('compose-placeholder');
+        
+        if (composeAvatar && typeof App !== 'undefined' && App.user) {
+            const user = App.user;
+            if (user.profile_pic) {
+                composeAvatar.style.backgroundImage = `url(${user.profile_pic})`;
+                composeAvatar.textContent = '';
+            } else {
+                const initial = (user.first_name || user.username || 'U')[0].toUpperCase();
+                composeAvatar.textContent = initial;
+            }
+            
+            if (composePlaceholder) {
+                const name = user.first_name || user.username || 'amigo';
+                composePlaceholder.textContent = `¿Que estas pensando, ${name}?`;
+            }
+        }
     },
     
     async loadTrendingHashtags() {
