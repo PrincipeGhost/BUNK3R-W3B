@@ -1026,12 +1026,112 @@ const AdminPanel = {
         }
     },
     
+    async adjustBalance(userId) {
+        const amount = prompt('Ingresa la cantidad de B3C (positivo para agregar, negativo para restar):');
+        if (amount === null) return;
+        
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount === 0) {
+            this.showToast('Cantidad inválida', 'error');
+            return;
+        }
+        
+        const reason = prompt('Razón del ajuste (opcional):') || 'Ajuste manual del admin';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/user/credits', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    userId: userId, 
+                    amount: numAmount,
+                    reason: reason
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`Balance ajustado: ${numAmount > 0 ? '+' : ''}${numAmount} B3C`, 'success');
+                this.loadUsers();
+                this.viewUser(userId);
+            } else {
+                this.showToast(response.error || 'Error al ajustar balance', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al ajustar balance', 'error');
+        }
+    },
+    
+    async viewUserTransactions(userId) {
+        const modal = document.getElementById('userDetailModal');
+        const content = document.getElementById('userDetailContent');
+        
+        content.innerHTML = 'Cargando transacciones...';
+        modal.classList.add('active');
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/transactions?user_id=${userId}&limit=50`);
+            
+            if (response.success && response.transactions) {
+                if (response.transactions.length === 0) {
+                    content.innerHTML = `
+                        <div class="user-detail-header">
+                            <h3>Transacciones del Usuario</h3>
+                        </div>
+                        <div class="empty-state">Este usuario no tiene transacciones</div>
+                        <div class="user-actions">
+                            <button class="btn-secondary" onclick="AdminPanel.viewUser('${userId}')">Volver al Perfil</button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const typeLabels = {
+                    buy: 'Compra B3C',
+                    sell: 'Venta B3C',
+                    transfer: 'Transferencia',
+                    withdrawal: 'Retiro',
+                    deposit: 'Depósito'
+                };
+                
+                content.innerHTML = `
+                    <div class="user-detail-header">
+                        <h3>Transacciones del Usuario (${response.transactions.length})</h3>
+                    </div>
+                    <div class="user-tx-list" style="max-height: 400px; overflow-y: auto;">
+                        ${response.transactions.map(tx => `
+                            <div class="tx-item" style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="tx-type">${typeLabels[tx.type] || tx.type}</span>
+                                    <span class="tx-amount">${this.formatNumber(tx.amount, 4)} ${tx.currency || 'B3C'}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #848E9C;">
+                                    <span class="status-badge ${tx.status}" style="font-size: 10px;">${tx.status}</span>
+                                    <span>${this.formatDateTime(tx.created_at)}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn-secondary" onclick="AdminPanel.viewUser('${userId}')">Volver al Perfil</button>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = '<div class="empty-state">Error al cargar transacciones</div>';
+            }
+        } catch (error) {
+            console.error('Error loading user transactions:', error);
+            content.innerHTML = '<div class="empty-state">Error al cargar transacciones</div>';
+        }
+    },
+    
     async exportUsers() {
         try {
             const response = await this.fetchAPI('/api/admin/users/export');
             if (response.success && response.csv) {
                 this.downloadCSV(response.csv, 'usuarios_bunk3r.csv');
                 this.showToast('Exportación completada', 'success');
+            } else {
+                this.showToast(response.error || 'Error al exportar', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
