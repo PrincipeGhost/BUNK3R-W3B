@@ -3104,3 +3104,79 @@ textarea.form-control {
         align-items: flex-start;
     }
 }
+
+/* Bots Section Styles */
+.bots-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.metric-icon.bots {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8B5CF6;
+}
+
+.bot-stats-container {
+    margin-top: 25px;
+}
+
+.bot-stats-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.bot-stat-item {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.bot-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(139, 92, 246, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.bot-stat-info {
+    flex: 1;
+}
+
+.bot-stat-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.bot-stat-details {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.bot-stat-value {
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .bots-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .bot-stats-list {
+        grid-template-columns: 1fr;
+    }
+}
