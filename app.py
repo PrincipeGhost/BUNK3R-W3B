@@ -5108,10 +5108,25 @@ def check_user_lockout():
 # ============================================================
 
 @app.route('/admin')
-@require_telegram_auth
-@require_owner
 def admin_page():
     """Servir la página del panel de administración."""
+    # En desarrollo, permitir acceso para modo demo
+    if not IS_PRODUCTION:
+        return render_template('admin.html')
+    
+    # En producción, requerir autenticación real
+    init_data = request.headers.get('X-Telegram-Init-Data', '')
+    if not init_data:
+        return jsonify({'error': 'Acceso no autorizado', 'code': 'NO_INIT_DATA'}), 401
+    
+    validated_data = validate_telegram_webapp_data(init_data)
+    if not validated_data:
+        return jsonify({'error': 'Datos inválidos'}), 401
+    
+    user = validated_data.get('user', {})
+    if not is_owner(user.get('id')):
+        return jsonify({'error': 'Solo para administradores'}), 403
+    
     return render_template('admin.html')
 
 
