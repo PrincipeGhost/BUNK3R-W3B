@@ -103,9 +103,14 @@ El agente busca la siguiente tarea pendiente y pregunta en qué rama trabajar.
 ║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
 ║  │ 🔵 AGENTE FRONTEND activado                                             │  ║
 ║  │                                                                         │  ║
-║  │ Ejecuta este comando en el Shell de Replit:                             │  ║
+║  │ Ejecuta estos comandos en el Shell de Replit:                           │  ║
 ║  │                                                                         │  ║
-║  │   git fetch origin && git checkout feature/frontend-user                │  ║
+║  │   git fetch origin                                                      │  ║
+║  │   git checkout feature/frontend-user                                    │  ║
+║  │   git pull origin feature/frontend-user                                 │  ║
+║  │                                                                         │  ║
+║  │ 💡 Si otro agente FRONTEND trabajó antes, el "git pull" traerá          │  ║
+║  │    todos sus cambios para que continúes donde él dejó.                  │  ║
 ║  │                                                                         │  ║
 ║  │ Cuando lo hayas ejecutado, escribe "listo" o "ya" para continuar.       │  ║
 ║  └─────────────────────────────────────────────────────────────────────────┘  ║
@@ -114,9 +119,14 @@ El agente busca la siguiente tarea pendiente y pregunta en qué rama trabajar.
 ║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
 ║  │ 🟡 AGENTE BACKEND activado                                              │  ║
 ║  │                                                                         │  ║
-║  │ Ejecuta este comando en el Shell de Replit:                             │  ║
+║  │ Ejecuta estos comandos en el Shell de Replit:                           │  ║
 ║  │                                                                         │  ║
-║  │   git fetch origin && git checkout feature/backend-api                  │  ║
+║  │   git fetch origin                                                      │  ║
+║  │   git checkout feature/backend-api                                      │  ║
+║  │   git pull origin feature/backend-api                                   │  ║
+║  │                                                                         │  ║
+║  │ 💡 Si otro agente BACKEND trabajó antes, el "git pull" traerá           │  ║
+║  │    todos sus cambios para que continúes donde él dejó.                  │  ║
 ║  │                                                                         │  ║
 ║  │ Cuando lo hayas ejecutado, escribe "listo" o "ya" para continuar.       │  ║
 ║  └─────────────────────────────────────────────────────────────────────────┘  ║
@@ -125,9 +135,14 @@ El agente busca la siguiente tarea pendiente y pregunta en qué rama trabajar.
 ║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
 ║  │ 🟢 AGENTE ADMIN activado                                                │  ║
 ║  │                                                                         │  ║
-║  │ Ejecuta este comando en el Shell de Replit:                             │  ║
+║  │ Ejecuta estos comandos en el Shell de Replit:                           │  ║
 ║  │                                                                         │  ║
-║  │   git fetch origin && git checkout feature/frontend-admin               │  ║
+║  │   git fetch origin                                                      │  ║
+║  │   git checkout feature/frontend-admin                                   │  ║
+║  │   git pull origin feature/frontend-admin                                │  ║
+║  │                                                                         │  ║
+║  │ 💡 Si otro agente ADMIN trabajó antes, el "git pull" traerá             │  ║
+║  │    todos sus cambios para que continúes donde él dejó.                  │  ║
 ║  │                                                                         │  ║
 ║  │ Cuando lo hayas ejecutado, escribe "listo" o "ya" para continuar.       │  ║
 ║  └─────────────────────────────────────────────────────────────────────────┘  ║
@@ -136,9 +151,14 @@ El agente busca la siguiente tarea pendiente y pregunta en qué rama trabajar.
 ║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
 ║  │ 🔴 AGENTE BLOCKCHAIN activado                                           │  ║
 ║  │                                                                         │  ║
-║  │ Ejecuta este comando en el Shell de Replit:                             │  ║
+║  │ Ejecuta estos comandos en el Shell de Replit:                           │  ║
 ║  │                                                                         │  ║
-║  │   git fetch origin && git checkout feature/blockchain-services          │  ║
+║  │   git fetch origin                                                      │  ║
+║  │   git checkout feature/blockchain-services                              │  ║
+║  │   git pull origin feature/blockchain-services                           │  ║
+║  │                                                                         │  ║
+║  │ 💡 Si otro agente BLOCKCHAIN trabajó antes, el "git pull" traerá        │  ║
+║  │    todos sus cambios para que continúes donde él dejó.                  │  ║
 ║  │                                                                         │  ║
 ║  │ Cuando lo hayas ejecutado, escribe "listo" o "ya" para continuar.       │  ║
 ║  └─────────────────────────────────────────────────────────────────────────┘  ║
@@ -161,6 +181,8 @@ El agente busca la siguiente tarea pendiente y pregunta en qué rama trabajar.
 ║  Cuando el usuario confirme, el agente responde:                              ║
 ║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
 ║  │ ✅ Confirmado. Ahora estoy trabajando en la rama [nombre-rama].         │  ║
+║  │                                                                         │  ║
+║  │ Ya tengo los últimos cambios de esta rama (si hubo agentes antes).      │  ║
 ║  │                                                                         │  ║
 ║  │ Solo puedo editar estos archivos:                                       │  ║
 ║  │ - [lista de archivos asignados]                                         │  ║
