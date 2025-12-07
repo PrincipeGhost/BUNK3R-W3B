@@ -295,7 +295,42 @@ const AIChat = {
         formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
         formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
         formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        formatted = formatted.replace(/\n/g, '<br>');
+        
+        const lines = formatted.split('\n');
+        let result = [];
+        let inList = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const listMatch = line.match(/^[-•]\s+(.+)$/);
+            
+            if (listMatch) {
+                if (!inList) {
+                    result.push('<ul>');
+                    inList = true;
+                }
+                result.push(`<li>${listMatch[1]}</li>`);
+            } else {
+                if (inList) {
+                    result.push('</ul>');
+                    inList = false;
+                }
+                if (line.trim()) {
+                    result.push(line + '<br>');
+                } else {
+                    result.push('<br>');
+                }
+            }
+        }
+        
+        if (inList) {
+            result.push('</ul>');
+        }
+        
+        formatted = result.join('');
+        formatted = formatted.replace(/<br>$/, '');
+        formatted = formatted.replace(/<br><br>/g, '<br>');
+        
         return formatted;
     },
     

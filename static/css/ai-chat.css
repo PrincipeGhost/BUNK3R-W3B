@@ -564,9 +564,28 @@
 }
 
 #ai-chat-screen .ai-message-assistant .ai-bubble {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(30, 35, 45, 0.95);
+    border: 1px solid rgba(240, 185, 11, 0.15);
     color: #EAECEF;
-    border-bottom-left-radius: 6px;
+    border-radius: 16px;
+    border-top-left-radius: 4px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#ai-chat-screen .ai-message-assistant .ai-bubble ul,
+#ai-chat-screen .ai-message-assistant .ai-bubble ol {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+#ai-chat-screen .ai-message-assistant .ai-bubble li {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+#ai-chat-screen .ai-message-assistant .ai-bubble li::marker {
+    color: #F0B90B;
 }
 
 #ai-chat-screen .ai-message-user .ai-bubble {
