@@ -2130,76 +2130,11 @@ Mejorar el tiempo de carga inicial de la aplicación.
 
 **Prioridad:** 🟢 MEDIA  
 **Agregado:** 7 Diciembre 2025  
-**Tiempo total estimado:** 25+ horas
+**Tiempo total estimado:** 6 horas
 
 ---
 
-### FASE 33.1: SISTEMA DE REFERIDOS ⏳
-**Prioridad:** 🟠 MEDIA  
-**Tiempo:** 6 horas  
-**Agente:** 🟡 BACKEND API + 🔵 FRONTEND USUARIO
-
-#### Objetivo:
-Implementar sistema de referidos con recompensas.
-
-#### Tareas:
-- [ ] Crear tabla `referrals` en BD
-- [ ] Generar código de referido único por usuario
-- [ ] Implementar endpoint para registrar referido
-- [ ] Calcular y otorgar recompensas (% de comisiones del referido)
-- [ ] Crear UI para ver referidos y ganancias
-- [ ] Agregar link de referido compartible
-
-#### Estructura de tabla:
-```sql
-CREATE TABLE referrals (
-    id SERIAL PRIMARY KEY,
-    referrer_id BIGINT REFERENCES users(telegram_id),
-    referred_id BIGINT REFERENCES users(telegram_id),
-    referral_code VARCHAR(20) UNIQUE,
-    commission_earned DECIMAL(18,8) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
----
-
-### FASE 33.2: SISTEMA DE NIVELES/GAMIFICACIÓN ⏳
-**Prioridad:** 🟠 MEDIA  
-**Tiempo:** 5 horas  
-**Agente:** 🟡 BACKEND API + 🔵 FRONTEND USUARIO
-
-#### Objetivo:
-Implementar sistema de niveles y badges para usuarios.
-
-#### Tareas:
-- [ ] Definir niveles (Bronce, Plata, Oro, Platino, Diamante)
-- [ ] Definir requisitos por nivel (XP, transacciones, tiempo)
-- [ ] Crear sistema de XP por acciones
-- [ ] Diseñar e implementar badges
-- [ ] Mostrar nivel y progreso en perfil
-- [ ] Beneficios por nivel (menos comisiones, features exclusivas)
-
----
-
-### FASE 33.3: MARKETPLACE DE NFTs ⏳
-**Prioridad:** 🟢 BAJA  
-**Tiempo:** 8 horas  
-**Agente:** 🔴 BLOCKCHAIN + 🔵 FRONTEND USUARIO
-
-#### Objetivo:
-Implementar marketplace básico de NFTs en TON.
-
-#### Tareas:
-- [ ] Integrar con TON NFT standard
-- [ ] Listar NFTs del usuario
-- [ ] Permitir compra/venta de NFTs
-- [ ] Mostrar colecciones populares
-- [ ] Integrar con marketplace de TON existente
-
----
-
-### FASE 33.4: CHAT PRIVADO ENTRE USUARIOS ⏳
+### FASE 33.1: CHAT PRIVADO ENTRE USUARIOS ⏳
 **Prioridad:** 🟠 MEDIA  
 **Tiempo:** 6 horas  
 **Agente:** 🟡 BACKEND API + 🔵 FRONTEND USUARIO
@@ -2220,12 +2155,9 @@ Implementar sistema de mensajes privados.
 
 | Fase | Descripción | Prioridad | Tiempo | Estado |
 |------|-------------|-----------|--------|--------|
-| 33.1 | Sistema de referidos | 🟠 MEDIA | 6h | ⏳ |
-| 33.2 | Niveles/Gamificación | 🟠 MEDIA | 5h | ⏳ |
-| 33.3 | Marketplace NFTs | 🟢 BAJA | 8h | ⏳ |
-| 33.4 | Chat privado | 🟠 MEDIA | 6h | ⏳ |
+| 33.1 | Chat privado | 🟠 MEDIA | 6h | ⏳ |
 
-**TOTAL TIEMPO ESTIMADO: ~25 horas**
+**TOTAL TIEMPO ESTIMADO: ~6 horas**
 
 ---
 
