@@ -117,6 +117,221 @@ class ProjectStyle(Enum):
     NEOBANCO = "neobanco"
 
 
+class ProgrammingLanguage(Enum):
+    """Lenguajes de programación soportados"""
+    HTML_CSS_JS = "html_css_js"
+    PYTHON_FLASK = "python_flask"
+    PYTHON_FASTAPI = "python_fastapi"
+    PYTHON_GENERAL = "python_general"
+    NODEJS_EXPRESS = "nodejs_express"
+    NODEJS_GENERAL = "nodejs_general"
+    REACT = "react"
+    VUE = "vue"
+    SQL = "sql"
+    DOCKER = "docker"
+    SHELL = "shell"
+    MIXED = "mixed"
+
+
+LANGUAGE_TEMPLATES = {
+    ProgrammingLanguage.PYTHON_FLASK: {
+        "name": "Python Flask",
+        "extension": ".py",
+        "files": ["app.py", "requirements.txt", "templates/index.html", "static/css/styles.css"],
+        "boilerplate": '''from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+''',
+        "requirements": "flask==3.0.0\ngunicorn==21.2.0\n",
+        "import_style": "from module import Class",
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.PYTHON_FASTAPI: {
+        "name": "Python FastAPI",
+        "extension": ".py",
+        "files": ["main.py", "requirements.txt", "models.py", "schemas.py"],
+        "boilerplate": '''from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+''',
+        "requirements": "fastapi==0.109.0\nuvicorn==0.27.0\npydantic==2.5.0\n",
+        "import_style": "from module import Class",
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.PYTHON_GENERAL: {
+        "name": "Python General",
+        "extension": ".py",
+        "files": ["main.py", "requirements.txt"],
+        "boilerplate": '''#!/usr/bin/env python3
+"""
+Main module
+"""
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+''',
+        "requirements": "",
+        "import_style": "import module",
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.NODEJS_EXPRESS: {
+        "name": "Node.js Express",
+        "extension": ".js",
+        "files": ["server.js", "package.json", "routes/index.js"],
+        "boilerplate": '''const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.static('public'));
+
+app.get('/', (req, res) => {
+    res.send('Hello World!');
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'healthy' });
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+''',
+        "package_json": '''{
+  "name": "app",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+''',
+        "import_style": "const module = require('module');",
+        "comment_style": "//",
+    },
+    ProgrammingLanguage.REACT: {
+        "name": "React",
+        "extension": ".jsx",
+        "files": ["src/App.jsx", "src/index.jsx", "src/components/Component.jsx"],
+        "boilerplate": '''import React, { useState, useEffect } from 'react';
+import './App.css';
+
+function App() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    // Fetch data here
+  }, []);
+
+  return (
+    <div className="App">
+      <h1>Hello React</h1>
+    </div>
+  );
+}
+
+export default App;
+''',
+        "import_style": "import Component from './Component';",
+        "comment_style": "//",
+    },
+    ProgrammingLanguage.SQL: {
+        "name": "SQL",
+        "extension": ".sql",
+        "files": ["schema.sql", "queries.sql", "migrations/001_initial.sql"],
+        "boilerplate": '''-- Database Schema
+-- Created: {date}
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON users(email);
+''',
+        "comment_style": "--",
+    },
+    ProgrammingLanguage.DOCKER: {
+        "name": "Docker",
+        "extension": "",
+        "files": ["Dockerfile", "docker-compose.yml", ".dockerignore"],
+        "dockerfile": '''FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+''',
+        "docker_compose": '''version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - .:/app
+''',
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.HTML_CSS_JS: {
+        "name": "HTML/CSS/JavaScript",
+        "extension": ".html",
+        "files": ["index.html", "styles.css", "script.js"],
+        "boilerplate": '''<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Título</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main>
+        <h1>Hola Mundo</h1>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
+''',
+        "comment_style": "<!-- -->",
+    },
+}
+
+
 @dataclass
 class IntentAnalysis:
     """Resultado del análisis de intención"""
@@ -129,6 +344,7 @@ class IntentAnalysis:
     keywords: List[str]
     idioma: str
     urgencia: str  # "alta", "media", "baja"
+    lenguaje_programacion: ProgrammingLanguage = ProgrammingLanguage.HTML_CSS_JS
     
     def to_dict(self) -> Dict:
         return {
@@ -140,7 +356,8 @@ class IntentAnalysis:
             "nivel_detalle": self.nivel_detalle,
             "keywords": self.keywords,
             "idioma": self.idioma,
-            "urgencia": self.urgencia
+            "urgencia": self.urgencia,
+            "lenguaje_programacion": self.lenguaje_programacion.value
         }
 
 
@@ -431,6 +648,38 @@ class IntentParser:
         "negocio": ["negocio", "empresa", "comercio", "servicio", "startup", "compañía"]
     }
     
+    LANGUAGE_PATTERNS = {
+        ProgrammingLanguage.PYTHON_FLASK: [
+            r"flask", r"python\s*web", r"jinja", r"render_template", r"app\.py"
+        ],
+        ProgrammingLanguage.PYTHON_FASTAPI: [
+            r"fastapi", r"fast\s*api", r"pydantic", r"uvicorn", r"async\s*api"
+        ],
+        ProgrammingLanguage.PYTHON_GENERAL: [
+            r"python", r"\.py\b", r"pip\s*install", r"script\s*python", r"automatizar"
+        ],
+        ProgrammingLanguage.NODEJS_EXPRESS: [
+            r"express", r"node\.?js", r"npm", r"package\.json", r"servidor\s*node"
+        ],
+        ProgrammingLanguage.REACT: [
+            r"react", r"jsx", r"componente\s*react", r"hooks?", r"useState", r"useEffect"
+        ],
+        ProgrammingLanguage.VUE: [
+            r"vue", r"vuejs", r"vue\.js", r"nuxt"
+        ],
+        ProgrammingLanguage.SQL: [
+            r"\bsql\b", r"base\s*de\s*datos", r"consulta\s*sql", r"tabla\s*sql", 
+            r"create\s*table", r"select\s*from", r"postgresql", r"mysql", r"sqlite"
+        ],
+        ProgrammingLanguage.DOCKER: [
+            r"docker", r"dockerfile", r"container", r"contenedor", r"docker-compose"
+        ],
+        ProgrammingLanguage.HTML_CSS_JS: [
+            r"html", r"css", r"javascript", r"página\s*web", r"sitio\s*web", 
+            r"landing", r"website", r"frontend"
+        ],
+    }
+    
     def analyze(self, message: str) -> IntentAnalysis:
         """Analiza el mensaje del usuario y extrae la intención"""
         message_lower = message.lower().strip()
@@ -456,6 +705,9 @@ class IntentParser:
         # Detectar urgencia
         urgencia = self._detect_urgency(message_lower)
         
+        # Detectar lenguaje de programación
+        lenguaje_programacion = self._detect_programming_language(message_lower, tipo_tarea)
+        
         # Decidir si necesita investigación o clarificación
         requiere_investigacion = self._needs_research(tipo_tarea, nivel_detalle, specs)
         requiere_clarificacion = self._needs_clarification(tipo_tarea, nivel_detalle, specs)
@@ -469,7 +721,8 @@ class IntentParser:
             nivel_detalle=nivel_detalle,
             keywords=keywords,
             idioma=idioma,
-            urgencia=urgencia
+            urgencia=urgencia,
+            lenguaje_programacion=lenguaje_programacion
         )
     
     def _detect_task_type(self, message: str) -> TaskType:
@@ -619,6 +872,50 @@ class IntentParser:
         if any(w in message for w in urgent_words):
             return "alta"
         return "media"
+    
+    def _detect_programming_language(self, message: str, task_type: TaskType) -> ProgrammingLanguage:
+        """Detecta el lenguaje de programación basándose en el mensaje y tipo de tarea"""
+        language_scores = {}
+        
+        # Analizar patrones de lenguaje
+        for lang, patterns in self.LANGUAGE_PATTERNS.items():
+            score = 0
+            for pattern in patterns:
+                if re.search(pattern, message, re.IGNORECASE):
+                    score += 1
+            if score > 0:
+                language_scores[lang] = score
+        
+        # Si hay coincidencias, retornar la de mayor puntuación
+        if language_scores:
+            return max(language_scores.keys(), key=lambda x: language_scores[x])
+        
+        # Inferir por tipo de tarea si no hay coincidencia directa
+        task_language_mapping = {
+            TaskType.CREAR_API: ProgrammingLanguage.PYTHON_FLASK,
+            TaskType.CREAR_MODELO: ProgrammingLanguage.SQL,
+            TaskType.CREAR_MIGRACION: ProgrammingLanguage.SQL,
+            TaskType.CONSULTA_BD: ProgrammingLanguage.SQL,
+            TaskType.MODIFICAR_ESQUEMA: ProgrammingLanguage.SQL,
+            TaskType.CREAR_FUNCION: ProgrammingLanguage.PYTHON_GENERAL,
+            TaskType.CREAR_CLASE: ProgrammingLanguage.PYTHON_GENERAL,
+            TaskType.EJECUTAR_COMANDO: ProgrammingLanguage.SHELL,
+            TaskType.INSTALAR_DEPENDENCIA: ProgrammingLanguage.SHELL,
+        }
+        
+        if task_type in task_language_mapping:
+            return task_language_mapping[task_type]
+        
+        # Default para tareas web
+        web_tasks = {
+            TaskType.CREAR_WEB, TaskType.CREAR_LANDING, TaskType.CREAR_DASHBOARD,
+            TaskType.CREAR_FORMULARIO, TaskType.CREAR_COMPONENTE, TaskType.CREAR_PAGINA,
+            TaskType.CREAR_MODAL, TaskType.CREAR_TABLA
+        }
+        if task_type in web_tasks:
+            return ProgrammingLanguage.HTML_CSS_JS
+        
+        return ProgrammingLanguage.HTML_CSS_JS
     
     def _needs_research(self, task_type: TaskType, detail_level: str, specs: Dict) -> bool:
         """Decide si necesita investigación"""
@@ -877,7 +1174,7 @@ class PromptBuilder:
     
     def build(self, intent: IntentAnalysis, research: Optional[ResearchResult], 
               clarification: Optional[ClarificationResult]) -> str:
-        """Construye el prompt maestro optimizado"""
+        """Construye el prompt maestro optimizado con soporte multi-lenguaje"""
         
         # Determinar contexto y objetivo
         contexto = intent.contexto
@@ -901,7 +1198,12 @@ class PromptBuilder:
         if not secciones and research:
             secciones = research.elementos_recomendados[:5]
         
-        # Construir el prompt
+        # Obtener información del lenguaje
+        lang = intent.lenguaje_programacion
+        lang_info = LANGUAGE_TEMPLATES.get(lang, {})
+        lang_name = lang_info.get("name", "HTML/CSS/JavaScript")
+        
+        # Construir el prompt con sección de lenguaje
         prompt = f"""[PROMPT MAESTRO - GENERACIÓN DE CÓDIGO]
 
 ═══════════════════════════════════════════════════════════════
@@ -911,6 +1213,13 @@ CONTEXTO DEL PROYECTO
 - Contexto: {contexto}
 - Objetivo principal: {objetivo}
 - Idioma del usuario: {intent.idioma}
+
+═══════════════════════════════════════════════════════════════
+LENGUAJE DE PROGRAMACIÓN
+═══════════════════════════════════════════════════════════════
+- Lenguaje principal: {lang_name}
+- Tipo de stack: {lang.value}
+- Archivos a generar: {', '.join(lang_info.get('files', ['index.html', 'styles.css', 'script.js']))}
 
 ═══════════════════════════════════════════════════════════════
 ESPECIFICACIONES DE DISEÑO
@@ -935,29 +1244,79 @@ MEJORES PRÁCTICAS A APLICAR
             for practica in research.mejores_practicas[:5]:
                 prompt += f"• {practica}\n"
         
+        # Requisitos técnicos según lenguaje
+        requisitos_por_lenguaje = {
+            ProgrammingLanguage.PYTHON_FLASK: [
+                "Flask best practices con blueprints si es necesario",
+                "Jinja2 templates con herencia",
+                "Rutas RESTful y manejo de errores",
+                "Validación de inputs del usuario",
+                "Configuración segura con variables de entorno"
+            ],
+            ProgrammingLanguage.PYTHON_FASTAPI: [
+                "Async/await para operaciones IO",
+                "Modelos Pydantic con validación",
+                "Documentación automática OpenAPI",
+                "Manejo de excepciones HTTP",
+                "Dependency injection cuando sea apropiado"
+            ],
+            ProgrammingLanguage.NODEJS_EXPRESS: [
+                "Middleware pattern para cross-cutting concerns",
+                "Rutas modulares con Router",
+                "Manejo de errores centralizado",
+                "Validación de datos de entrada",
+                "Async/await para operaciones asíncronas"
+            ],
+            ProgrammingLanguage.REACT: [
+                "Componentes funcionales con hooks",
+                "Estado manejado correctamente (useState/useReducer)",
+                "Efectos secundarios en useEffect",
+                "Props tipadas y validadas",
+                "CSS modular o styled-components"
+            ],
+            ProgrammingLanguage.SQL: [
+                "Normalización apropiada (3NF mínimo)",
+                "Constraints de integridad (PK, FK, UNIQUE)",
+                "Índices para queries frecuentes",
+                "Tipos de datos apropiados",
+                "Comentarios descriptivos"
+            ]
+        }
+        
+        requisitos = requisitos_por_lenguaje.get(lang, [
+            "Mobile-first y 100% responsive",
+            "HTML5 semántico con accesibilidad",
+            "CSS moderno con variables",
+            "JavaScript ES6+ para interactividad",
+            "Optimizado para carga rápida",
+            "Sin dependencias externas innecesarias"
+        ])
+        
         prompt += f"""
 ═══════════════════════════════════════════════════════════════
-REQUISITOS TÉCNICOS OBLIGATORIOS
+REQUISITOS TÉCNICOS OBLIGATORIOS ({lang_name})
 ═══════════════════════════════════════════════════════════════
-1. Mobile-first y 100% responsive
-2. HTML5 semántico con accesibilidad
-3. CSS moderno con variables
-4. JavaScript ES6+ para interactividad
-5. Optimizado para carga rápida
-6. Sin dependencias externas innecesarias
+"""
+        for i, req in enumerate(requisitos, 1):
+            prompt += f"{i}. {req}\n"
+        
+        prompt += """
+NOTAS ADICIONALES:
+- Código limpio y bien comentado
+- Manejo de errores robusto
+- Seguir convenciones del lenguaje
 
 ═══════════════════════════════════════════════════════════════
 FORMATO DE SALIDA
 ═══════════════════════════════════════════════════════════════
 Genera el código completo en formato JSON:
-{{
-    "files": {{
-        "index.html": "<!DOCTYPE html>...",
-        "styles.css": "/* CSS completo */",
-        "script.js": "// JS si es necesario"
-    }},
+{
+    "files": {
+        "<archivo1>": "<contenido completo>",
+        "<archivo2>": "<contenido completo>"
+    },
     "message": "Explicación de lo creado y sugerencias"
-}}
+}
 """
         
         return prompt
@@ -970,12 +1329,85 @@ class TaskOrchestrator:
     """
     
     def create_plan(self, intent: IntentAnalysis, research: Optional[ResearchResult]) -> ExecutionPlan:
-        """Crea el plan de ejecución basado en el análisis"""
+        """Crea el plan de ejecución basado en el análisis y lenguaje detectado"""
         tareas = []
         archivos = []
+        dependencias = []
         
-        # Determinar tareas según el tipo
-        if intent.tipo_tarea in [TaskType.CREAR_WEB, TaskType.CREAR_LANDING, TaskType.CREAR_DASHBOARD]:
+        lang = intent.lenguaje_programacion
+        
+        # Obtener archivos del template de lenguaje si existe
+        if lang in LANGUAGE_TEMPLATES:
+            archivos = LANGUAGE_TEMPLATES[lang].get("files", [])[:]
+        
+        # Determinar tareas según el lenguaje y tipo de tarea
+        if lang == ProgrammingLanguage.PYTHON_FLASK:
+            tareas = [
+                TaskItem(1, "Crear aplicación Flask principal", "pendiente", "app.py"),
+                TaskItem(2, "Configurar rutas y endpoints", "pendiente", "app.py"),
+                TaskItem(3, "Crear templates HTML con Jinja2", "pendiente", "templates/"),
+                TaskItem(4, "Agregar estilos CSS", "pendiente", "static/css/styles.css"),
+                TaskItem(5, "Generar requirements.txt", "pendiente", "requirements.txt"),
+            ]
+            dependencias = ["flask", "gunicorn"]
+            
+        elif lang == ProgrammingLanguage.PYTHON_FASTAPI:
+            tareas = [
+                TaskItem(1, "Crear aplicación FastAPI", "pendiente", "main.py"),
+                TaskItem(2, "Definir modelos Pydantic", "pendiente", "schemas.py"),
+                TaskItem(3, "Implementar endpoints API", "pendiente", "main.py"),
+                TaskItem(4, "Configurar validaciones", "pendiente"),
+                TaskItem(5, "Generar requirements.txt", "pendiente", "requirements.txt"),
+            ]
+            dependencias = ["fastapi", "uvicorn", "pydantic"]
+            
+        elif lang == ProgrammingLanguage.PYTHON_GENERAL:
+            tareas = [
+                TaskItem(1, "Crear módulo principal", "pendiente", "main.py"),
+                TaskItem(2, "Implementar funciones/clases", "pendiente"),
+                TaskItem(3, "Agregar documentación", "pendiente"),
+                TaskItem(4, "Generar requirements.txt si hay dependencias", "pendiente"),
+            ]
+            archivos = ["main.py", "requirements.txt"]
+            
+        elif lang == ProgrammingLanguage.NODEJS_EXPRESS:
+            tareas = [
+                TaskItem(1, "Crear servidor Express", "pendiente", "server.js"),
+                TaskItem(2, "Configurar rutas API", "pendiente", "routes/index.js"),
+                TaskItem(3, "Agregar middlewares", "pendiente"),
+                TaskItem(4, "Generar package.json", "pendiente", "package.json"),
+            ]
+            dependencias = ["express"]
+            archivos = ["server.js", "package.json", "routes/index.js"]
+            
+        elif lang == ProgrammingLanguage.REACT:
+            tareas = [
+                TaskItem(1, "Crear componente principal App", "pendiente", "src/App.jsx"),
+                TaskItem(2, "Crear componentes adicionales", "pendiente", "src/components/"),
+                TaskItem(3, "Agregar estilos CSS", "pendiente", "src/App.css"),
+                TaskItem(4, "Configurar estado y hooks", "pendiente"),
+            ]
+            dependencias = ["react", "react-dom"]
+            archivos = ["src/App.jsx", "src/App.css", "src/index.jsx"]
+            
+        elif lang == ProgrammingLanguage.SQL:
+            tareas = [
+                TaskItem(1, "Diseñar esquema de base de datos", "pendiente", "schema.sql"),
+                TaskItem(2, "Crear tablas con constraints", "pendiente"),
+                TaskItem(3, "Agregar índices de rendimiento", "pendiente"),
+                TaskItem(4, "Crear queries de ejemplo", "pendiente", "queries.sql"),
+            ]
+            archivos = ["schema.sql", "queries.sql"]
+            
+        elif lang == ProgrammingLanguage.DOCKER:
+            tareas = [
+                TaskItem(1, "Crear Dockerfile", "pendiente", "Dockerfile"),
+                TaskItem(2, "Configurar docker-compose.yml", "pendiente", "docker-compose.yml"),
+                TaskItem(3, "Agregar .dockerignore", "pendiente", ".dockerignore"),
+            ]
+            archivos = ["Dockerfile", "docker-compose.yml", ".dockerignore"]
+            
+        elif intent.tipo_tarea in [TaskType.CREAR_WEB, TaskType.CREAR_LANDING, TaskType.CREAR_DASHBOARD]:
             tareas = [
                 TaskItem(1, "Crear estructura HTML con secciones", "pendiente", "index.html"),
                 TaskItem(2, "Diseñar estilos CSS responsivos", "pendiente", "styles.css"),
@@ -984,6 +1416,7 @@ class TaskOrchestrator:
                 TaskItem(5, "Verificar accesibilidad y SEO básico", "pendiente"),
             ]
             archivos = ["index.html", "styles.css", "script.js"]
+            
         elif intent.tipo_tarea == TaskType.CREAR_FORMULARIO:
             tareas = [
                 TaskItem(1, "Crear formulario HTML con validación", "pendiente", "index.html"),
@@ -991,6 +1424,7 @@ class TaskOrchestrator:
                 TaskItem(3, "Validación JavaScript", "pendiente", "script.js"),
             ]
             archivos = ["index.html", "styles.css", "script.js"]
+            
         else:
             tareas = [
                 TaskItem(1, "Analizar requerimiento", "pendiente"),
@@ -1013,7 +1447,7 @@ class TaskOrchestrator:
             tiempo_estimado=tiempo,
             riesgos=riesgos if riesgos else ["Ninguno identificado"],
             archivos_a_crear=archivos,
-            dependencias=[]
+            dependencias=dependencias
         )
     
     def format_plan_message(self, plan: ExecutionPlan) -> str:
