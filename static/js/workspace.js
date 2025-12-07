@@ -94,6 +94,22 @@ const Workspace = {
         };
     },
 
+    getApiHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (typeof App !== 'undefined') {
+            if (App.isDemoMode) {
+                headers['X-Demo-Mode'] = 'true';
+                const token = App.demoSessionToken || sessionStorage.getItem('demoSessionToken');
+                if (token) {
+                    headers['X-Demo-Session'] = token;
+                }
+            } else if (App.initData) {
+                headers['X-Telegram-Init-Data'] = App.initData;
+            }
+        }
+        return headers;
+    },
+
     async sendMessage() {
         const input = document.getElementById('chat-input');
         const message = input.value.trim();
@@ -108,16 +124,30 @@ const Workspace = {
         this.state.isProcessing = true;
 
         try {
-            const response = await fetch('/api/ai/chat', {
+            const response = await fetch('/api/ai-constructor/process', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getApiHeaders(),
                 body: JSON.stringify({ message })
             });
 
             const data = await response.json();
 
-            if (data.response) {
-                this.addMessage(data.response, 'assistant');
+            if (data.success) {
+                if (data.fase_nombre) {
+                    this.updateCurrentTask(`Fase ${data.fase}: ${data.fase_nombre}`);
+                }
+                
+                if (data.response) {
+                    this.addMessage(data.response, 'assistant');
+                }
+                
+                if (data.plan && data.esperando_input) {
+                    this.showPlanConfirmation(data.plan);
+                }
+                
+                if (data.files) {
+                    this.handleGeneratedFiles(data.files);
+                }
             } else if (data.error) {
                 this.addMessage('Error: ' + data.error, 'assistant');
             }
@@ -127,6 +157,73 @@ const Workspace = {
 
         this.setMentalState('LISTO', '🧘');
         this.state.isProcessing = false;
+    },
+
+    updateCurrentTask(taskText) {
+        const taskEl = document.getElementById('current-task');
+        if (taskEl) {
+            taskEl.innerHTML = `<span class="task-icon">⚙️</span><span class="task-text">${this.escapeHtml(taskText)}</span>`;
+        }
+    },
+
+    showPlanConfirmation(plan) {
+        const container = document.getElementById('chat-messages');
+        const confirmDiv = document.createElement('div');
+        confirmDiv.className = 'plan-confirmation';
+        confirmDiv.id = 'plan-confirmation';
+        confirmDiv.innerHTML = `
+            <div class="plan-actions">
+                <button class="plan-btn confirm" id="confirm-plan">Continuar</button>
+                <button class="plan-btn cancel" id="cancel-plan">Ajustar</button>
+            </div>
+        `;
+        container.appendChild(confirmDiv);
+        
+        document.getElementById('confirm-plan').addEventListener('click', () => {
+            confirmDiv.remove();
+            this.respondToPlan('Si, continuar');
+        });
+        
+        document.getElementById('cancel-plan').addEventListener('click', () => {
+            confirmDiv.remove();
+            this.respondToPlan('No, quiero ajustar');
+        });
+    },
+
+    async respondToPlan(response) {
+        this.addMessage(response, 'user');
+        this.setMentalState('GENERANDO', '🚀');
+        this.state.isProcessing = true;
+        
+        try {
+            const resp = await fetch('/api/ai-constructor/process', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ message: response })
+            });
+            
+            const data = await resp.json();
+            
+            if (data.success && data.response) {
+                this.addMessage(data.response, 'assistant');
+            }
+            
+            if (data.files) {
+                this.handleGeneratedFiles(data.files);
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion.', 'assistant');
+        }
+        
+        this.setMentalState('LISTO', '🧘');
+        this.state.isProcessing = false;
+    },
+
+    handleGeneratedFiles(files) {
+        for (const [filename, content] of Object.entries(files)) {
+            this.addMessage(`Archivo generado: ${filename}`, 'assistant');
+        }
+        this.loadFiles();
     },
 
     addMessage(text, type) {

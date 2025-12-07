@@ -5,6 +5,10 @@ const AIChat = {
     isPageMode: false,
     files: {},
     activeTab: 'preview',
+    currentSession: null,
+    currentPhase: 0,
+    esperandoConfirmacion: false,
+    esperandoClarificacion: false,
     
     init() {
         const pageContainer = document.getElementById('ai-chat-screen');
@@ -16,6 +20,7 @@ const AIChat = {
             this.initWidgetMode();
         }
         this.loadFromStorage();
+        this.loadSession();
     },
     
     initPageMode() {
@@ -244,6 +249,27 @@ const AIChat = {
         }
     },
     
+    async loadSession() {
+        try {
+            const response = await fetch('/api/ai-constructor/session', {
+                method: 'GET',
+                headers: this.getApiHeaders()
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.hasSession) {
+                this.currentSession = data.session;
+                this.currentPhase = data.session.fase_actual || 0;
+                this.esperandoConfirmacion = data.session.esperando_confirmacion || false;
+                this.esperandoClarificacion = data.session.esperando_clarificacion || false;
+                this.updatePhaseIndicator();
+            }
+        } catch (e) {
+            console.log('No active session');
+        }
+    },
+    
     appendMessage(role, content, save = true) {
         const container = this.getMessagesContainer();
         if (!container) return;
@@ -275,6 +301,100 @@ const AIChat = {
         if (save) {
             this.messages.push({ role, content });
         }
+    },
+    
+    appendPhaseIndicator(phase, phaseName, isActive = true) {
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        const phaseDiv = document.createElement('div');
+        phaseDiv.className = `ai-phase-indicator ${isActive ? 'active' : 'completed'}`;
+        phaseDiv.id = `phase-indicator-${phase}`;
+        
+        const phaseIcons = {
+            1: '1',
+            2: '2',
+            3: '3',
+            4: '4',
+            5: '5',
+            6: '6',
+            7: '7',
+            8: '8'
+        };
+        
+        phaseDiv.innerHTML = `
+            <div class="phase-badge">
+                <span class="phase-number">${phaseIcons[phase] || phase}</span>
+            </div>
+            <div class="phase-info">
+                <span class="phase-name">${this.escapeHtml(phaseName)}</span>
+                <span class="phase-status">${isActive ? 'En progreso...' : 'Completada'}</span>
+            </div>
+        `;
+        
+        container.appendChild(phaseDiv);
+        container.scrollTop = container.scrollHeight;
+    },
+    
+    updatePhaseIndicator() {
+        const existingIndicator = document.getElementById(`phase-indicator-${this.currentPhase}`);
+        if (existingIndicator) {
+            existingIndicator.classList.remove('active');
+            existingIndicator.classList.add('completed');
+            const statusEl = existingIndicator.querySelector('.phase-status');
+            if (statusEl) statusEl.textContent = 'Completada';
+        }
+    },
+    
+    appendConfirmationButtons(plan) {
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        const buttonsDiv = document.createElement('div');
+        buttonsDiv.className = 'ai-confirmation-buttons';
+        buttonsDiv.id = 'ai-plan-confirmation';
+        
+        buttonsDiv.innerHTML = `
+            <div class="ai-plan-actions">
+                <button class="ai-btn ai-btn-confirm" id="ai-confirm-plan">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Continuar con el plan
+                </button>
+                <button class="ai-btn ai-btn-cancel" id="ai-cancel-plan">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Ajustar plan
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(buttonsDiv);
+        container.scrollTop = container.scrollHeight;
+        
+        document.getElementById('ai-confirm-plan').addEventListener('click', () => {
+            this.respondToConfirmation(true);
+        });
+        
+        document.getElementById('ai-cancel-plan').addEventListener('click', () => {
+            this.respondToConfirmation(false);
+        });
+    },
+    
+    removeConfirmationButtons() {
+        const buttons = document.getElementById('ai-plan-confirmation');
+        if (buttons) buttons.remove();
+    },
+    
+    async respondToConfirmation(confirmed) {
+        this.removeConfirmationButtons();
+        const message = confirmed ? 'Si, continuar' : 'No, quiero ajustar';
+        this.appendMessage('user', message);
+        
+        await this.sendConstructorMessage(message);
     },
     
     appendCodeAction(action, filename) {
@@ -335,6 +455,33 @@ const AIChat = {
         `;
         container.appendChild(typing);
         container.scrollTop = container.scrollHeight;
+    },
+    
+    showPhaseProgress(phase, phaseName) {
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        let progressDiv = document.getElementById('ai-phase-progress');
+        if (!progressDiv) {
+            progressDiv = document.createElement('div');
+            progressDiv.className = 'ai-phase-progress';
+            progressDiv.id = 'ai-phase-progress';
+            container.appendChild(progressDiv);
+        }
+        
+        progressDiv.innerHTML = `
+            <div class="phase-progress-content">
+                <div class="phase-spinner"></div>
+                <span class="phase-text">Fase ${phase}: ${this.escapeHtml(phaseName)}</span>
+            </div>
+        `;
+        
+        container.scrollTop = container.scrollHeight;
+    },
+    
+    hidePhaseProgress() {
+        const progress = document.getElementById('ai-phase-progress');
+        if (progress) progress.remove();
     },
     
     hideTyping() {
@@ -442,10 +589,15 @@ const AIChat = {
         if (send) send.disabled = true;
         
         this.appendMessage('user', message);
+        
+        await this.sendConstructorMessage(message);
+    },
+    
+    async sendConstructorMessage(message) {
         this.showTyping();
         
         try {
-            const response = await fetch('/api/ai/code-builder', {
+            const response = await fetch('/api/ai-constructor/process', {
                 method: 'POST',
                 headers: this.getApiHeaders(),
                 body: JSON.stringify({
@@ -457,30 +609,114 @@ const AIChat = {
             
             const data = await response.json();
             this.hideTyping();
+            this.hidePhaseProgress();
             
             if (data.success) {
-                if (data.files) {
-                    this.processFiles(data.files);
-                }
-                
-                if (data.response) {
-                    this.appendMessage('assistant', data.response);
-                }
-                
-                const indicator = this.getProviderIndicator();
-                if (indicator && data.provider) {
-                    indicator.innerHTML = `<span class="provider-label">Generado con ${this.escapeHtml(data.provider)}</span>`;
-                }
+                this.handleConstructorResponse(data);
             } else {
-                this.appendMessage('assistant', data.error || 'Error al generar codigo. Intenta de nuevo.');
+                if (response.status === 403) {
+                    this.appendMessage('assistant', 'Esta funcion es solo para el propietario. Necesitas permisos de owner para usar el constructor de IA.');
+                } else {
+                    this.appendMessage('assistant', data.error || 'Error al procesar. Intenta de nuevo.');
+                }
             }
         } catch (error) {
             this.hideTyping();
+            this.hidePhaseProgress();
             this.appendMessage('assistant', 'Error de conexion. Verifica tu internet e intenta de nuevo.');
-            console.error('AI Code Builder error:', error);
+            console.error('AI Constructor error:', error);
         }
         
         this.isLoading = false;
+        const send = this.getSendButton();
+        if (send) send.disabled = false;
+    },
+    
+    handleConstructorResponse(data) {
+        if (data.fase && data.fase_nombre) {
+            this.currentPhase = data.fase;
+            this.appendPhaseIndicator(data.fase, data.fase_nombre, false);
+        }
+        
+        if (data.session) {
+            this.currentSession = data.session;
+            this.esperandoConfirmacion = data.session.esperando_confirmacion || false;
+            this.esperandoClarificacion = data.session.esperando_clarificacion || false;
+        }
+        
+        if (data.response) {
+            this.appendMessage('assistant', data.response);
+        }
+        
+        if (data.plan && data.esperando_input) {
+            this.appendConfirmationButtons(data.plan);
+        }
+        
+        if (data.files) {
+            this.processFiles(data.files);
+        }
+        
+        if (data.verification) {
+            this.showVerificationResult(data.verification);
+        }
+        
+        const indicator = this.getProviderIndicator();
+        if (indicator && data.fase_nombre) {
+            indicator.innerHTML = `<span class="provider-label">Fase: ${this.escapeHtml(data.fase_nombre)}</span>`;
+        }
+    },
+    
+    showVerificationResult(verification) {
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        const score = verification.puntuacion || 0;
+        const scoreClass = score >= 80 ? 'good' : (score >= 50 ? 'warning' : 'error');
+        
+        const verificationDiv = document.createElement('div');
+        verificationDiv.className = 'ai-verification-result';
+        
+        let errorsHtml = '';
+        if (verification.errores && verification.errores.length > 0) {
+            errorsHtml = `<div class="verification-errors">
+                <span class="error-label">Errores:</span>
+                <ul>${verification.errores.map(e => `<li>${this.escapeHtml(e)}</li>`).join('')}</ul>
+            </div>`;
+        }
+        
+        let warningsHtml = '';
+        if (verification.advertencias && verification.advertencias.length > 0) {
+            warningsHtml = `<div class="verification-warnings">
+                <span class="warning-label">Advertencias:</span>
+                <ul>${verification.advertencias.map(w => `<li>${this.escapeHtml(w)}</li>`).join('')}</ul>
+            </div>`;
+        }
+        
+        verificationDiv.innerHTML = `
+            <div class="verification-header">
+                <span class="verification-title">Verificacion</span>
+                <span class="verification-score ${scoreClass}">${score}/100</span>
+            </div>
+            <div class="verification-checks">
+                <div class="check ${verification.sintaxis_valida ? 'passed' : 'failed'}">
+                    <span class="check-icon">${verification.sintaxis_valida ? '✓' : '✗'}</span>
+                    Sintaxis
+                </div>
+                <div class="check ${verification.completitud ? 'passed' : 'failed'}">
+                    <span class="check-icon">${verification.completitud ? '✓' : '✗'}</span>
+                    Completo
+                </div>
+                <div class="check ${verification.responsive ? 'passed' : 'failed'}">
+                    <span class="check-icon">${verification.responsive ? '✓' : '✗'}</span>
+                    Responsive
+                </div>
+            </div>
+            ${errorsHtml}
+            ${warningsHtml}
+        `;
+        
+        container.appendChild(verificationDiv);
+        container.scrollTop = container.scrollHeight;
     },
     
     processFiles(files) {
@@ -499,12 +735,35 @@ const AIChat = {
         this.saveToStorage();
     },
     
+    async resetSession() {
+        try {
+            const response = await fetch('/api/ai-constructor/reset', {
+                method: 'POST',
+                headers: this.getApiHeaders()
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentSession = null;
+                this.currentPhase = 0;
+                this.esperandoConfirmacion = false;
+                this.esperandoClarificacion = false;
+                this.appendMessage('assistant', 'Sesion reiniciada. Puedes empezar un nuevo proyecto.');
+            }
+        } catch (e) {
+            console.error('Error resetting session:', e);
+        }
+    },
+    
     async clearChat() {
         if (!confirm('Limpiar el proyecto actual?')) return;
         
         this.messages = [];
         this.files = {};
         localStorage.removeItem('bunkr_ai_project');
+        
+        await this.resetSession();
         
         const container = this.getMessagesContainer();
         if (container) {
