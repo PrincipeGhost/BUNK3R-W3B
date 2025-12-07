@@ -146,12 +146,12 @@ class HuggingFaceProvider(AIProvider):
 
 
 class GroqProvider(AIProvider):
-    """Groq API - Free tier, very fast inference"""
+    """Groq API - Free tier, very fast inference - UPGRADED to Mixtral 8x7B"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self.name = "groq"
-        self.model = "llama3-8b-8192"
+        self.model = "mixtral-8x7b-32768"
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
@@ -173,9 +173,9 @@ class GroqProvider(AIProvider):
                     "model": self.model,
                     "messages": chat_messages,
                     "temperature": 0.7,
-                    "max_tokens": 1024
+                    "max_tokens": 8192
                 },
-                timeout=30
+                timeout=60
             )
             
             if response.status_code == 200:
@@ -191,12 +191,12 @@ class GroqProvider(AIProvider):
 
 
 class GeminiProvider(AIProvider):
-    """Google Gemini API - Free tier with generous limits"""
+    """Google Gemini API - UPGRADED to gemini-1.5-pro for better reasoning"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self.name = "gemini"
-        self.model = "gemini-1.5-flash"
+        self.model = "gemini-1.5-pro"
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
@@ -218,7 +218,7 @@ class GeminiProvider(AIProvider):
             
             payload["generationConfig"] = {
                 "temperature": 0.7,
-                "maxOutputTokens": 1024
+                "maxOutputTokens": 8192
             }
             
             response = requests.post(
@@ -244,12 +244,12 @@ class GeminiProvider(AIProvider):
 
 
 class CerebrasProvider(AIProvider):
-    """Cerebras API - Free tier 30 req/min, very fast"""
+    """Cerebras API - UPGRADED to llama3.1-70b for better reasoning"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self.name = "cerebras"
-        self.model = "llama3.1-8b"
+        self.model = "llama3.1-70b"
         self.base_url = "https://api.cerebras.ai/v1/chat/completions"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
@@ -271,9 +271,9 @@ class CerebrasProvider(AIProvider):
                     "model": self.model,
                     "messages": chat_messages,
                     "temperature": 0.7,
-                    "max_tokens": 1024
+                    "max_tokens": 8192
                 },
-                timeout=30
+                timeout=90
             )
             
             if response.status_code == 200:
@@ -289,7 +289,7 @@ class CerebrasProvider(AIProvider):
 
 
 class DeepSeekProvider(AIProvider):
-    """DeepSeek API - High quality, affordable, OpenAI-compatible"""
+    """DeepSeek API - UPGRADED for better reasoning with more tokens"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
@@ -316,9 +316,9 @@ class DeepSeekProvider(AIProvider):
                     "model": self.model,
                     "messages": chat_messages,
                     "temperature": 0.7,
-                    "max_tokens": 1024
+                    "max_tokens": 8192
                 },
-                timeout=60
+                timeout=120
             )
             
             if response.status_code == 200:
