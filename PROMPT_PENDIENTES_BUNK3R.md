@@ -10,7 +10,7 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ╔══════════════════════════════════════════════════════════════════╗
 ║                    🏦 BUNK3R-W3B - ESTADO ACTUAL                 ║
 ╠══════════════════════════════════════════════════════════════════╣
-║ Última actualización: 7 Diciembre 2025 17:45                     ║
+║ Última actualización: 7 Diciembre 2025 19:30                     ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                                                                  ║
 ║ ✅ COMPLETADAS: 9 secciones + 4 críticos resueltos               ║
@@ -20,12 +20,14 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║                                                                  ║
 ║ 🔄 EN PROGRESO: Ninguna                                          ║
 ║                                                                  ║
-║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33     ║
+║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33, 34 ║
 ║                                                                  ║
-║ 🔴 CRÍTICO: 0 problemas activos                                  ║
-║    ✅ 30.1 except vacíos | ✅ 30.2 innerHTML XSS                  ║
-║    ✅ 30.3 Headers CSP   | ✅ 31.1 Botones funcionales            ║
-║    ✅ 31.2 Códigos 2FA   | ✅ 32.5 Secretos auditados             ║
+║ 🔴 CRÍTICO NUEVO: SECCIÓN 34 - IA BUNK3R CONSTRUCTOR             ║
+║    ⏳ 34.1 Conectar frontend con 8 fases                         ║
+║    ⏳ 34.2 Expandir capacidades IA (no solo páginas)             ║
+║    ⏳ 34.6 Entendimiento de intenciones                          ║
+║    ✅ Sistema 8 fases existe pero no se usa                      ║
+║    ✅ Multi-proveedor IA configurado                             ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -2174,37 +2176,472 @@ Implementar sistema de mensajes privados.
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 34: SISTEMA IA BUNK3R CONSTRUCTOR ⏳ 🔴 CRÍTICA
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Agregado:** 7 Diciembre 2025  
+**Tiempo total estimado:** 20+ horas  
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND + 🟣 IA
+
+---
+
+### OBJETIVO PRINCIPAL:
+Crear un **AI Constructor tipo Replit/Bolt.new** donde la IA BUNK3R pueda:
+- Entender lo que el usuario quiere (no solo crear páginas)
+- Programar, ejecutar, editar y eliminar archivos
+- Ejecutar comandos (npm, pip, etc.)
+- Mostrar preview en tiempo real
+- Trabajar paso a paso con flujo visible
+
+**Referencia visual:** Como Replit Agent / Bolt.new / Cursor
+
+---
+
+### DIAGNÓSTICO ACTUAL DEL SISTEMA
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  PROBLEMA DETECTADO                                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ai-chat.js ──────> /api/ai/code-builder                        │
+│                         │                                       │
+│                         ▼                                       │
+│               ai_service.generate_code()                        │
+│                         │                                       │
+│                         ▼                                       │
+│          GENERA TODO DE UNA VEZ (sin fases, sin plan)           │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  EXISTE PERO NO SE USA:                                         │
+│                                                                 │
+│  ai_constructor.py ──> 8 FASES completas                        │
+│         │                                                       │
+│         ├── Fase 1: Analizar intención                          │
+│         ├── Fase 2: Investigar                                  │
+│         ├── Fase 3: Clarificar (preguntar)                      │
+│         ├── Fase 4: Construir prompt                            │
+│         ├── Fase 5: Presentar plan                              │
+│         ├── Fase 6: Ejecutar                                    │
+│         ├── Fase 7: Verificar                                   │
+│         └── Fase 8: Entregar                                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### ARQUITECTURA DESEADA (Layout 3 columnas)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  [BUNK3R AI CONSTRUCTOR]                                        │
+├─────────────────────────────────────────────────────────────────┤
+│                              │                │                 │
+│     CHAT CON LA IA           │   WEB PREVIEW  │  ARCHIVOS       │
+│     (Lado izquierdo)         │   (Centro)     │  (Derecha)      │
+│                              │                │                 │
+│  Usuario: Crea un landing    │  ┌──────────┐  │  📁 proyecto/   │
+│                              │  │          │  │  ├── index.html │
+│  IA: [Fase 1] Analizando...  │  │  PREVIEW │  │  ├── style.css  │
+│  IA: [Fase 2] Investigando...│  │  EN VIVO │  │  └── script.js  │
+│  IA: [Fase 5] Plan listo...  │  │          │  │                 │
+│  IA: ✅ Archivos creados     │  └──────────┘  │                 │
+│                              │                │                 │
+│  [Escribe tu mensaje...]     │                │                 │
+│                              │                │                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### ARCHIVOS INVOLUCRADOS
+
+| Archivo | Función | Estado |
+|---------|---------|--------|
+| `tracking/ai_constructor.py` | Constructor 8 fases | ✅ Existe, no se usa |
+| `tracking/ai_service.py` | Multi-proveedor IA | ✅ Funciona |
+| `tracking/ai_flow_logger.py` | Logger de flujo | ✅ Existe |
+| `static/js/ai-chat.js` | Frontend IA Builder | ⚠️ Usa endpoint incorrecto |
+| `static/js/workspace.js` | Workspace IDE | ⚠️ Solo chat, no genera |
+| `static/css/ai-chat.css` | Estilos IA | ✅ Existe |
+| `templates/workspace.html` | Layout IDE | ✅ Tiene 3 columnas |
+| `app.py` | Endpoints API | ⚠️ Falta conectar |
+
+---
+
+### PROVEEDORES IA CONFIGURADOS
+
+| Prioridad | Proveedor | Modelo | Estado |
+|-----------|-----------|--------|--------|
+| 1 | Groq | llama-3.3-70b-versatile | ✅ Configurado |
+| 2 | Cerebras | llama-3.3-70b | ✅ Configurado |
+| 3 | Gemini | gemini-2.0-flash | ✅ Configurado |
+| 4 | DeepSeek | deepseek-chat | ✅ Configurado |
+| 5 | HuggingFace | Meta-Llama-3-8B | ✅ Configurado |
+| Local | DeepSeek V3.2 | via HuggingFace | ⏳ Pendiente como cerebro principal |
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.1: CONECTAR FRONTEND CON CONSTRUCTOR 8 FASES ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🔵 FRONTEND
+
+### Objetivo:
+Cambiar el frontend para que use el sistema de 8 fases en vez de generación directa.
+
+### Tareas:
+- [ ] Modificar `ai-chat.js` para usar `/api/ai-constructor/process` en vez de `/api/ai/code-builder`
+- [ ] Manejar respuestas de cada fase (clarificación, confirmación, etc.)
+- [ ] Mostrar el proceso de fases visualmente al usuario
+- [ ] Implementar botones de confirmación/cancelación del plan
+- [ ] Conectar archivos generados con el panel de preview
+- [ ] Actualizar panel de archivos cuando la IA genera archivos
+
+### Criterios de éxito:
+- [ ] Usuario ve las fases ejecutándose
+- [ ] IA pregunta clarificaciones cuando necesita
+- [ ] IA muestra plan antes de ejecutar
+- [ ] Preview se actualiza en tiempo real
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.2: EXPANDIR CAPACIDADES DE LA IA ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 6 horas  
+**Agente:** 🟡 BACKEND + 🟣 IA
+
+### Objetivo:
+La IA debe poder hacer MÁS que solo crear páginas web.
+
+### Capacidades a implementar:
+
+#### 34.2.1 - Crear archivos nuevos
+- [ ] Detectar cuando usuario pide crear archivo
+- [ ] Generar contenido del archivo
+- [ ] Guardarlo en sistema de archivos virtual o real
+- [ ] Notificar al frontend del nuevo archivo
+
+#### 34.2.2 - Editar archivos existentes
+- [ ] Leer contenido actual del archivo
+- [ ] Entender qué cambios pide el usuario
+- [ ] Aplicar cambios de forma inteligente
+- [ ] Mostrar diff de cambios
+
+#### 34.2.3 - Eliminar archivos
+- [ ] Confirmar antes de eliminar
+- [ ] Eliminar archivo del sistema
+- [ ] Actualizar árbol de archivos
+
+#### 34.2.4 - Ejecutar comandos
+- [ ] Detectar cuando usuario pide ejecutar comando
+- [ ] Ejecutar comandos permitidos (npm, pip, python, node, etc.)
+- [ ] Mostrar output del comando en consola
+- [ ] Manejar errores de comandos
+
+#### 34.2.5 - Leer/Entender archivos del proyecto
+- [ ] IA puede leer archivos existentes
+- [ ] Entender contexto del proyecto
+- [ ] Sugerir mejoras basadas en código existente
+
+#### 34.2.6 - Descargar proyecto como ZIP
+- [ ] Generar ZIP con todos los archivos
+- [ ] Incluir estructura de carpetas
+- [ ] Permitir descarga desde frontend
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.3: SISTEMA DE ARCHIVOS VIRTUAL ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND
+
+### Objetivo:
+Sistema de archivos en memoria para proyectos de la IA.
+
+### Tareas:
+- [ ] Crear clase `VirtualFileSystem` 
+- [ ] Almacenar archivos en base de datos por usuario/proyecto
+- [ ] Métodos: create, read, update, delete, list, search
+- [ ] Persistir entre sesiones
+- [ ] Límite de tamaño por usuario
+- [ ] Endpoint para descargar como ZIP
+
+### Estructura de BD:
+```sql
+CREATE TABLE ai_project_files (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(50),
+    project_id VARCHAR(100),
+    file_path VARCHAR(500),
+    content TEXT,
+    file_type VARCHAR(50),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.4: PREVIEW EN TIEMPO REAL ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 3 horas  
+**Agente:** 🔵 FRONTEND
+
+### Objetivo:
+El preview se actualiza mientras la IA trabaja, no solo al final.
+
+### Tareas:
+- [ ] Implementar WebSocket o polling para actualizaciones
+- [ ] Actualizar iframe cuando cambia HTML/CSS/JS
+- [ ] Mostrar indicador de "IA trabajando" en preview
+- [ ] Manejar errores de preview gracefully
+- [ ] Botón de refresh manual
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.5: PANEL DE ARCHIVOS DINÁMICO ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 3 horas  
+**Agente:** 🔵 FRONTEND
+
+### Objetivo:
+Panel derecho muestra archivos del proyecto IA.
+
+### Tareas:
+- [ ] Cargar archivos del proyecto actual
+- [ ] Árbol expandible de carpetas
+- [ ] Click en archivo para ver/editar contenido
+- [ ] Indicador de archivo nuevo/modificado
+- [ ] Bloquear edición mientras IA trabaja
+- [ ] Sincronizar con sistema de archivos virtual
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.6: ENTENDIMIENTO DE INTENCIONES ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 5 horas  
+**Agente:** 🟣 IA
+
+### Objetivo:
+La IA entiende qué quiere el usuario, no solo "crear página".
+
+### Tipos de intenciones a detectar:
+- [ ] "Crea..." → Crear nuevos archivos/proyectos
+- [ ] "Modifica..." → Editar archivos existentes
+- [ ] "Arregla..." → Corregir errores
+- [ ] "Explica..." → Explicar código/concepto
+- [ ] "Optimiza..." → Mejorar rendimiento
+- [ ] "Ejecuta..." → Correr comandos
+- [ ] "Instala..." → Agregar dependencias
+- [ ] "Elimina..." → Borrar archivos
+- [ ] "Muéstrame..." → Ver archivos/código
+- [ ] "¿Cómo...?" → Preguntas/consultas
+- [ ] "Refactoriza..." → Reorganizar código
+- [ ] "Testea..." → Crear/ejecutar tests
+- [ ] "Documenta..." → Agregar documentación
+- [ ] "Despliega..." → Deploy del proyecto
+
+### Expandir `IntentParser` en `ai_constructor.py`:
+```python
+class TaskType(Enum):
+    CREAR_PROYECTO = "crear_proyecto"
+    CREAR_ARCHIVO = "crear_archivo"
+    EDITAR_ARCHIVO = "editar_archivo"
+    ELIMINAR_ARCHIVO = "eliminar_archivo"
+    EJECUTAR_COMANDO = "ejecutar_comando"
+    INSTALAR_DEPENDENCIA = "instalar_dependencia"
+    CORREGIR_ERROR = "corregir_error"
+    OPTIMIZAR = "optimizar"
+    EXPLICAR = "explicar"
+    DOCUMENTAR = "documentar"
+    REFACTORIZAR = "refactorizar"
+    TESTEAR = "testear"
+    CONSULTA_GENERAL = "consulta_general"
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.7: CONSOLA DE COMANDOS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 4 horas  
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### Objetivo:
+Consola tipo terminal donde la IA puede ejecutar comandos.
+
+### Tareas:
+- [ ] Agregar pestaña "Consola" junto a Preview
+- [ ] Backend endpoint para ejecutar comandos seguros
+- [ ] Lista blanca de comandos permitidos
+- [ ] Mostrar output en tiempo real
+- [ ] Historial de comandos
+- [ ] Manejar errores y timeouts
+
+### Comandos permitidos:
+```python
+ALLOWED_COMMANDS = [
+    'npm install', 'npm run', 'npm init',
+    'pip install', 'pip list',
+    'python', 'python3',
+    'node', 'npx',
+    'ls', 'cat', 'head', 'tail',
+    'mkdir', 'touch',
+    'git status', 'git log', 'git diff'
+]
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.8: IA LOCAL (DeepSeek + HuggingFace) ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 4 horas  
+**Agente:** 🟣 IA
+
+### Objetivo:
+DeepSeek + HuggingFace como "cerebro principal" que consulta a otras IAs.
+
+### Arquitectura:
+```
+Usuario ──> BUNK3R AI (DeepSeek V3.2 local)
+                │
+                ├──> Para código: Groq/Cerebras
+                ├──> Para diseño: Gemini
+                ├──> Para análisis: DeepSeek API
+                └──> Fallback: HuggingFace Llama
+```
+
+### Tareas:
+- [ ] Configurar DeepSeek V3.2 como proveedor principal
+- [ ] Implementar orquestador que decide qué IA usar
+- [ ] Routing inteligente según tipo de tarea
+- [ ] Caché de respuestas para eficiencia
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.9: BLOQUEAR IA PARA USUARIOS NORMALES ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND
+
+### Objetivo:
+Solo el OWNER ve la IA Constructor completa por ahora.
+
+### Tareas:
+- [ ] Verificar `is_owner` en endpoints de IA
+- [ ] Ocultar botón IA para usuarios normales
+- [ ] Mostrar IA básica (solo chat) para usuarios normales
+- [ ] Configuración para activar IA completa por usuario
+
+---
+
+## RESUMEN SECCIÓN 34
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| 34.1 | Conectar frontend con 8 fases | 🔴 CRÍTICA | 4h | ⏳ |
+| 34.2 | Expandir capacidades IA | 🔴 CRÍTICA | 6h | ⏳ |
+| 34.3 | Sistema de archivos virtual | 🟡 ALTA | 4h | ⏳ |
+| 34.4 | Preview tiempo real | 🟡 ALTA | 3h | ⏳ |
+| 34.5 | Panel archivos dinámico | 🟡 ALTA | 3h | ⏳ |
+| 34.6 | Entendimiento intenciones | 🔴 CRÍTICA | 5h | ⏳ |
+| 34.7 | Consola de comandos | 🟠 MEDIA | 4h | ⏳ |
+| 34.8 | IA Local DeepSeek | 🟠 MEDIA | 4h | ⏳ |
+| 34.9 | Bloquear IA usuarios | 🟡 ALTA | 2h | ⏳ |
+
+**TOTAL TIEMPO ESTIMADO: ~35 horas**
+
+**ORDEN RECOMENDADO:** 34.9 → 34.1 → 34.6 → 34.2 → 34.3 → 34.4 → 34.5 → 34.7 → 34.8
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## FIN SECCIÓN 34
+## ════════════════════════════════════════════════════════════════
+
+---
+
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 17:58
-**Sesión:** 4
-**Agente activo:** BACKEND API
+**Última actualización:** 7 Diciembre 2025 19:45
+**Sesión:** 6
+**Agente activo:** EXPLORACIÓN + DOCUMENTACIÓN IA
 
 ### Última tarea trabajada
-- Sección: 30.4
-- Nombre: Limpieza de imports no usados
-- Estado: Completada
+- Sección: 34 (NUEVA)
+- Nombre: Sistema IA BUNK3R Constructor
+- Estado: Documentada, pendiente de implementación
 
 ### Archivos modificados en esta sesión:
-- app.py (consolidados imports al principio, eliminados duplicados, actualizado browser_proxy())
+- PROMPT_PENDIENTES_BUNK3R.md (añadida SECCIÓN 34 completa con 9 fases)
 
-### Tareas completadas:
+### Nueva sección añadida - SECCIÓN 34: IA CONSTRUCTOR
+```
+EXPLORACIÓN COMPLETADA:
+✅ tracking/ai_constructor.py - Constructor 8 fases (1,415 líneas) - NO SE USA
+✅ tracking/ai_service.py - Multi-proveedor IA (1,120 líneas) - FUNCIONA
+✅ tracking/ai_flow_logger.py - Logger flujo (291 líneas) - EXISTE
+✅ static/js/ai-chat.js - USA ENDPOINT INCORRECTO (/api/ai/code-builder)
+✅ static/js/workspace.js - Solo chat, NO genera archivos
+✅ templates/workspace.html - Layout 3 columnas existe
+
+PROBLEMA PRINCIPAL:
+- Frontend usa /api/ai/code-builder → genera todo de una vez
+- Existe /api/ai-constructor/process → 8 fases con plan → NO SE USA
+- La IA solo crea páginas, no entiende otras peticiones
+```
+
+### Tareas previas completadas:
 - [x] 30.2: Sanitización innerHTML - Completada 100%
 - [x] 30.3: Headers CSP - Implementado con variables de entorno
 - [x] 30.4: Limpieza de imports - Consolidados y eliminados duplicados
 - [x] 31.1: Botones sin funcionalidad - Implementado setupAvatarUpload() y viewUserProfile()
 - [x] 32.5: Auditoría de secretos - Verificado que todos usan variables de entorno
 
-### Próximos pasos
-1. FASE 30.5: Sesiones persistentes
-2. FASE 31.3: Navegación inconsistente
-3. FASE 31.4: Estadísticas del admin sin datos
+### Próximos pasos CRÍTICOS (Sección 34)
+1. **34.9** Bloquear IA para usuarios normales (2h) - Seguridad primero
+2. **34.1** Conectar frontend con 8 fases (4h) - Core del sistema
+3. **34.6** Entendimiento de intenciones (5h) - IA más inteligente
+4. **34.2** Expandir capacidades IA (6h) - Editar, ejecutar, etc.
 
 ### Notas para el próximo agente
-- Imports de app.py consolidados al principio del archivo (líneas 6-34)
-- Eliminados imports duplicados: time (2), requests (1), threading, defaultdict, urlparse
-- browser_proxy() ahora usa `requests` en lugar del alias `req`
-- Los 368 diagnósticos de LSP restantes son errores de tipado (Pyright), no imports no usados
-- Los errores tipo "Cannot access member 'telegram_user' for type 'Request'" son esperados - Flask Request se extiende dinámicamente
+- **PRIORIDAD MÁXIMA**: Sección 34 - Sistema IA Constructor
+- El sistema de 8 fases ya está PROGRAMADO en tracking/ai_constructor.py
+- Solo falta CONECTAR el frontend para que lo use
+- La IA debe poder: crear/editar/eliminar archivos, ejecutar comandos, entender contexto
+- Referencia visual: Replit Agent / Bolt.new / Cursor
+- Multi-proveedor ya configurado: Groq > Cerebras > Gemini > DeepSeek > HuggingFace
+- Los 428 diagnósticos LSP son errores de tipado (Pyright), no críticos para funcionamiento
 
 ---
