@@ -31,6 +31,17 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║    ✅ 34.1, 34.2, 34.6, 34.9-34.14 COMPLETADOS (9 fases)         ║
 ║    ⏳ 34.3-34.5, 34.7-34.8, 34.15 PENDIENTES (6 fases)           ║
 ║                                                                  ║
+║ 🆕 FASES NÚCLEO IA (34.16 - 34.23) - NUEVO 7 Dic 2025            ║
+║    ⏳ 34.16 Motor de Decisiones Automático (4h) 🔴               ║
+║    ⏳ 34.17 Sistema de Reintentos Inteligente (3h) 🔴            ║
+║    ⏳ 34.18 Contexto de Proyecto Persistente (4h) 🔴             ║
+║    ⏳ 34.19 Validador Pre-Ejecución (3h) 🟡                      ║
+║    ⏳ 34.20 Sistema de Rollback Automático (4h) 🟡               ║
+║    ⏳ 34.21 Analizador de Impacto de Cambios (4h) 🟡             ║
+║    ⏳ 34.22 Gestor de Workflows (3h) 🔴                          ║
+║    ⏳ 34.23 Gestor de Tareas con Tracking (2h) 🟠                ║
+║    TOTAL: 8 fases nuevas, ~27 horas                              ║
+║                                                                  ║
 ║ 🆕 COMPONENTES AVANZADOS (34.A - 34.H)                           ║
 ║    ⏳ 34.A Búsqueda en Vivo (Serper + Playwright)                ║
 ║    ⏳ 34.B Memoria Vectorial (ChromaDB + Embeddings)             ║
@@ -5088,6 +5099,430 @@ Mostrar diferencias antes de aplicar cambios.
 - **Frontend:** showDiffViewer(), formatDiffOutput(), applyDiff()
 - **CSS:** Estilos completos para diff-viewer (verde adiciones, rojo eliminaciones)
 - **Seguridad:** Autenticación requerida y validación de rutas
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.16: MOTOR DE DECISIONES AUTOMÁTICO ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Motor interno que decide automáticamente qué flujo de trabajo seguir según el tipo de mensaje del usuario.
+
+### Tareas:
+- [ ] Implementar clasificador de intenciones (IntentClassifier)
+- [ ] Detectar CREATE_NEW: "Crea un...", "Hazme un...", "Necesito un..."
+- [ ] Detectar MODIFY_EXISTING: "Cambia...", "Modifica...", "Agrega a..."
+- [ ] Detectar DEBUG_FIX: "No funciona...", "Error en...", "Por qué..."
+- [ ] Detectar EXPLAIN: "Explica...", "Qué hace...", "Cómo funciona..."
+- [ ] Detectar QUESTION: "Puedes...", "Es posible...", preguntas
+- [ ] Detectar AMBIGUOUS: Necesita clarificación
+- [ ] Implementar motor de decisión de workflows (decide_workflow)
+- [ ] Definir secuencia de herramientas por tipo de intención
+
+### Implementación:
+```python
+class AIDecisionEngine:
+    """
+    Motor que decide automáticamente qué flujo seguir
+    según el tipo de mensaje del usuario.
+    """
+    
+    def classify_intent(self, message: str) -> IntentType:
+        """
+        Clasificar en:
+        - CREATE_NEW: "Crea un...", "Hazme un...", "Necesito un..."
+        - MODIFY_EXISTING: "Cambia...", "Modifica...", "Agrega a..."
+        - DEBUG_FIX: "No funciona...", "Error en...", "Por qué..."
+        - EXPLAIN: "Explica...", "Qué hace...", "Cómo funciona..."
+        - QUESTION: "Puedes...", "Es posible...", preguntas
+        - AMBIGUOUS: Necesita clarificación
+        """
+        pass
+    
+    def decide_workflow(self, intent: IntentType) -> Workflow:
+        """
+        Según la intención, decidir qué herramientas usar
+        y en qué orden.
+        """
+        workflows = {
+            "CREATE_NEW": [
+                "understand_project",  # Entender contexto
+                "plan_changes",        # Planificar
+                "create_files",        # Crear
+                "install_deps",        # Dependencias
+                "verify",              # Verificar
+                "deliver"              # Entregar
+            ],
+            "DEBUG_FIX": [
+                "read_logs",           # Ver qué pasó
+                "find_error_source",   # Encontrar causa
+                "analyze_error",       # Analizar
+                "propose_fix",         # Proponer
+                "apply_fix",           # Aplicar
+                "verify_fix",          # Verificar
+                "iterate_if_needed"    # Repetir si falla
+            ],
+        }
+        return workflows[intent]
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.17: SISTEMA DE REINTENTOS INTELIGENTE ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 3 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Sistema que reintenta automáticamente cuando algo falla, analizando por qué falló y ajustando la estrategia.
+
+### Tareas:
+- [ ] Implementar RetryManager con máximo 3 reintentos
+- [ ] Ejecutar acción con try/catch
+- [ ] Analizar causa de fallo automáticamente
+- [ ] Modificar estrategia según el error
+- [ ] Reintentar con estrategia ajustada
+- [ ] Si sigue fallando después de 3 intentos, pedir ayuda al usuario
+- [ ] Logging de cada intento y resultado
+
+### Implementación:
+```python
+class RetryManager:
+    """
+    Sistema que reintenta automáticamente cuando algo falla.
+    """
+    
+    MAX_RETRIES = 3
+    
+    def execute_with_retry(self, action, on_fail_analyze=True):
+        """
+        1. Ejecutar acción
+        2. Si falla:
+           a. Analizar por qué falló
+           b. Modificar estrategia
+           c. Reintentar (máx 3 veces)
+        3. Si sigue fallando, pedir ayuda al usuario
+        """
+        for attempt in range(self.MAX_RETRIES):
+            result = self.try_action(action)
+            if result.success:
+                return result
+            
+            # Analizar fallo y ajustar
+            analysis = self.analyze_failure(result.error)
+            action = self.adjust_strategy(action, analysis)
+        
+        # Si llegamos aquí, pedir ayuda
+        return self.request_user_help(action, result.error)
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.18: CONTEXTO DE PROYECTO PERSISTENTE ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Contexto que se mantiene DURANTE toda la sesión y se usa en CADA operación para entender mejor el proyecto.
+
+### Tareas:
+- [ ] Implementar ProjectContext que se carga al inicio de sesión
+- [ ] Detectar lenguaje del proyecto automáticamente
+- [ ] Detectar framework utilizado
+- [ ] Leer y parsear dependencias (requirements.txt, package.json)
+- [ ] Mapear estructura de directorios
+- [ ] Detectar convenciones de código
+- [ ] Encontrar entry points del proyecto
+- [ ] Implementar get_relevant_context() por archivo
+
+### Implementación:
+```python
+class ProjectContext:
+    """
+    Contexto que se mantiene DURANTE toda la sesión
+    y se usa en CADA operación.
+    """
+    
+    def __init__(self, project_root: str):
+        # Cargar UNA VEZ al inicio de la sesión
+        self.language = self.detect_language()
+        self.framework = self.detect_framework()
+        self.dependencies = self.read_dependencies()
+        self.structure = self.map_structure()
+        self.conventions = self.detect_conventions()
+        self.entry_points = self.find_entry_points()
+        
+    def get_relevant_context(self, file_path: str) -> Dict:
+        """
+        Para cada archivo, saber:
+        - Qué otros archivos lo importan
+        - Qué archivos importa
+        - Qué funciones expone
+        - Qué patrones usa
+        """
+        pass
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.19: VALIDADOR PRE-EJECUCIÓN ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 3 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Validar que un cambio es seguro ANTES de hacerlo para prevenir errores.
+
+### Tareas:
+- [ ] Implementar PreExecutionValidator
+- [ ] check_file_exists() - El archivo existe?
+- [ ] check_target_still_valid() - El código a editar sigue ahí?
+- [ ] check_no_conflicts() - No hay cambios concurrentes?
+- [ ] check_syntax_will_be_valid() - El resultado será válido?
+- [ ] check_imports_available() - Los imports existen?
+- [ ] check_no_breaking_changes() - No rompe otros archivos?
+- [ ] Retornar ValidationResult con todos los checks
+
+### Implementación:
+```python
+class PreExecutionValidator:
+    """
+    Validar que el cambio es seguro ANTES de hacerlo.
+    """
+    
+    def validate_before_action(self, action: Action) -> ValidationResult:
+        checks = [
+            self.check_file_exists(),           # El archivo existe?
+            self.check_target_still_valid(),     # El código a editar sigue ahí?
+            self.check_no_conflicts(),           # No hay cambios concurrentes?
+            self.check_syntax_will_be_valid(),   # El resultado será válido?
+            self.check_imports_available(),      # Los imports existen?
+            self.check_no_breaking_changes(),    # No rompe otros archivos?
+        ]
+        return all(checks)
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.20: SISTEMA DE ROLLBACK AUTOMÁTICO ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Guardar estado antes de cambios para poder revertir si algo sale mal.
+
+### Tareas:
+- [ ] Implementar RollbackManager
+- [ ] create_checkpoint() - Guardar estado actual de archivos
+- [ ] Generar checkpoint_id único
+- [ ] Almacenar contenido de archivos antes del cambio
+- [ ] rollback_to_checkpoint() - Restaurar archivos a estado anterior
+- [ ] auto_rollback_on_error() - Si el servidor no levanta, rollback automático
+- [ ] Limpieza de checkpoints antiguos (mantener últimos 10)
+
+### Implementación:
+```python
+class RollbackManager:
+    """
+    Guardar estado antes de cambios para poder revertir.
+    """
+    
+    def create_checkpoint(self, files: List[str]) -> str:
+        """Guardar estado actual de archivos"""
+        checkpoint_id = uuid4()
+        for file in files:
+            self.save_file_state(checkpoint_id, file)
+        return checkpoint_id
+    
+    def rollback_to_checkpoint(self, checkpoint_id: str):
+        """Restaurar archivos a estado anterior"""
+        for file_state in self.get_checkpoint(checkpoint_id):
+            self.restore_file(file_state)
+    
+    def auto_rollback_on_error(self):
+        """Si el servidor no levanta, rollback automático"""
+        pass
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.21: ANALIZADOR DE IMPACTO DE CAMBIOS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Analizar el impacto de un cambio antes de hacerlo para saber qué puede romperse.
+
+### Tareas:
+- [ ] Implementar ChangeImpactAnalyzer
+- [ ] find_importers() - Qué archivos importan este archivo
+- [ ] find_usages() - Dónde se usa esta función/clase
+- [ ] find_related_tests() - Qué tests cubren este código
+- [ ] analyze_impact() - Análisis completo del impacto
+- [ ] Detectar breaking changes potenciales
+- [ ] Retornar Impact con importers, usages, tests
+
+### Implementación:
+```python
+class ChangeImpactAnalyzer:
+    """
+    Analizar impacto de un cambio antes de hacerlo.
+    """
+    
+    def analyze_impact(self, file: str, change: str) -> Impact:
+        """
+        Si cambio esta función en este archivo:
+        - Qué otros archivos la usan?
+        - Qué tests la cubren?
+        - Qué endpoints la llaman?
+        - Hay breaking changes?
+        """
+        importers = self.find_importers(file)
+        usages = self.find_usages(change)
+        tests = self.find_related_tests(file)
+        return Impact(importers, usages, tests)
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.22: GESTOR DE WORKFLOWS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 3 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Manejar los workflows/procesos del servidor para la IA.
+
+### Tareas:
+- [ ] Implementar WorkflowManager
+- [ ] restart_workflow() - Reiniciar un workflow específico
+- [ ] get_workflow_status() - Ver si está running/stopped/error
+- [ ] wait_for_port() - Esperar a que el servidor esté listo
+- [ ] get_workflow_logs() - Obtener logs del workflow
+- [ ] Integrar con sistema de Replit workflows
+- [ ] Timeout configurable para espera de puertos
+
+### Implementación:
+```python
+class WorkflowManager:
+    """
+    Manejar los workflows/procesos del servidor.
+    """
+    
+    def restart_workflow(self, name: str):
+        """Reiniciar un workflow específico"""
+        pass
+    
+    def get_workflow_status(self, name: str) -> str:
+        """Ver si está running/stopped/error"""
+        pass
+    
+    def wait_for_port(self, port: int, timeout: int):
+        """Esperar a que el servidor esté listo"""
+        pass
+    
+    def get_workflow_logs(self, name: str, lines: int = 100):
+        """Obtener logs del workflow"""
+        pass
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.23: GESTOR DE TAREAS CON TRACKING ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND
+**Agregado:** 7 Diciembre 2025
+
+### Objetivo:
+Sistema de tareas con tracking de progreso para mostrar al usuario.
+
+### Tareas:
+- [ ] Implementar TaskManager
+- [ ] create_task_list() - Crear lista de tareas para el usuario
+- [ ] mark_task_in_progress() - Marcar tarea en progreso
+- [ ] mark_task_completed() - Marcar tarea completada
+- [ ] show_progress_to_user() - Mostrar progreso visual al usuario
+- [ ] Persistir estado de tareas
+- [ ] Integrar con frontend para visualización
+
+### Implementación:
+```python
+class TaskManager:
+    """
+    Sistema de tareas con tracking de progreso.
+    """
+    
+    def create_task_list(self, tasks: List[Task]):
+        """Crear lista de tareas para el usuario"""
+        pass
+    
+    def mark_task_in_progress(self, task_id: str):
+        """Marcar tarea en progreso"""
+        pass
+    
+    def mark_task_completed(self, task_id: str):
+        """Marcar tarea completada"""
+        pass
+    
+    def show_progress_to_user(self):
+        """Mostrar progreso visual al usuario"""
+        pass
+```
+
+---
+
+## ═══════════════════════════════════════
+## RESUMEN FASES 34.16 - 34.23
+## ═══════════════════════════════════════
+
+| Fase | Nombre | Prioridad | Tiempo Est. |
+|------|--------|-----------|-------------|
+| 34.16 | Motor de Decisiones Automático | 🔴 CRÍTICA | 4h |
+| 34.17 | Sistema de Reintentos Inteligente | 🔴 CRÍTICA | 3h |
+| 34.18 | Contexto de Proyecto Persistente | 🔴 CRÍTICA | 4h |
+| 34.19 | Validador Pre-Ejecución | 🟡 ALTA | 3h |
+| 34.20 | Sistema de Rollback Automático | 🟡 ALTA | 4h |
+| 34.21 | Analizador de Impacto de Cambios | 🟡 ALTA | 4h |
+| 34.22 | Gestor de Workflows | 🔴 CRÍTICA | 3h |
+| 34.23 | Gestor de Tareas con Tracking | 🟠 MEDIA | 2h |
+| **TOTAL** | **8 fases nuevas** | | **27h** |
 
 ---
 
