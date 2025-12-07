@@ -1,0 +1,334 @@
+⚠️ INSTRUCCIONES CRÍTICAS - LEE ANTES DE COMENZAR:
+
+1. NO te apresures. Tómate el tiempo necesario para revisar CADA archivo, CADA línea.
+2. NO omitas hallazgos "menores" - todo se reporta.
+3. Si el análisis es muy largo, divídelo en partes y continúa hasta terminar TODO.
+4. Antes de dar el reporte final, verifica que revisaste TODAS las secciones.
+5. Si no puedes revisar algo, indícalo explícitamente en lugar de omitirlo.
+6. Revisa archivo por archivo, no hagas suposiciones.
+7. Para cada problema encontrado, siempre incluye: ubicación exacta (archivo:línea), el código problemático, y cómo arreglarlo.
+
+CONFIRMA que entendiste estas instrucciones antes de comenzar.
+
+---
+
+Necesito que realices una auditoría exhaustiva y completa de todo mi proyecto. Actúa como un auditor de código senior con experiencia en seguridad, rendimiento y arquitectura de software.
+
+## 1. ANÁLISIS DE ESTRUCTURA Y ARCHIVOS
+- Lista TODOS los archivos del proyecto con su propósito
+- Identifica archivos que parecen no tener uso o están huérfanos
+- Detecta archivos duplicados o con funcionalidad redundante
+- Señala archivos de configuración mal ubicados o faltantes
+
+## 2. ANÁLISIS DE CÓDIGO MUERTO
+- Encuentra funciones que nunca se llaman
+- Detecta variables declaradas pero nunca usadas
+- Identifica imports que no se utilizan
+- Busca componentes o módulos que existen pero no se renderizan ni usan en ningún lugar
+- Detecta rutas/endpoints definidos pero no accesibles desde la interfaz
+
+## 3. PÁGINAS Y RUTAS OCULTAS
+- Lista TODAS las rutas/páginas definidas en el proyecto
+- Indica cuáles tienen un enlace visible en la navegación y cuáles NO
+- Para cada página oculta, proporciona la URL exacta para acceder
+- Clasifica cada una: ¿debería eliminarse, hacerse visible, o mantenerse oculta intencionalmente?
+
+## 4. AUDITORÍA DE SEGURIDAD Y VULNERABILIDADES
+- Busca exposición de credenciales, tokens o API keys en el código
+- Detecta inyección SQL, XSS, CSRF y otras vulnerabilidades comunes
+- Verifica sanitización de inputs del usuario
+- Revisa configuraciones de CORS y headers de seguridad
+- Evalúa la implementación de autenticación y sesiones
+- Verifica el manejo seguro de contraseñas (hashing, salt)
+- Busca endpoints sin protección de autenticación que deberían tenerla
+
+## 5. AUDITORÍA DE 2FA (si aplica)
+- Verifica la implementación completa del flujo de 2FA
+- Comprueba si hay bypasses posibles
+- Evalúa el manejo de códigos de recuperación
+- Verifica expiración de tokens/códigos
+- Busca vulnerabilidades en el proceso de verificación
+
+## 6. PRUEBA DE BOTONES Y ELEMENTOS INTERACTIVOS
+- Lista TODOS los botones, formularios y elementos clickeables
+- Para cada uno indica:
+  - ¿Tiene un handler/función asignada?
+  - ¿La función existe y hace algo?
+  - ¿Hay manejo de errores si falla?
+  - ¿Muestra feedback al usuario (loading, success, error)?
+- Identifica botones "muertos" que no hacen nada al clickear
+
+## 7. ANÁLISIS DE RENDIMIENTO
+- Detecta operaciones que podrían causar bloqueos o lentitud
+- Busca consultas a base de datos sin optimizar (N+1, sin índices)
+- Identifica renders innecesarios en componentes
+- Detecta memory leaks potenciales
+- Busca loops infinitos o recursión sin control
+- Identifica assets pesados sin comprimir
+
+## 8. MANEJO DE ERRORES
+- Verifica que todos los try/catch tengan manejo apropiado
+- Busca errores silenciosos (catch vacíos)
+- Detecta promesas sin .catch()
+- Verifica logging apropiado de errores
+
+## 9. AUDITORÍA DE DEPENDENCIAS
+- Lista todas las dependencias del proyecto con sus versiones
+- Detecta dependencias desactualizadas con vulnerabilidades conocidas
+- Identifica dependencias no utilizadas que se pueden eliminar
+- Busca dependencias duplicadas o conflictivas
+- Verifica si hay dependencias de desarrollo en producción
+
+## 10. ACCESIBILIDAD (A11Y)
+- Verifica uso correcto de etiquetas semánticas HTML
+- Detecta imágenes sin atributo alt
+- Evalúa contraste de colores para legibilidad
+- Verifica navegación por teclado (tab order)
+- Busca formularios sin labels asociados
+- Detecta falta de ARIA labels donde se necesitan
+- Verifica que los modales atrapan el foco correctamente
+
+## 11. RESPONSIVIDAD Y COMPATIBILIDAD
+- Evalúa si el diseño funciona en móvil, tablet y desktop
+- Detecta elementos con anchos fijos que rompen el layout
+- Busca media queries faltantes o mal implementadas
+- Identifica funcionalidades que no funcionan en ciertos navegadores
+
+## 12. ANÁLISIS DE BASE DE DATOS
+- Revisa el esquema de tablas y relaciones
+- Detecta tablas sin índices en campos frecuentemente consultados
+- Busca campos que deberían tener restricciones (unique, not null)
+- Identifica relaciones sin foreign keys definidas
+- Detecta datos huérfanos o inconsistentes
+- Evalúa si hay migraciones pendientes o mal aplicadas
+
+## 13. VALIDACIÓN DE DATOS
+- Verifica validación tanto en frontend como backend
+- Detecta campos que aceptan datos inválidos
+- Busca límites de longitud faltantes en inputs
+- Evalúa validación de formatos (email, teléfono, fechas)
+- Verifica sanitización antes de guardar en base de datos
+
+## 14. SEGURIDAD DE ARCHIVOS Y UPLOADS
+- Verifica validación de tipos de archivo permitidos
+- Detecta falta de límites de tamaño en uploads
+- Busca almacenamiento inseguro de archivos
+- Evalúa si hay path traversal vulnerabilities
+- Verifica que archivos sensibles no sean accesibles públicamente
+
+## 15. RATE LIMITING Y PROTECCIÓN CONTRA ABUSO
+- Verifica límites de intentos en login
+- Detecta endpoints sin protección contra spam
+- Evalúa protección contra fuerza bruta
+- Busca APIs públicas sin throttling
+
+## 16. LOGS Y MONITOREO
+- Verifica que errores críticos se estén registrando
+- Detecta información sensible en logs (contraseñas, tokens)
+- Evalúa si hay suficiente contexto en los logs para debugging
+- Busca logs que podrían llenar el disco (sin rotación)
+
+## 17. VARIABLES DE ENTORNO Y CONFIGURACIÓN
+- Lista todas las variables de entorno requeridas
+- Detecta valores hardcodeados que deberían ser configurables
+- Verifica que exista un archivo .env.example documentado
+- Busca configuraciones de producción expuestas
+- Evalúa si hay secrets en el código fuente
+
+## 18. CALIDAD Y CONSISTENCIA DEL CÓDIGO
+- Evalúa si se sigue un estilo consistente
+- Detecta funciones demasiado largas (>50 líneas)
+- Busca código duplicado que debería ser refactorizado
+- Identifica nombres de variables/funciones poco descriptivos
+- Detecta comentarios desactualizados o engañosos
+- Evalúa la organización de carpetas y módulos
+
+## 19. TESTING Y COBERTURA
+- Lista los tests existentes y qué cubren
+- Identifica funcionalidades críticas sin tests
+- Detecta tests que siempre pasan (falsos positivos)
+- Evalúa si hay tests de integración para flujos importantes
+- Busca mocks hardcodeados que ocultan bugs reales
+
+## 20. SEO Y METADATA (si es web)
+- Verifica títulos y meta descriptions en cada página
+- Detecta páginas sin canonical URL
+- Busca imágenes sin dimensiones definidas
+- Evalúa estructura de headings (h1, h2, h3)
+- Verifica sitemap y robots.txt
+- Detecta contenido duplicado
+
+## 21. ESTADOS Y FLUJOS DE LA APLICACIÓN
+- Mapea todos los estados posibles de la aplicación
+- Detecta estados imposibles o transiciones rotas
+- Identifica race conditions potenciales
+- Verifica manejo de estados de carga y error
+- Busca deadlocks o estados bloqueados
+
+## 22. CHECKLIST FINAL DE PRODUCCIÓN
+- [ ] ¿Están deshabilitadas las herramientas de debug?
+- [ ] ¿Están configurados los headers de seguridad?
+- [ ] ¿Está configurado HTTPS correctamente?
+- [ ] ¿Hay backups automatizados?
+- [ ] ¿Está configurado el manejo de errores en producción?
+- [ ] ¿Están las variables de entorno correctas?
+- [ ] ¿Están eliminados los console.log de debug?
+
+## 23. ANÁLISIS DE APIs Y ENDPOINTS
+- Lista TODOS los endpoints del backend con su método HTTP
+- Para cada endpoint indica:
+  - ¿Requiere autenticación?
+  - ¿Qué parámetros recibe y están validados?
+  - ¿Qué respuestas devuelve (éxito/error)?
+  - ¿Tiene documentación?
+- Detecta endpoints duplicados o inconsistentes
+- Busca endpoints que devuelven más datos de los necesarios
+- Verifica versionado de API si existe
+
+## 24. MANEJO DE SESIONES Y COOKIES
+- Evalúa configuración de cookies (HttpOnly, Secure, SameSite)
+- Verifica expiración de sesiones
+- Detecta tokens que nunca expiran
+- Busca sesiones que no se invalidan al logout
+- Verifica regeneración de session ID después del login
+- Detecta session fixation vulnerabilities
+
+## 25. ALMACENAMIENTO DEL LADO DEL CLIENTE
+- Revisa qué se guarda en localStorage/sessionStorage
+- Detecta datos sensibles guardados sin encriptar
+- Evalúa uso de IndexedDB si existe
+- Busca datos que persisten cuando no deberían
+- Verifica limpieza de storage al logout
+
+## 26. CONEXIONES EN TIEMPO REAL (WebSockets/SSE)
+- Lista todas las conexiones WebSocket o Server-Sent Events
+- Verifica autenticación en conexiones WebSocket
+- Detecta mensajes sin validación
+- Evalúa reconexión automática y manejo de desconexiones
+- Busca memory leaks por listeners no removidos
+
+## 27. SISTEMA DE NOTIFICACIONES/EMAILS
+- Verifica que los emails se envían correctamente
+- Detecta información sensible en emails
+- Evalúa templates de email (XSS en emails HTML)
+- Busca emails hardcodeados que deberían ser configurables
+- Verifica rate limiting en envío de emails
+
+## 28. INTEGRACIONES DE TERCEROS
+- Lista todas las APIs externas utilizadas
+- Verifica manejo de errores cuando la API externa falla
+- Detecta timeouts faltantes en llamadas externas
+- Evalúa fallbacks cuando servicios externos no responden
+- Busca API keys expuestas en el frontend
+
+## 29. INTERNACIONALIZACIÓN (i18n)
+- Detecta textos hardcodeados que deberían ser traducibles
+- Verifica que todas las cadenas usan el sistema de traducción
+- Busca formatos de fecha/número no localizados
+- Evalúa soporte para RTL si aplica
+
+## 30. PRIVACIDAD Y CUMPLIMIENTO (GDPR/CCPA)
+- Verifica consentimiento de cookies
+- Detecta tracking sin consentimiento
+- Evalúa si hay opción de eliminar datos del usuario
+- Busca datos personales que se retienen innecesariamente
+- Verifica política de privacidad actualizada
+
+## 31. CACHÉ Y ESTRATEGIAS DE ALMACENAMIENTO
+- Evalúa headers de caché configurados
+- Detecta datos sensibles que se cachean
+- Busca cache invalidation faltante
+- Verifica Service Workers y su comportamiento offline
+- Detecta stale data siendo mostrada al usuario
+
+## 32. REQUESTS DE RED Y FETCH
+- Lista todas las llamadas fetch/axios/http
+- Detecta requests sin timeout configurado
+- Busca requests que no manejan errores de red
+- Verifica cancelación de requests cuando el componente se desmonta
+- Detecta requests duplicados innecesarios
+
+## 33. EDGE CASES Y CONDICIONES LÍMITE
+- Evalúa comportamiento con listas vacías
+- Detecta división por cero potencial
+- Busca manejo de null/undefined
+- Verifica qué pasa con strings vacíos
+- Evalúa límites numéricos (overflow/underflow)
+- Detecta comportamiento con caracteres especiales
+
+## 34. ANÁLISIS DE IMÁGENES Y MEDIA
+- Lista todos los assets de imágenes/videos
+- Detecta imágenes sin optimizar (muy pesadas)
+- Busca imágenes sin lazy loading
+- Verifica formatos modernos (WebP, AVIF)
+- Detecta videos sin poster/fallback
+
+## 35. SCRIPTS Y RECURSOS EXTERNOS
+- Lista todos los scripts de terceros cargados
+- Evalúa integridad (SRI) de scripts externos
+- Detecta scripts que bloquean el render
+- Busca scripts obsoletos o abandonados
+- Verifica CSP (Content Security Policy)
+
+## 36. FORMULARIOS EN DETALLE
+- Lista TODOS los formularios del proyecto
+- Para cada formulario verifica:
+  - ¿Tiene validación en frontend?
+  - ¿Tiene validación en backend?
+  - ¿Muestra errores claros al usuario?
+  - ¿Tiene protección CSRF?
+  - ¿Maneja el estado de "enviando"?
+  - ¿Previene doble submit?
+  - ¿Tiene autocomplete apropiado?
+
+---
+
+## 37. VERIFICACIÓN DE COMPLETITUD
+
+Antes de entregar el reporte, confirma marcando cada ítem:
+
+- [ ] Revisé TODOS los archivos del proyecto uno por uno
+- [ ] Revisé TODAS las 36 secciones anteriores
+- [ ] Listé TODAS las páginas/rutas con sus URLs
+- [ ] Probé mentalmente TODOS los botones y formularios
+- [ ] Documenté CADA problema encontrado sin importar su tamaño
+- [ ] Proporcioné soluciones específicas para cada problema
+- [ ] El reporte está organizado por severidad
+
+Si algún ítem no está marcado, VUELVE y complétalo antes de entregar.
+
+---
+
+## 38. RESUMEN EJECUTIVO Y MÉTRICAS FINALES
+
+Al final del reporte, proporciona:
+
+### Estadísticas:
+- Total de archivos revisados: X
+- Total de problemas CRÍTICOS: X
+- Total de problemas ALTOS: X
+- Total de problemas MEDIOS: X
+- Total de problemas BAJOS: X
+- Total de páginas ocultas encontradas: X
+- Total de código muerto encontrado: X líneas
+- Tiempo estimado para arreglar todo: X horas
+
+### Listas prioritarias:
+1. Lista de problemas críticos a resolver PRIMERO
+2. Lista de páginas ocultas con sus URLs exactas
+3. Lista de código muerto a eliminar
+4. Recomendaciones de mejora ordenadas por importancia
+
+---
+
+## FORMATO DE REPORTE
+
+Para CADA hallazgo, usa este formato:
+
+| Severidad | Ubicación | Problema | Código Afectado | Solución |
+|-----------|-----------|----------|-----------------|----------|
+| CRÍTICO/ALTO/MEDIO/BAJO | archivo:línea | Descripción del problema | `código problemático` | Cómo arreglarlo |
+
+---
+
+⚠️ FIN DE LA AUDITORÍA - ASEGÚRATE DE NO HABER OMITIDO NADA ⚠️
