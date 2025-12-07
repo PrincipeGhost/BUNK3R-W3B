@@ -69,6 +69,26 @@ body {
     gap: 12px;
 }
 
+.back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--bg-elevated);
+    border: none;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.back-btn:hover {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
 .logo {
     font-size: 18px;
     font-weight: 700;
