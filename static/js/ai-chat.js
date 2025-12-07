@@ -291,7 +291,7 @@ const AIChat = {
         actionDiv.innerHTML = `
             ${icon}
             <span class="ai-code-action-text">${action === 'create' ? 'Archivo creado' : 'Archivo actualizado'}</span>
-            <span class="ai-code-action-file">${filename}</span>
+            <span class="ai-code-action-file">${this.escapeHtml(filename)}</span>
         `;
         
         container.appendChild(actionDiv);
@@ -469,7 +469,7 @@ const AIChat = {
                 
                 const indicator = this.getProviderIndicator();
                 if (indicator && data.provider) {
-                    indicator.innerHTML = `<span class="provider-label">Generado con ${data.provider}</span>`;
+                    indicator.innerHTML = `<span class="provider-label">Generado con ${this.escapeHtml(data.provider)}</span>`;
                 }
             } else {
                 this.appendMessage('assistant', data.error || 'Error al generar codigo. Intenta de nuevo.');

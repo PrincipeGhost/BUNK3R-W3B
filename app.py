@@ -817,6 +817,23 @@ def csrf_middleware():
     return None
 
 
+CSP_ENABLED = os.environ.get('CSP_ENABLED', 'true').lower() == 'true'
+CSP_REPORT_ONLY = os.environ.get('CSP_REPORT_ONLY', 'false').lower() == 'true'
+CSP_EXTRA_SOURCES = os.environ.get('CSP_EXTRA_SOURCES', '')
+
+DEFAULT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://telegram.org https://*.telegram.org; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com data:; "
+    "img-src 'self' data: https: blob:; "
+    "connect-src 'self' https://api.telegram.org https://*.ton.org https://*.toncenter.com https://toncenter.com wss://* https://api.coingecko.com https://api.ston.fi https://*.cloudinary.com; "
+    "frame-src 'self' https://telegram.org https://*.telegram.org; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self';"
+)
+
 @app.after_request
 def add_security_headers(response):
     """Agregar headers de seguridad a todas las respuestas."""
@@ -825,6 +842,14 @@ def add_security_headers(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    
+    if CSP_ENABLED:
+        csp = os.environ.get('CSP_POLICY', DEFAULT_CSP)
+        if CSP_EXTRA_SOURCES:
+            csp = csp.rstrip(';') + ' ' + CSP_EXTRA_SOURCES + ';'
+        
+        header_name = 'Content-Security-Policy-Report-Only' if CSP_REPORT_ONLY else 'Content-Security-Policy'
+        response.headers[header_name] = csp
     
     if IS_PRODUCTION:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'

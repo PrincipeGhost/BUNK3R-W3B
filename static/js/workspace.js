@@ -239,7 +239,7 @@ const Workspace = {
                 itemDiv.innerHTML = `
                     <span class="tree-toggle">▶</span>
                     <span class="tree-item-icon">${icon}</span>
-                    <span class="tree-item-name">${item.name}</span>
+                    <span class="tree-item-name">${this.escapeHtml(item.name)}</span>
                 `;
 
                 itemDiv.addEventListener('click', (e) => {
@@ -249,7 +249,7 @@ const Workspace = {
             } else {
                 itemDiv.innerHTML = `
                     <span class="tree-item-icon">${icon}</span>
-                    <span class="tree-item-name">${item.name}</span>
+                    <span class="tree-item-name">${this.escapeHtml(item.name)}</span>
                 `;
 
                 itemDiv.addEventListener('click', (e) => {

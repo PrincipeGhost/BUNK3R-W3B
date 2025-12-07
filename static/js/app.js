@@ -1979,6 +1979,28 @@ const App = {
     setupAvatarUpload() {
         const avatarWrap = document.getElementById('avatar-upload-wrap');
         const avatarInput = document.getElementById('avatar-input');
+        
+        if (avatarInput) {
+            avatarInput.addEventListener('change', (e) => this.handleAvatarSelect(e));
+        }
+        
+        if (avatarWrap) {
+            avatarWrap.addEventListener('click', () => {
+                if (avatarInput) avatarInput.click();
+            });
+        }
+        
+        const editAvatarInput = document.getElementById('edit-avatar-input');
+        if (editAvatarInput) {
+            editAvatarInput.addEventListener('change', (e) => this.handleAvatarSelect(e));
+        }
+        
+        const editAvatarWrap = document.getElementById('edit-avatar-wrap');
+        if (editAvatarWrap) {
+            editAvatarWrap.addEventListener('click', () => {
+                if (editAvatarInput) editAvatarInput.click();
+            });
+        }
     },
     
     setupProfileEventListeners() {
@@ -2129,9 +2151,122 @@ const App = {
         }
     },
     
-    viewUserProfile(userId) {
+    async viewUserProfile(userId) {
         this.hideFollowersModal();
-        this.showToast('Navegando al perfil...', 'info');
+        
+        if (!userId) {
+            this.showToast('Usuario no encontrado', 'error');
+            return;
+        }
+        
+        const ownUserId = this.user?.id?.toString();
+        if (userId.toString() === ownUserId) {
+            this.showPage('profile');
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest(`/api/users/${userId}/profile`);
+            if (response.success && response.profile) {
+                this.showUserProfileModal(response.profile);
+            } else {
+                this.showToast(response.error || 'Error al cargar perfil', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading user profile:', error);
+            this.showToast('Error al cargar el perfil', 'error');
+        }
+    },
+    
+    showUserProfileModal(profile) {
+        let modal = document.getElementById('user-profile-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'user-profile-modal';
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+        
+        const isFollowing = profile.is_following || false;
+        const followBtnText = isFollowing ? 'Siguiendo' : 'Seguir';
+        const followBtnClass = isFollowing ? 'following' : '';
+        
+        modal.innerHTML = `
+            <div class="modal-content user-profile-modal-content">
+                <div class="modal-header">
+                    <h3>Perfil</h3>
+                    <button class="modal-close" onclick="App.closeUserProfileModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="user-profile-content">
+                    <div class="user-profile-header">
+                        <img src="${this.escapeAttribute(profile.avatar_url || '/static/images/default-avatar.png')}" 
+                             class="user-profile-avatar" 
+                             onerror="this.src='/static/images/default-avatar.png'">
+                        <div class="user-profile-info">
+                            <h4 class="user-profile-name">${this.escapeHtml(profile.display_name || profile.first_name || 'Usuario')}</h4>
+                            <span class="user-profile-username">@${this.escapeHtml(profile.username || 'usuario')}</span>
+                        </div>
+                    </div>
+                    ${profile.bio ? `<p class="user-profile-bio">${this.escapeHtml(profile.bio)}</p>` : ''}
+                    <div class="user-profile-stats">
+                        <div class="user-profile-stat">
+                            <span class="stat-value">${parseInt(profile.posts_count, 10) || 0}</span>
+                            <span class="stat-label">Publicaciones</span>
+                        </div>
+                        <div class="user-profile-stat">
+                            <span class="stat-value">${parseInt(profile.followers_count, 10) || 0}</span>
+                            <span class="stat-label">Seguidores</span>
+                        </div>
+                        <div class="user-profile-stat">
+                            <span class="stat-value">${parseInt(profile.following_count, 10) || 0}</span>
+                            <span class="stat-label">Siguiendo</span>
+                        </div>
+                    </div>
+                    <button class="user-profile-follow-btn ${followBtnClass}" 
+                            onclick="App.toggleFollowFromProfile('${this.escapeForOnclick(profile.user_id || profile.id)}', ${isFollowing})">
+                        ${followBtnText}
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeUserProfileModal();
+        });
+    },
+    
+    closeUserProfileModal() {
+        const modal = document.getElementById('user-profile-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+    
+    async toggleFollowFromProfile(userId, isCurrentlyFollowing) {
+        try {
+            const response = await this.apiRequest(`/api/users/${userId}/follow`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                const newFollowing = !isCurrentlyFollowing;
+                const btn = document.querySelector('.user-profile-follow-btn');
+                if (btn) {
+                    btn.textContent = newFollowing ? 'Siguiendo' : 'Seguir';
+                    btn.className = `user-profile-follow-btn ${newFollowing ? 'following' : ''}`;
+                    btn.setAttribute('onclick', `App.toggleFollowFromProfile('${this.escapeForOnclick(userId)}', ${newFollowing})`);
+                }
+                this.showToast(newFollowing ? 'Ahora sigues a este usuario' : 'Dejaste de seguir', 'success');
+                this.loadProfileStats();
+            }
+        } catch (error) {
+            console.error('Toggle follow error:', error);
+            this.showToast('Error al procesar la solicitud', 'error');
+        }
     },
     
     async showEditProfileModal() {
