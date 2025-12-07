@@ -72,7 +72,8 @@ const AdminPanel = {
             logs: 'Logs',
             analytics: 'Analíticas',
             settings: 'Configuración',
-            maintenance: 'Backup y Mantenimiento'
+            maintenance: 'Backup y Mantenimiento',
+            notifications: 'Centro de Notificaciones'
         };
         
         document.getElementById('pageTitle').textContent = titles[section] || section;
@@ -137,6 +138,10 @@ const AdminPanel = {
                 break;
             case 'maintenance':
                 this.loadMaintenance();
+                break;
+            case 'notifications':
+                NotificationsModule.loadNotifications();
+                NotificationsModule.loadTelegramSettings();
                 break;
         }
     },
@@ -6756,6 +6761,266 @@ const SupportModule = {
             }
         } catch (error) {
             console.error('Error cancelling message:', error);
+        }
+    }
+};
+
+const NotificationsModule = {
+    async loadNotifications() {
+        const typeFilter = document.getElementById('notifTypeFilter')?.value || '';
+        const readFilter = document.getElementById('notifReadFilter')?.value || '';
+        
+        try {
+            let url = '/api/admin/notifications?';
+            if (typeFilter) url += `type=${typeFilter}&`;
+            if (readFilter) url += `is_read=${readFilter === 'read'}&`;
+            
+            const response = await fetch(url, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderNotifications(data.notifications);
+                const unreadCount = data.notifications.filter(n => !n.is_read).length;
+                const countEl = document.getElementById('adminNotifCount');
+                if (countEl) countEl.textContent = unreadCount;
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        }
+    },
+    
+    renderNotifications(notifications) {
+        const container = document.getElementById('adminNotificationsList');
+        if (!container) return;
+        
+        if (!notifications || notifications.length === 0) {
+            container.innerHTML = '<div class="empty-state">Sin notificaciones</div>';
+            return;
+        }
+        
+        const typeIcons = {
+            large_purchase: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+            pending_withdrawal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
+            system_error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+            content_report: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>',
+            user_banned: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>',
+            low_balance: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 10h20"></path></svg>',
+            new_user: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>',
+            new_ticket: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+        };
+        
+        container.innerHTML = notifications.map(notif => `
+            <div class="admin-notif-item ${notif.is_read ? 'read' : 'unread'}" data-id="${notif.id}">
+                <div class="notif-icon ${notif.type}">
+                    ${typeIcons[notif.type] || typeIcons.system_error}
+                </div>
+                <div class="notif-content">
+                    <div class="notif-title">${AdminPanel.escapeHtml(notif.title)}</div>
+                    <div class="notif-message">${AdminPanel.escapeHtml(notif.message)}</div>
+                    <div class="notif-time">${AdminPanel.timeAgo(notif.created_at)}</div>
+                </div>
+                <div class="notif-actions">
+                    ${!notif.is_read ? `<button class="btn-icon" onclick="NotificationsModule.markAsRead(${notif.id})" title="Marcar como leida"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></button>` : ''}
+                    <button class="btn-icon danger" onclick="NotificationsModule.deleteNotification(${notif.id})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    async markAsRead(notifId) {
+        try {
+            const response = await fetch('/api/admin/notifications/mark-read', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notification_id: notifId })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    },
+    
+    async markAllAsRead() {
+        try {
+            const response = await fetch('/api/admin/notifications/mark-read', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ all: true })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadNotifications();
+                AdminPanel.showNotification('Todas las notificaciones marcadas como leidas', 'success');
+            }
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    },
+    
+    async deleteNotification(notifId) {
+        if (!confirm('Eliminar esta notificacion?')) return;
+        
+        try {
+            const response = await fetch('/api/admin/notifications/delete', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notification_id: notifId })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+        }
+    },
+    
+    async loadTelegramSettings() {
+        try {
+            const response = await fetch('/api/admin/telegram/settings', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success && data.settings) {
+                const s = data.settings;
+                document.getElementById('toggleLargePurchase').checked = s.notify_large_purchase !== false;
+                document.getElementById('togglePendingWithdrawal').checked = s.notify_pending_withdrawal !== false;
+                document.getElementById('toggleSystemError').checked = s.notify_system_error !== false;
+                document.getElementById('toggleContentReport').checked = s.notify_content_report !== false;
+                document.getElementById('toggleUserBanned').checked = s.notify_user_banned !== false;
+                document.getElementById('toggleLowBalance').checked = s.notify_low_balance !== false;
+                document.getElementById('toggleNewUser').checked = s.notify_new_user === true;
+                document.getElementById('toggleNewTicket').checked = s.notify_new_ticket !== false;
+                document.getElementById('thresholdLargePurchase').value = s.large_purchase_threshold || 1000;
+                document.getElementById('thresholdLowBalance').value = s.low_balance_threshold || 10;
+            }
+            
+            this.verifyTelegram();
+        } catch (error) {
+            console.error('Error loading telegram settings:', error);
+        }
+    },
+    
+    async saveSettings() {
+        const settings = {
+            notify_large_purchase: document.getElementById('toggleLargePurchase').checked,
+            notify_pending_withdrawal: document.getElementById('togglePendingWithdrawal').checked,
+            notify_system_error: document.getElementById('toggleSystemError').checked,
+            notify_content_report: document.getElementById('toggleContentReport').checked,
+            notify_user_banned: document.getElementById('toggleUserBanned').checked,
+            notify_low_balance: document.getElementById('toggleLowBalance').checked,
+            notify_new_user: document.getElementById('toggleNewUser').checked,
+            notify_new_ticket: document.getElementById('toggleNewTicket').checked,
+            large_purchase_threshold: parseInt(document.getElementById('thresholdLargePurchase').value) || 1000,
+            low_balance_threshold: parseFloat(document.getElementById('thresholdLowBalance').value) || 10
+        };
+        
+        try {
+            const response = await fetch('/api/admin/telegram/settings', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Configuracion guardada', 'success');
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            AdminPanel.showNotification('Error de conexion', 'error');
+        }
+    },
+    
+    async verifyTelegram() {
+        const statusEl = document.getElementById('telegramStatus');
+        const infoEl = document.getElementById('telegramInfo');
+        
+        try {
+            const response = await fetch('/api/admin/telegram/verify', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success && data.connected) {
+                statusEl.innerHTML = '<span class="status-dot connected"></span><span>Conectado</span>';
+                infoEl.innerHTML = `<p><strong>Bot:</strong> @${data.bot_username || 'N/A'}</p><p><strong>Chat ID:</strong> ${data.chat_id || 'Configurado'}</p>`;
+            } else {
+                statusEl.innerHTML = '<span class="status-dot disconnected"></span><span>Desconectado</span>';
+                infoEl.innerHTML = `<p>${data.error || 'Bot no configurado'}</p><p>Configura las variables de entorno:</p><code>TELEGRAM_BOT_TOKEN</code><br><code>TELEGRAM_ADMIN_CHAT_ID</code>`;
+            }
+        } catch (error) {
+            console.error('Error verifying telegram:', error);
+            statusEl.innerHTML = '<span class="status-dot disconnected"></span><span>Error</span>';
+        }
+    },
+    
+    async sendTestMessage() {
+        try {
+            const response = await fetch('/api/admin/telegram/test', {
+                method: 'POST',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Mensaje de prueba enviado a Telegram', 'success');
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al enviar mensaje', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending test message:', error);
+            AdminPanel.showNotification('Error de conexion', 'error');
+        }
+    },
+    
+    async sendCustomMessage() {
+        const message = document.getElementById('customTelegramMessage')?.value?.trim();
+        if (!message) {
+            AdminPanel.showNotification('Escribe un mensaje', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/admin/telegram/send', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Mensaje enviado', 'success');
+                document.getElementById('customTelegramMessage').value = '';
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al enviar', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending custom message:', error);
+            AdminPanel.showNotification('Error de conexion', 'error');
         }
     }
 };
