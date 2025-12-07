@@ -1218,6 +1218,136 @@
     margin-top: 5px;
 }
 
+.session-stat.warning .stat-value {
+    color: var(--accent-warning);
+}
+
+/* Sessions Tabs */
+.sessions-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.sessions-tabs .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 10px 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius) var(--radius) 0 0;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.sessions-tabs .tab-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.sessions-tabs .tab-btn.active {
+    background: var(--accent-primary);
+    color: #000;
+}
+
+.sessions-tab-content {
+    display: none;
+}
+
+.sessions-tab-content.active {
+    display: block;
+}
+
+/* IP Control */
+.ip-control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.ip-control-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.ip-filters {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.ip-filters .form-control {
+    flex: 1;
+    max-width: 300px;
+}
+
+.ip-filters .form-select {
+    min-width: 150px;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+/* Action buttons */
+.action-btn.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.action-btn.secondary:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* IP Modal */
+#addIPModal .modal-content {
+    max-width: 450px;
+}
+
+#addIPModal .form-group label {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    display: block;
+}
+
+#addIPModal .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+#addIPModal .toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
+
 /* Transaction Summary */
 .tx-summary {
     display: flex;

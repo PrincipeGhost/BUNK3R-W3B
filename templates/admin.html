@@ -530,35 +530,137 @@
                 </section>
                 
                 <section class="admin-section" id="section-sessions">
-                    <div class="sessions-overview">
-                        <div class="session-stat">
-                            <span class="stat-value" id="totalSessions">0</span>
-                            <span class="stat-label">Sesiones Activas</span>
-                        </div>
-                        <div class="session-stat">
-                            <span class="stat-value" id="uniqueIPs">0</span>
-                            <span class="stat-label">IPs Únicas</span>
+                    <div class="section-header">
+                        <h2>Sesiones y Control de Acceso</h2>
+                        <div class="header-actions">
+                            <button class="btn-danger" id="logoutAllUsersBtn" onclick="AdminPanel.logoutAllUsers()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Logout Masivo
+                            </button>
+                            <button class="btn-primary" id="refreshSessionsBtn" onclick="AdminPanel.loadSessions()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
                         </div>
                     </div>
                     
-                    <div class="data-table-container">
-                        <table class="data-table" id="sessionsTable">
-                            <thead>
-                                <tr>
-                                    <th>Usuario</th>
-                                    <th>IP</th>
-                                    <th>Dispositivo</th>
-                                    <th>Última Actividad</th>
-                                    <th>Duración</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sessionsTableBody">
-                                <tr class="loading-row">
-                                    <td colspan="6">Cargando sesiones...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="sessions-tabs">
+                        <button class="tab-btn active" data-sessions-tab="active">Sesiones Activas</button>
+                        <button class="tab-btn" data-sessions-tab="ips">Control de IPs</button>
+                    </div>
+                    
+                    <div class="sessions-tab-content active" id="sessionsTabActive">
+                        <div class="sessions-overview">
+                            <div class="session-stat">
+                                <span class="stat-value" id="totalSessions">0</span>
+                                <span class="stat-label">Sesiones Activas</span>
+                            </div>
+                            <div class="session-stat">
+                                <span class="stat-value" id="uniqueIPs">0</span>
+                                <span class="stat-label">IPs Únicas</span>
+                            </div>
+                            <div class="session-stat warning">
+                                <span class="stat-value" id="blockedIPsCount">0</span>
+                                <span class="stat-label">IPs Bloqueadas</span>
+                            </div>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="sessionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>IP</th>
+                                        <th>Dispositivo</th>
+                                        <th>Última Actividad</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionsTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="5">Cargando sesiones...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="sessions-tab-content" id="sessionsTabIPs" style="display: none;">
+                        <div class="ip-control-header">
+                            <h3>IPs Bloqueadas</h3>
+                            <button class="btn-primary" id="addBlockedIPBtn" onclick="AdminPanel.showAddIPModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Bloquear IP
+                            </button>
+                        </div>
+                        
+                        <div class="ip-filters">
+                            <input type="text" id="ipSearchInput" class="form-control" placeholder="Buscar IP..." oninput="AdminPanel.filterBlockedIPs()">
+                            <select id="ipStatusFilter" class="form-select" onchange="AdminPanel.loadBlockedIPs()">
+                                <option value="active">Activas</option>
+                                <option value="all">Todas</option>
+                            </select>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="blockedIPsTable">
+                                <thead>
+                                    <tr>
+                                        <th>IP</th>
+                                        <th>Razón</th>
+                                        <th>Bloqueada por</th>
+                                        <th>Fecha</th>
+                                        <th>Permanente</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blockedIPsTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="6">Cargando IPs bloqueadas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="modal" id="addIPModal">
+                        <div class="modal-overlay" onclick="AdminPanel.closeIPModal()"></div>
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>Bloquear IP</h3>
+                                <button class="modal-close" onclick="AdminPanel.closeIPModal()">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="blockIPAddress">Dirección IP</label>
+                                    <input type="text" id="blockIPAddress" class="form-control" placeholder="ej: 192.168.1.1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="blockIPReason">Razón del bloqueo</label>
+                                    <textarea id="blockIPReason" class="form-control" rows="3" placeholder="Describe la razón del bloqueo..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="blockIPPermanent">
+                                        <span>Bloqueo permanente</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn-secondary" onclick="AdminPanel.closeIPModal()">Cancelar</button>
+                                <button class="btn-danger" onclick="AdminPanel.blockIP()">Bloquear IP</button>
+                            </div>
+                        </div>
                     </div>
                 </section>
                 

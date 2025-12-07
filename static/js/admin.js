@@ -1670,16 +1670,27 @@ const AdminPanel = {
     },
     
     async loadSessions() {
+        this.setupSessionsTabs();
+        
         const tbody = document.getElementById('sessionsTableBody');
         if (tbody) {
-            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando sesiones...</td></tr>';
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando sesiones...</td></tr>';
         }
         
         try {
-            const response = await this.fetchAPI('/api/admin/sessions');
+            const [sessionsRes, blockedRes] = await Promise.all([
+                this.fetchAPI('/api/admin/sessions'),
+                this.fetchAPI('/api/admin/blocked-ips')
+            ]);
             
-            if (response.success && response.sessions) {
-                const sessions = response.sessions;
+            if (blockedRes.success && blockedRes.ips) {
+                const activeBlocked = blockedRes.ips.filter(ip => ip.is_active !== false);
+                const countEl = document.getElementById('blockedIPsCount');
+                if (countEl) countEl.textContent = activeBlocked.length;
+            }
+            
+            if (sessionsRes.success && sessionsRes.sessions) {
+                const sessions = sessionsRes.sessions;
                 const uniqueIPs = [...new Set(sessions.map(s => s.ip || s.ip_address).filter(Boolean))];
                 
                 const totalSessionsEl = document.getElementById('totalSessions');
@@ -1691,7 +1702,7 @@ const AdminPanel = {
                 if (!tbody) return;
                 
                 if (sessions.length === 0) {
-                    tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay sesiones activas</td></tr>';
+                    tbody.innerHTML = '<tr class="loading-row"><td colspan="5">No hay sesiones activas</td></tr>';
                     return;
                 }
                 
@@ -1700,6 +1711,7 @@ const AdminPanel = {
                     const ipAddress = s.ip || s.ip_address || '-';
                     const userId = s.user_id || '';
                     const escapedDevice = this.escapeHtml(deviceName);
+                    const escapedIP = this.escapeHtml(ipAddress);
                     
                     return `
                     <tr>
@@ -1720,6 +1732,9 @@ const AdminPanel = {
                                 <button class="action-btn warning" onclick="AdminPanel.terminateAllUserSessions('${userId}')">
                                     Cerrar Todas
                                 </button>
+                                ${ipAddress !== '-' ? `<button class="action-btn secondary" onclick="AdminPanel.blockIPFromSession('${escapedIP}')" title="Bloquear IP">
+                                    Bloquear IP
+                                </button>` : ''}
                             </div>
                         </td>
                     </tr>
@@ -1730,7 +1745,7 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error loading sessions:', error);
             if (tbody) {
-                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar sesiones</td></tr>';
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Error al cargar sesiones</td></tr>';
             }
         }
     },
@@ -1795,6 +1810,208 @@ const AdminPanel = {
             console.error('Error:', error);
             this.showToast('Error al cerrar sesiones', 'error');
         }
+    },
+    
+    setupSessionsTabs() {
+        document.querySelectorAll('[data-sessions-tab]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-sessions-tab]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const tabName = btn.dataset.sessionsTab;
+                document.getElementById('sessionsTabActive').style.display = tabName === 'active' ? 'block' : 'none';
+                document.getElementById('sessionsTabIPs').style.display = tabName === 'ips' ? 'block' : 'none';
+                
+                if (tabName === 'ips') {
+                    this.loadBlockedIPs();
+                }
+            });
+        });
+    },
+    
+    blockedIPsData: [],
+    
+    async loadBlockedIPs() {
+        const tbody = document.getElementById('blockedIPsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando IPs bloqueadas...</td></tr>';
+        }
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips');
+            
+            if (response.success && response.ips) {
+                this.blockedIPsData = response.ips;
+                this.renderBlockedIPs(response.ips);
+                
+                const countEl = document.getElementById('blockedIPsCount');
+                if (countEl) countEl.textContent = response.ips.filter(ip => ip.is_active !== false).length;
+            }
+        } catch (error) {
+            console.error('Error loading blocked IPs:', error);
+            if (tbody) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar IPs</td></tr>';
+            }
+        }
+    },
+    
+    renderBlockedIPs(ips) {
+        const tbody = document.getElementById('blockedIPsTableBody');
+        if (!tbody) return;
+        
+        const statusFilter = document.getElementById('ipStatusFilter')?.value || 'active';
+        let filteredIPs = ips;
+        
+        if (statusFilter === 'active') {
+            filteredIPs = ips.filter(ip => ip.is_active !== false);
+        }
+        
+        if (filteredIPs.length === 0) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay IPs bloqueadas</td></tr>';
+            return;
+        }
+        
+        const html = filteredIPs.map(ip => `
+            <tr data-ip-id="${ip.id}">
+                <td><code>${this.escapeHtml(ip.ip_address)}</code></td>
+                <td>${this.escapeHtml(ip.reason || '-')}</td>
+                <td>${this.escapeHtml(ip.blocked_by || 'Admin')}</td>
+                <td>${this.formatDate(ip.blocked_at || ip.created_at)}</td>
+                <td>
+                    <span class="badge ${ip.is_permanent ? 'badge-danger' : 'badge-warning'}">
+                        ${ip.is_permanent ? 'Sí' : 'No'}
+                    </span>
+                </td>
+                <td>
+                    <button class="action-btn warning" onclick="AdminPanel.unblockIP(${ip.id})" title="Desbloquear">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        SafeDOM.setHTML(tbody, html);
+    },
+    
+    filterBlockedIPs() {
+        const searchTerm = document.getElementById('ipSearchInput')?.value?.toLowerCase() || '';
+        const filtered = this.blockedIPsData.filter(ip => 
+            ip.ip_address?.toLowerCase().includes(searchTerm) ||
+            ip.reason?.toLowerCase().includes(searchTerm)
+        );
+        this.renderBlockedIPs(filtered);
+    },
+    
+    showAddIPModal() {
+        document.getElementById('blockIPAddress').value = '';
+        document.getElementById('blockIPReason').value = '';
+        document.getElementById('blockIPPermanent').checked = false;
+        document.getElementById('addIPModal').classList.add('active');
+    },
+    
+    closeIPModal() {
+        document.getElementById('addIPModal').classList.remove('active');
+    },
+    
+    async blockIP() {
+        const ipAddress = document.getElementById('blockIPAddress')?.value?.trim();
+        const reason = document.getElementById('blockIPReason')?.value?.trim();
+        const isPermanent = document.getElementById('blockIPPermanent')?.checked || false;
+        
+        if (!ipAddress) {
+            this.showToast('Ingresa una dirección IP', 'error');
+            return;
+        }
+        
+        const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        if (!ipRegex.test(ipAddress)) {
+            this.showToast('Formato de IP inválido', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ip_address: ipAddress,
+                    reason: reason || 'Bloqueado manualmente por admin',
+                    is_permanent: isPermanent
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`IP ${ipAddress} bloqueada correctamente`, 'success');
+                this.closeIPModal();
+                this.loadBlockedIPs();
+            } else {
+                this.showToast(response.error || 'Error al bloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al bloquear IP', 'error');
+        }
+    },
+    
+    async unblockIP(ipId) {
+        if (!confirm('¿Desbloquear esta IP?')) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/blocked-ips/${ipId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('IP desbloqueada correctamente', 'success');
+                this.loadBlockedIPs();
+            } else {
+                this.showToast(response.error || 'Error al desbloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al desbloquear IP', 'error');
+        }
+    },
+    
+    async blockIPFromSession(ipAddress) {
+        const reason = prompt('Razón del bloqueo (opcional):') || 'IP sospechosa - bloqueada desde sesiones';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ip_address: ipAddress,
+                    reason: reason,
+                    is_permanent: false
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`IP ${ipAddress} bloqueada`, 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al bloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al bloquear IP', 'error');
+        }
+    },
+    
+    formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diff = (now - date) / 1000;
+        
+        if (diff < 60) return 'Hace un momento';
+        if (diff < 3600) return `Hace ${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
+        if (diff < 604800) return `Hace ${Math.floor(diff / 86400)}d`;
+        
+        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
     },
     
     async loadContent() {
