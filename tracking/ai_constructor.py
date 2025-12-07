@@ -25,6 +25,11 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+try:
+    from tracking.ai_flow_logger import flow_logger
+except ImportError:
+    flow_logger = None
+
 
 class TaskType(Enum):
     """Tipos de tareas que BUNK3R puede manejar"""
@@ -1041,12 +1046,26 @@ class AIConstructorService:
     def _run_full_flow(self, session: ConstructorSession, message: str) -> Dict[str, Any]:
         """Ejecuta el flujo completo de fases"""
         
+        if flow_logger:
+            flow_logger.start_session(session.session_id, session.user_id, message)
+        
         # ═══════════════════════════════════════════════════════════════
         # FASE 1: ANÁLISIS INICIAL
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 1
+        if flow_logger:
+            flow_logger.start_fase(session.user_id, 1, "Análisis de Intención", {"mensaje": message})
+        
         intent = self.intent_parser.analyze(message)
         session.intent = intent
+        
+        if flow_logger:
+            flow_logger.end_fase(session.user_id, 1, {
+                "tipo_tarea": intent.tipo_tarea.value,
+                "contexto": intent.contexto,
+                "nivel_detalle": intent.nivel_detalle,
+                "requiere_clarificacion": intent.requiere_clarificacion
+            })
         
         logger.info(f"[FASE 1] Intent analizado: {intent.tipo_tarea.value}, contexto: {intent.contexto}")
         
@@ -1056,8 +1075,19 @@ class AIConstructorService:
         research = None
         if intent.requiere_investigacion:
             session.fase_actual = 2
+            if flow_logger:
+                flow_logger.start_fase(session.user_id, 2, "Investigación Autónoma", {"contexto": intent.contexto})
+            
             research = self.research_engine.research(intent)
             session.research = research
+            
+            if flow_logger:
+                flow_logger.end_fase(session.user_id, 2, {
+                    "estilo": research.estilo,
+                    "elementos": research.elementos_recomendados[:5],
+                    "paleta": research.paleta_sugerida
+                })
+            
             logger.info(f"[FASE 2] Investigación completada: {research.estilo}")
         
         # ═══════════════════════════════════════════════════════════════
@@ -1065,6 +1095,9 @@ class AIConstructorService:
         # ═══════════════════════════════════════════════════════════════
         if intent.requiere_clarificacion:
             session.fase_actual = 3
+            if flow_logger:
+                flow_logger.start_fase(session.user_id, 3, "Clarificación", {"requiere": True})
+            
             questions = self.clarification_manager.generate_questions(intent, research)
             
             if questions:
@@ -1074,6 +1107,13 @@ class AIConstructorService:
                 clarification_msg = self.clarification_manager.format_clarification_message(
                     intent, research, questions
                 )
+                
+                if flow_logger:
+                    flow_logger.end_fase(session.user_id, 3, {
+                        "preguntas_generadas": len(questions),
+                        "preguntas": questions,
+                        "esperando_respuesta": True
+                    })
                 
                 return {
                     "success": True,
@@ -1107,10 +1147,23 @@ class AIConstructorService:
         # FASE 4: CONSTRUCCIÓN DEL PROMPT MAESTRO
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 4
+        if flow_logger:
+            flow_logger.start_fase(session.user_id, 4, "Construcción Prompt Maestro", {
+                "intent": session.intent.tipo_tarea.value if session.intent else None,
+                "tiene_research": session.research is not None,
+                "tiene_clarificacion": session.clarification is not None
+            })
+        
         prompt_maestro = self.prompt_builder.build(
             session.intent, session.research, session.clarification
         )
         session.prompt_maestro = prompt_maestro
+        
+        if flow_logger:
+            flow_logger.end_fase(session.user_id, 4, {
+                "prompt_length": len(prompt_maestro),
+                "prompt_preview": prompt_maestro[:500] + "..." if len(prompt_maestro) > 500 else prompt_maestro
+            })
         
         logger.info(f"[FASE 4] Prompt maestro construido ({len(prompt_maestro)} chars)")
         
@@ -1118,11 +1171,24 @@ class AIConstructorService:
         # FASE 5: PRESENTACIÓN DEL PLAN
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 5
+        if flow_logger:
+            flow_logger.start_fase(session.user_id, 5, "Generación del Plan", {
+                "tipo_tarea": session.intent.tipo_tarea.value if session.intent else None
+            })
+        
         plan = self.task_orchestrator.create_plan(session.intent, session.research)
         session.plan = plan
         session.esperando_confirmacion = True
         
         plan_message = self.task_orchestrator.format_plan_message(plan)
+        
+        if flow_logger:
+            flow_logger.end_fase(session.user_id, 5, {
+                "tareas": len(plan.tareas),
+                "archivos": plan.archivos_a_crear,
+                "tiempo_estimado": plan.tiempo_estimado,
+                "esperando_confirmacion": True
+            })
         
         return {
             "success": True,

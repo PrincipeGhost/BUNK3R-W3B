@@ -13625,6 +13625,69 @@ def ai_constructor_confirm():
     except Exception as e:
         return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_confirm')}), 500
 
+@app.route('/api/ai-constructor/flow', methods=['GET'])
+@require_telegram_auth
+def ai_constructor_flow():
+    """Get AI Constructor flow log for debugging"""
+    try:
+        from tracking.ai_flow_logger import flow_logger
+        user_id = str(request.telegram_user.get('id'))
+        
+        flow = flow_logger.get_session_flow(user_id)
+        if flow:
+            return jsonify({
+                'success': True,
+                'flow': flow,
+                'formatted': flow_logger.format_flow_for_display(user_id)
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'flow': None,
+                'message': 'No hay sesión activa para este usuario'
+            })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-constructor/flow/all', methods=['GET'])
+@require_telegram_auth  
+def ai_constructor_flow_all():
+    """Get all AI Constructor sessions summary (for owners/demo)"""
+    try:
+        from tracking.ai_flow_logger import flow_logger
+        
+        sessions = flow_logger.get_all_sessions_summary()
+        recent = flow_logger.get_recent_interactions(50)
+        
+        return jsonify({
+            'success': True,
+            'sessions': sessions,
+            'recent_interactions': recent,
+            'total_sessions': len(sessions)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-constructor/flow/clear', methods=['POST'])
+@require_telegram_auth
+def ai_constructor_flow_clear():
+    """Clear flow logs"""
+    try:
+        from tracking.ai_flow_logger import flow_logger
+        user_id = str(request.telegram_user.get('id'))
+        
+        data = request.json or {}
+        clear_all = data.get('clear_all', False)
+        
+        if clear_all:
+            flow_logger.clear_all()
+            return jsonify({'success': True, 'message': 'All flow logs cleared'})
+        else:
+            flow_logger.clear_session(user_id)
+            return jsonify({'success': True, 'message': f'Flow log cleared for user {user_id}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== END AI CONSTRUCTOR SECTION ====================
 
 
