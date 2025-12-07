@@ -1425,7 +1425,7 @@ app.logger.setLevel(logging.INFO)
 | 30.7 | Tests automatizados | 🟢 BAJA | 8h | ⏳ |
 | 30.8 | Optimizaciones BD | 🟢 OPCIONAL | 2-4h | ⏳ |
 | 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ✅ |
-| 30.10 | Mejorar logs | 🟢 BAJA | 1h | ⏳ |
+| 30.10 | Mejorar logs | 🟢 BAJA | 1h | ✅ |
 
 **TOTAL TIEMPO ESTIMADO: ~22 horas**
 
@@ -6206,7 +6206,12 @@ FASE 6 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G �
 - Creado endpoint `/api/demo/2fa/logout` en app.py (líneas 1050-1066)
 - Verificado que Flask-Session ya está configurado con filesystem (líneas 74-86)
 - Las sesiones persisten correctamente entre reinicios del servidor
-- Actualizado resumen de sección 30 (30.5 y 30.9 completados)
+- Implementado sistema de logs mejorado:
+  - JSONFormatter para logs estructurados (líneas 52-71)
+  - RotatingFileHandler con 10MB max y 5 backups (líneas 76-84)
+  - Middleware add_request_id() para trazabilidad (líneas 881-885)
+  - Carpeta logs/ con app.log generándose correctamente
+- Actualizado resumen de sección 30 (30.5, 30.9, 30.10 completados)
 
 ### Cambios realizados en sesión 11:
 - Agregada SECCIÓN 35 completa: Componentes Nivel Experto

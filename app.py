@@ -41,7 +41,76 @@ from tracking.encryption import encryption_manager
 from tracking.cloudinary_service import cloudinary_service
 from tracking.smspool_service import SMSPoolService, VirtualNumbersManager
 
-logging.basicConfig(level=logging.INFO)
+from logging.handlers import RotatingFileHandler
+from flask import g
+
+LOGS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+os.makedirs(LOGS_FOLDER, exist_ok=True)
+
+class RequestContextFilter(logging.Filter):
+    """Inyecta request_id, user_id e ip en cada log record."""
+    def filter(self, record):
+        try:
+            from flask import request, has_request_context
+            if has_request_context():
+                record.request_id = getattr(request, 'request_id', '-')
+                record.client_ip = getattr(request, 'client_ip', request.headers.get('X-Forwarded-For', request.remote_addr))
+                record.user_id = getattr(request, 'telegram_user', {}).get('id', '-') if hasattr(request, 'telegram_user') else '-'
+            else:
+                record.request_id = '-'
+                record.client_ip = '-'
+                record.user_id = '-'
+        except Exception:
+            record.request_id = '-'
+            record.client_ip = '-'
+            record.user_id = '-'
+        return True
+
+class JSONFormatter(logging.Formatter):
+    """Formato JSON estructurado para logs."""
+    def format(self, record):
+        log_obj = {
+            'time': datetime.now().isoformat(),
+            'level': record.levelname,
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno,
+            'message': record.getMessage(),
+            'request_id': getattr(record, 'request_id', '-'),
+            'ip': getattr(record, 'client_ip', '-'),
+            'user_id': str(getattr(record, 'user_id', '-'))
+        }
+        if record.exc_info:
+            log_obj['exception'] = self.formatException(record.exc_info)
+        return json.dumps(log_obj, ensure_ascii=False)
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+context_filter = RequestContextFilter()
+
+file_handler = RotatingFileHandler(
+    os.path.join(LOGS_FOLDER, 'app.log'),
+    maxBytes=10 * 1024 * 1024,
+    backupCount=5,
+    encoding='utf-8'
+)
+file_handler.setFormatter(JSONFormatter())
+file_handler.setLevel(logging.INFO)
+file_handler.addFilter(context_filter)
+root_logger.addHandler(file_handler)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+))
+console_handler.setLevel(logging.INFO)
+console_handler.addFilter(context_filter)
+root_logger.addHandler(console_handler)
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -830,6 +899,13 @@ CSRF_EXEMPT_ENDPOINTS = {
     'public_user_profile',
     'public_comments'
 }
+
+
+@app.before_request
+def add_request_id():
+    """Añade un request_id único a cada petición para trazabilidad."""
+    request.request_id = str(uuid.uuid4())[:8]
+    request.client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
 
 
 @app.before_request
