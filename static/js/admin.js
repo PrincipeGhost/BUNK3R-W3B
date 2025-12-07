@@ -1671,21 +1671,37 @@ const AdminPanel = {
     
     async loadSessions() {
         const tbody = document.getElementById('sessionsTableBody');
-        tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando sesiones...</td></tr>';
+        if (tbody) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando sesiones...</td></tr>';
+        }
         
         try {
             const response = await this.fetchAPI('/api/admin/sessions');
             
             if (response.success && response.sessions) {
-                document.getElementById('totalSessions').textContent = response.total || 0;
-                document.getElementById('uniqueIPs').textContent = response.uniqueIPs || 0;
+                const sessions = response.sessions;
+                const uniqueIPs = [...new Set(sessions.map(s => s.ip || s.ip_address).filter(Boolean))];
                 
-                if (response.sessions.length === 0) {
+                const totalSessionsEl = document.getElementById('totalSessions');
+                const uniqueIPsEl = document.getElementById('uniqueIPs');
+                
+                if (totalSessionsEl) totalSessionsEl.textContent = sessions.length;
+                if (uniqueIPsEl) uniqueIPsEl.textContent = uniqueIPs.length;
+                
+                if (!tbody) return;
+                
+                if (sessions.length === 0) {
                     tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay sesiones activas</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = response.sessions.map(s => `
+                const sessionsHtml = sessions.map(s => {
+                    const deviceName = s.device || s.device_name || '-';
+                    const ipAddress = s.ip || s.ip_address || '-';
+                    const userId = s.user_id || '';
+                    const escapedDevice = this.escapeHtml(deviceName);
+                    
+                    return `
                     <tr>
                         <td>
                             <div class="user-cell">
@@ -1693,21 +1709,91 @@ const AdminPanel = {
                                 <span>@${this.escapeHtml(s.username || 'N/A')}</span>
                             </div>
                         </td>
-                        <td>${s.ip_address || '-'}</td>
-                        <td>${this.escapeHtml(s.device_info?.slice(0, 30) || '-')}...</td>
+                        <td>${this.escapeHtml(ipAddress)}</td>
+                        <td title="${escapedDevice}">${this.escapeHtml(deviceName.slice(0, 30))}${deviceName.length > 30 ? '...' : ''}</td>
                         <td>${this.timeAgo(s.last_activity)}</td>
-                        <td>${this.formatDuration(s.duration)}</td>
                         <td>
-                            <button class="action-btn danger" onclick="AdminPanel.terminateSession('${s.session_id}')">
-                                Cerrar
-                            </button>
+                            <div class="action-buttons">
+                                <button class="action-btn danger" onclick="AdminPanel.terminateSession('${userId}', '${escapedDevice.replace(/'/g, "\\'")}')">
+                                    Cerrar
+                                </button>
+                                <button class="action-btn warning" onclick="AdminPanel.terminateAllUserSessions('${userId}')">
+                                    Cerrar Todas
+                                </button>
+                            </div>
                         </td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
+                SafeDOM.setHTML(tbody, sessionsHtml);
             }
         } catch (error) {
             console.error('Error loading sessions:', error);
-            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar sesiones</td></tr>';
+            if (tbody) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar sesiones</td></tr>';
+            }
+        }
+    },
+    
+    async terminateSession(userId, deviceName) {
+        if (!confirm(`¿Cerrar la sesión del dispositivo "${deviceName}"?`)) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/sessions/terminate', {
+                method: 'POST',
+                body: JSON.stringify({ user_id: userId, device_name: deviceName })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Sesión cerrada', 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesión', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesión', 'error');
+        }
+    },
+    
+    async terminateAllUserSessions(userId) {
+        if (!confirm('¿Cerrar TODAS las sesiones de este usuario?')) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/sessions/terminate-all/${userId}`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Todas las sesiones cerradas', 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesiones', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesiones', 'error');
+        }
+    },
+    
+    async logoutAllUsers() {
+        if (!confirm('¿Cerrar TODAS las sesiones de TODOS los usuarios (excepto admins)?')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/sessions/logout-all', {
+                method: 'POST',
+                body: JSON.stringify({ exclude_admins: true })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Todas las sesiones cerradas', 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesiones', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesiones', 'error');
         }
     },
     
@@ -2935,40 +3021,85 @@ const AdminPanel = {
     
     async loadSettings() {
         try {
-            const response = await this.fetchAPI('/api/admin/settings');
+            const [settingsRes, statusRes] = await Promise.all([
+                this.fetchAPI('/api/admin/settings'),
+                this.fetchAPI('/api/admin/system-status')
+            ]);
             
-            if (response.success) {
-                document.getElementById('currentB3CPrice').textContent = `$${response.b3cPrice || 0.10}`;
-                document.getElementById('txCommission').value = response.commission || 5;
-                document.getElementById('minWithdrawal').value = response.minWithdrawal || 10;
-                document.getElementById('maintenanceMode').checked = response.maintenanceMode || false;
-                document.getElementById('maintenanceMessage').value = response.maintenanceMessage || '';
+            if (settingsRes.success) {
+                const txCommissionEl = document.getElementById('txCommission');
+                const minWithdrawalEl = document.getElementById('minWithdrawal');
+                const maintenanceModeEl = document.getElementById('maintenanceMode');
+                const maintenanceMessageEl = document.getElementById('maintenanceMessage');
                 
-                if (response.systemStatus) {
-                    document.getElementById('dbStatus').textContent = response.systemStatus.database ? 'Conectada' : 'Error';
-                    document.getElementById('dbStatus').className = `status-indicator ${response.systemStatus.database ? 'ok' : 'error'}`;
-                    
-                    document.getElementById('tonStatus').textContent = response.systemStatus.tonCenter ? 'Conectado' : 'Error';
-                    document.getElementById('tonStatus').className = `status-indicator ${response.systemStatus.tonCenter ? 'ok' : 'error'}`;
-                    
-                    document.getElementById('smsStatus').textContent = response.systemStatus.smsPool ? 'Conectado' : 'Error';
-                    document.getElementById('smsStatus').className = `status-indicator ${response.systemStatus.smsPool ? 'ok' : 'error'}`;
+                if (txCommissionEl) txCommissionEl.value = settingsRes.transactionFeePercent || 2;
+                if (minWithdrawalEl) minWithdrawalEl.value = settingsRes.minWithdrawal || 0.5;
+                if (maintenanceModeEl) maintenanceModeEl.checked = settingsRes.maintenanceMode || false;
+                if (maintenanceMessageEl) maintenanceMessageEl.value = settingsRes.maintenanceMessage || '';
+            }
+            
+            if (statusRes.success) {
+                const dbStatusEl = document.getElementById('dbStatus');
+                const tonStatusEl = document.getElementById('tonStatus');
+                const smsStatusEl = document.getElementById('smsStatus');
+                
+                if (dbStatusEl) {
+                    dbStatusEl.textContent = statusRes.status.database.message;
+                    dbStatusEl.className = `status-indicator ${statusRes.status.database.status}`;
                 }
                 
-                if (response.secrets) {
+                if (tonStatusEl) {
+                    tonStatusEl.textContent = statusRes.status.toncenter.message;
+                    tonStatusEl.className = `status-indicator ${statusRes.status.toncenter.status}`;
+                }
+                
+                if (smsStatusEl) {
+                    smsStatusEl.textContent = statusRes.status.smspool.message;
+                    smsStatusEl.className = `status-indicator ${statusRes.status.smspool.status}`;
+                }
+                
+                if (statusRes.secrets) {
                     const secretsList = document.getElementById('secretsList');
-                    secretsList.innerHTML = response.secrets.map(s => `
-                        <div class="secret-item">
-                            <span class="secret-name">${s.name}</span>
-                            <span class="secret-status ${s.configured ? 'configured' : 'missing'}">
-                                ${s.configured ? 'Configurado' : 'No configurado'}
-                            </span>
-                        </div>
-                    `).join('');
+                    if (secretsList) {
+                        const secretsHtml = Object.entries(statusRes.secrets).map(([name, configured]) => `
+                            <div class="secret-item">
+                                <span class="secret-name">${this.escapeHtml(name)}</span>
+                                <span class="secret-status ${configured ? 'configured' : 'missing'}">
+                                    ${configured ? '✓ Configurado' : '✗ No configurado'}
+                                </span>
+                            </div>
+                        `).join('');
+                        SafeDOM.setHTML(secretsList, secretsHtml);
+                    }
                 }
             }
         } catch (error) {
             console.error('Error loading settings:', error);
+        }
+    },
+    
+    async saveSettings() {
+        try {
+            const data = {
+                maintenanceMode: document.getElementById('maintenanceMode')?.checked || false,
+                maintenanceMessage: document.getElementById('maintenanceMessage')?.value || '',
+                transactionFeePercent: parseFloat(document.getElementById('txCommission')?.value) || 2,
+                minWithdrawal: parseFloat(document.getElementById('minWithdrawal')?.value) || 0.5
+            };
+            
+            const response = await this.fetchAPI('/api/admin/settings', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.success) {
+                this.showToast('Configuración guardada correctamente', 'success');
+            } else {
+                this.showToast(response.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            this.showToast('Error al guardar configuración', 'error');
         }
     },
     

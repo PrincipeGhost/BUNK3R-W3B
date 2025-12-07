@@ -6358,6 +6358,115 @@ def admin_get_sessions():
         return jsonify({'success': True, 'sessions': []})
 
 
+@app.route('/api/admin/sessions/terminate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_terminate_session():
+    """Admin: Terminar sesion especifica de un dispositivo."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        data = request.json or {}
+        user_id = data.get('user_id')
+        device_name = data.get('device_name')
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'user_id requerido'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if device_name:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id = %s AND device_name = %s
+                    """, (user_id, device_name))
+                else:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id = %s
+                    """, (user_id,))
+                
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'{deleted} sesion(es) terminada(s)',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error terminating session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/sessions/terminate-all/<user_id>', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_terminate_all_user_sessions(user_id):
+    """Admin: Terminar todas las sesiones de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM trusted_devices WHERE user_id = %s
+                """, (user_id,))
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Todas las sesiones de usuario {user_id} terminadas ({deleted})',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error terminating all user sessions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/sessions/logout-all', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_logout_all_users():
+    """Admin: Cerrar todas las sesiones de todos los usuarios (excepto admins)."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        data = request.json or {}
+        exclude_admins = data.get('exclude_admins', True)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if exclude_admins:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id NOT IN (
+                            SELECT id FROM users WHERE LOWER(role) IN ('owner', 'admin')
+                        )
+                    """)
+                else:
+                    cur.execute("DELETE FROM trusted_devices")
+                
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Todas las sesiones cerradas ({deleted} dispositivos)',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error logging out all users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ENDPOINTS DE ADMIN - SEGURIDAD
 # ============================================================
@@ -8948,24 +9057,202 @@ def admin_unlock_user():
 def admin_system_settings():
     """Admin: Configuracion del sistema."""
     try:
-        if request.method == 'GET':
-            return jsonify({
-                'success': True,
-                'maintenanceMode': False,
-                'registrationOpen': True,
-                'merchantWallet': os.environ.get('TON_WALLET_ADDRESS', 'No configurada'),
-                'minDeposit': 1,
-                'emailAlerts': True,
-                'telegramAlerts': True
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'message': 'Configuracion guardada'
-            })
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if request.method == 'GET':
+                    cur.execute("SELECT key, value, category FROM system_settings")
+                    rows = cur.fetchall()
+                    settings = {row['key']: row['value'] for row in rows}
+                    
+                    return jsonify({
+                        'success': True,
+                        'maintenanceMode': settings.get('maintenance_mode', 'false') == 'true',
+                        'maintenanceMessage': settings.get('maintenance_message', ''),
+                        'registrationOpen': settings.get('registration_open', 'true') == 'true',
+                        'merchantWallet': os.environ.get('TON_WALLET_ADDRESS', 'No configurada'),
+                        'minDeposit': float(settings.get('min_deposit', '1')),
+                        'minWithdrawal': float(settings.get('min_withdrawal', '0.5')),
+                        'withdrawalFee': float(settings.get('withdrawal_fee', '0.05')),
+                        'transactionFeePercent': float(settings.get('transaction_fee_percent', '2')),
+                        'emailAlerts': settings.get('email_alerts', 'true') == 'true',
+                        'telegramAlerts': settings.get('telegram_alerts', 'true') == 'true',
+                        'largeTransactionThreshold': float(settings.get('large_transaction_threshold', '100'))
+                    })
+                else:
+                    data = request.json or {}
+                    updates = []
+                    
+                    setting_mappings = {
+                        'maintenanceMode': ('maintenance_mode', lambda v: 'true' if v else 'false'),
+                        'maintenanceMessage': ('maintenance_message', str),
+                        'registrationOpen': ('registration_open', lambda v: 'true' if v else 'false'),
+                        'minDeposit': ('min_deposit', str),
+                        'minWithdrawal': ('min_withdrawal', str),
+                        'withdrawalFee': ('withdrawal_fee', str),
+                        'transactionFeePercent': ('transaction_fee_percent', str),
+                        'emailAlerts': ('email_alerts', lambda v: 'true' if v else 'false'),
+                        'telegramAlerts': ('telegram_alerts', lambda v: 'true' if v else 'false'),
+                        'largeTransactionThreshold': ('large_transaction_threshold', str)
+                    }
+                    
+                    for key, value in data.items():
+                        if key in setting_mappings:
+                            db_key, transform = setting_mappings[key]
+                            cur.execute("""
+                                INSERT INTO system_settings (key, value, updated_at)
+                                VALUES (%s, %s, NOW())
+                                ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                            """, (db_key, transform(value), transform(value)))
+                            updates.append(db_key)
+                    
+                    conn.commit()
+                    return jsonify({
+                        'success': True,
+                        'message': 'Configuracion guardada',
+                        'updated': updates
+                    })
         
     except Exception as e:
         logger.error(f"Error with settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/system-status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_system_status():
+    """Admin: Estado del sistema y APIs externas."""
+    try:
+        status = {
+            'database': {'status': 'unknown', 'message': ''},
+            'toncenter': {'status': 'unknown', 'message': ''},
+            'smspool': {'status': 'unknown', 'message': ''},
+            'cloudinary': {'status': 'unknown', 'message': ''}
+        }
+        
+        try:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    status['database'] = {'status': 'ok', 'message': 'Conectada'}
+        except Exception as e:
+            status['database'] = {'status': 'error', 'message': str(e)}
+        
+        toncenter_key = os.environ.get('TONCENTER_API_KEY', '')
+        if toncenter_key:
+            status['toncenter'] = {'status': 'ok', 'message': 'API Key configurada'}
+        else:
+            status['toncenter'] = {'status': 'warning', 'message': 'API Key no configurada'}
+        
+        smspool_key = os.environ.get('SMSPOOL_API_KEY', '')
+        if smspool_key:
+            status['smspool'] = {'status': 'ok', 'message': 'API Key configurada'}
+        else:
+            status['smspool'] = {'status': 'warning', 'message': 'API Key no configurada'}
+        
+        cloudinary_url = os.environ.get('CLOUDINARY_URL', '')
+        if cloudinary_url:
+            status['cloudinary'] = {'status': 'ok', 'message': 'Configurado'}
+        else:
+            status['cloudinary'] = {'status': 'warning', 'message': 'No configurado'}
+        
+        secrets_status = {
+            'DATABASE_URL': bool(os.environ.get('DATABASE_URL')),
+            'TONCENTER_API_KEY': bool(os.environ.get('TONCENTER_API_KEY')),
+            'SMSPOOL_API_KEY': bool(os.environ.get('SMSPOOL_API_KEY')),
+            'CLOUDINARY_URL': bool(os.environ.get('CLOUDINARY_URL')),
+            'TON_WALLET_ADDRESS': bool(os.environ.get('TON_WALLET_ADDRESS')),
+            'GROQ_API_KEY': bool(os.environ.get('GROQ_API_KEY')),
+            'GEMINI_API_KEY': bool(os.environ.get('GEMINI_API_KEY'))
+        }
+        
+        return jsonify({
+            'success': True,
+            'status': status,
+            'secrets': secrets_status,
+            'uptime': 'Running'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_admin_notifications():
+    """Admin: Obtener notificaciones del panel."""
+    try:
+        unread_only = request.args.get('unread', 'false') == 'true'
+        limit = min(int(request.args.get('limit', 50)), 100)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clause = "WHERE is_read = false" if unread_only else ""
+                cur.execute(f"""
+                    SELECT * FROM admin_notifications
+                    {where_clause}
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """, (limit,))
+                notifications = cur.fetchall()
+                
+                cur.execute("SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = false")
+                unread_count = cur.fetchone()['count']
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': [dict(n) for n in notifications],
+                    'unreadCount': unread_count
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting admin notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/<int:notification_id>/read', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def mark_notification_read(notification_id):
+    """Admin: Marcar notificacion como leida."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE admin_notifications
+                    SET is_read = true, read_at = NOW()
+                    WHERE id = %s
+                """, (notification_id,))
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error marking notification read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/read-all', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_mark_all_notifications_read():
+    """Admin: Marcar todas las notificaciones como leidas."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE admin_notifications
+                    SET is_read = true, read_at = NOW()
+                    WHERE is_read = false
+                """)
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error marking all notifications read: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

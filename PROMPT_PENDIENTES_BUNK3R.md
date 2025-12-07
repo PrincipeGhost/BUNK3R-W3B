@@ -7211,14 +7211,34 @@ FASE 7 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G �
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 22:00
-**Sesión:** 14
-**Agente activo:** 🟡 BACKEND API
+**Última actualización:** 7 Diciembre 2025 22:35
+**Sesión:** 15
+**Agente activo:** 🟡 BACKEND API + 🟢 FRONTEND ADMIN
 
 ### Última tarea trabajada
-- Sección: 34 (AI BUNK3R CONSTRUCTOR)
-- Nombre: Agregadas fases 34.16 - 34.23 (Núcleo IA)
+- Sección: 27.15 (Sesiones Activas) + 27.12 (Configuración del Sistema)
+- Nombre: Endpoints gestión de sesiones y configuración admin
 - Estado: ✅ COMPLETADA
+
+### Cambios realizados en sesión 15:
+- **FASE 27.15 - Gestión de Sesiones Activas:**
+  - Agregado POST /api/admin/sessions/terminate - cerrar sesión específica
+  - Agregado POST /api/admin/sessions/terminate-all/{user_id} - cerrar todas sesiones usuario
+  - Agregado POST /api/admin/sessions/logout-all - cerrar todas las sesiones (excepto admins)
+  - Actualizado frontend loadSessions() con soporte para ambos formatos de campo
+  - Agregadas funciones terminateSession(), terminateAllUserSessions(), logoutAllUsers()
+  
+- **FASE 27.12 - Configuración del Sistema:**
+  - Actualizado loadSettings() para cargar desde BD (system_settings)
+  - Agregada función saveSettings() para persistir configuración
+  - Integrado endpoint /api/admin/system-status para monitoreo en tiempo real
+  - Manejo correcto de estado DB/TonCenter/SMSPool
+  
+- **Correcciones de seguridad:**
+  - Agregado guard db_manager en todos los endpoints de sesiones
+  - Comparación de roles case-insensitive (LOWER(role))
+  - Uso correcto de SafeDOM para prevenir XSS
+  - Escapado de comillas simples en onclick handlers
 
 ### Cambios realizados en sesión 14:
 - Agregadas 8 nuevas fases de Núcleo IA (34.16 - 34.23): 27h
