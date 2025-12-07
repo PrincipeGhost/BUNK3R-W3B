@@ -22,14 +22,20 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║                                                                  ║
 ║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33, 34 ║
 ║                                                                  ║
-║ 🔴 CRÍTICO NUEVO: SECCIÓN 34 - IA BUNK3R CONSTRUCTOR             ║
-║    ✅ 34.9 Seguridad: @require_owner en endpoints                ║
-║    ✅ 34.10 AIFileToolkit creado con 10+ métodos                 ║
-║    ✅ 34.11 AICommandExecutor con whitelist/blacklist            ║
-║    ✅ 34.12 AIErrorDetector + AIProjectAnalyzer                  ║
-║    ✅ 34.6 Entendimiento de intenciones (50+ TaskTypes)          ║
-║    ✅ 34.13 AIProjectContext - Memoria entre peticiones          ║
-║    ✅ 34.1 Conectar frontend con 8 fases                         ║
+║ 🔴 CRÍTICO: SECCIÓN 34 - IA BUNK3R CONSTRUCTOR                   ║
+║    ✅ 34.1, 34.6, 34.9-34.13 COMPLETADOS (7 fases)               ║
+║    ⏳ 34.2-34.5, 34.7-34.8, 34.14-34.15 PENDIENTES (8 fases)     ║
+║                                                                  ║
+║ 🆕 NUEVO: COMPONENTES AVANZADOS (34.A - 34.H)                    ║
+║    ⏳ 34.A Búsqueda en Vivo (Serper + Playwright)                ║
+║    ⏳ 34.B Memoria Vectorial (ChromaDB + Embeddings)             ║
+║    ⏳ 34.C Análisis AST + Grafos de Dependencias                 ║
+║    ⏳ 34.D Validación, Testing y Seguridad                       ║
+║    ⏳ 34.E Ejecución Inteligente + Process Manager               ║
+║    ⏳ 34.F Progress Streaming + Diff Previewer                   ║
+║    ⏳ 34.G Self-Healing Loop + Agentes Encadenados               ║
+║    ⏳ 34.H Git Avanzado + Template Manager                       ║
+║    TOTAL AVANZADOS: 39 items, ~169 horas                         ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -5028,7 +5034,309 @@ Mostrar diferencias antes de aplicar cambios.
 
 ---
 
+## ═══════════════════════════════════════
+## SECCIÓN 34: IA BUNK3R CONSTRUCTOR - COMPONENTES AVANZADOS
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA
+**Tiempo estimado total:** ~157 horas
+
+---
+
+### FASE 34.A: BÚSQUEDA E INFORMACIÓN EN VIVO
+
+#### 34.A.1 - Web Search en Vivo (Serper API) 🔴 CRÍTICA [4h]
+- [ ] Integrar Serper API para búsquedas en tiempo real
+- [ ] Cache de resultados por 24 horas
+- [ ] Filtros por tipo (docs, tutorials, stackoverflow)
+- [ ] Extracción de snippets relevantes
+- [ ] Rate limiting y manejo de errores
+
+#### 34.A.2 - Web Scraping (Playwright) 🔴 CRÍTICA [6h]
+- [ ] Instalación y configuración de Playwright
+- [ ] Scraper de documentación oficial
+- [ ] Extractor de ejemplos de código
+- [ ] Manejo de páginas dinámicas (SPA)
+- [ ] Sandbox de seguridad para ejecución
+
+---
+
+### FASE 34.B: MEMORIA Y CONTEXTO
+
+#### 34.B.1 - Memoria Vectorial (ChromaDB + Embeddings) 🔴 CRÍTICA [8h]
+- [ ] Instalación de ChromaDB
+- [ ] Modelo de embeddings (sentence-transformers)
+- [ ] Indexación del código del proyecto
+- [ ] Búsqueda semántica en codebase
+- [ ] Actualización incremental del índice
+- [ ] Caché de embeddings frecuentes
+
+#### 34.B.2 - Conversation Memory Manager 🔴 CRÍTICA [4h]
+- [ ] Almacenamiento de historial de conversación
+- [ ] Resumen automático de conversaciones largas
+- [ ] Extracción de decisiones tomadas
+- [ ] Contexto persistente entre sesiones
+- [ ] Límite de tokens con compresión inteligente
+
+#### 34.B.3 - Project State Snapshots 🟡 ALTA [4h]
+- [ ] Sistema de checkpoints automáticos
+- [ ] Snapshot antes de cambios grandes
+- [ ] Comparación entre snapshots
+- [ ] Rollback a cualquier punto
+- [ ] Limpieza de snapshots antiguos
+
+#### 34.B.4 - User Preference Learning 🟠 MEDIA [5h]
+- [ ] Detección de estilo de código preferido
+- [ ] Aprendizaje de naming conventions
+- [ ] Preferencias de frameworks/librerías
+- [ ] Idioma preferido para respuestas
+- [ ] Persistencia de preferencias
+
+---
+
+### FASE 34.C: ANÁLISIS PROFUNDO DE CÓDIGO
+
+#### 34.C.1 - AST Parser (Abstract Syntax Tree) 🔴 CRÍTICA [6h]
+- [ ] Parser para Python (ast module)
+- [ ] Parser para JavaScript (acorn/babel)
+- [ ] Extracción de funciones/clases/imports
+- [ ] Modificación quirúrgica de código
+- [ ] Preservación de comentarios y formato
+
+#### 34.C.2 - Dependency Graph Analyzer 🔴 CRÍTICA [5h]
+- [ ] Mapeo de imports entre archivos
+- [ ] Grafo de dependencias visualizable
+- [ ] Detección de dependencias circulares
+- [ ] Impacto de cambios (qué se rompe si modifico X)
+- [ ] Sugerencias de refactoring
+
+#### 34.C.3 - Type Inference Engine 🟡 ALTA [6h]
+- [ ] Inferencia de tipos para Python
+- [ ] Inferencia de tipos para JavaScript
+- [ ] Detección de type mismatches
+- [ ] Sugerencias de tipado
+- [ ] Integración con LSP
+
+#### 34.C.4 - LSP Integration 🟡 ALTA [5h]
+- [ ] Conexión con Language Server Protocol
+- [ ] Autocompletado inteligente
+- [ ] Go to definition
+- [ ] Find references
+- [ ] Diagnósticos en tiempo real
+
+---
+
+### FASE 34.D: VALIDACIÓN Y TESTING
+
+#### 34.D.1 - Screenshot/Visual Testing 🟡 ALTA [4h]
+- [ ] Captura de screenshots automática
+- [ ] Comparación visual (antes/después)
+- [ ] Detección de regresiones UI
+- [ ] Reporte visual de cambios
+- [ ] Integración con Playwright
+
+#### 34.D.2 - Test Runner Integration 🟡 ALTA [4h]
+- [ ] Detección automática de framework de tests
+- [ ] Ejecución de tests (pytest, jest, etc.)
+- [ ] Parsing de resultados
+- [ ] Sugerencias para tests fallidos
+- [ ] Generación de tests básicos
+
+#### 34.D.3 - Code Quality Scorer 🟡 ALTA [4h]
+- [ ] Métricas de complejidad ciclomática
+- [ ] Score de legibilidad
+- [ ] Detección de code smells
+- [ ] Puntuación general 0-100
+- [ ] Sugerencias de mejora
+
+#### 34.D.4 - Security Vulnerability Scanner 🔴 CRÍTICA [5h]
+- [ ] Detección de SQL injection
+- [ ] Detección de XSS
+- [ ] Secrets expuestos en código
+- [ ] Dependencias vulnerables
+- [ ] Reporte de seguridad con severidad
+
+#### 34.D.5 - Breaking Change Detector 🔴 CRÍTICA [5h]
+- [ ] Análisis de cambios de API
+- [ ] Detección de funciones eliminadas/renombradas
+- [ ] Impacto en archivos dependientes
+- [ ] Alertas antes de aplicar cambios
+- [ ] Sugerencias de migración
+
+#### 34.D.6 - Accessibility Checker 🟠 MEDIA [3h]
+- [ ] Validación WCAG básica
+- [ ] Alt text en imágenes
+- [ ] Contraste de colores
+- [ ] Estructura de headings
+- [ ] Reporte de accesibilidad
+
+---
+
+### FASE 34.E: EJECUCIÓN INTELIGENTE
+
+#### 34.E.1 - Environment Validator 🔴 CRÍTICA [3h]
+- [ ] Verificación de variables de entorno
+- [ ] Chequeo de puertos disponibles
+- [ ] Validación de dependencias instaladas
+- [ ] Permisos de archivos
+- [ ] Reporte de requisitos faltantes
+
+#### 34.E.2 - Function Calling Nativo 🟡 ALTA [4h]
+- [ ] Definición de funciones disponibles para la IA
+- [ ] Parsing de llamadas a funciones
+- [ ] Ejecución segura de funciones
+- [ ] Manejo de errores y reintentos
+- [ ] Logging de ejecuciones
+
+#### 34.E.3 - Hot Reload Detector 🟡 ALTA [2h]
+- [ ] Detección de soporte hot reload por framework
+- [ ] Trigger de reload automático
+- [ ] Fallback a restart manual
+- [ ] Notificación al usuario
+
+#### 34.E.4 - Process Manager 🟡 ALTA [5h]
+- [ ] Control de múltiples procesos simultáneos
+- [ ] Orquestación (frontend + backend + DB)
+- [ ] Health checks periódicos
+- [ ] Restart automático en fallos
+- [ ] Logs unificados
+
+#### 34.E.5 - Timeout & Recovery Handler 🟡 ALTA [3h]
+- [ ] Timeouts configurables por operación
+- [ ] Reintentos con backoff exponencial
+- [ ] Fallback strategies
+- [ ] Notificación de operaciones lentas
+- [ ] Cancelación graceful
+
+---
+
+### FASE 34.F: COMUNICACIÓN Y UX
+
+#### 34.F.1 - Progress Streaming 🔴 CRÍTICA [4h]
+- [ ] WebSocket para actualizaciones en tiempo real
+- [ ] Mensajes de progreso granulares
+- [ ] Barra de progreso visual
+- [ ] Logs en vivo durante ejecución
+- [ ] Notificación de completado
+
+#### 34.F.2 - Diff Previewer 🟡 ALTA [4h]
+- [ ] Generación de diffs estilo GitHub
+- [ ] Highlight de líneas añadidas/eliminadas
+- [ ] Preview antes de aplicar
+- [ ] Opción de aceptar/rechazar cambios
+- [ ] Historial de diffs aplicados
+
+#### 34.F.3 - Confidence Indicator 🟠 MEDIA [2h]
+- [ ] Cálculo de confianza por respuesta
+- [ ] Indicador visual (alto/medio/bajo)
+- [ ] Explicación de incertidumbre
+- [ ] Sugerencia de pedir más info si baja confianza
+
+#### 34.F.4 - Multi-language Response 🟠 MEDIA [2h]
+- [ ] Detección automática de idioma del usuario
+- [ ] Respuestas en español/inglés
+- [ ] Comentarios de código en idioma preferido
+- [ ] Mensajes de error traducidos
+
+---
+
+### FASE 34.G: INTELIGENCIA AVANZADA
+
+#### 34.G.1 - Intent Disambiguation 🟡 ALTA [3h]
+- [ ] Detección de ambigüedad en peticiones
+- [ ] Generación de opciones clarificadoras
+- [ ] Presentación amigable de alternativas
+- [ ] Aprendizaje de elecciones del usuario
+
+#### 34.G.2 - Code Pattern Library 🟡 ALTA [6h]
+- [ ] Biblioteca de patrones comunes (auth, CRUD, etc.)
+- [ ] Templates por framework
+- [ ] Personalización de patrones
+- [ ] Búsqueda por funcionalidad
+- [ ] Contribución de nuevos patrones
+
+#### 34.G.3 - Auto-Documentation Generator 🟠 MEDIA [4h]
+- [ ] Generación de docstrings
+- [ ] README automático del proyecto
+- [ ] Comentarios inline inteligentes
+- [ ] Changelog automático
+- [ ] API documentation
+
+#### 34.G.4 - Refactoring Suggester 🟠 MEDIA [4h]
+- [ ] Análisis de deuda técnica
+- [ ] Sugerencias de refactoring priorizadas
+- [ ] Estimación de esfuerzo
+- [ ] Ejecución guiada de refactoring
+
+#### 34.G.5 - Agentes Encadenados 🟠 MEDIA [6h]
+- [ ] Definición de agentes especializados
+- [ ] Orquestación de múltiples agentes
+- [ ] Paso de contexto entre agentes
+- [ ] Resolución de conflictos
+- [ ] Resultado consolidado
+
+#### 34.G.6 - Self-Healing Loop 🟡 ALTA [5h]
+- [ ] Detección automática de errores
+- [ ] Análisis de causa raíz
+- [ ] Generación de fix automático
+- [ ] Aplicación y re-verificación
+- [ ] Escalación después de 3 intentos fallidos
+
+---
+
+### FASE 34.H: INTEGRACIONES EXTERNAS
+
+#### 34.H.1 - Generación de Imágenes 🟠 MEDIA [3h]
+- [ ] Integración con API de generación (DALL-E, Stable Diffusion)
+- [ ] Prompts optimizados para UI/UX
+- [ ] Almacenamiento de imágenes generadas
+- [ ] Variaciones y ediciones
+- [ ] Placeholders inteligentes
+
+#### 34.H.2 - Git Operations Avanzadas 🟠 MEDIA [4h]
+- [ ] Commits automáticos con mensajes descriptivos
+- [ ] Branching inteligente
+- [ ] Merge conflict resolution asistida
+- [ ] Historial y blame
+- [ ] Cherry-pick y revert
+
+#### 34.H.3 - API Documentation Parser 🟡 ALTA [5h]
+- [ ] Lectura de OpenAPI/Swagger specs
+- [ ] Parsing de docs HTML
+- [ ] Extracción de endpoints y parámetros
+- [ ] Generación de código de integración
+- [ ] Ejemplos funcionales
+
+#### 34.H.4 - Package Version Resolver 🟡 ALTA [3h]
+- [ ] Análisis de compatibilidad de versiones
+- [ ] Detección de conflictos
+- [ ] Sugerencia de versiones óptimas
+- [ ] Lock file management
+- [ ] Actualización segura
+
+#### 34.H.5 - Template/Boilerplate Manager 🟠 MEDIA [5h]
+- [ ] Biblioteca de templates por stack
+- [ ] Personalización de boilerplates
+- [ ] Scaffolding de proyectos
+- [ ] Actualización de templates
+- [ ] Templates custom del usuario
+
+---
+
+### RESUMEN COMPONENTES AVANZADOS (34.A - 34.H)
+
+| Prioridad | Items | Horas |
+|-----------|-------|-------|
+| 🔴 CRÍTICA | 12 | ~54h |
+| 🟡 ALTA | 17 | ~72h |
+| 🟠 MEDIA | 10 | ~43h |
+| **TOTAL** | **39** | **~169h** |
+
+---
+
 ## RESUMEN SECCIÓN 34 (ACTUALIZADO)
+
+### Fases Core (34.1 - 34.15)
 
 | Fase | Descripción | Prioridad | Tiempo | Estado |
 |------|-------------|-----------|--------|--------|
@@ -5048,15 +5356,39 @@ Mostrar diferencias antes de aplicar cambios.
 | **34.14** | **Multi-lenguaje** | 🟡 ALTA | 6h | ⏳ |
 | **34.15** | **Sistema de diff** | 🟠 MEDIA | 3h | ⏳ |
 
-**TOTAL TIEMPO ESTIMADO: ~63 horas**
+**Subtotal Core: ~63 horas**
+
+### Componentes Avanzados (34.A - 34.H)
+
+| Fase | Descripción | Prioridad | Items | Tiempo |
+|------|-------------|-----------|-------|--------|
+| 34.A | Búsqueda e Información en Vivo | 🔴 CRÍTICA | 2 | 10h |
+| 34.B | Memoria y Contexto | 🔴/🟡/🟠 | 4 | 21h |
+| 34.C | Análisis Profundo de Código | 🔴/🟡 | 4 | 22h |
+| 34.D | Validación y Testing | 🔴/🟡/🟠 | 6 | 25h |
+| 34.E | Ejecución Inteligente | 🔴/🟡 | 5 | 17h |
+| 34.F | Comunicación y UX | 🔴/🟡/🟠 | 4 | 12h |
+| 34.G | Inteligencia Avanzada | 🟡/🟠 | 6 | 28h |
+| 34.H | Integraciones Externas | 🟡/🟠 | 5 | 20h |
+
+**Subtotal Avanzados: ~169 horas**
+
+### TOTALES SECCIÓN 34
+
+| Categoría | Horas |
+|-----------|-------|
+| Fases Core (34.1-34.15) | ~63h |
+| Componentes Avanzados (34.A-34.H) | ~169h |
+| **TOTAL SECCIÓN 34** | **~232h** |
 
 **ORDEN RECOMENDADO:**
 ```
-FASE 1 (Seguridad): 34.9
-FASE 2 (Core):      34.10 → 34.11 → 34.12 → 34.1
-FASE 3 (Inteligencia): 34.6 → 34.13 → 34.14
+FASE 1 (Seguridad): 34.9 ✅
+FASE 2 (Core):      34.10 ✅ → 34.11 ✅ → 34.12 ✅ → 34.1 ✅
+FASE 3 (Inteligencia): 34.6 ✅ → 34.13 ✅ → 34.14
 FASE 4 (Frontend):  34.3 → 34.4 → 34.5 → 34.15
 FASE 5 (Avanzado):  34.2 → 34.7 → 34.8
+FASE 6 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G → 34.H
 ```
 
 ---
@@ -5069,14 +5401,20 @@ FASE 5 (Avanzado):  34.2 → 34.7 → 34.8
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 23:00
-**Sesión:** 9
-**Agente activo:** IMPLEMENTACIÓN FRONTEND IA
+**Última actualización:** 8 Diciembre 2025 00:30
+**Sesión:** 10
+**Agente activo:** DOCUMENTACIÓN
 
 ### Última tarea trabajada
-- Sección: 34.1 (CONECTAR FRONTEND CON CONSTRUCTOR 8 FASES)
-- Nombre: Integración frontend con IA constructor
+- Sección: DOCUMENTACIÓN
+- Nombre: Añadir componentes avanzados 34.A - 34.H
 - Estado: ✅ COMPLETADA
+
+### Cambios realizados en sesión 10:
+- Añadidas 8 nuevas fases avanzadas (34.A - 34.H)
+- 39 nuevos items de trabajo con ~169 horas estimadas
+- Actualizado tablero de inicio con nuevas fases
+- Actualizado resumen de sección 34 con totales
 
 ### Cambios realizados en sesión 9:
 - ai-chat.js: Reescrito con nuevo endpoint /api/ai-constructor/process
