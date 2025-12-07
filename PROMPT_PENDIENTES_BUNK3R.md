@@ -175,20 +175,46 @@ El agente busca la siguiente tarea pendiente y pregunta en qué rama trabajar.
 ║  - "hecho"                                                                    ║
 ║                                                                               ║
 ║  ─────────────────────────────────────────────────────────────────────────────║
-║  PASO 3: El agente confirma y empieza a trabajar                              ║
+║  PASO 3: El agente confirma y empieza a trabajar AUTOMÁTICAMENTE              ║
 ║  ─────────────────────────────────────────────────────────────────────────────║
 ║                                                                               ║
-║  Cuando el usuario confirme, el agente responde:                              ║
+║  Cuando el usuario confirme, el agente DEBE:                                  ║
+║                                                                               ║
+║  1. Mostrar confirmación:                                                     ║
 ║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
 ║  │ ✅ Confirmado. Ahora estoy trabajando en la rama [nombre-rama].         │  ║
-║  │                                                                         │  ║
-║  │ Ya tengo los últimos cambios de esta rama (si hubo agentes antes).      │  ║
-║  │                                                                         │  ║
-║  │ Solo puedo editar estos archivos:                                       │  ║
-║  │ - [lista de archivos asignados]                                         │  ║
-║  │                                                                         │  ║
-║  │ ¿Qué tarea quieres que haga?                                            │  ║
+║  │ Ya tengo los últimos cambios de esta rama.                              │  ║
 ║  └─────────────────────────────────────────────────────────────────────────┘  ║
+║                                                                               ║
+║  2. Leer sus archivos asignados (verificar que existen y su estado):         ║
+║     - Listar los archivos que le corresponden                                 ║
+║     - Verificar que puede acceder a ellos                                     ║
+║                                                                               ║
+║  3. Buscar en este archivo (PROMPT_PENDIENTES_BUNK3R.md) las tareas           ║
+║     pendientes (⏳) que corresponden a su área:                               ║
+║     - FRONTEND: Buscar tareas de frontend, UI, templates, CSS, JS             ║
+║     - BACKEND: Buscar tareas de API, endpoints, base de datos, IA             ║
+║     - ADMIN: Buscar tareas del panel de administración                        ║
+║     - BLOCKCHAIN: Buscar tareas de wallets, tokens, servicios externos        ║
+║                                                                               ║
+║  4. Mostrar las tareas pendientes de su área:                                 ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐  ║
+║  │ 📋 TAREAS PENDIENTES DE [ÁREA]:                                         │  ║
+║  │                                                                         │  ║
+║  │ 1. ⏳ [Nombre de tarea 1] - Sección X.X                                 │  ║
+║  │ 2. ⏳ [Nombre de tarea 2] - Sección X.X                                 │  ║
+║  │ 3. ⏳ [Nombre de tarea 3] - Sección X.X                                 │  ║
+║  │                                                                         │  ║
+║  │ Empezando con la tarea #1...                                            │  ║
+║  └─────────────────────────────────────────────────────────────────────────┘  ║
+║                                                                               ║
+║  5. EMPEZAR A TRABAJAR automáticamente en la primera tarea pendiente          ║
+║     de su área. NO esperar instrucciones adicionales del usuario.             ║
+║                                                                               ║
+║  6. Al completar cada tarea:                                                  ║
+║     - Cambiar ⏳ → ✅ en este archivo                                         ║
+║     - Informar al usuario                                                     ║
+║     - Continuar con la siguiente tarea pendiente                              ║
 ║                                                                               ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
