@@ -17,12 +17,13 @@ import html
 import time
 import threading
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import parse_qs, unquote, urlparse
 from collections import defaultdict
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, Response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, Response, session
+from flask_session import Session
 from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
@@ -66,7 +67,23 @@ MAX_CONTENT_LENGTH = 5 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
+SESSION_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.flask_sessions')
+os.makedirs(SESSION_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = SESSION_FOLDER
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'bunk3r_session:'
+app.config['SESSION_FILE_THRESHOLD'] = 500
+
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION or IS_DEPLOYED
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' if (IS_PRODUCTION or IS_DEPLOYED) else 'Lax'
+
+server_session = Session(app)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -106,7 +123,6 @@ OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
 USER_TELEGRAM_ID = os.environ.get('USER_TELEGRAM_ID', '')
 
 DEMO_2FA_SECRET = os.environ.get('DEMO_2FA_SECRET', pyotp.random_base32())
-demo_2fa_sessions = {}
 
 def get_demo_2fa_code():
     """Genera y devuelve el código 2FA actual para modo demo."""
@@ -133,31 +149,60 @@ def verify_demo_2fa_code(code: str) -> bool:
     return totp.verify(code, valid_window=1)
 
 def get_demo_session_token(client_ip: str) -> str:
-    """Genera un token de sesión para el modo demo."""
+    """Genera un token de sesión para el modo demo usando Flask-Session persistente."""
     import secrets
     token = secrets.token_urlsafe(32)
-    demo_2fa_sessions[token] = {
-        'ip': client_ip,
-        'created_at': datetime.now(),
-        'valid': True
-    }
-    for old_token in list(demo_2fa_sessions.keys()):
-        session = demo_2fa_sessions[old_token]
-        if (datetime.now() - session['created_at']).total_seconds() > 3600:
-            del demo_2fa_sessions[old_token]
+    session['demo_2fa_token'] = token
+    session['demo_2fa_ip'] = client_ip
+    session['demo_2fa_created_at'] = datetime.now().isoformat()
+    session['demo_2fa_valid'] = True
+    session.permanent = True
     return token
 
-def verify_demo_session(token: str, client_ip: str) -> bool:
-    """Verifica si el token de sesión demo es válido."""
-    if not token or token not in demo_2fa_sessions:
+def verify_demo_session(token: str = None, client_ip: str = None) -> bool:
+    """Verifica si la sesión demo es válida usando Flask-Session persistente.
+    
+    La validación funciona de dos formas:
+    1. Si hay una sesión Flask válida, se valida directamente desde la cookie
+    2. Si se proporciona un token, se compara con el almacenado en la sesión
+    
+    Args:
+        token: Token opcional desde header X-Demo-Session (para compatibilidad)
+        client_ip: IP del cliente para validación de seguridad
+    """
+    stored_token = session.get('demo_2fa_token')
+    if not stored_token:
         return False
-    session = demo_2fa_sessions[token]
-    if not session['valid']:
+    
+    if not session.get('demo_2fa_valid', False):
         return False
-    if (datetime.now() - session['created_at']).total_seconds() > 3600:
-        del demo_2fa_sessions[token]
+    
+    if token and token != stored_token:
         return False
+    
+    stored_ip = session.get('demo_2fa_ip')
+    if stored_ip and client_ip:
+        primary_stored_ip = stored_ip.split(',')[0].strip()
+        primary_client_ip = client_ip.split(',')[0].strip()
+        if primary_stored_ip != primary_client_ip:
+            logger.warning(f"Demo session IP mismatch: stored={primary_stored_ip}, current={primary_client_ip}")
+            return False
+    
+    created_at_str = session.get('demo_2fa_created_at')
+    if created_at_str:
+        created_at = datetime.fromisoformat(created_at_str)
+        if (datetime.now() - created_at).total_seconds() > 7200:
+            invalidate_demo_session()
+            return False
+    
     return True
+
+def invalidate_demo_session():
+    """Invalida la sesión 2FA demo actual."""
+    session.pop('demo_2fa_token', None)
+    session.pop('demo_2fa_ip', None)
+    session.pop('demo_2fa_created_at', None)
+    session.pop('demo_2fa_valid', None)
 
 try:
     db_manager = DatabaseManager()
@@ -817,11 +862,11 @@ CSP_EXTRA_SOURCES = os.environ.get('CSP_EXTRA_SOURCES', '')
 
 DEFAULT_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://telegram.org https://*.telegram.org; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://telegram.org https://*.telegram.org; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
     "font-src 'self' https://fonts.gstatic.com data:; "
     "img-src 'self' data: https: blob:; "
-    "connect-src 'self' https://api.telegram.org https://*.ton.org https://*.toncenter.com https://toncenter.com wss://* https://api.coingecko.com https://api.ston.fi https://*.cloudinary.com; "
+    "connect-src 'self' https://api.telegram.org https://*.ton.org https://*.toncenter.com https://toncenter.com wss://* https://api.coingecko.com https://api.ston.fi https://*.cloudinary.com https://bridge.tonapi.io; "
     "frame-src 'self' https://telegram.org https://*.telegram.org; "
     "object-src 'none'; "
     "base-uri 'self'; "

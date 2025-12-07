@@ -47,5 +47,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Flask-Session files
+.flask_sessions/
+flask_session/
+
 # Replit-specific (keep these)
 # Do NOT ignore replit config files
