@@ -92,12 +92,13 @@ const AIChat = {
         const textarea = document.getElementById('ai-code-textarea');
         if (textarea) {
             textarea.addEventListener('input', () => {
-                if (this.activeTab !== 'preview' && this.files[this.activeTab]) {
+                if (this.activeTab !== 'preview') {
                     const fileMap = { html: 'index.html', css: 'styles.css', js: 'script.js' };
                     const filename = fileMap[this.activeTab];
                     if (filename) {
                         this.files[filename] = textarea.value;
                         this.saveToStorage();
+                        this.updatePreview();
                     }
                 }
             });
