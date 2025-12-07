@@ -20,9 +20,11 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║                                                                  ║
 ║ 🔄 EN PROGRESO: Ninguna                                          ║
 ║                                                                  ║
-║ ⏳ PENDIENTES: 27.10→27.25, Sección 28, 29, 30 (Auditoría)       ║
+║ ⏳ PENDIENTES: 27.10→27.25, Sección 28, 29, 30, 31 (Auditoría)   ║
 ║                                                                  ║
-║ 🔴 CRÍTICO: 2 (30.1 except vacíos, 30.2 innerHTML XSS)           ║
+║ 🔴 CRÍTICO: 4 problemas                                          ║
+║    30.1 except vacíos | 30.2 innerHTML XSS                       ║
+║    31.1 Botones sin función | 31.2 Códigos 2FA en logs           ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -1398,10 +1400,499 @@ app.logger.setLevel(logging.INFO)
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 31: AUDITORÍA EXHAUSTIVA - PROBLEMAS DETECTADOS ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Agregado:** 7 Diciembre 2025  
+**Basado en:** Auditoría exhaustiva del código completo  
+**Tiempo total estimado:** 30+ horas
+
+---
+
+### FASE 31.1: BOTONES Y FUNCIONES SIN IMPLEMENTAR ⏳
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🔵 FRONTEND USUARIO + 🟢 FRONTEND ADMIN
+
+#### Objetivo:
+Implementar funcionalidad real para botones que actualmente no hacen nada o solo muestran un toast.
+
+#### Tareas:
+
+**31.1.1 - Funciones vacías en app.js:**
+- [ ] `setupAvatarUpload()` (línea ~1979-1982) - Función VACÍA, no implementa subida de avatar
+- [ ] `viewUserProfile(userId)` (línea ~2132-2135) - Solo muestra toast "Navegando al perfil...", no navega realmente
+- [ ] Implementar navegación real a perfil de usuario con datos reales
+
+**31.1.2 - Modales de Admin sin funcionalidad completa:**
+- [ ] `showAddBotForm()` - Verificar que el formulario funciona y guarda en BD
+- [ ] `showAddProductForm()` - Verificar que el formulario funciona y guarda en BD
+- [ ] `closeAdminModal()` - Verificar cierre correcto de todos los modales
+- [ ] `saveSystemSettings()` - Verificar que guarda cambios en BD
+- [ ] `loadSystemLogs()` - Verificar que carga logs reales
+
+**31.1.3 - MultiBrowser Module:**
+- [ ] `closeMultiBrowserModule()` - Verificar implementación completa
+- [ ] Revisar toda la funcionalidad del módulo MultiBrowser
+
+#### Criterios de éxito:
+- [ ] 0 funciones vacías en el código
+- [ ] Todos los botones ejecutan acciones reales
+- [ ] Todos los modales abren, funcionan y cierran correctamente
+
+---
+
+### FASE 31.2: SEGURIDAD - CÓDIGO 2FA EN LOGS ⏳
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 1 hora  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Eliminar la exposición de códigos 2FA sensibles en los logs del servidor.
+
+#### Problema detectado:
+```
+INFO:__main__:🔐 DEMO 2FA CODE: 272557
+```
+El código 2FA se muestra en logs del servidor, lo cual es un riesgo de seguridad en producción.
+
+#### Tareas:
+- [ ] Buscar todas las líneas que loguean códigos 2FA en app.py
+- [ ] Reemplazar logs de códigos 2FA con logs genéricos: "2FA code sent to user"
+- [ ] Solo mantener logging de códigos 2FA en modo DEBUG, NO en producción
+- [ ] Añadir variable de entorno `HIDE_2FA_LOGS=true` para producción
+
+#### Código sugerido:
+```python
+# ANTES (INSEGURO):
+logger.info(f"🔐 DEMO 2FA CODE: {code}")
+
+# DESPUÉS (SEGURO):
+if IS_PRODUCTION or os.getenv('HIDE_2FA_LOGS', 'false').lower() == 'true':
+    logger.info("🔐 2FA code generated and sent to user")
+else:
+    logger.debug(f"🔐 DEMO 2FA CODE: {code}")
+```
+
+#### Criterios de éxito:
+- [ ] 0 códigos 2FA visibles en logs de producción
+- [ ] Logs de desarrollo mantienen visibilidad para debugging
+
+---
+
+### FASE 31.3: NAVEGACIÓN INCONSISTENTE ⏳
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 3 horas  
+**Agente:** 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Corregir la navegación que lleva a páginas inexistentes o mal implementadas.
+
+#### Problemas detectados:
+- `handleBottomNav()` tiene casos que llaman a `showPage()` con páginas que pueden no existir
+- `showPage('marketplace')`, `showPage('bots')`, `showPage('exchange')` - Verificar que existen
+
+#### Tareas:
+- [ ] Auditar función `handleBottomNav()` en app.js (línea ~1311)
+- [ ] Verificar que cada caso del switch tiene su página correspondiente en el HTML
+- [ ] Verificar que `showPage()` valida si la página existe antes de mostrarla
+- [ ] Agregar fallback a página de error o home si la página no existe
+- [ ] Documentar todas las páginas disponibles en la navegación
+
+#### Páginas a verificar:
+- [ ] `marketplace` - ¿Existe en index.html?
+- [ ] `bots` - ¿Existe en index.html?
+- [ ] `exchange` - ¿Existe en index.html?
+- [ ] `ai-chat` - ¿Existe en index.html?
+- [ ] `wallet` - ¿Existe en index.html?
+- [ ] `notifications` - ¿Existe en index.html?
+- [ ] `profile` - ¿Existe en index.html?
+- [ ] `home` - ¿Existe en index.html?
+
+#### Criterios de éxito:
+- [ ] Todas las navegaciones llevan a páginas que existen
+- [ ] Si una página no existe, se muestra mensaje apropiado
+
+---
+
+### FASE 31.4: ESTADÍSTICAS DEL ADMIN SIN DATOS ⏳
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND API + 🟢 FRONTEND ADMIN
+
+#### Objetivo:
+Asegurar que el dashboard admin muestre datos reales y maneje correctamente el caso de tablas vacías.
+
+#### Problemas detectados:
+- Las estadísticas muestran 0 cuando no hay datos (correcto pero sin indicador visual)
+- Falta mensaje de "No hay datos" vs "Cargando..." vs "0 registros"
+- No hay datos de prueba para desarrollo
+
+#### Tareas:
+- [ ] Agregar indicadores visuales cuando no hay datos vs cuando hay 0 real
+- [ ] Crear script de seed data para desarrollo con datos de prueba
+- [ ] Verificar que `/api/admin/dashboard/stats` retorna datos correctos
+- [ ] Verificar que `/api/admin/dashboard/activity` retorna actividad real
+- [ ] Verificar que `/api/admin/dashboard/alerts` retorna alertas reales
+- [ ] Verificar que `/api/admin/dashboard/charts` retorna datos de gráficos
+
+#### Tablas a verificar:
+- [ ] `users` - ¿Tiene registros?
+- [ ] `wallet_transactions` - ¿Tiene registros?
+- [ ] `deposit_wallets` - ¿Tiene registros?
+- [ ] `security_alerts` - ¿Existe la tabla?
+
+#### Criterios de éxito:
+- [ ] Dashboard muestra "Sin datos" cuando tablas están vacías
+- [ ] Datos de desarrollo disponibles para testing
+- [ ] Estadísticas se actualizan en tiempo real
+
+---
+
+### FASE 31.5: TABLAS DE BD FALTANTES ⏳
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Crear tablas de base de datos que son referenciadas pero podrían no existir.
+
+#### Tablas a verificar/crear:
+- [ ] `blocked_ips` - Usada en `/api/admin/blocked-ips`
+- [ ] `support_tickets` - Usada en `/api/admin/support/tickets`
+- [ ] `faq` - Usada en `/api/admin/faq`
+- [ ] `admin_user_notes` - Usada en detalle de usuario admin
+- [ ] `security_alerts` - Usada en dashboard de alertas
+
+#### Tareas:
+- [ ] Verificar existencia de cada tabla en init_db.py
+- [ ] Crear tablas faltantes con estructura correcta
+- [ ] Agregar migraciones si es necesario
+- [ ] Actualizar endpoints para manejar tablas inexistentes gracefully
+
+#### Criterios de éxito:
+- [ ] Todas las tablas referenciadas existen
+- [ ] Los endpoints no crashean si la tabla está vacía
+
+---
+
+### FASE 31.6: PWA - PROGRESSIVE WEB APP ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 4 horas  
+**Agente:** 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Implementar soporte completo de PWA para instalación y funcionamiento offline.
+
+#### Componentes faltantes:
+- [ ] **manifest.json** - No existe o está incompleto
+- [ ] **Service Worker** - No implementado
+- [ ] **Iconos PWA** - Diferentes tamaños para dispositivos
+
+#### Tareas:
+
+**31.6.1 - Crear manifest.json:**
+```json
+{
+  "name": "BUNK3R-W3B",
+  "short_name": "BUNK3R",
+  "description": "Plataforma Web3 con Telegram",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#0f3460",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+```
+
+**31.6.2 - Crear Service Worker (sw.js):**
+- [ ] Cachear assets estáticos (CSS, JS, imágenes)
+- [ ] Implementar estrategia cache-first para assets
+- [ ] Implementar network-first para API calls
+- [ ] Manejar modo offline con página de fallback
+
+**31.6.3 - Registrar Service Worker:**
+- [ ] Agregar script de registro en index.html
+- [ ] Manejar actualizaciones del SW
+
+**31.6.4 - Iconos:**
+- [ ] Crear iconos en tamaños: 72, 96, 128, 144, 152, 192, 384, 512
+- [ ] Agregar apple-touch-icon para iOS
+
+#### Criterios de éxito:
+- [ ] App instalable en dispositivos móviles
+- [ ] Lighthouse PWA score > 80
+- [ ] Funcionalidad básica offline
+
+---
+
+### FASE 31.7: SISTEMA DE BACKUP AUTOMÁTICO ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Implementar sistema de backup automático de la base de datos.
+
+#### Componentes faltantes:
+- [ ] Backup automático de BD
+- [ ] Snapshots periódicos
+- [ ] Sistema de restore
+
+#### Tareas:
+- [ ] Crear script de backup: `scripts/backup_db.py`
+- [ ] Programar backup diario con cron o scheduler
+- [ ] Almacenar backups en ubicación segura
+- [ ] Implementar endpoint admin para backup manual
+- [ ] Implementar endpoint admin para restore
+- [ ] Limitar retención de backups (últimos 7 días)
+
+#### Código sugerido:
+```python
+# scripts/backup_db.py
+import subprocess
+from datetime import datetime
+
+def create_backup():
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"backup_{timestamp}.sql"
+    # pg_dump command
+    subprocess.run([
+        'pg_dump', 
+        '-h', os.getenv('PGHOST'),
+        '-U', os.getenv('PGUSER'),
+        '-d', os.getenv('PGDATABASE'),
+        '-f', f'backups/{filename}'
+    ])
+```
+
+#### Criterios de éxito:
+- [ ] Backups automáticos funcionando
+- [ ] Admin puede descargar backup manualmente
+- [ ] Sistema de restore probado
+
+---
+
+### FASE 31.8: NOTIFICACIONES PUSH TELEGRAM ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND API + 🔴 BLOCKCHAIN
+
+#### Objetivo:
+Implementar sistema completo de notificaciones via bot de Telegram.
+
+#### Estado actual:
+- `BOT_TOKEN` y `CHANNEL_ID` configurados pero no utilizados completamente
+- Falta bot de Telegram implementado
+- Faltan preferencias de usuario para notificaciones
+
+#### Tareas:
+- [ ] Crear servicio `tracking/telegram_bot_service.py`
+- [ ] Implementar función `send_notification(user_id, message)`
+- [ ] Crear tabla `notification_preferences` en BD
+- [ ] Agregar endpoints para gestionar preferencias
+- [ ] Implementar notificaciones para:
+  - [ ] Depósitos recibidos
+  - [ ] Retiros completados
+  - [ ] Nuevos seguidores
+  - [ ] Menciones en publicaciones
+  - [ ] Alertas de seguridad
+
+#### Criterios de éxito:
+- [ ] Usuarios reciben notificaciones en Telegram
+- [ ] Usuarios pueden activar/desactivar tipos de notificación
+
+---
+
+### FASE 31.9: RATE LIMITING GLOBAL ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Implementar rate limiting global por IP para protección contra DDoS.
+
+#### Estado actual:
+- Rate limiting solo en algunos endpoints específicos
+- No hay protección global por IP
+- No hay blacklist automática
+
+#### Tareas:
+- [ ] Implementar middleware de rate limit global por IP
+- [ ] Configurar límites por tipo de endpoint:
+  - [ ] Lectura: 100 req/min
+  - [ ] Escritura: 30 req/min
+  - [ ] Login: 5 req/min
+- [ ] Agregar auto-blacklist tras 1000 requests en 1 minuto
+- [ ] Crear endpoint admin para ver IPs bloqueadas
+- [ ] Crear endpoint admin para desbloquear IP
+
+#### Código sugerido:
+```python
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["200 per minute", "1000 per hour"],
+    storage_uri="memory://"
+)
+```
+
+#### Criterios de éxito:
+- [ ] Rate limiting activo en todas las rutas
+- [ ] Respuestas 429 cuando se excede límite
+- [ ] Admin puede ver/gestionar IPs bloqueadas
+
+---
+
+### FASE 31.10: MODO MANTENIMIENTO COMPLETO ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 2 horas  
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+
+#### Objetivo:
+Implementar sistema de mantenimiento con UI para usuarios.
+
+#### Componentes faltantes:
+- [ ] Página de mantenimiento para usuarios
+- [ ] Programación automática de mantenimiento
+- [ ] Banner de "sistema en mantenimiento"
+
+#### Tareas:
+- [ ] Crear template `templates/maintenance.html`
+- [ ] Agregar middleware que redirige a mantenimiento cuando está activo
+- [ ] Crear endpoints admin para activar/desactivar mantenimiento
+- [ ] Agregar programación de mantenimiento en admin
+- [ ] Permitir bypass para admins durante mantenimiento
+
+#### Criterios de éxito:
+- [ ] Admin puede activar modo mantenimiento
+- [ ] Usuarios ven página de mantenimiento amigable
+- [ ] Admins pueden acceder durante mantenimiento
+
+---
+
+### FASE 31.11: MONITOREO Y ALERTAS DEL SISTEMA ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 3 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Implementar sistema de monitoreo con alertas automáticas.
+
+#### Componentes faltantes:
+- [ ] Uptime monitoring
+- [ ] Alertas cuando BD está lenta
+- [ ] Alertas de errores críticos por Telegram
+- [ ] Health check endpoints
+
+#### Tareas:
+- [ ] Crear endpoint `/health` para health checks
+- [ ] Crear endpoint `/api/admin/system/status` con métricas:
+  - [ ] CPU usage
+  - [ ] Memory usage
+  - [ ] DB connection status
+  - [ ] Response time promedio
+- [ ] Implementar alertas automáticas cuando:
+  - [ ] Response time > 2 segundos
+  - [ ] Error rate > 5%
+  - [ ] DB disconnected
+- [ ] Enviar alertas críticas al Telegram del admin
+
+#### Criterios de éxito:
+- [ ] Health check funcionando
+- [ ] Admin recibe alertas críticas en Telegram
+- [ ] Dashboard muestra estado del sistema
+
+---
+
+### FASE 31.12: CLOUDINARY FALLBACK ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 1 hora  
+**Agente:** 🔴 BLOCKCHAIN
+
+#### Objetivo:
+Implementar fallback cuando Cloudinary no está configurado.
+
+#### Problema:
+Si las credenciales de Cloudinary no están configuradas, las publicaciones con imágenes/videos fallan silenciosamente.
+
+#### Tareas:
+- [ ] Verificar existencia de credenciales Cloudinary al iniciar
+- [ ] Mostrar error claro cuando se intenta subir sin credenciales
+- [ ] Implementar almacenamiento local como fallback opcional
+- [ ] Documentar requisitos de Cloudinary
+
+#### Criterios de éxito:
+- [ ] Error claro si Cloudinary no está configurado
+- [ ] Opción de fallback a almacenamiento local
+
+---
+
+### FASE 31.13: WORKSPACE/AI CONSTRUCTOR ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 3 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Verificar y completar funcionalidad del AI Constructor.
+
+#### Estado actual:
+- Endpoint `/api/ai-constructor/process` existe
+- Funcionalidad puede no estar completa
+
+#### Tareas:
+- [ ] Auditar todos los endpoints de AI Constructor
+- [ ] Verificar integración con servicios AI externos
+- [ ] Documentar requisitos de API keys AI
+- [ ] Implementar fallback si API AI no está disponible
+- [ ] Agregar rate limiting específico para AI endpoints
+
+#### Criterios de éxito:
+- [ ] AI Constructor funciona completamente
+- [ ] Errores manejados gracefully
+
+---
+
+## RESUMEN SECCIÓN 31
+
+| Fase | Descripción | Prioridad | Tiempo | Agente | Estado |
+|------|-------------|-----------|--------|--------|--------|
+| 31.1 | Botones sin funcionalidad | 🔴 CRÍTICA | 4h | FRONTEND | ⏳ |
+| 31.2 | Códigos 2FA en logs | 🔴 CRÍTICA | 1h | BACKEND | ⏳ |
+| 31.3 | Navegación inconsistente | 🟡 ALTA | 3h | FRONTEND | ⏳ |
+| 31.4 | Estadísticas admin vacías | 🟡 ALTA | 2h | BACKEND/ADMIN | ⏳ |
+| 31.5 | Tablas BD faltantes | 🟡 ALTA | 2h | BACKEND | ⏳ |
+| 31.6 | PWA completo | 🟠 MEDIA | 4h | FRONTEND | ⏳ |
+| 31.7 | Backup automático | 🟠 MEDIA | 4h | BACKEND | ⏳ |
+| 31.8 | Notificaciones Telegram | 🟠 MEDIA | 4h | BACKEND/BLOCKCHAIN | ⏳ |
+| 31.9 | Rate limiting global | 🟠 MEDIA | 2h | BACKEND | ⏳ |
+| 31.10 | Modo mantenimiento | 🟢 BAJA | 2h | ADMIN/BACKEND | ⏳ |
+| 31.11 | Monitoreo y alertas | 🟢 BAJA | 3h | BACKEND | ⏳ |
+| 31.12 | Cloudinary fallback | 🟢 BAJA | 1h | BLOCKCHAIN | ⏳ |
+| 31.13 | AI Constructor | 🟢 BAJA | 3h | BACKEND | ⏳ |
+
+**TOTAL TIEMPO ESTIMADO: ~35 horas**
+
+**ORDEN RECOMENDADO POR PRIORIDAD:**
+1. 🔴 **CRÍTICO:** 31.1 → 31.2
+2. 🟡 **ALTA:** 31.3 → 31.4 → 31.5
+3. 🟠 **MEDIA:** 31.6 → 31.7 → 31.8 → 31.9
+4. 🟢 **BAJA:** 31.10 → 31.11 → 31.12 → 31.13
+
+---
+
 ## PUNTO DE GUARDADO
 
 **Última actualización:** 7 Diciembre 2025
-**Estado:** Agregada SECCIÓN 30 con tareas de auditoría
-**Próximo paso:** Ejecutar fase 30.1 (Corregir except: vacíos)
+**Estado:** Agregada SECCIÓN 31 con auditoría exhaustiva de problemas detectados
+**Próximo paso:** Ejecutar fase 30.1 (Corregir except: vacíos) o 31.1 (Botones sin funcionalidad)
 
 ---
