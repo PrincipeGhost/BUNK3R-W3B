@@ -1839,14 +1839,28 @@ const App = {
     
     updateProfilePage() {
         const username = document.getElementById('profile-page-username');
-        const name = document.getElementById('profile-page-name');
+        const atUsername = document.getElementById('profile-at-username');
+        const displayName = document.getElementById('profile-display-name');
+        const bioText = document.getElementById('profile-bio-text');
         const verifiedBadge = document.getElementById('profile-verified-badge');
+        const userBadge = document.getElementById('profile-user-badge');
+        const walletBalance = document.getElementById('profile-wallet-balance');
         
-        if (username && this.user) {
-            username.textContent = this.user.username ? `@${this.user.username}` : '@demo_user';
+        const userUsername = this.user?.username || 'demo_user';
+        const userName = this.user?.firstName || this.user?.first_name || 'Usuario';
+        const userBio = this.user?.bio || 'Sin biografia';
+        
+        if (username) {
+            username.textContent = `@${userUsername}`;
         }
-        if (name && this.user) {
-            name.textContent = this.user.firstName || 'Demo';
+        if (atUsername) {
+            atUsername.textContent = `@${userUsername}`;
+        }
+        if (displayName) {
+            displayName.textContent = userName;
+        }
+        if (bioText) {
+            bioText.textContent = userBio;
         }
         
         if (verifiedBadge) {
@@ -1857,8 +1871,62 @@ const App = {
             }
         }
         
+        if (userBadge) {
+            if (this.isOwner) {
+                userBadge.textContent = 'Owner';
+                userBadge.style.background = 'rgba(246, 70, 93, 0.15)';
+                userBadge.style.color = '#F6465D';
+            } else if (this.user?.isPremium || this.user?.is_premium) {
+                userBadge.textContent = 'Premium';
+                userBadge.style.background = 'rgba(179, 136, 255, 0.15)';
+                userBadge.style.color = '#B388FF';
+            } else {
+                userBadge.textContent = 'Miembro';
+                userBadge.style.background = 'rgba(240, 185, 11, 0.15)';
+                userBadge.style.color = '#F0B90B';
+            }
+        }
+        
+        if (walletBalance && this.walletBalance !== undefined) {
+            walletBalance.textContent = parseFloat(this.walletBalance || 0).toFixed(2);
+        }
+        
         this.updateAllAvatars();
         this.loadProfileGallery();
+        this.loadProfileStats();
+        this.setupNewProfileListeners();
+    },
+    
+    setupNewProfileListeners() {
+        if (this._newProfileListenersSetup) return;
+        this._newProfileListenersSetup = true;
+        
+        const backBtn = document.getElementById('profile-back-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => this.goToHome());
+        }
+        
+        const walletCard = document.getElementById('profile-wallet-card');
+        if (walletCard) {
+            walletCard.addEventListener('click', () => this.showPage('wallet'));
+        }
+        
+        const settingsBtn = document.getElementById('profile-settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.showSettingsScreen());
+        }
+        
+        const statsElements = document.querySelectorAll('.profile-page-stat[data-action]');
+        statsElements.forEach(stat => {
+            stat.addEventListener('click', () => {
+                const action = stat.dataset.action;
+                if (action === 'followers') {
+                    this.showFollowersModal();
+                } else if (action === 'following') {
+                    this.showFollowingModal();
+                }
+            });
+        });
     },
     
     async loadProfileGallery() {
