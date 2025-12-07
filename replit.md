@@ -103,6 +103,41 @@ Located in `tracking/ai_toolkit.py`, provides secure tools for AI Constructor to
 - Command blacklist: rm -rf, sudo, chmod 777, eval, python -c, node -e, curl|bash, etc.
 - Delete requires double confirmation (confirm=true AND confirm_text="DELETE")
 
+## AI Workspace Module (NEW - Dec 7, 2025)
+Located at `/workspace`, provides a 3-column IDE-like interface for AI Constructor.
+
+**Frontend Components (workspace.js, workspace.css):**
+1. **Chat Panel** - Left panel for user-AI interaction with 8-phase process visualization
+2. **Preview Panel** - Center panel with live iframe preview, auto-refresh on file generation
+3. **Files Panel** - Right panel with project file tree, context menus, file operations
+
+**File Management API Endpoints:**
+- `/api/files/tree` - Get project file tree structure
+- `/api/files/content` - Read file content (requires auth)
+- `/api/files/save` - Save file content (requires auth)
+- `/api/files/create` - Create new file (requires auth)
+- `/api/files/folder` - Create new folder (requires auth)
+- `/api/files/delete` - Delete file/folder with confirmation (requires auth)
+- `/api/files/rename` - Rename file/folder (requires auth)
+- `/api/files/duplicate` - Duplicate file (requires auth)
+- `/api/files/diff` - Generate diff between versions (requires auth)
+- `/api/files/apply-diff` - Apply changes after confirmation (requires auth)
+- `/api/files/history` - Get file edit history (requires auth)
+
+**Security Features:**
+- `validate_workspace_path()` - Prevents path traversal with os.path.abspath() check
+- `check_workspace_auth()` - Validates demo sessions via verify_demo_session() OR Telegram init data via validate_telegram_webapp_data()
+- Blocked paths: .env, .git, __pycache__, node_modules, .replit, .cache, .upm, .config, venv, .local, .nix
+- Protected files: app.py, requirements.txt, run.py, init_db.py, replit.md
+- Protected directories: tracking, templates, static (at root level)
+- Frontend handles 401 errors with auth redirect
+
+**UI Features:**
+- Context menu (right-click): Open, Rename, Duplicate, Delete
+- File highlighting animation for newly generated files
+- Auto-expand folders to show generated files
+- Diff viewer with syntax highlighting (green/red for add/remove)
+
 ## External Dependencies
 - **PostgreSQL:** Primary database.
 - **Telegram Web App API:** User authentication and core Telegram integration.

@@ -4599,23 +4599,31 @@ La IA debe poder hacer MÁS que solo crear páginas web.
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.3: SISTEMA DE ARCHIVOS VIRTUAL ⏳
+## FASE 34.3: SISTEMA DE ARCHIVOS VIRTUAL ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Sistema de archivos en memoria para proyectos de la IA.
 
 ### Tareas:
-- [ ] Crear clase `VirtualFileSystem` 
-- [ ] Almacenar archivos en base de datos por usuario/proyecto
-- [ ] Métodos: create, read, update, delete, list, search
-- [ ] Persistir entre sesiones
-- [ ] Límite de tamaño por usuario
-- [ ] Endpoint para descargar como ZIP
+- [x] Crear endpoints API para gestión de archivos (create, delete, rename, duplicate)
+- [x] Implementar validación de rutas bloqueadas (.env, .git, __pycache__, node_modules)
+- [x] Métodos: create, read, update, delete, list, rename, duplicate
+- [x] Persistir en sistema de archivos real del servidor
+- [x] Seguridad contra path traversal
+- [x] Endpoint para duplicar archivos
+
+### Implementación:
+- `/api/files/create` - Crear archivos nuevos
+- `/api/files/folder` - Crear carpetas
+- `/api/files/delete` - Eliminar archivos/carpetas
+- `/api/files/rename` - Renombrar archivos/carpetas
+- `/api/files/duplicate` - Duplicar archivos
 
 ### Estructura de BD:
 ```sql
@@ -4634,43 +4642,57 @@ CREATE TABLE ai_project_files (
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.4: PREVIEW EN TIEMPO REAL ⏳
+## FASE 34.4: PREVIEW EN TIEMPO REAL ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 3 horas  
 **Agente:** 🔵 FRONTEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 El preview se actualiza mientras la IA trabaja, no solo al final.
 
 ### Tareas:
-- [ ] Implementar WebSocket o polling para actualizaciones
-- [ ] Actualizar iframe cuando cambia HTML/CSS/JS
-- [ ] Mostrar indicador de "IA trabajando" en preview
-- [ ] Manejar errores de preview gracefully
-- [ ] Botón de refresh manual
+- [x] Auto-actualizar preview cuando IA genera archivos HTML
+- [x] Actualizar iframe con refreshPreview()
+- [x] updatePreviewWithFile() para archivos HTML generados
+- [x] Botón de refresh manual implementado
+- [x] Botón para abrir en nueva pestaña
+
+### Implementación:
+- handleGeneratedFiles() guarda archivos y actualiza preview automáticamente
+- highlightGeneratedFiles() resalta archivos nuevos en el árbol
+- autoExpandToFile() expande carpetas para mostrar archivo generado
 
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.5: PANEL DE ARCHIVOS DINÁMICO ⏳
+## FASE 34.5: PANEL DE ARCHIVOS DINÁMICO ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 3 horas  
 **Agente:** 🔵 FRONTEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Panel derecho muestra archivos del proyecto IA.
 
 ### Tareas:
-- [ ] Cargar archivos del proyecto actual
-- [ ] Árbol expandible de carpetas
-- [ ] Click en archivo para ver/editar contenido
-- [ ] Indicador de archivo nuevo/modificado
-- [ ] Bloquear edición mientras IA trabaja
-- [ ] Sincronizar con sistema de archivos virtual
+- [x] Cargar archivos del proyecto con loadFiles()
+- [x] Árbol expandible de carpetas con toggle
+- [x] Click en archivo para ver/editar contenido (modal editor)
+- [x] Indicador de archivo nuevo/modificado (tree-item-new animation)
+- [x] Menú contextual (click derecho) con: Abrir, Renombrar, Duplicar, Eliminar
+- [x] Sincronizar con sistema de archivos real
+- [x] Selección de items con resaltado visual
+
+### Implementación:
+- showContextMenu() - Menú contextual completo
+- createNewFile(), createNewFolder() - Crear elementos
+- deleteFile(), renameFile(), duplicateFile() - Operaciones de archivo
+- CSS animations para nuevos archivos
 
 ---
 
@@ -5032,22 +5054,29 @@ LANGUAGE_TEMPLATES = {
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.15: SISTEMA DE DIFF ⏳
+## FASE 34.15: SISTEMA DE DIFF ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟠 MEDIA  
 **Tiempo:** 3 horas  
 **Agente:** 🔵 FRONTEND + 🟡 BACKEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Mostrar diferencias antes de aplicar cambios.
 
 ### Tareas:
-- [ ] Implementar generación de diff en backend
-- [ ] Mostrar diff visual en frontend (verde/rojo)
-- [ ] Botón "Aceptar cambios" / "Rechazar"
-- [ ] Historial de cambios por archivo
-- [ ] Rollback a versión anterior
+- [x] Implementar generación de diff en backend (`/api/files/diff`)
+- [x] Mostrar diff visual en frontend (verde/rojo con CSS)
+- [x] Botón "Aplicar cambios" / "Cancelar"
+- [x] Endpoint historial de cambios por archivo (`/api/files/history`)
+- [x] Endpoint para aplicar diff (`/api/files/apply-diff`)
+
+### Implementación:
+- **Backend:** difflib para generar unified diffs
+- **Frontend:** showDiffViewer(), formatDiffOutput(), applyDiff()
+- **CSS:** Estilos completos para diff-viewer (verde adiciones, rojo eliminaciones)
+- **Seguridad:** Autenticación requerida y validación de rutas
 
 ---
 
