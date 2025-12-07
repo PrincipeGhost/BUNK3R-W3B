@@ -795,11 +795,6 @@ const App = {
             this.createDevModeIndicator();
         }
         
-        const walletScreen = document.getElementById('wallet-screen');
-        if (!walletScreen || walletScreen.classList.contains('hidden')) {
-            this.handleBottomNav('wallet');
-        }
-        
         console.log('Dev phase lock initialized. DevMode:', this.isDevMode);
     },
     

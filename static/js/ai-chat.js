@@ -203,8 +203,9 @@ const AIChat = {
         if (typeof App !== 'undefined') {
             if (App.isDemoMode) {
                 headers['X-Demo-Mode'] = 'true';
-                if (App.demoSessionToken) {
-                    headers['X-Demo-Session'] = App.demoSessionToken;
+                const token = App.demoSessionToken || sessionStorage.getItem('demoSessionToken');
+                if (token) {
+                    headers['X-Demo-Session'] = token;
                 }
             } else if (App.initData) {
                 headers['X-Telegram-Init-Data'] = App.initData;
