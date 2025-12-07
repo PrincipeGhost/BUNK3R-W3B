@@ -5826,7 +5826,7 @@ class TaskManager:
 
 ---
 
-## RESUMEN SECCIÓN 34 (ACTUALIZADO)
+## RESUMEN SECCIÓN 34 (ACTUALIZADO 7 Dic 2025)
 
 ### Fases Core (34.1 - 34.15)
 
@@ -5834,9 +5834,9 @@ class TaskManager:
 |------|-------------|-----------|--------|--------|
 | 34.1 | Conectar frontend con 8 fases | 🔴 CRÍTICA | 4h | ✅ |
 | 34.2 | Expandir capacidades IA | 🔴 CRÍTICA | 6h | ✅ |
-| 34.3 | Sistema de archivos virtual | 🟡 ALTA | 4h | ⏳ |
-| 34.4 | Preview tiempo real | 🟡 ALTA | 3h | ⏳ |
-| 34.5 | Panel archivos dinámico | 🟡 ALTA | 3h | ⏳ |
+| 34.3 | Sistema de archivos virtual | 🟡 ALTA | 4h | ✅ |
+| 34.4 | Preview tiempo real | 🟡 ALTA | 3h | ✅ |
+| 34.5 | Panel archivos dinámico | 🟡 ALTA | 3h | ✅ |
 | 34.6 | Entendimiento intenciones | 🔴 CRÍTICA | 5h | ✅ |
 | 34.7 | Consola de comandos | 🟠 MEDIA | 4h | ⏳ |
 | 34.8 | IA Local DeepSeek | 🟠 MEDIA | 4h | ⏳ |
@@ -5846,9 +5846,24 @@ class TaskManager:
 | **34.12** | **Detector de errores** | 🔴 CRÍTICA | 4h | ✅ |
 | **34.13** | **Entendedor de proyectos** | 🟡 ALTA | 5h | ✅ |
 | **34.14** | **Multi-lenguaje** | 🟡 ALTA | 6h | ✅ |
-| **34.15** | **Sistema de diff** | 🟠 MEDIA | 3h | ⏳ |
+| **34.15** | **Sistema de diff** | 🟠 MEDIA | 3h | ✅ |
 
 **Subtotal Core: ~63 horas**
+
+### Fases Núcleo IA (34.16 - 34.23) - NUEVO
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| **34.16** | **Motor de Decisiones Automático** | 🔴 CRÍTICA | 4h | ⏳ |
+| **34.17** | **Sistema de Reintentos Inteligente** | 🔴 CRÍTICA | 3h | ⏳ |
+| **34.18** | **Contexto de Proyecto Persistente** | 🔴 CRÍTICA | 4h | ⏳ |
+| **34.19** | **Validador Pre-Ejecución** | 🟡 ALTA | 3h | ⏳ |
+| **34.20** | **Sistema de Rollback Automático** | 🟡 ALTA | 4h | ⏳ |
+| **34.21** | **Analizador de Impacto de Cambios** | 🟡 ALTA | 4h | ⏳ |
+| **34.22** | **Gestor de Workflows** | 🔴 CRÍTICA | 3h | ⏳ |
+| **34.23** | **Gestor de Tareas con Tracking** | 🟠 MEDIA | 2h | ⏳ |
+
+**Subtotal Núcleo IA: ~27 horas**
 
 ### Componentes Avanzados (34.A - 34.H)
 
@@ -5870,17 +5885,20 @@ class TaskManager:
 | Categoría | Horas |
 |-----------|-------|
 | Fases Core (34.1-34.15) | ~63h |
+| Fases Núcleo IA (34.16-34.23) | ~27h |
 | Componentes Avanzados (34.A-34.H) | ~169h |
-| **TOTAL SECCIÓN 34** | **~232h** |
+| **TOTAL SECCIÓN 34** | **~259h** |
 
 **ORDEN RECOMENDADO:**
 ```
 FASE 1 (Seguridad): 34.9 ✅
 FASE 2 (Core):      34.10 ✅ → 34.11 ✅ → 34.12 ✅ → 34.1 ✅
 FASE 3 (Inteligencia): 34.6 ✅ → 34.13 ✅ → 34.14 ✅
-FASE 4 (Frontend):  34.3 → 34.4 → 34.5 → 34.15
+FASE 4 (Frontend):  34.3 ✅ → 34.4 ✅ → 34.5 ✅ → 34.15 ✅
 FASE 5 (Avanzado):  34.2 → 34.7 → 34.8
-FASE 6 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G → 34.H
+FASE 6 (Núcleo IA): 34.16 → 34.17 → 34.18 → 34.22 (Críticas primero)
+                    34.19 → 34.20 → 34.21 → 34.23 (Altas/Medias después)
+FASE 7 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G → 34.H
 ```
 
 ---
@@ -6669,14 +6687,30 @@ FASE 6 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G �
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 21:20
-**Sesión:** 13
+**Última actualización:** 7 Diciembre 2025 22:00
+**Sesión:** 14
 **Agente activo:** 🟡 BACKEND API
 
 ### Última tarea trabajada
 - Sección: 34 (AI BUNK3R CONSTRUCTOR)
-- Nombre: Corrección de errores LSP en ai_constructor.py
+- Nombre: Agregadas fases 34.16 - 34.23 (Núcleo IA)
 - Estado: ✅ COMPLETADA
+
+### Cambios realizados en sesión 14:
+- Agregadas 8 nuevas fases de Núcleo IA (34.16 - 34.23):
+  - 34.16: Motor de Decisiones Automático (4h) 🔴 CRÍTICA
+  - 34.17: Sistema de Reintentos Inteligente (3h) 🔴 CRÍTICA
+  - 34.18: Contexto de Proyecto Persistente (4h) 🔴 CRÍTICA
+  - 34.19: Validador Pre-Ejecución (3h) 🟡 ALTA
+  - 34.20: Sistema de Rollback Automático (4h) 🟡 ALTA
+  - 34.21: Analizador de Impacto de Cambios (4h) 🟡 ALTA
+  - 34.22: Gestor de Workflows (3h) 🔴 CRÍTICA
+  - 34.23: Gestor de Tareas con Tracking (2h) 🟠 MEDIA
+- Total nuevas fases: 27 horas estimadas
+- Actualizado tablero de inicio con nueva sección
+- Actualizado resumen de Sección 34 con nuevos totales (~259h)
+- Actualizado orden recomendado de implementación
+- Cada fase incluye: objetivo, tareas con checkboxes, código de implementación
 
 ### Cambios realizados en sesión 13:
 - Corregidos 6 errores LSP de tipado en tracking/ai_constructor.py:
@@ -6841,20 +6875,29 @@ SEMANA 3 (MEDIO):
 ### ORDEN DE IMPLEMENTACIÓN RECOMENDADO
 
 ```
-1. SEGURIDAD:    34.9 (Bloquear IA usuarios normales)
-2. CORE TOOLS:   34.10 → 34.11 → 34.12 (Toolkit archivos/comandos/errores)
-3. CONECTAR:     34.1 (Frontend con 8 fases)
-4. INTELIGENCIA: 34.6 → 34.13 → 34.14 (Intenciones/proyecto/multi-lenguaje)
-5. FRONTEND:     34.3 → 34.4 → 34.5 → 34.15 (Archivos/preview/diff)
+1. SEGURIDAD:    34.9 ✅ (Bloquear IA usuarios normales)
+2. CORE TOOLS:   34.10 ✅ → 34.11 ✅ → 34.12 ✅ (Toolkit archivos/comandos/errores)
+3. CONECTAR:     34.1 ✅ (Frontend con 8 fases)
+4. INTELIGENCIA: 34.6 ✅ → 34.13 ✅ → 34.14 ✅ (Intenciones/proyecto/multi-lenguaje)
+5. FRONTEND:     34.3 ✅ → 34.4 ✅ → 34.5 ✅ → 34.15 ✅ (Archivos/preview/diff)
 6. AVANZADO:     34.2 → 34.7 → 34.8 (Capacidades/consola/DeepSeek)
+7. NÚCLEO IA:    34.16 → 34.17 → 34.18 → 34.22 (Motor decisiones/reintentos/contexto/workflows)
+                 34.19 → 34.20 → 34.21 → 34.23 (Validación/rollback/impacto/tareas)
+8. AVANZADOS:    34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G → 34.H
 ```
 
 ### Notas para el próximo agente
-- **PRIORIDAD MÁXIMA**: Implementar 34.10 (Toolkit de archivos) primero
-- Sin el toolkit, la IA no puede leer/editar archivos del proyecto
-- Crear archivo `tracking/ai_toolkit.py` con las clases necesarias
-- El constructor de 8 fases ya existe, solo falta conectar herramientas
+- **PRIORIDAD ACTUAL**: Implementar fases 34.16-34.23 (Núcleo IA)
+- Estas fases son el "cerebro" que decide qué hacer automáticamente
+- **Orden sugerido para 34.16-34.23:**
+  1. 34.16 Motor de Decisiones → Clasifica intenciones del usuario
+  2. 34.22 Gestor de Workflows → Controla procesos del servidor
+  3. 34.17 Reintentos Inteligentes → Maneja fallos automáticamente
+  4. 34.18 Contexto Persistente → Mantiene info del proyecto en sesión
+  5. 34.19-34.21 → Validación, Rollback, Análisis de Impacto
+  6. 34.23 Gestor de Tareas → Tracking visual de progreso
+- El toolkit básico (34.10-34.12) ya está completado ✅
 - Referencia: Yo (Replit Agent) uso: read, write, edit, bash, grep
-- La IA debe poder hacer lo mismo para ser útil
+- La IA debe poder hacer lo mismo + decidir automáticamente qué usar
 
 ---
