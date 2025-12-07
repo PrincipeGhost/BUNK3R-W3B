@@ -30,6 +30,16 @@ try:
 except ImportError:
     flow_logger = None
 
+try:
+    from tracking.ai_toolkit import AIFileToolkit, AICommandExecutor, AIErrorDetector, AIProjectAnalyzer
+    TOOLKIT_AVAILABLE = True
+except ImportError:
+    TOOLKIT_AVAILABLE = False
+    AIFileToolkit = None
+    AICommandExecutor = None
+    AIErrorDetector = None
+    AIProjectAnalyzer = None
+
 
 class TaskType(Enum):
     """Tipos de tareas que BUNK3R puede manejar - 30+ tipos de intenciones"""
@@ -1584,14 +1594,18 @@ class AIConstructorService:
     """
     Servicio Principal del Constructor de IA
     Orquesta todas las fases y mantiene el estado de las sesiones
+    
+    Ahora con AIToolkit integrado para operaciones reales de archivos,
+    ejecución de comandos, detección de errores y análisis de proyecto.
     """
     
-    def __init__(self, ai_service=None, db_manager=None):
+    def __init__(self, ai_service=None, db_manager=None, project_root: Optional[str] = None):
         self.ai_service = ai_service
         self.db_manager = db_manager
         self.sessions: Dict[str, ConstructorSession] = {}
+        self.project_root = project_root or os.getcwd()
         
-        # Inicializar componentes
+        # Inicializar componentes de fases
         self.intent_parser = IntentParser()
         self.research_engine = ResearchEngine()
         self.clarification_manager = ClarificationManager()
@@ -1599,7 +1613,23 @@ class AIConstructorService:
         self.task_orchestrator = TaskOrchestrator()
         self.output_verifier = OutputVerifier()
         
-        logger.info("AIConstructorService initialized with all components")
+        # Inicializar AIToolkit para operaciones reales
+        self.toolkit_enabled = TOOLKIT_AVAILABLE
+        self.file_toolkit: Optional[Any] = None
+        self.command_executor: Optional[Any] = None
+        self.error_detector: Optional[Any] = None
+        self.project_analyzer: Optional[Any] = None
+        
+        if TOOLKIT_AVAILABLE and AIFileToolkit and AICommandExecutor and AIErrorDetector and AIProjectAnalyzer:
+            self.file_toolkit = AIFileToolkit(self.project_root)
+            self.command_executor = AICommandExecutor(self.project_root)
+            self.error_detector = AIErrorDetector()
+            self.project_analyzer = AIProjectAnalyzer(self.project_root)
+            logger.info("AIConstructorService initialized with AIToolkit (full capabilities)")
+        else:
+            logger.warning("AIConstructorService initialized WITHOUT AIToolkit (limited capabilities)")
+        
+        logger.info(f"AIConstructorService initialized - Toolkit: {self.toolkit_enabled}")
     
     def get_or_create_session(self, user_id: str) -> ConstructorSession:
         """Obtiene o crea una sesión para el usuario"""
@@ -1652,21 +1682,37 @@ class AIConstructorService:
             flow_logger.start_session(session.session_id, session.user_id, message)
         
         # ═══════════════════════════════════════════════════════════════
-        # FASE 1: ANÁLISIS INICIAL
+        # FASE 1: ANÁLISIS INICIAL + CONTEXTO DEL PROYECTO
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 1
         if flow_logger:
             flow_logger.start_fase(session.user_id, 1, "Análisis de Intención", {"mensaje": message})
         
+        # Analizar el proyecto para obtener contexto (si toolkit disponible)
+        project_context = None
+        if self.toolkit_enabled and self.project_analyzer:
+            try:
+                analysis_result = self.project_analyzer.analyze_project()
+                if analysis_result.get("success"):
+                    project_context = analysis_result.get("analysis")
+                    logger.info(f"[FASE 1] Proyecto analizado: {project_context.get('language', 'unknown')}, framework: {project_context.get('framework', 'none')}")
+            except Exception as e:
+                logger.warning(f"[FASE 1] No se pudo analizar el proyecto: {e}")
+        
         intent = self.intent_parser.analyze(message)
         session.intent = intent
+        
+        # Agregar contexto del proyecto al intent si está disponible
+        if project_context:
+            intent.especificaciones_usuario["project_context"] = project_context
         
         if flow_logger:
             flow_logger.end_fase(session.user_id, 1, {
                 "tipo_tarea": intent.tipo_tarea.value,
                 "contexto": intent.contexto,
                 "nivel_detalle": intent.nivel_detalle,
-                "requiere_clarificacion": intent.requiere_clarificacion
+                "requiere_clarificacion": intent.requiere_clarificacion,
+                "project_analyzed": project_context is not None
             })
         
         logger.info(f"[FASE 1] Intent analizado: {intent.tipo_tarea.value}, contexto: {intent.contexto}")
@@ -1905,15 +1951,139 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         
         session.archivos_generados = files
         
+        # ═════════════════════════════════════════════════════════════════════
+        # FASE 6.1: GUARDAR ARCHIVOS EN DISCO REAL (usando AIToolkit)
+        # ═════════════════════════════════════════════════════════════════════
+        files_saved_to_disk = []
+        disk_save_errors = []
+        
+        # Extensiones de archivo permitidas para guardar
+        ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.jsx', '.ts', '.tsx', '.json', '.py', '.md', '.txt', '.svg', '.vue'}
+        
+        if self.toolkit_enabled and self.file_toolkit and files:
+            logger.info("[FASE 6.1] Guardando archivos en disco real...")
+            base_path = "ai_generated"
+            
+            for filename, content in files.items():
+                try:
+                    # Paso 1: Sanitizar nombre (solo caracteres permitidos)
+                    safe_filename = re.sub(r'[^a-zA-Z0-9_\-.]', '_', os.path.basename(filename))
+                    
+                    # Paso 2: Validar extensión
+                    file_ext = os.path.splitext(safe_filename)[1].lower()
+                    if file_ext not in ALLOWED_EXTENSIONS:
+                        disk_save_errors.append({"file": filename, "error": f"Extensión {file_ext} no permitida"})
+                        logger.warning(f"[FASE 6.1] Extensión no permitida: {filename}")
+                        continue
+                    
+                    # Paso 3: Construir ruta final y validar con resolve()
+                    file_path = f"{base_path}/{safe_filename}"
+                    full_resolved = os.path.abspath(os.path.join(self.project_root, file_path))
+                    base_resolved = os.path.abspath(os.path.join(self.project_root, base_path))
+                    
+                    # Verificar que la ruta final está dentro del directorio base
+                    if not full_resolved.startswith(base_resolved):
+                        disk_save_errors.append({"file": filename, "error": "Path traversal detectado - archivo bloqueado"})
+                        logger.warning(f"[FASE 6.1] Path traversal bloqueado después de resolve: {filename}")
+                        continue
+                    
+                    result = self.file_toolkit.write_file(file_path, content)
+                    if result.get("success"):
+                        files_saved_to_disk.append(file_path)
+                        logger.info(f"[FASE 6.1] Archivo guardado: {file_path}")
+                    else:
+                        disk_save_errors.append({"file": filename, "error": result.get("error")})
+                        logger.warning(f"[FASE 6.1] Error guardando {filename}: {result.get('error')}")
+                except Exception as e:
+                    disk_save_errors.append({"file": filename, "error": str(e)})
+                    logger.error(f"[FASE 6.1] Excepción guardando {filename}: {e}")
+        
+        # ═════════════════════════════════════════════════════════════════════
+        # FASE 6.2: DETECTAR DEPENDENCIAS (instalación manual requerida)
+        # ═════════════════════════════════════════════════════════════════════
+        dependencies_installed = []
+        dependencies_detected = []
+        dependency_errors = []
+        
+        # Lista blanca de paquetes seguros que se pueden instalar automáticamente
+        SAFE_PYTHON_PACKAGES = {
+            'flask', 'requests', 'beautifulsoup4', 'pillow', 'pandas', 'numpy',
+            'matplotlib', 'jinja2', 'werkzeug', 'gunicorn', 'pytest', 'click',
+            'pyyaml', 'python-dotenv', 'sqlalchemy', 'aiohttp', 'httpx'
+        }
+        SAFE_NODE_PACKAGES = {
+            'express', 'react', 'vue', 'axios', 'lodash', 'moment', 'dayjs',
+            'tailwindcss', 'postcss', 'autoprefixer', 'vite', 'webpack',
+            'typescript', 'eslint', 'prettier', 'jest', 'nodemon'
+        }
+        
+        if self.toolkit_enabled and self.command_executor:
+            # Detectar dependencias en el código generado
+            all_code = "\n".join(files.values())
+            
+            # Detectar imports de Python
+            python_imports = re.findall(r'^(?:from|import)\s+([a-zA-Z_][a-zA-Z0-9_]*)', all_code, re.MULTILINE)
+            # Detectar requires de Node.js
+            node_requires = re.findall(r"require\(['\"]([^'\"]+)['\"]\)", all_code)
+            node_imports = re.findall(r"from\s+['\"]([^'\"]+)['\"]", all_code)
+            
+            # Filtrar dependencias estándar de Python
+            python_std_libs = {'os', 'sys', 'json', 're', 'typing', 'datetime', 'collections', 'math', 
+                              'random', 'functools', 'itertools', 'pathlib', 'logging', 'time', 'io',
+                              'dataclasses', 'enum', 'abc', 'copy', 'operator', 'html', 'urllib'}
+            external_python = [pkg for pkg in set(python_imports) if pkg.lower() not in python_std_libs]
+            
+            # Detectar paquetes Node.js externos (no rutas relativas)
+            external_node = [pkg for pkg in set(node_requires + node_imports) 
+                            if not pkg.startswith('.') and not pkg.startswith('/')]
+            
+            logger.info(f"[FASE 6.2] Dependencias detectadas - Python: {external_python}, Node: {external_node}")
+            
+            # Solo instalar paquetes de la lista blanca (máximo 3 por seguridad)
+            safe_python_to_install = [pkg for pkg in external_python if pkg.lower() in SAFE_PYTHON_PACKAGES][:3]
+            safe_node_to_install = [pkg for pkg in external_node if pkg.lower() in SAFE_NODE_PACKAGES][:3]
+            
+            # Registrar paquetes detectados pero no instalados
+            for pkg in external_python:
+                if pkg.lower() not in SAFE_PYTHON_PACKAGES:
+                    dependencies_detected.append(f"pip:{pkg} (requiere instalación manual)")
+            for pkg in external_node:
+                if pkg.lower() not in SAFE_NODE_PACKAGES:
+                    dependencies_detected.append(f"npm:{pkg} (requiere instalación manual)")
+            
+            # Instalar dependencias seguras de Python
+            for pkg in safe_python_to_install:
+                try:
+                    install_result = self.command_executor.install_package(pkg, "pip")
+                    if install_result.get("success"):
+                        dependencies_installed.append(f"pip:{pkg}")
+                        logger.info(f"[FASE 6.2] Instalado pip: {pkg}")
+                    else:
+                        dependency_errors.append({"package": pkg, "manager": "pip", "error": install_result.get("error")})
+                except Exception as e:
+                    dependency_errors.append({"package": pkg, "manager": "pip", "error": str(e)})
+            
+            # Instalar dependencias seguras de Node
+            for pkg in safe_node_to_install:
+                try:
+                    install_result = self.command_executor.install_package(pkg, "npm")
+                    if install_result.get("success"):
+                        dependencies_installed.append(f"npm:{pkg}")
+                        logger.info(f"[FASE 6.2] Instalado npm: {pkg}")
+                    else:
+                        dependency_errors.append({"package": pkg, "manager": "npm", "error": install_result.get("error")})
+                except Exception as e:
+                    dependency_errors.append({"package": pkg, "manager": "npm", "error": str(e)})
+        
         # Marcar tareas como completadas
         if session.plan and session.plan.tareas:
             for tarea in session.plan.tareas:
                 tarea.estado = "completada"
         
-        logger.info(f"[FASE 6] Generación completada: {list(files.keys())}")
+        logger.info(f"[FASE 6] Generación completada: {list(files.keys())}, guardados: {len(files_saved_to_disk)}, deps: {len(dependencies_installed)}")
         
         # ═══════════════════════════════════════════════════════════════
-        # FASE 7: VERIFICACIÓN AUTOMÁTICA
+        # FASE 7: VERIFICACIÓN AUTOMÁTICA + DETECCIÓN DE ERRORES
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 7
         
@@ -1927,17 +2097,61 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
                 "session": session.to_dict()
             }
         
+        # Verificación tradicional
         verification = self.output_verifier.verify(files, session.intent, session.plan)
         session.verification = verification
         verification_msg = self.output_verifier.format_verification_message(verification)
-        logger.info(f"[FASE 7] Verificación: {verification.puntuacion}/100")
+        
+        # Detección de errores con AIToolkit
+        detected_errors = []
+        if self.toolkit_enabled and self.error_detector and files:
+            for filename, content in files.items():
+                # Determinar lenguaje del archivo
+                lang = "python"
+                if filename.endswith(('.js', '.jsx', '.ts', '.tsx')):
+                    lang = "javascript"
+                elif filename.endswith('.html'):
+                    lang = "html"
+                elif filename.endswith('.css'):
+                    lang = "css"
+                
+                # Detectar errores en el código
+                try:
+                    error_result = self.error_detector.detect_errors([content], lang)
+                    if error_result.get("success") and error_result.get("errors"):
+                        for err in error_result["errors"]:
+                            detected_errors.append({
+                                "file": filename,
+                                "type": err.get("type"),
+                                "message": err.get("message"),
+                                "line": err.get("line")
+                            })
+                except Exception as e:
+                    logger.warning(f"[FASE 7] Error detectando errores en {filename}: {e}")
+        
+        if detected_errors:
+            verification_msg += f"\n\n🔍 **Errores detectados automáticamente:** {len(detected_errors)}\n"
+            for err in detected_errors[:5]:  # Mostrar máximo 5
+                verification_msg += f"  • {err['file']}: {err['message']}\n"
+        
+        logger.info(f"[FASE 7] Verificación: {verification.puntuacion}/100, Errores detectados: {len(detected_errors)}")
         
         # ═══════════════════════════════════════════════════════════════
         # FASE 8: ENTREGA FINAL
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 8
         
-        delivery_message = self._format_delivery(session, verification_msg, parse_message)
+        # Información adicional de toolkit
+        toolkit_info = {
+            "files_saved": files_saved_to_disk,
+            "disk_errors": disk_save_errors,
+            "dependencies_installed": dependencies_installed,
+            "dependencies_detected": dependencies_detected,
+            "dependency_errors": dependency_errors,
+            "detected_errors": detected_errors
+        }
+        
+        delivery_message = self._format_delivery(session, verification_msg, parse_message, toolkit_info)
         
         return {
             "success": True,
@@ -1945,6 +2159,9 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
             "fase": session.fase_actual,
             "fase_nombre": "Entrega Final",
             "files": files,
+            "files_saved_to_disk": files_saved_to_disk,
+            "dependencies_installed": dependencies_installed,
+            "detected_errors": detected_errors,
             "verification": verification.to_dict(),
             "session": session.to_dict()
         }
@@ -1997,8 +2214,8 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         return files, message
     
     def _format_delivery(self, session: ConstructorSession, verification_msg: str, 
-                         ai_message: str) -> str:
-        """Formatea el mensaje de entrega final"""
+                         ai_message: str, toolkit_info: Optional[Dict] = None) -> str:
+        """Formatea el mensaje de entrega final con información del toolkit"""
         message = "✨ **ENTREGA COMPLETADA**\n\n"
         
         # Resumen de lo creado
@@ -2006,6 +2223,34 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
             message += "📁 **Archivos creados:**\n"
             for filename in session.archivos_generados.keys():
                 message += f"  • {filename}\n"
+            message += "\n"
+        
+        # Información de archivos guardados en disco (si toolkit disponible)
+        if toolkit_info and toolkit_info.get("files_saved"):
+            message += "💾 **Guardados en disco:**\n"
+            for path in toolkit_info["files_saved"]:
+                message += f"  • {path}\n"
+            message += "\n"
+        
+        # Dependencias instaladas
+        if toolkit_info and toolkit_info.get("dependencies_installed"):
+            message += "📦 **Dependencias instaladas:**\n"
+            for dep in toolkit_info["dependencies_installed"]:
+                message += f"  • {dep}\n"
+            message += "\n"
+        
+        # Dependencias detectadas pero no instaladas automáticamente
+        if toolkit_info and toolkit_info.get("dependencies_detected"):
+            message += "📋 **Dependencias detectadas (instalación manual):**\n"
+            for dep in toolkit_info["dependencies_detected"][:5]:
+                message += f"  • {dep}\n"
+            message += "\n"
+        
+        # Errores de dependencias (si hay)
+        if toolkit_info and toolkit_info.get("dependency_errors"):
+            message += "⚠️ **Advertencias de dependencias:**\n"
+            for err in toolkit_info["dependency_errors"][:3]:
+                message += f"  • {err.get('package')}: {err.get('error', 'error desconocido')[:50]}\n"
             message += "\n"
         
         # Secciones implementadas
@@ -2036,3 +2281,105 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         if user_id in self.sessions:
             return self.sessions[user_id].archivos_generados
         return None
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # MÉTODOS DE TOOLKIT - Operaciones reales de archivos y comandos
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def read_project_file(self, path: str, max_lines: Optional[int] = None) -> Dict[str, Any]:
+        """Lee un archivo del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.read_file(path, max_lines)
+    
+    def write_project_file(self, path: str, content: str) -> Dict[str, Any]:
+        """Escribe un archivo en el proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.write_file(path, content)
+    
+    def edit_project_file(self, path: str, old_content: str, new_content: str) -> Dict[str, Any]:
+        """Edita un archivo del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.edit_file(path, old_content, new_content)
+    
+    def list_project_files(self, path: str = ".", recursive: bool = False) -> Dict[str, Any]:
+        """Lista archivos del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.list_directory(path, recursive)
+    
+    def search_in_code(self, query: str, path: str = ".") -> Dict[str, Any]:
+        """Busca en el código del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.search_code(query, path)
+    
+    def run_command(self, command: str, timeout: int = 30) -> Dict[str, Any]:
+        """Ejecuta un comando usando AIToolkit (solo comandos seguros)"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.command_executor.run_command(command, timeout)
+    
+    def install_package(self, package: str, manager: str = "pip") -> Dict[str, Any]:
+        """Instala un paquete usando AIToolkit"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.command_executor.install_package(package, manager)
+    
+    def detect_errors_in_logs(self, logs: List[str], language: str = "python") -> Dict[str, Any]:
+        """Detecta errores en logs usando AIToolkit"""
+        if not self.toolkit_enabled or not self.error_detector:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.error_detector.detect_errors(logs, language)
+    
+    def analyze_project_structure(self) -> Dict[str, Any]:
+        """Analiza la estructura del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.project_analyzer:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.project_analyzer.analyze_project()
+    
+    def get_project_context(self) -> str:
+        """Obtiene contexto del proyecto para incluir en prompts"""
+        if not self.toolkit_enabled or not self.project_analyzer:
+            return "Proyecto no analizado - AIToolkit no disponible"
+        return self.project_analyzer.generate_context()
+    
+    def save_generated_files_to_disk(self, user_id: str, base_path: str = "ai_generated") -> Dict[str, Any]:
+        """Guarda los archivos generados en disco real"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        
+        files = self.get_generated_files(user_id)
+        if not files:
+            return {"success": False, "error": "No hay archivos generados"}
+        
+        saved = []
+        errors = []
+        
+        for filename, content in files.items():
+            path = f"{base_path}/{filename}"
+            result = self.file_toolkit.write_file(path, content)
+            if result.get("success"):
+                saved.append(path)
+            else:
+                errors.append({"file": filename, "error": result.get("error")})
+        
+        return {
+            "success": len(errors) == 0,
+            "saved_files": saved,
+            "errors": errors,
+            "total": len(files)
+        }
+    
+    def get_toolkit_status(self) -> Dict[str, Any]:
+        """Devuelve el estado del toolkit"""
+        return {
+            "enabled": self.toolkit_enabled,
+            "file_toolkit": self.file_toolkit is not None,
+            "command_executor": self.command_executor is not None,
+            "error_detector": self.error_detector is not None,
+            "project_analyzer": self.project_analyzer is not None,
+            "project_root": self.project_root
+        }
