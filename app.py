@@ -14790,6 +14790,321 @@ def ai_toolkit_analyze_project():
 # ==================== END AI TOOLKIT SECTION ====================
 
 
+# ==================== AI CORE ENGINE SECTION (Phases 34.16-34.23) ====================
+
+@app.route('/api/ai-core/process', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_process_message():
+    """Process user message and determine workflow (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AICoreOrchestrator
+        
+        data = request.json
+        message = data.get('message', '')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        orchestrator = AICoreOrchestrator()
+        result = orchestrator.process_user_message(message)
+        
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"AI Core process: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/intent/classify', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_classify_intent():
+    """Classify user intent from message (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AIDecisionEngine
+        
+        data = request.json
+        message = data.get('message', '')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        engine = AIDecisionEngine()
+        intent = engine.classify_intent(message)
+        
+        return jsonify({
+            'success': True,
+            'intent': {
+                'type': intent.type.value,
+                'confidence': intent.confidence,
+                'keywords': intent.keywords,
+                'target_file': intent.target_file,
+                'target_function': intent.target_function,
+            }
+        })
+    except Exception as e:
+        logger.error(f"AI Core intent classify: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/workflow/decide', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_decide_workflow():
+    """Decide workflow based on intent (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AIDecisionEngine, IntentType, Intent
+        
+        data = request.json
+        intent_type = data.get('intent_type', 'ambiguous')
+        
+        engine = AIDecisionEngine()
+        intent = Intent(
+            type=IntentType(intent_type),
+            confidence=1.0,
+            keywords=[],
+            original_message=''
+        )
+        workflow = engine.decide_workflow(intent)
+        
+        return jsonify({
+            'success': True,
+            'workflow': {
+                'name': workflow.name,
+                'steps': [s.value for s in workflow.steps],
+                'total_steps': len(workflow.steps),
+            }
+        })
+    except Exception as e:
+        logger.error(f"AI Core workflow decide: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/validate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_validate_action():
+    """Validate action before execution (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import PreExecutionValidator
+        
+        data = request.json
+        action_type = data.get('action_type', 'edit')
+        action_params = data.get('params', {})
+        
+        validator = PreExecutionValidator()
+        result = validator.validate_before_action(action_type, **action_params)
+        
+        return jsonify({
+            'success': True,
+            'valid': result.valid,
+            'checks': result.checks,
+            'errors': result.errors,
+            'warnings': result.warnings
+        })
+    except Exception as e:
+        logger.error(f"AI Core validate: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/checkpoint/create', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_create_checkpoint():
+    """Create a checkpoint before making changes (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import RollbackManager
+        
+        data = request.json
+        files = data.get('files', [])
+        description = data.get('description', '')
+        
+        if not files:
+            return jsonify({'success': False, 'error': 'Files list is required'}), 400
+        
+        manager = RollbackManager()
+        checkpoint_id = manager.create_checkpoint(files, description)
+        
+        if checkpoint_id:
+            return jsonify({
+                'success': True,
+                'checkpoint_id': checkpoint_id,
+                'files_saved': len(files)
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to create checkpoint'}), 500
+    except Exception as e:
+        logger.error(f"AI Core checkpoint create: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/checkpoint/rollback', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_rollback_checkpoint():
+    """Rollback to a checkpoint (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import RollbackManager
+        
+        data = request.json
+        checkpoint_id = data.get('checkpoint_id', '')
+        
+        if not checkpoint_id:
+            return jsonify({'success': False, 'error': 'Checkpoint ID is required'}), 400
+        
+        manager = RollbackManager()
+        result = manager.rollback_to_checkpoint(checkpoint_id)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"AI Core rollback: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/checkpoint/list', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_list_checkpoints():
+    """List available checkpoints (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import RollbackManager
+        
+        manager = RollbackManager()
+        checkpoints = manager.get_checkpoints()
+        
+        return jsonify({
+            'success': True,
+            'checkpoints': checkpoints,
+            'count': len(checkpoints)
+        })
+    except Exception as e:
+        logger.error(f"AI Core list checkpoints: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/impact/analyze', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_analyze_impact():
+    """Analyze impact of changing a file (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import ChangeImpactAnalyzer
+        
+        data = request.json
+        file_path = data.get('file_path', '')
+        change_description = data.get('change_description', '')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'File path is required'}), 400
+        
+        analyzer = ChangeImpactAnalyzer()
+        impact = analyzer.analyze_impact(file_path, change_description)
+        
+        return jsonify({
+            'success': True,
+            'impact': {
+                'importers': impact.importers,
+                'usages': impact.usages,
+                'tests': impact.tests,
+                'breaking_changes': impact.breaking_changes,
+                'risk_level': impact.risk_level
+            }
+        })
+    except Exception as e:
+        logger.error(f"AI Core impact analyze: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/workflow/status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_workflow_status():
+    """Get workflow/server status (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import WorkflowManager
+        
+        name = request.args.get('name', 'main')
+        
+        manager = WorkflowManager()
+        status = manager.get_workflow_status(name)
+        
+        return jsonify({'success': True, **status})
+    except Exception as e:
+        logger.error(f"AI Core workflow status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/workflow/health', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_workflow_health():
+    """Check server health (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import WorkflowManager
+        
+        port = request.args.get('port', 5000, type=int)
+        path = request.args.get('path', '/')
+        
+        manager = WorkflowManager()
+        health = manager.check_server_health(port, path)
+        
+        return jsonify({'success': True, **health})
+    except Exception as e:
+        logger.error(f"AI Core workflow health: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/tasks/create', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_create_tasks():
+    """Create a task list (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import TaskManager
+        
+        data = request.json
+        tasks = data.get('tasks', [])
+        
+        if not tasks:
+            return jsonify({'success': False, 'error': 'Tasks list is required'}), 400
+        
+        manager = TaskManager()
+        created_tasks = manager.create_task_list(tasks)
+        
+        return jsonify({
+            'success': True,
+            'session_id': manager.session_id,
+            'tasks_created': len(created_tasks)
+        })
+    except Exception as e:
+        logger.error(f"AI Core create tasks: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/tasks/progress', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_tasks_progress():
+    """Get task progress (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import TaskManager
+        
+        manager = TaskManager()
+        progress = manager.show_progress_to_user()
+        
+        return jsonify({'success': True, **progress})
+    except Exception as e:
+        logger.error(f"AI Core tasks progress: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_full_status():
+    """Get full AI Core status (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AICoreOrchestrator
+        
+        orchestrator = AICoreOrchestrator()
+        status = orchestrator.get_full_status()
+        
+        return jsonify({'success': True, **status})
+    except Exception as e:
+        logger.error(f"AI Core full status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== END AI CORE ENGINE SECTION ====================
+
+
 # ==================== END AI CHAT SECTION ====================
 
 

@@ -5631,27 +5631,32 @@ Mostrar diferencias antes de aplicar cambios.
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.16: MOTOR DE DECISIONES AUTOMÁTICO ⏳
+## FASE 34.16: MOTOR DE DECISIONES AUTOMÁTICO ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Motor interno que decide automáticamente qué flujo de trabajo seguir según el tipo de mensaje del usuario.
 
 ### Tareas:
-- [ ] Implementar clasificador de intenciones (IntentClassifier)
-- [ ] Detectar CREATE_NEW: "Crea un...", "Hazme un...", "Necesito un..."
-- [ ] Detectar MODIFY_EXISTING: "Cambia...", "Modifica...", "Agrega a..."
-- [ ] Detectar DEBUG_FIX: "No funciona...", "Error en...", "Por qué..."
-- [ ] Detectar EXPLAIN: "Explica...", "Qué hace...", "Cómo funciona..."
-- [ ] Detectar QUESTION: "Puedes...", "Es posible...", preguntas
-- [ ] Detectar AMBIGUOUS: Necesita clarificación
-- [ ] Implementar motor de decisión de workflows (decide_workflow)
-- [ ] Definir secuencia de herramientas por tipo de intención
+- [x] Implementar clasificador de intenciones (IntentClassifier)
+- [x] Detectar CREATE_NEW: "Crea un...", "Hazme un...", "Necesito un..."
+- [x] Detectar MODIFY_EXISTING: "Cambia...", "Modifica...", "Agrega a..."
+- [x] Detectar DEBUG_FIX: "No funciona...", "Error en...", "Por qué..."
+- [x] Detectar EXPLAIN: "Explica...", "Qué hace...", "Cómo funciona..."
+- [x] Detectar QUESTION: "Puedes...", "Es posible...", preguntas
+- [x] Detectar AMBIGUOUS: Necesita clarificación
+- [x] Implementar motor de decisión de workflows (decide_workflow)
+- [x] Definir secuencia de herramientas por tipo de intención
+
+### Implementación Completada:
+- **Archivo:** `tracking/ai_core_engine.py`
+- **Clase:** `AIDecisionEngine` con `classify_intent()` y `decide_workflow()`
+- **Endpoints:** `/api/ai-core/process`, `/api/ai-core/intent/classify`, `/api/ai-core/workflow/decide`
 
 ### Implementación:
 ```python
@@ -5703,25 +5708,29 @@ class AIDecisionEngine:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.17: SISTEMA DE REINTENTOS INTELIGENTE ⏳
+## FASE 34.17: SISTEMA DE REINTENTOS INTELIGENTE ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 3 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Sistema que reintenta automáticamente cuando algo falla, analizando por qué falló y ajustando la estrategia.
 
 ### Tareas:
-- [ ] Implementar RetryManager con máximo 3 reintentos
-- [ ] Ejecutar acción con try/catch
-- [ ] Analizar causa de fallo automáticamente
-- [ ] Modificar estrategia según el error
-- [ ] Reintentar con estrategia ajustada
-- [ ] Si sigue fallando después de 3 intentos, pedir ayuda al usuario
-- [ ] Logging de cada intento y resultado
+- [x] Implementar RetryManager con máximo 3 reintentos
+- [x] Ejecutar acción con try/catch
+- [x] Analizar causa de fallo automáticamente
+- [x] Modificar estrategia según el error
+- [x] Reintentar con estrategia ajustada
+- [x] Si sigue fallando después de 3 intentos, pedir ayuda al usuario
+- [x] Logging de cada intento y resultado
+
+### Implementación Completada:
+- **Clase:** `RetryManager` en `tracking/ai_core_engine.py`
+- **Métodos:** `execute_with_retry()`, `analyze_failure()`, `get_retry_strategy()`, `adjust_action()`
 
 ### Implementación:
 ```python
@@ -5757,26 +5766,30 @@ class RetryManager:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.18: CONTEXTO DE PROYECTO PERSISTENTE ⏳
+## FASE 34.18: CONTEXTO DE PROYECTO PERSISTENTE ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Contexto que se mantiene DURANTE toda la sesión y se usa en CADA operación para entender mejor el proyecto.
 
 ### Tareas:
-- [ ] Implementar ProjectContext que se carga al inicio de sesión
-- [ ] Detectar lenguaje del proyecto automáticamente
-- [ ] Detectar framework utilizado
-- [ ] Leer y parsear dependencias (requirements.txt, package.json)
-- [ ] Mapear estructura de directorios
-- [ ] Detectar convenciones de código
-- [ ] Encontrar entry points del proyecto
-- [ ] Implementar get_relevant_context() por archivo
+- [x] Implementar ProjectContext que se carga al inicio de sesión
+- [x] Detectar lenguaje del proyecto automáticamente
+- [x] Detectar framework utilizado
+- [x] Leer y parsear dependencias (requirements.txt, package.json)
+- [x] Mapear estructura de directorios
+- [x] Detectar convenciones de código
+- [x] Encontrar entry points del proyecto
+- [x] Implementar get_relevant_context() por archivo
+
+### Implementación Completada:
+- Ya existía en `tracking/ai_project_context.py` (AIProjectContext)
+- Integrado con `AICoreOrchestrator` en `tracking/ai_core_engine.py`
 
 ### Implementación:
 ```python
@@ -5809,26 +5822,30 @@ class ProjectContext:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.19: VALIDADOR PRE-EJECUCIÓN ⏳
+## FASE 34.19: VALIDADOR PRE-EJECUCIÓN ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 3 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Validar que un cambio es seguro ANTES de hacerlo para prevenir errores.
 
 ### Tareas:
-- [ ] Implementar PreExecutionValidator
-- [ ] check_file_exists() - El archivo existe?
-- [ ] check_target_still_valid() - El código a editar sigue ahí?
-- [ ] check_no_conflicts() - No hay cambios concurrentes?
-- [ ] check_syntax_will_be_valid() - El resultado será válido?
-- [ ] check_imports_available() - Los imports existen?
-- [ ] check_no_breaking_changes() - No rompe otros archivos?
-- [ ] Retornar ValidationResult con todos los checks
+- [x] Implementar PreExecutionValidator
+- [x] check_file_exists() - El archivo existe?
+- [x] check_target_still_valid() - El código a editar sigue ahí?
+- [x] check_no_conflicts() - No hay cambios concurrentes?
+- [x] check_syntax_will_be_valid() - El resultado será válido?
+- [x] check_imports_available() - Los imports existen?
+- [x] check_no_breaking_changes() - No rompe otros archivos?
+- [x] Retornar ValidationResult con todos los checks
+
+### Implementación Completada:
+- **Clase:** `PreExecutionValidator` en `tracking/ai_core_engine.py`
+- **Endpoint:** `/api/ai-core/validate`
 
 ### Implementación:
 ```python
@@ -5852,25 +5869,30 @@ class PreExecutionValidator:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.20: SISTEMA DE ROLLBACK AUTOMÁTICO ⏳
+## FASE 34.20: SISTEMA DE ROLLBACK AUTOMÁTICO ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Guardar estado antes de cambios para poder revertir si algo sale mal.
 
 ### Tareas:
-- [ ] Implementar RollbackManager
-- [ ] create_checkpoint() - Guardar estado actual de archivos
-- [ ] Generar checkpoint_id único
-- [ ] Almacenar contenido de archivos antes del cambio
-- [ ] rollback_to_checkpoint() - Restaurar archivos a estado anterior
-- [ ] auto_rollback_on_error() - Si el servidor no levanta, rollback automático
-- [ ] Limpieza de checkpoints antiguos (mantener últimos 10)
+- [x] Implementar RollbackManager
+- [x] create_checkpoint() - Guardar estado actual de archivos
+- [x] Generar checkpoint_id único
+- [x] Almacenar contenido de archivos antes del cambio
+- [x] rollback_to_checkpoint() - Restaurar archivos a estado anterior
+- [x] auto_rollback_on_error() - Si el servidor no levanta, rollback automático
+- [x] Limpieza de checkpoints antiguos (mantener últimos 10)
+
+### Implementación Completada:
+- **Clase:** `RollbackManager` en `tracking/ai_core_engine.py`
+- **Endpoints:** `/api/ai-core/checkpoint/create`, `/api/ai-core/checkpoint/rollback`, `/api/ai-core/checkpoint/list`
+- **Almacenamiento:** `.ai_checkpoints/` con index.json
 
 ### Implementación:
 ```python
@@ -5899,25 +5921,30 @@ class RollbackManager:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.21: ANALIZADOR DE IMPACTO DE CAMBIOS ⏳
+## FASE 34.21: ANALIZADOR DE IMPACTO DE CAMBIOS ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Analizar el impacto de un cambio antes de hacerlo para saber qué puede romperse.
 
 ### Tareas:
-- [ ] Implementar ChangeImpactAnalyzer
-- [ ] find_importers() - Qué archivos importan este archivo
-- [ ] find_usages() - Dónde se usa esta función/clase
-- [ ] find_related_tests() - Qué tests cubren este código
-- [ ] analyze_impact() - Análisis completo del impacto
-- [ ] Detectar breaking changes potenciales
-- [ ] Retornar Impact con importers, usages, tests
+- [x] Implementar ChangeImpactAnalyzer
+- [x] find_importers() - Qué archivos importan este archivo
+- [x] find_usages() - Dónde se usa esta función/clase
+- [x] find_related_tests() - Qué tests cubren este código
+- [x] analyze_impact() - Análisis completo del impacto
+- [x] Detectar breaking changes potenciales
+- [x] Retornar Impact con importers, usages, tests
+
+### Implementación Completada:
+- **Clase:** `ChangeImpactAnalyzer` en `tracking/ai_core_engine.py`
+- **Endpoint:** `/api/ai-core/impact/analyze`
+- **Niveles de riesgo:** low, medium, high
 
 ### Implementación:
 ```python
@@ -5943,25 +5970,30 @@ class ChangeImpactAnalyzer:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.22: GESTOR DE WORKFLOWS ⏳
+## FASE 34.22: GESTOR DE WORKFLOWS ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 3 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Manejar los workflows/procesos del servidor para la IA.
 
 ### Tareas:
-- [ ] Implementar WorkflowManager
-- [ ] restart_workflow() - Reiniciar un workflow específico
-- [ ] get_workflow_status() - Ver si está running/stopped/error
-- [ ] wait_for_port() - Esperar a que el servidor esté listo
-- [ ] get_workflow_logs() - Obtener logs del workflow
-- [ ] Integrar con sistema de Replit workflows
-- [ ] Timeout configurable para espera de puertos
+- [x] Implementar WorkflowManager
+- [x] restart_workflow() - Reiniciar un workflow específico
+- [x] get_workflow_status() - Ver si está running/stopped/error
+- [x] wait_for_port() - Esperar a que el servidor esté listo
+- [x] get_workflow_logs() - Obtener logs del workflow
+- [x] Integrar con sistema de Replit workflows
+- [x] Timeout configurable para espera de puertos
+
+### Implementación Completada:
+- **Clase:** `WorkflowManager` en `tracking/ai_core_engine.py`
+- **Endpoints:** `/api/ai-core/workflow/status`, `/api/ai-core/workflow/health`
+- **Método adicional:** `check_server_health()`
 
 ### Implementación:
 ```python
@@ -5990,25 +6022,30 @@ class WorkflowManager:
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.23: GESTOR DE TAREAS CON TRACKING ⏳
+## FASE 34.23: GESTOR DE TAREAS CON TRACKING ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟠 MEDIA  
 **Tiempo:** 2 horas  
 **Agente:** 🟡 BACKEND
-**Agregado:** 7 Diciembre 2025
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Sistema de tareas con tracking de progreso para mostrar al usuario.
 
 ### Tareas:
-- [ ] Implementar TaskManager
-- [ ] create_task_list() - Crear lista de tareas para el usuario
-- [ ] mark_task_in_progress() - Marcar tarea en progreso
-- [ ] mark_task_completed() - Marcar tarea completada
-- [ ] show_progress_to_user() - Mostrar progreso visual al usuario
-- [ ] Persistir estado de tareas
-- [ ] Integrar con frontend para visualización
+- [x] Implementar TaskManager
+- [x] create_task_list() - Crear lista de tareas para el usuario
+- [x] mark_task_in_progress() - Marcar tarea en progreso
+- [x] mark_task_completed() - Marcar tarea completada
+- [x] show_progress_to_user() - Mostrar progreso visual al usuario
+- [x] Persistir estado de tareas
+- [x] Integrar con frontend para visualización
+
+### Implementación Completada:
+- **Clase:** `TaskManager` en `tracking/ai_core_engine.py`
+- **Endpoints:** `/api/ai-core/tasks/create`, `/api/ai-core/tasks/progress`
+- **Método adicional:** `get_task_list_as_markdown()` para generar markdown con barras de progreso
 
 ### Implementación:
 ```python
