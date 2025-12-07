@@ -1,3 +1,77 @@
+const SafeDOM = {
+    setHTML: function(element, html, options = {}) {
+        if (!element) return element;
+        if (typeof DOMPurify !== 'undefined') {
+            const config = options.allowEvents ? this._configWithEvents : this._safeConfig;
+            element.innerHTML = DOMPurify.sanitize(html, config);
+        } else {
+            const div = document.createElement('div');
+            div.textContent = String(html);
+            element.innerHTML = div.innerHTML;
+        }
+        return element;
+    },
+    
+    setTrustedHTML: function(element, html) {
+        if (!element) return element;
+        element.innerHTML = html;
+        return element;
+    },
+    
+    sanitize: function(html) {
+        if (typeof DOMPurify !== 'undefined') {
+            return DOMPurify.sanitize(html, this._safeConfig);
+        }
+        const div = document.createElement('div');
+        div.textContent = String(html);
+        return div.innerHTML;
+    },
+    
+    _safeConfig: {
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 
+                       'ul', 'ol', 'li', 'img', 'button', 'input', 'label',
+                       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th',
+                       'thead', 'tbody', 'tfoot', 'svg', 'path', 'circle', 'rect',
+                       'line', 'polyline', 'polygon', 'g', 'defs', 'use', 'symbol',
+                       'code', 'pre', 'blockquote', 'hr', 'small', 'sup', 'sub',
+                       'nav', 'header', 'footer', 'article', 'section', 'aside',
+                       'figure', 'figcaption', 'video', 'audio', 'source', 'canvas'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id', 
+                       'type', 'value', 'placeholder', 'name', 'data-*', 'aria-*',
+                       'role', 'tabindex', 'target', 'rel', 'title', 'width', 'height',
+                       'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy',
+                       'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points', 'transform',
+                       'disabled', 'readonly', 'checked', 'selected', 'maxlength',
+                       'min', 'max', 'step', 'pattern', 'required', 'autocomplete',
+                       'inputmode', 'for', 'controls', 'autoplay', 'loop', 'muted',
+                       'poster', 'preload', 'xmlns', 'xmlns:xlink', 'xlink:href'],
+        FORBID_ATTR: ['onclick', 'onchange', 'oninput', 'onfocus', 'onblur', 
+                      'onload', 'onerror', 'onmouseover', 'onmouseout', 'style'],
+        ALLOW_DATA_ATTR: true,
+        RETURN_DOM: false,
+        RETURN_DOM_FRAGMENT: false,
+        WHOLE_DOCUMENT: false
+    },
+    
+    _configWithEvents: {
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 
+                       'ul', 'ol', 'li', 'img', 'button', 'input', 'label',
+                       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th',
+                       'thead', 'tbody', 'tfoot', 'svg', 'path', 'circle', 'rect',
+                       'line', 'polyline', 'polygon', 'g', 'defs', 'use', 'symbol',
+                       'code', 'pre', 'blockquote', 'hr', 'small', 'sup', 'sub'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id', 'style',
+                       'type', 'value', 'placeholder', 'name', 'data-*', 'aria-*',
+                       'role', 'tabindex', 'target', 'rel', 'title', 'width', 'height',
+                       'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy',
+                       'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points', 'transform',
+                       'disabled', 'readonly', 'checked', 'selected', 'maxlength',
+                       'min', 'max', 'step', 'pattern', 'required', 'autocomplete',
+                       'inputmode', 'for', 'onclick', 'onchange'],
+        ALLOW_DATA_ATTR: true
+    }
+};
+
 const App = {
     tg: null,
     user: null,
@@ -1593,7 +1667,7 @@ const App = {
             const container = document.getElementById('explore-trending-list');
             
             if (response.success && response.hashtags && container) {
-                container.innerHTML = response.hashtags.map(tag => {
+                SafeDOM.setHTML(container, response.hashtags.map(tag => {
                     const safeTag = this.sanitizeHashtag(tag.tag);
                     const count = parseInt(tag.count) || 0;
                     return `
@@ -1601,7 +1675,7 @@ const App = {
                         <span class="explore-trending-tag">#${this.escapeHtmlForExplore(safeTag)}</span>
                         <span class="explore-trending-count">${count} posts</span>
                     </div>
-                `;}).join('');
+                `;}).join(''));
             }
         } catch (error) {
             console.error('Error loading trending:', error);
@@ -1638,7 +1712,7 @@ const App = {
         hashtagHeader?.classList.remove('hidden');
         
         document.getElementById('explore-hashtag-tag').textContent = `#${safeHashtag}`;
-        resultsContainer.innerHTML = '<div class="explore-loading"><div class="spinner"></div></div>';
+        SafeDOM.setHTML(resultsContainer, '<div class="explore-loading"><div class="spinner"></div></div>');
         
         const searchInput = document.getElementById('explore-search-input');
         if (searchInput) searchInput.value = `#${safeHashtag}`;
@@ -1654,21 +1728,21 @@ const App = {
                     `${parseInt(response.total) || response.posts?.length || 0} publicaciones`;
                 
                 if (response.posts && response.posts.length > 0) {
-                    resultsContainer.innerHTML = response.posts.map(post => this.renderExplorePostThumb(post)).join('');
+                    SafeDOM.setHTML(resultsContainer, response.posts.map(post => this.renderExplorePostThumb(post)).join(''));
                 } else {
                     const emptyDiv = document.createElement('div');
                     emptyDiv.className = 'explore-empty';
                     const p = document.createElement('p');
                     p.textContent = `No se encontraron publicaciones con #${safeHashtag}`;
                     emptyDiv.appendChild(p);
-                    resultsContainer.innerHTML = '';
+                    resultsContainer.textContent = '';
                     resultsContainer.appendChild(emptyDiv);
                 }
             }
         } catch (error) {
             if (error.name === 'AbortError') return;
             console.error('Error searching hashtag:', error);
-            resultsContainer.innerHTML = '<div class="explore-empty">Error al buscar</div>';
+            SafeDOM.setHTML(resultsContainer, '<div class="explore-empty">Error al buscar</div>');
         }
     },
     
@@ -1765,7 +1839,7 @@ const App = {
             if (!listEl) return;
             
             if (response.success && response.devices && response.devices.length > 0) {
-                listEl.innerHTML = response.devices.map(device => {
+                SafeDOM.setTrustedHTML(listEl, response.devices.map(device => {
                     const safeDeviceId = this.sanitizeForJs(device.device_id);
                     return `
                     <div class="settings-device-item">
@@ -1783,9 +1857,9 @@ const App = {
                             </button>
                         `}
                     </div>
-                `;}).join('');
+                `;}).join(''));
             } else {
-                listEl.innerHTML = '<div class="devices-empty">No hay dispositivos de confianza</div>';
+                SafeDOM.setHTML(listEl, '<div class="devices-empty">No hay dispositivos de confianza</div>');
             }
         } catch (error) {
             console.error('Error loading devices:', error);
@@ -2048,11 +2122,11 @@ const App = {
             if (response.success) {
                 const users = response[type] || [];
                 if (users.length === 0) {
-                    list.innerHTML = `<div class="followers-empty">
+                    SafeDOM.setHTML(list, `<div class="followers-empty">
                         ${type === 'followers' ? 'Aun no tienes seguidores' : 'No sigues a nadie'}
-                    </div>`;
+                    </div>`);
                 } else {
-                    list.innerHTML = users.map(user => {
+                    SafeDOM.setTrustedHTML(list, users.map(user => {
                         const isVerified = user.isVerified || user.is_verified;
                         const verifiedBadge = isVerified ? '<span class="verified-badge" title="Cuenta verificada">✓</span>' : '';
                         const userName = this.escapeHtml(user.firstName || user.first_name || user.username || 'Usuario');
@@ -2084,13 +2158,13 @@ const App = {
                                 ${actionButton}
                             </div>
                         `;
-                    }).join('');
+                    }).join(''));
                 }
             }
         } catch (error) {
             console.error('Error loading followers:', error);
             if (list) {
-                list.innerHTML = '<div class="followers-empty">Error al cargar</div>';
+                SafeDOM.setHTML(list, '<div class="followers-empty">Error al cargar</div>');
             }
         }
     },
@@ -3281,7 +3355,7 @@ const App = {
         const myBotsList = document.getElementById('my-bots-list');
         const myBotsEmpty = document.getElementById('my-bots-empty');
         
-        myBotsList.innerHTML = '<div class="bots-loading"><div class="loading-spinner"></div><p>Cargando tus bots...</p></div>';
+        SafeDOM.setHTML(myBotsList, '<div class="bots-loading"><div class="loading-spinner"></div><p>Cargando tus bots...</p></div>');
         myBotsEmpty.classList.add('hidden');
         
         try {
@@ -3290,7 +3364,7 @@ const App = {
             
         } catch (error) {
             console.error('Error loading bots:', error);
-            myBotsList.innerHTML = '<div class="bots-empty"><div class="empty-icon">⚠️</div><p>Error al cargar bots</p></div>';
+            SafeDOM.setHTML(myBotsList, '<div class="bots-empty"><div class="empty-icon">⚠️</div><p>Error al cargar bots</p></div>');
         }
     },
     
@@ -3299,13 +3373,13 @@ const App = {
         const myBotsEmpty = document.getElementById('my-bots-empty');
         
         if (!bots || bots.length === 0) {
-            myBotsList.innerHTML = '';
+            myBotsList.textContent = '';
             myBotsEmpty.classList.remove('hidden');
             return;
         }
         
         myBotsEmpty.classList.add('hidden');
-        myBotsList.innerHTML = bots.map(bot => {
+        SafeDOM.setTrustedHTML(myBotsList, bots.map(bot => {
             const isActive = bot.isActive !== false;
             const statusClass = isActive ? 'online' : 'offline';
             const statusText = isActive ? 'Activo' : 'Inactivo';
@@ -3340,7 +3414,7 @@ const App = {
                     </div>
                 </div>
             `;
-        }).join('');
+        }).join(''));
     },
     
     openBotPanel(botType) {
@@ -5281,15 +5355,15 @@ const App = {
             const response = await this.apiRequest(`/api/search/users?q=${encodeURIComponent(query)}`);
             if (response.success && response.users.length > 0) {
                 const resultsDiv = document.getElementById('user-search-results');
-                resultsDiv.innerHTML = response.users.map(u => `
-                    <div class="user-result-item" onclick="App.selectTransferRecipient('${u.username || u.id}', '${u.name || u.username}')">
-                        <img src="${u.avatar || '/static/images/default-avatar.png'}" class="user-result-avatar">
+                SafeDOM.setTrustedHTML(resultsDiv, response.users.map(u => `
+                    <div class="user-result-item" onclick="App.selectTransferRecipient('${this.sanitizeForJs(u.username || u.id)}', '${this.sanitizeForJs(u.name || u.username)}')">
+                        <img src="${this.escapeAttribute(u.avatar || '/static/images/default-avatar.png')}" class="user-result-avatar">
                         <div class="user-result-info">
-                            <span class="user-result-name">${u.name || 'Usuario'}</span>
-                            <span class="user-result-username">@${u.username || u.id}</span>
+                            <span class="user-result-name">${this.escapeHtml(u.name || 'Usuario')}</span>
+                            <span class="user-result-username">@${this.escapeHtml(u.username || u.id)}</span>
                         </div>
                     </div>
-                `).join('');
+                `).join(''));
                 resultsDiv.classList.remove('hidden');
             } else {
                 document.getElementById('user-search-results').classList.add('hidden');
