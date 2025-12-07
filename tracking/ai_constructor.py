@@ -249,13 +249,13 @@ class IntentParser:
     }
     
     CONTEXT_KEYWORDS = {
-        "negocio": ["negocio", "empresa", "tienda", "comercio", "servicio", "startup"],
-        "restaurante": ["restaurante", "café", "cafetería", "bar", "comida", "menú"],
-        "ecommerce": ["tienda", "productos", "vender", "comprar", "carrito", "ecommerce"],
-        "portfolio": ["portfolio", "portafolio", "proyectos", "trabajos", "cv"],
-        "blog": ["blog", "artículos", "posts", "noticias", "contenido"],
-        "saas": ["saas", "suscripción", "plataforma", "software", "app"],
-        "fintech": ["fintech", "banco", "pagos", "wallet", "cripto", "finanzas"]
+        "restaurante": ["restaurante", "café", "cafetería", "bar", "comida", "menú", "cocina", "chef", "platos", "reserva"],
+        "ecommerce": ["tienda online", "ecommerce", "e-commerce", "carrito", "checkout", "vender", "comprar", "productos", "stripe", "paypal", "pagos online"],
+        "portfolio": ["portfolio", "portafolio", "proyectos", "trabajos", "cv", "curriculum", "fotógrafo", "diseñador", "freelance"],
+        "blog": ["blog", "artículos", "posts", "noticias", "contenido", "publicaciones"],
+        "saas": ["saas", "suscripción", "plataforma", "software", "app", "dashboard", "panel", "métricas", "usuarios"],
+        "fintech": ["fintech", "banco", "inversiones", "wallet", "cripto", "finanzas", "trading", "bolsa", "acciones"],
+        "negocio": ["negocio", "empresa", "comercio", "servicio", "startup", "compañía"]
     }
     
     def analyze(self, message: str) -> IntentAnalysis:
@@ -308,12 +308,21 @@ class IntentParser:
         return TaskType.CONSULTA_GENERAL
     
     def _extract_context(self, message: str) -> str:
-        """Extrae el contexto del negocio/proyecto"""
+        """Extrae el contexto del negocio/proyecto usando puntuación"""
+        context_scores = {}
+        
         for context_name, keywords in self.CONTEXT_KEYWORDS.items():
+            score = 0
             for kw in keywords:
                 if kw in message:
-                    return context_name
-        return "general"
+                    score += len(kw)
+            if score > 0:
+                context_scores[context_name] = score
+        
+        if not context_scores:
+            return "general"
+        
+        return max(context_scores.keys(), key=lambda x: context_scores[x])
     
     def _extract_specifications(self, message: str) -> Dict[str, Any]:
         """Extrae especificaciones mencionadas"""
