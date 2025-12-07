@@ -7,11 +7,17 @@ All providers offer free tiers
 import os
 import json
 import logging
+import time
 from datetime import datetime
 from typing import Optional, Dict, List, Any
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
+
+try:
+    from tracking.ai_flow_logger import flow_logger
+except ImportError:
+    flow_logger = None
 
 class AIProvider(ABC):
     """Base class for AI providers"""
