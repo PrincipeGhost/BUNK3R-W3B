@@ -740,9 +740,15 @@ const App = {
     },
     
     initDevPhaseLock() {
+        if (this._devPhaseLockInitialized) {
+            console.log('Dev phase lock already initialized, skipping');
+            return;
+        }
+        this._devPhaseLockInitialized = true;
+        
         const lockedSections = ['home', 'marketplace', 'profile'];
         const lockedSidebarItems = ['numeros', 'cuentas', 'metodos', 'planes', 'exchange', 'foro'];
-        const unlockedSections = ['wallet', 'bots'];
+        const unlockedSections = ['wallet', 'bots', 'ai-chat'];
         const unlockedSidebarItems = ['bots', 'settings'];
         
         const lockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
@@ -789,7 +795,10 @@ const App = {
             this.createDevModeIndicator();
         }
         
-        this.handleBottomNav('wallet');
+        const walletScreen = document.getElementById('wallet-screen');
+        if (!walletScreen || walletScreen.classList.contains('hidden')) {
+            this.handleBottomNav('wallet');
+        }
         
         console.log('Dev phase lock initialized. DevMode:', this.isDevMode);
     },
