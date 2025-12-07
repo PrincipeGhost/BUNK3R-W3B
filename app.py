@@ -40,6 +40,7 @@ from tracking.security import SecurityManager
 from tracking.encryption import encryption_manager
 from tracking.cloudinary_service import cloudinary_service
 from tracking.smspool_service import SMSPoolService, VirtualNumbersManager
+from tracking.telegram_service import telegram_service
 
 from logging.handlers import RotatingFileHandler
 from flask import g
@@ -9114,6 +9115,224 @@ def admin_system_settings():
         
     except Exception as e:
         logger.error(f"Error with settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_notifications():
+    """Admin: Obtener notificaciones del panel."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, type, title, message, data, is_read, created_at
+                    FROM admin_notifications
+                    ORDER BY created_at DESC
+                    LIMIT 100
+                """)
+                notifications = cur.fetchall()
+                
+                cur.execute("SELECT COUNT(*) FROM admin_notifications WHERE is_read = false")
+                unread_count = cur.fetchone()['count']
+                
+                for n in notifications:
+                    if n.get('created_at'):
+                        n['created_at'] = n['created_at'].isoformat()
+                    if n.get('data'):
+                        try:
+                            n['data'] = json.loads(n['data']) if isinstance(n['data'], str) else n['data']
+                        except:
+                            pass
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': notifications,
+                    'unread_count': unread_count
+                })
+    except Exception as e:
+        logger.error(f"Error getting notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/mark-read', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_mark_notification_read():
+    """Admin: Marcar notificacion como leida."""
+    try:
+        data = request.get_json() or {}
+        notification_id = data.get('id')
+        mark_all = data.get('all', False)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if mark_all:
+                    cur.execute("UPDATE admin_notifications SET is_read = true WHERE is_read = false")
+                elif notification_id:
+                    cur.execute("UPDATE admin_notifications SET is_read = true WHERE id = %s", (notification_id,))
+                conn.commit()
+                
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error marking notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/delete', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_delete_notification():
+    """Admin: Eliminar notificacion."""
+    try:
+        data = request.get_json() or {}
+        notification_id = data.get('id')
+        delete_all = data.get('all', False)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if delete_all:
+                    cur.execute("DELETE FROM admin_notifications")
+                elif notification_id:
+                    cur.execute("DELETE FROM admin_notifications WHERE id = %s", (notification_id,))
+                conn.commit()
+                
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/settings', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_telegram_settings():
+    """Admin: Obtener configuracion de Telegram."""
+    try:
+        settings = telegram_service.get_settings()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT key, value FROM system_settings WHERE key LIKE 'telegram_%'")
+                db_settings = {row['key']: row['value'] for row in cur.fetchall()}
+        
+        for key in settings['notification_types']:
+            db_key = f"telegram_{key}_enabled"
+            if db_key in db_settings:
+                settings['notification_types'][key]['enabled'] = db_settings[db_key] == 'true'
+            
+            threshold_key = f"telegram_{key}_threshold"
+            if threshold_key in db_settings:
+                try:
+                    settings['notification_types'][key]['threshold'] = float(db_settings[threshold_key])
+                except:
+                    pass
+        
+        if 'telegram_enabled' in db_settings:
+            settings['enabled'] = db_settings['telegram_enabled'] == 'true'
+        
+        return jsonify({
+            'success': True,
+            **settings
+        })
+    except Exception as e:
+        logger.error(f"Error getting telegram settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/settings', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_update_telegram_settings():
+    """Admin: Actualizar configuracion de Telegram."""
+    try:
+        data = request.get_json() or {}
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if 'enabled' in data:
+                    cur.execute("""
+                        INSERT INTO system_settings (key, value, updated_at)
+                        VALUES ('telegram_enabled', %s, NOW())
+                        ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                    """, ('true' if data['enabled'] else 'false', 'true' if data['enabled'] else 'false'))
+                
+                if 'notification_types' in data:
+                    for key, settings in data['notification_types'].items():
+                        if isinstance(settings, dict):
+                            if 'enabled' in settings:
+                                db_key = f"telegram_{key}_enabled"
+                                val = 'true' if settings['enabled'] else 'false'
+                                cur.execute("""
+                                    INSERT INTO system_settings (key, value, updated_at)
+                                    VALUES (%s, %s, NOW())
+                                    ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                                """, (db_key, val, val))
+                            
+                            if 'threshold' in settings:
+                                threshold_key = f"telegram_{key}_threshold"
+                                cur.execute("""
+                                    INSERT INTO system_settings (key, value, updated_at)
+                                    VALUES (%s, %s, NOW())
+                                    ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                                """, (threshold_key, str(settings['threshold']), str(settings['threshold'])))
+                
+                conn.commit()
+        
+        telegram_service.update_settings(data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Configuracion guardada'
+        })
+    except Exception as e:
+        logger.error(f"Error updating telegram settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/test', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_test_telegram():
+    """Admin: Enviar mensaje de prueba por Telegram."""
+    try:
+        result = telegram_service.send_test_message()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error testing telegram: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/verify', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_verify_telegram():
+    """Admin: Verificar conexion del bot de Telegram."""
+    try:
+        result = telegram_service.verify_bot()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error verifying telegram: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/send', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_send_telegram():
+    """Admin: Enviar mensaje personalizado por Telegram."""
+    try:
+        data = request.get_json() or {}
+        message = data.get('message', '')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Mensaje requerido'}), 400
+        
+        result = telegram_service.send_custom_message(message)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error sending telegram: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
