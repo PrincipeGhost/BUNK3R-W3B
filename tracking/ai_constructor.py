@@ -1756,6 +1756,17 @@ class AIConstructorService:
                 "tiene_clarificacion": session.clarification is not None
             })
         
+        if not session.intent:
+            session.esperando_confirmacion = False
+            session.esperando_clarificacion = False
+            return {
+                "success": False,
+                "error": "No se pudo analizar la intención del mensaje. Por favor, intenta reformular tu solicitud.",
+                "fase": session.fase_actual,
+                "recoverable": True,
+                "session": session.to_dict()
+            }
+        
         prompt_maestro = self.prompt_builder.build(
             session.intent, session.research, session.clarification
         )
@@ -1778,7 +1789,7 @@ class AIConstructorService:
                 "tipo_tarea": session.intent.tipo_tarea.value if session.intent else None
             })
         
-        plan = self.task_orchestrator.create_plan(session.intent, session.research)
+        plan = self.task_orchestrator.create_plan(session.intent, session.research)  # session.intent ya validado arriba
         session.plan = plan
         session.esperando_confirmacion = True
         
@@ -1842,8 +1853,9 @@ class AIConstructorService:
         session.fase_actual = 6
         
         # Marcar tareas como en progreso
-        for tarea in session.plan.tareas:
-            tarea.estado = "en_progreso"
+        if session.plan and session.plan.tareas:
+            for tarea in session.plan.tareas:
+                tarea.estado = "en_progreso"
         
         # Usar el AI Service para generar el código
         if not self.ai_service:
@@ -1894,8 +1906,9 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         session.archivos_generados = files
         
         # Marcar tareas como completadas
-        for tarea in session.plan.tareas:
-            tarea.estado = "completada"
+        if session.plan and session.plan.tareas:
+            for tarea in session.plan.tareas:
+                tarea.estado = "completada"
         
         logger.info(f"[FASE 6] Generación completada: {list(files.keys())}")
         
@@ -1903,11 +1916,20 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         # FASE 7: VERIFICACIÓN AUTOMÁTICA
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 7
+        
+        if not session.intent or not session.plan:
+            logger.error("[FASE 7] Estado inconsistente: intent o plan no disponible")
+            return {
+                "success": False,
+                "error": "Error interno: estado de sesión inconsistente. Por favor, reinicia el proceso.",
+                "fase": session.fase_actual,
+                "files": files,
+                "session": session.to_dict()
+            }
+        
         verification = self.output_verifier.verify(files, session.intent, session.plan)
         session.verification = verification
-        
         verification_msg = self.output_verifier.format_verification_message(verification)
-        
         logger.info(f"[FASE 7] Verificación: {verification.puntuacion}/100")
         
         # ═══════════════════════════════════════════════════════════════

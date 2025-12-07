@@ -6223,14 +6223,27 @@ FASE 6 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G �
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 20:30
-**Sesión:** 12
+**Última actualización:** 7 Diciembre 2025 21:20
+**Sesión:** 13
 **Agente activo:** 🟡 BACKEND API
 
 ### Última tarea trabajada
-- Sección: 30.5 y 30.9
-- Nombre: Sesiones persistentes + Endpoint logout demo 2FA
+- Sección: 34 (AI BUNK3R CONSTRUCTOR)
+- Nombre: Corrección de errores LSP en ai_constructor.py
 - Estado: ✅ COMPLETADA
+
+### Cambios realizados en sesión 13:
+- Corregidos 6 errores LSP de tipado en tracking/ai_constructor.py:
+  - Añadida verificación de `session.intent` antes de `prompt_builder.build()`
+  - Añadidas verificaciones `if session.plan and session.plan.tareas` antes de iterar
+  - Refactorizada FASE 7 para manejar correctamente estados inconsistentes
+  - Actualizado return statement para usar `verification.to_dict()` directamente
+- Mejorado manejo de errores con recuperación:
+  - Reset de flags `esperando_confirmacion` y `esperando_clarificacion` en errores
+  - Añadido campo `recoverable: True` para errores recuperables
+  - Estados inconsistentes ahora devuelven error explícito en lugar de continuar silenciosamente
+- Servidor Flask corriendo sin errores
+- Endpoints de AI Toolkit protegidos correctamente con @require_owner
 
 ### Cambios realizados en sesión 12:
 - Creado endpoint `/api/demo/2fa/logout` en app.py (líneas 1050-1066)
