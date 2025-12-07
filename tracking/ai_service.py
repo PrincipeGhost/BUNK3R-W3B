@@ -608,10 +608,38 @@ Proporciona una respuesta COMPLETA y CORREGIDA:"""
                 continue
             
             logger.info(f"Trying provider: {provider.name}")
+            
+            interaction_id = None
+            if flow_logger:
+                user_prompt = message
+                if len(conversation) > 1:
+                    user_prompt = "\n".join([f"{m['role']}: {m['content'][:100]}..." for m in conversation[-3:]])
+                interaction_id = flow_logger.log_ai_request(
+                    user_id=user_id,
+                    fase=0,
+                    fase_nombre="chat_directo",
+                    provider=provider.name,
+                    prompt=user_prompt,
+                    system_prompt=system[:500] if system else None,
+                    metadata={"preferred_provider": preferred_provider}
+                )
+            
+            start_time = time.time()
             result = provider.chat(conversation, system)
+            elapsed_ms = int((time.time() - start_time) * 1000)
             
             if result.get("success"):
                 response_text = result.get("response", "")
+                
+                if flow_logger and interaction_id:
+                    flow_logger.log_ai_response(
+                        user_id=user_id,
+                        interaction_id=interaction_id,
+                        respuesta=response_text,
+                        tiempo_ms=elapsed_ms,
+                        exito=True
+                    )
+                
                 was_rectified = False
                 original_issues = []
                 
@@ -643,6 +671,15 @@ Proporciona una respuesta COMPLETA y CORREGIDA:"""
                     "rectified_issues": original_issues if was_rectified else []
                 }
             else:
+                if flow_logger and interaction_id:
+                    flow_logger.log_ai_response(
+                        user_id=user_id,
+                        interaction_id=interaction_id,
+                        respuesta="",
+                        tiempo_ms=elapsed_ms,
+                        exito=False,
+                        error=result.get('error', 'Unknown error')
+                    )
                 logger.warning(f"Provider {provider.name} failed: {result.get('error')}")
         
         conversation.pop()
