@@ -617,8 +617,127 @@ Soy BUNK3R AI. Estoy aqui para ayudarte a construir cosas increibles."""
         """Get list of available provider names"""
         return [p.name for p in self.providers if p.is_available()]
     
+    def _detect_response_issues(self, response: str, original_message: str) -> Dict:
+        """
+        Detecta problemas en la respuesta de la IA que requieren auto-rectificación
+        
+        Returns:
+            Dict con 'needs_fix': bool y 'issues': lista de problemas detectados
+        """
+        issues = []
+        response_lower = response.lower().strip()
+        
+        if len(response) < 20:
+            issues.append("respuesta_muy_corta")
+        
+        incomplete_markers = [
+            "...", "continuará", "continua", "[continua", "(continua",
+            "etc etc", "y así", "y asi"
+        ]
+        if any(marker in response_lower[-100:] for marker in incomplete_markers):
+            issues.append("respuesta_incompleta")
+        
+        if response.count("```") % 2 != 0:
+            issues.append("codigo_sin_cerrar")
+        
+        error_phrases = [
+            "no puedo", "no tengo acceso", "como ia", "como modelo de lenguaje",
+            "no tengo la capacidad", "no me es posible"
+        ]
+        if any(phrase in response_lower[:200] for phrase in error_phrases):
+            if "?" in original_message.lower() or any(kw in original_message.lower() 
+                for kw in ["cómo", "como", "qué", "que", "ayuda", "help"]):
+                issues.append("rechazo_innecesario")
+        
+        confusion_markers = [
+            "no entiendo", "no está claro", "podrías aclarar", "podrias aclarar",
+            "no estoy seguro de qué", "no estoy seguro de que"
+        ]
+        if any(marker in response_lower for marker in confusion_markers):
+            if len(original_message) > 50:
+                issues.append("confusion_evitable")
+        
+        return {
+            "needs_fix": len(issues) > 0,
+            "issues": issues
+        }
+    
+    def _auto_rectify(self, original_response: str, issues: List[str], 
+                      original_message: str, provider: 'AIProvider',
+                      system_prompt: str = None, conversation: List[Dict] = None) -> Dict:
+        """
+        Intenta auto-corregir una respuesta problemática
+        
+        Args:
+            original_response: La respuesta original con problemas
+            issues: Lista de problemas detectados
+            original_message: El mensaje original del usuario
+            provider: El proveedor que generó la respuesta
+            system_prompt: El prompt de sistema original (para mantener coherencia)
+            conversation: Conversación previa para contexto
+        
+        Returns:
+            Dict con la respuesta corregida o la original si falla
+        """
+        issues_text = ", ".join(issues)
+        logger.info(f"Auto-rectificando respuesta. Problemas: {issues_text}")
+        
+        rectification_prompt = f"""[SISTEMA DE AUTO-RECTIFICACIÓN ACTIVADO]
+
+Tu respuesta anterior tuvo los siguientes problemas: {issues_text}
+
+RESPUESTA ANTERIOR:
+{original_response}
+
+MENSAJE ORIGINAL DEL USUARIO:
+{original_message}
+
+INSTRUCCIONES DE CORRECCIÓN:
+1. Si la respuesta estaba incompleta, complétala
+2. Si el código quedó sin cerrar, ciérralo correctamente
+3. Si rechazaste innecesariamente, intenta responder de manera útil
+4. Si mostraste confusión, interpreta el mensaje de la mejor manera posible
+5. Mantén el contexto, idioma y coherencia con lo que ya dijiste
+
+Proporciona una respuesta COMPLETA y CORREGIDA:"""
+
+        rectify_messages = []
+        if conversation and len(conversation) > 2:
+            rectify_messages = conversation[-4:] if len(conversation) >= 4 else conversation.copy()
+        rectify_messages.append({"role": "user", "content": rectification_prompt})
+        
+        effective_prompt = system_prompt or self.DEFAULT_SYSTEM_PROMPT
+        
+        try:
+            result = provider.chat(rectify_messages, effective_prompt)
+            
+            if result.get("success"):
+                rectified = result.get("response", "")
+                if len(rectified) > len(original_response) * 0.5:
+                    recheck = self._detect_response_issues(rectified, original_message)
+                    if not recheck["needs_fix"] or len(recheck["issues"]) < len(issues):
+                        logger.info("Auto-rectificación exitosa")
+                        return {
+                            "success": True,
+                            "response": rectified,
+                            "rectified": True,
+                            "original_issues": issues
+                        }
+                    else:
+                        logger.warning("Rectificación no mejoró la respuesta")
+        except Exception as e:
+            logger.warning(f"Error en auto-rectificación: {e}")
+        
+        return {
+            "success": True,
+            "response": original_response,
+            "rectified": False,
+            "original_issues": issues
+        }
+
     def chat(self, user_id: str, message: str, system_prompt: str = None, 
-             preferred_provider: str = None, user_context: Dict = None) -> Dict:
+             preferred_provider: str = None, user_context: Dict = None,
+             enable_auto_rectify: bool = True) -> Dict:
         """
         Send a chat message and get response
         Uses automatic fallback between providers
@@ -629,6 +748,7 @@ Soy BUNK3R AI. Estoy aqui para ayudarte a construir cosas increibles."""
             system_prompt: Optional custom system prompt
             preferred_provider: Optional preferred AI provider
             user_context: Optional dict with user info (role, name, etc.)
+            enable_auto_rectify: Enable auto-correction of problematic responses
         """
         if not self.providers:
             return {
@@ -659,6 +779,25 @@ Soy BUNK3R AI. Estoy aqui para ayudarte a construir cosas increibles."""
             
             if result.get("success"):
                 response_text = result.get("response", "")
+                was_rectified = False
+                original_issues = []
+                
+                if enable_auto_rectify:
+                    issue_check = self._detect_response_issues(response_text, message)
+                    if issue_check["needs_fix"]:
+                        rectify_result = self._auto_rectify(
+                            response_text, 
+                            issue_check["issues"],
+                            message,
+                            provider,
+                            system_prompt=system,
+                            conversation=conversation
+                        )
+                        if rectify_result.get("rectified"):
+                            response_text = rectify_result["response"]
+                            was_rectified = True
+                            original_issues = rectify_result.get("original_issues", [])
+                
                 conversation.append({"role": "assistant", "content": response_text})
                 self._save_conversation(user_id, conversation)
                 
@@ -666,7 +805,9 @@ Soy BUNK3R AI. Estoy aqui para ayudarte a construir cosas increibles."""
                     "success": True,
                     "response": response_text,
                     "provider": provider.name,
-                    "conversation_length": len(conversation)
+                    "conversation_length": len(conversation),
+                    "auto_rectified": was_rectified,
+                    "rectified_issues": original_issues if was_rectified else []
                 }
             else:
                 logger.warning(f"Provider {provider.name} failed: {result.get('error')}")
