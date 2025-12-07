@@ -66,6 +66,22 @@ const Utils = {
             .replace(/"/g, '\\"')
             .replace(/\n/g, '\\n')
             .replace(/\r/g, '\\r');
+    },
+
+    escapeForOnclick(value) {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        if (/^\d+$/.test(str)) {
+            return str;
+        }
+        return str
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"')
+            .replace(/</g, '\\u003c')
+            .replace(/>/g, '\\u003e')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r');
     }
 };
 
@@ -891,14 +907,93 @@ const Throttle = {
     }
 };
 
+const SafeDOM = {
+    _safeConfig: {
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 
+                       'ul', 'ol', 'li', 'img', 'button', 'input', 'label',
+                       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th',
+                       'thead', 'tbody', 'tfoot', 'svg', 'path', 'circle', 'rect',
+                       'line', 'polyline', 'polygon', 'g', 'defs', 'use', 'symbol',
+                       'code', 'pre', 'blockquote', 'hr', 'small', 'sup', 'sub',
+                       'nav', 'header', 'footer', 'article', 'section', 'aside',
+                       'figure', 'figcaption', 'video', 'audio', 'source', 'canvas',
+                       'form', 'select', 'option', 'textarea', 'fieldset', 'legend',
+                       'time', 'progress', 'meter', 'details', 'summary', 'mark'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id', 
+                       'type', 'value', 'placeholder', 'name', 'data-*', 'aria-*',
+                       'role', 'tabindex', 'target', 'rel', 'title', 'width', 'height',
+                       'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy',
+                       'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points', 'transform',
+                       'disabled', 'readonly', 'checked', 'selected', 'maxlength',
+                       'min', 'max', 'step', 'pattern', 'required', 'autocomplete',
+                       'inputmode', 'for', 'controls', 'autoplay', 'loop', 'muted',
+                       'poster', 'preload', 'xmlns', 'xmlns:xlink', 'xlink:href',
+                       'loading', 'decoding', 'crossorigin', 'sizes', 'srcset'],
+        FORBID_ATTR: ['onclick', 'onchange', 'oninput', 'onfocus', 'onblur', 
+                      'onload', 'onerror', 'onmouseover', 'onmouseout', 'style'],
+        ALLOW_DATA_ATTR: true,
+        RETURN_DOM: false,
+        RETURN_DOM_FRAGMENT: false,
+        WHOLE_DOCUMENT: false
+    },
+    
+    _configWithEvents: {
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 
+                       'ul', 'ol', 'li', 'img', 'button', 'input', 'label',
+                       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th',
+                       'thead', 'tbody', 'tfoot', 'svg', 'path', 'circle', 'rect',
+                       'line', 'polyline', 'polygon', 'g', 'defs', 'use', 'symbol',
+                       'code', 'pre', 'blockquote', 'hr', 'small', 'sup', 'sub'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id', 'style',
+                       'type', 'value', 'placeholder', 'name', 'data-*', 'aria-*',
+                       'role', 'tabindex', 'target', 'rel', 'title', 'width', 'height',
+                       'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy',
+                       'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points', 'transform',
+                       'disabled', 'readonly', 'checked', 'selected', 'maxlength',
+                       'min', 'max', 'step', 'pattern', 'required', 'autocomplete',
+                       'inputmode', 'for', 'onclick', 'onchange'],
+        ALLOW_DATA_ATTR: true
+    },
+    
+    setHTML: function(element, html, options = {}) {
+        if (!element) return element;
+        if (typeof DOMPurify !== 'undefined') {
+            const config = options.allowEvents ? this._configWithEvents : this._safeConfig;
+            element.innerHTML = DOMPurify.sanitize(html, config);
+        } else {
+            const div = document.createElement('div');
+            div.textContent = String(html);
+            element.innerHTML = div.innerHTML;
+        }
+        return element;
+    },
+    
+    setTrustedHTML: function(element, html) {
+        if (!element) return element;
+        element.innerHTML = html;
+        return element;
+    },
+    
+    sanitize: function(html) {
+        if (typeof DOMPurify !== 'undefined') {
+            return DOMPurify.sanitize(html, this._safeConfig);
+        }
+        const div = document.createElement('div');
+        div.textContent = String(html);
+        return div.innerHTML;
+    }
+};
+
 Logger.init();
 A11y.init();
 Toast.init();
 StateManager.init();
 
+window.SafeDOM = SafeDOM;
 window.escapeHtml = Utils.escapeHtml.bind(Utils);
 window.escapeAttribute = Utils.escapeAttribute.bind(Utils);
 window.sanitizeForJs = Utils.sanitizeForJs.bind(Utils);
+window.escapeForOnclick = Utils.escapeForOnclick.bind(Utils);
 window.Logger = Logger;
 window.ErrorHandler = ErrorHandler;
 window.FallbackUI = FallbackUI;

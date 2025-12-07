@@ -739,9 +739,11 @@ const AdminPanel = {
             return;
         }
         
-        tbody.innerHTML = users.map(user => `
+        const usersHtml = users.map(user => {
+            const safeUserId = typeof escapeForOnclick !== 'undefined' ? escapeForOnclick(user.user_id) : user.user_id;
+            return `
             <tr>
-                <td><code>${user.user_id}</code></td>
+                <td><code>${this.escapeHtml(user.user_id)}</code></td>
                 <td>
                     <div class="user-cell">
                         <div class="user-avatar-sm">${(user.first_name || 'U')[0].toUpperCase()}</div>
@@ -762,14 +764,19 @@ const AdminPanel = {
                 </td>
                 <td>
                     <div class="action-btns">
-                        <button class="action-btn" onclick="AdminPanel.viewUser('${user.user_id}')">Ver</button>
-                        <button class="action-btn danger" onclick="AdminPanel.banUser('${user.user_id}', ${!user.is_banned})">
+                        <button class="action-btn" onclick="AdminPanel.viewUser('${safeUserId}')">Ver</button>
+                        <button class="action-btn danger" onclick="AdminPanel.banUser('${safeUserId}', ${!user.is_banned})">
                             ${user.is_banned ? 'Desbanear' : 'Banear'}
                         </button>
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `;}).join('');
+        if (typeof SafeDOM !== 'undefined') {
+            SafeDOM.setHTML(tbody, usersHtml, { allowEvents: true });
+        } else {
+            tbody.innerHTML = usersHtml;
+        }
     },
     
     updateUsersPagination(total, page, pages) {

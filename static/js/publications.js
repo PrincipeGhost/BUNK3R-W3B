@@ -809,7 +809,11 @@ const PublicationsManager = {
         }
         
         const postsHtml = this.feedPosts.map(post => this.renderPost(post)).join('');
-        feedContainer.innerHTML = postsHtml;
+        if (typeof SafeDOM !== 'undefined') {
+            SafeDOM.setHTML(feedContainer, postsHtml, { allowEvents: true });
+        } else {
+            feedContainer.innerHTML = postsHtml;
+        }
         Logger?.debug('Feed container updated');
         this.setupPostInteractions();
     },
