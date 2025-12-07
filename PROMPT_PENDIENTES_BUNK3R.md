@@ -79,99 +79,159 @@ Escribe un número o comando...
 
 ## SISTEMA DE 4 AGENTES - DIVISIÓN DE TRABAJO
 
-### 🔵 AGENTE 1: FRONTEND USUARIO
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    🚨 REGLA DE ORO - LOS 4 AGENTES 🚨                         ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  Los 4 agentes trabajan SIMULTÁNEAMENTE en el proyecto.                       ║
+║  CADA ARCHIVO tiene UN SOLO DUEÑO. Nadie más puede tocarlo.                   ║
+║  Si necesitas algo de otro agente, DOCUMENTA la dependencia y espera.         ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+### 🔵 AGENTE 1: FRONTEND USUARIO + WORKSPACE IA
 **Rama Git:** `feature/frontend-user`
 **Comando para activar:** `3` o `FRONTEND`
+**Responsabilidad:** Todo el frontend del usuario final, incluyendo workspace de IA
 
-| Archivo | Función | SOLO ESTE AGENTE |
-|---------|---------|------------------|
+| Archivo | Función | Exclusivo |
+|---------|---------|-----------|
 | `static/js/app.js` | Lógica frontend principal | ✅ |
 | `static/js/publications.js` | Publicaciones/feed | ✅ |
 | `static/js/virtual-numbers.js` | Números virtuales UI | ✅ |
-| `static/js/utils.js` | Utilidades compartidas | ✅ |
+| `static/js/utils.js` | Utilidades compartidas JS | ✅ |
+| `static/js/ai-chat.js` | Chat con IA frontend | ✅ |
+| `static/js/workspace.js` | Workspace IA frontend | ✅ |
 | `static/css/styles.css` | Estilos generales | ✅ |
+| `static/css/ai-chat.css` | Estilos chat IA | ✅ |
+| `static/css/workspace.css` | Estilos workspace IA | ✅ |
 | `templates/index.html` | Template principal | ✅ |
-| `templates/virtual_numbers.html` | Template VN | ✅ |
+| `templates/virtual_numbers.html` | Template números virtuales | ✅ |
+| `templates/workspace.html` | Template workspace IA | ✅ |
+| `templates/access_denied.html` | Template acceso denegado | ✅ |
+| `static/images/*` | Todas las imágenes | ✅ |
+| `static/uploads/*` | Archivos subidos | ✅ |
+
+**Total: 15 archivos/carpetas**
 
 ---
 
 ### 🟢 AGENTE 2: FRONTEND ADMIN
 **Rama Git:** `feature/frontend-admin`
 **Comando para activar:** `5` o `ADMIN`
+**Responsabilidad:** Todo el panel de administración
 
-| Archivo | Función | SOLO ESTE AGENTE |
-|---------|---------|------------------|
-| `static/js/admin.js` | Lógica panel admin | ✅ |
-| `static/css/admin.css` | Estilos admin | ✅ |
-| `templates/admin.html` | Template admin | ✅ |
+| Archivo | Función | Exclusivo |
+|---------|---------|-----------|
+| `static/js/admin.js` | Lógica panel admin completo | ✅ |
+| `static/css/admin.css` | Estilos panel admin | ✅ |
+| `templates/admin.html` | Template panel admin | ✅ |
+
+**Total: 3 archivos**
 
 ---
 
-### 🟡 AGENTE 3: BACKEND API
+### 🟡 AGENTE 3: BACKEND API + CORE IA
 **Rama Git:** `feature/backend-api`
 **Comando para activar:** `4` o `BACKEND`
+**Responsabilidad:** API principal, base de datos y motor de IA
 
-| Archivo | Función | SOLO ESTE AGENTE |
-|---------|---------|------------------|
-| `app.py` | Endpoints API y rutas | ✅ |
-| `tracking/database.py` | Operaciones BD | ✅ |
-| `tracking/models.py` | Modelos de datos | ✅ |
+| Archivo | Función | Exclusivo |
+|---------|---------|-----------|
+| `app.py` | Endpoints API y rutas Flask | ✅ |
+| `tracking/database.py` | Operaciones de base de datos | ✅ |
+| `tracking/models.py` | Modelos SQLAlchemy | ✅ |
 | `tracking/email_service.py` | Servicio de emails | ✅ |
-| `tracking/security.py` | Seguridad y 2FA | ✅ |
-| `init_db.py` | Inicialización BD | ✅ |
+| `tracking/security.py` | Seguridad, 2FA, tokens | ✅ |
+| `tracking/telegram_service.py` | Bot de Telegram | ✅ |
+| `tracking/ai_service.py` | Servicio principal IA | ✅ |
+| `tracking/ai_constructor.py` | Constructor IA con 8 fases | ✅ |
+| `tracking/ai_core_engine.py` | Motor central de decisiones IA | ✅ |
+| `tracking/ai_flow_logger.py` | Logger de flujos IA | ✅ |
+| `tracking/ai_project_context.py` | Contexto de proyecto IA | ✅ |
+| `tracking/ai_toolkit.py` | Herramientas IA (archivos/shell) | ✅ |
+| `tracking/__init__.py` | Init del módulo tracking | ✅ |
+| `init_db.py` | Inicialización de BD | ✅ |
+| `seed_data.py` | Datos de prueba | ✅ |
 | `requirements.txt` | Dependencias Python | ✅ |
+
+**Total: 16 archivos**
 
 ---
 
 ### 🔴 AGENTE 4: BLOCKCHAIN & SERVICIOS EXTERNOS
 **Rama Git:** `feature/blockchain-services`
 **Comando para activar:** `6` o `BLOCKCHAIN`
+**Responsabilidad:** Blockchain TON, wallets, pagos y servicios externos
 
-| Archivo | Función | SOLO ESTE AGENTE |
-|---------|---------|------------------|
-| `tracking/b3c_service.py` | Token B3C en TON | ✅ |
-| `tracking/wallet_pool_service.py` | Pool de wallets | ✅ |
-| `tracking/deposit_scheduler.py` | Detección de depósitos | ✅ |
-| `tracking/smspool_service.py` | API números virtuales | ✅ |
-| `tracking/cloudinary_service.py` | Subida de media | ✅ |
-| `tracking/encryption.py` | Encriptación contenido | ✅ |
+| Archivo | Función | Exclusivo |
+|---------|---------|-----------|
+| `tracking/b3c_service.py` | Token B3C en blockchain TON | ✅ |
+| `tracking/wallet_pool_service.py` | Pool de wallets TON | ✅ |
+| `tracking/deposit_scheduler.py` | Detección automática de depósitos | ✅ |
+| `tracking/smspool_service.py` | API de números virtuales SMS | ✅ |
+| `tracking/cloudinary_service.py` | Servicio de subida media | ✅ |
+| `tracking/encryption.py` | Encriptación de contenido | ✅ |
+
+**Total: 6 archivos**
 
 ---
 
-### ⚠️ ARCHIVOS COMPARTIDOS (SOLO LECTURA)
+### ⚠️ ARCHIVOS COMPARTIDOS (SOLO LECTURA para todos)
 
 | Archivo | Puede leer | Puede editar |
 |---------|------------|--------------|
-| `run.py` | Todos | Ninguno |
-| `replit.md` | Todos | El que complete tarea |
-| `PROMPT_PENDIENTES_BUNK3R.md` | Todos | El que complete tarea |
+| `run.py` | ✅ Todos | ❌ Ninguno (archivo de arranque) |
+| `replit.md` | ✅ Todos | ✅ Solo al completar tarea |
+| `PROMPT_PENDIENTES_BUNK3R.md` | ✅ Todos | ✅ Solo al completar tarea |
+| `docs/*` | ✅ Todos | ✅ Solo al completar tarea |
+| `logs/*` | ✅ Todos | ❌ Ninguno (generados automáticamente) |
+
+---
+
+### 📊 RESUMEN DE DISTRIBUCIÓN
+
+| Agente | Archivos | Área Principal |
+|--------|----------|----------------|
+| 🔵 FRONTEND | 15 | UI usuario + Workspace IA |
+| 🟢 ADMIN | 3 | Panel administración |
+| 🟡 BACKEND | 16 | API + Motor IA |
+| 🔴 BLOCKCHAIN | 6 | TON + Servicios externos |
+| **TOTAL** | **40** | **100% del proyecto** |
 
 ---
 
 ## 🚫 REGLA CRÍTICA: PROHIBIDO TOCAR ARCHIVOS DE OTROS
 
 ```
-╔═══════════════════════════════════════════════════════════════════╗
-║  ⛔ ABSOLUTAMENTE PROHIBIDO MODIFICAR ARCHIVOS DE OTRO AGENTE ⛔  ║
-╠═══════════════════════════════════════════════════════════════════╣
-║                                                                   ║
-║  Si trabajas en FRONTEND:                                         ║
-║  ❌ NO toques app.py, tracking/*.py                               ║
-║  ✅ SÍ puedes tocar static/js/app.js, static/css/styles.css      ║
-║                                                                   ║
-║  Si trabajas en BACKEND:                                          ║
-║  ❌ NO toques static/js/*.js, static/css/*.css, templates/*.html ║
-║  ✅ SÍ puedes tocar app.py, tracking/database.py, etc.           ║
-║                                                                   ║
-║  Si trabajas en ADMIN:                                            ║
-║  ❌ NO toques app.js, styles.css, archivos de backend             ║
-║  ✅ SÍ puedes tocar admin.js, admin.css, admin.html              ║
-║                                                                   ║
-║  Si trabajas en BLOCKCHAIN:                                       ║
-║  ❌ NO toques frontend ni backend principal                       ║
-║  ✅ SÍ puedes tocar b3c_service.py, wallet_pool_service.py, etc. ║
-║                                                                   ║
-╚═══════════════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║           ⛔ ABSOLUTAMENTE PROHIBIDO MODIFICAR ARCHIVOS DE OTRO AGENTE ⛔      ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  🔵 AGENTE FRONTEND (3/FRONTEND):                                             ║
+║  ❌ NO toques: app.py, tracking/*.py, admin.js, admin.css, admin.html         ║
+║  ✅ SÍ puedes: static/js/app.js, ai-chat.js, workspace.js, publications.js,  ║
+║               virtual-numbers.js, utils.js, templates/index.html, etc.        ║
+║                                                                               ║
+║  🟢 AGENTE ADMIN (5/ADMIN):                                                   ║
+║  ❌ NO toques: app.py, tracking/*.py, app.js, styles.css, index.html          ║
+║  ✅ SÍ puedes: admin.js, admin.css, admin.html (SOLO estos 3)                 ║
+║                                                                               ║
+║  🟡 AGENTE BACKEND (4/BACKEND):                                               ║
+║  ❌ NO toques: static/js/*.js, static/css/*.css, templates/*.html             ║
+║  ✅ SÍ puedes: app.py, tracking/database.py, tracking/models.py,              ║
+║               tracking/ai_*.py, tracking/security.py, etc.                    ║
+║                                                                               ║
+║  🔴 AGENTE BLOCKCHAIN (6/BLOCKCHAIN):                                         ║
+║  ❌ NO toques: frontend, backend principal, archivos de IA                    ║
+║  ✅ SÍ puedes: b3c_service.py, wallet_pool_service.py, deposit_scheduler.py,  ║
+║               smspool_service.py, cloudinary_service.py, encryption.py        ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
