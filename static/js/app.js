@@ -1326,7 +1326,7 @@ const App = {
                 this.showPage('marketplace');
                 break;
             case 'ai-chat':
-                window.location.href = '/workspace';
+                this.showPage('ai-chat');
                 break;
             case 'wallet':
                 this.showPage('wallet');
