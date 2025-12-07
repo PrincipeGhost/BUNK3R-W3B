@@ -12,9 +12,15 @@ import logging
 import uuid
 import base64
 import io
+import re
+import html
+import time
+import threading
+import requests
 from datetime import datetime
 from functools import wraps
-from urllib.parse import parse_qs, unquote
+from urllib.parse import parse_qs, unquote, urlparse
+from collections import defaultdict
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, Response
 from werkzeug.utils import secure_filename
@@ -220,10 +226,6 @@ def sanitize_error(error, context=""):
     return 'Ha ocurrido un error. Intenta de nuevo.'
 
 
-import re
-import html
-from urllib.parse import urlparse
-
 class InputValidator:
     """Validador y sanitizador de inputs para prevenir ataques."""
     
@@ -379,10 +381,6 @@ class InputValidator:
 input_validator = InputValidator()
 
 
-import threading
-import time
-from collections import defaultdict
-
 class RateLimiter:
     """Sistema de rate limiting para proteger endpoints críticos."""
     
@@ -526,9 +524,6 @@ def rate_limit(action: str = 'default', use_ip: bool = False):
     return decorator
 
 
-import time
-
-
 def verify_origin_referer() -> tuple:
     """
     Verifica Origin/Referer para protección CSRF.
@@ -553,7 +548,6 @@ def verify_origin_referer() -> tuple:
             return False, f"Origin no permitido: {origin}"
     
     if referer:
-        from urllib.parse import urlparse
         referer_host = urlparse(referer).netloc
         host_only = request.host.split(':')[0]
         if referer_host not in [host_only, 'web.telegram.org', 'telegram.org'] and not referer_host.endswith('.telegram.org'):
@@ -913,9 +907,6 @@ def health_check():
 @app.route('/api/proxy')
 def browser_proxy():
     """Proxy para cargar páginas externas en el multi-browser evitando X-Frame-Options."""
-    import requests as req
-    from urllib.parse import urlparse
-    
     url = request.args.get('url', '')
     if not url:
         return '<html><body style="background:#1a1a1a;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>Ingresa una URL para navegar<br><small style="color:#666;">Ejemplo: github.com, wikipedia.org</small></p></body></html>', 200
@@ -934,7 +925,7 @@ def browser_proxy():
             'Accept-Language': 'en-US,en;q=0.5',
         }
         
-        resp = req.get(url, headers=headers, timeout=15, allow_redirects=True)
+        resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
         content_type = resp.headers.get('Content-Type', 'text/html')
         
         if 'text/html' in content_type:
@@ -956,9 +947,9 @@ def browser_proxy():
         
         return response
         
-    except req.exceptions.Timeout:
+    except requests.exceptions.Timeout:
         return '<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>Tiempo de espera agotado<br><small style="color:#888;">El sitio tardó demasiado en responder</small></p></body></html>', 504
-    except req.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError:
         return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>No se pudo conectar<br><small style="color:#888;">Verifica que la URL esté completa<br>Ejemplo: github.com (no solo github)</small></p></body></html>', 502
     except Exception as e:
         logger.error(f"Proxy error: {e}")
@@ -2755,8 +2746,6 @@ def bot_config(bot_id):
         logger.error(f"Error with bot config {bot_id}: {e}")
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
-
-import requests
 
 CHANGENOW_API_KEY = os.environ.get('CHANGENOW_API_KEY', '')
 CHANGENOW_BASE_URL = 'https://api.changenow.io/v1'
