@@ -595,14 +595,16 @@ Genera el codigo segun la solicitud del usuario. Responde SOLO con JSON valido."
                         if matches:
                             for match in matches:
                                 try:
-                                    json.loads(match)
-                                    json_match = match
+                                    sanitized = self._sanitize_json(match)
+                                    json.loads(sanitized)
+                                    json_match = sanitized
                                     break
                                 except:
                                     continue
                     
                     if json_match:
-                        parsed = json.loads(json_match)
+                        sanitized_json = self._sanitize_json(json_match)
+                        parsed = json.loads(sanitized_json)
                         files = parsed.get("files", {})
                         msg = parsed.get("message", "Codigo generado exitosamente")
                         
@@ -614,10 +616,18 @@ Genera el codigo segun la solicitud del usuario. Responde SOLO con JSON valido."
                                 "provider": provider.name
                             }
                     
+                    extracted = self._extract_code_blocks(response_text)
+                    if extracted:
+                        return {
+                            "success": True,
+                            "files": extracted,
+                            "response": "He generado el codigo solicitado.",
+                            "provider": provider.name
+                        }
+                    
                     return {
-                        "success": True,
-                        "files": self._extract_code_blocks(response_text),
-                        "response": "He generado el codigo solicitado.",
+                        "success": False,
+                        "error": "No se pudo extraer codigo de la respuesta. Intenta de nuevo.",
                         "provider": provider.name
                     }
                     
@@ -645,12 +655,52 @@ Genera el codigo segun la solicitud del usuario. Responde SOLO con JSON valido."
             "provider": None
         }
     
+    def _sanitize_json(self, json_str: str) -> str:
+        """Sanitize JSON string by escaping control characters in string values"""
+        import re
+        
+        result = []
+        in_string = False
+        escape_next = False
+        
+        for char in json_str:
+            if escape_next:
+                result.append(char)
+                escape_next = False
+                continue
+                
+            if char == '\\':
+                escape_next = True
+                result.append(char)
+                continue
+                
+            if char == '"':
+                in_string = not in_string
+                result.append(char)
+                continue
+            
+            if in_string:
+                if char == '\n':
+                    result.append('\\n')
+                elif char == '\r':
+                    result.append('\\r')
+                elif char == '\t':
+                    result.append('\\t')
+                elif ord(char) < 32:
+                    result.append(f'\\u{ord(char):04x}')
+                else:
+                    result.append(char)
+            else:
+                result.append(char)
+        
+        return ''.join(result)
+    
     def _extract_code_blocks(self, text: str) -> Dict[str, str]:
         """Extract code blocks from markdown-style response"""
         import re
         files = {}
         
-        pattern = r'```(\w+)?\s*(?:\n)?([^`]+)```'
+        pattern = r'```(\w+)?\s*\n?([\s\S]*?)```'
         matches = re.findall(pattern, text)
         
         lang_to_ext = {
@@ -664,6 +714,11 @@ Genera el codigo segun la solicitud del usuario. Responde SOLO con JSON valido."
             lang = lang.lower() if lang else 'html'
             filename = lang_to_ext.get(lang, f'file.{lang}')
             files[filename] = code.strip()
+        
+        if not files and '<!DOCTYPE html>' in text.lower():
+            html_match = re.search(r'(<!DOCTYPE html>[\s\S]*?</html>)', text, re.IGNORECASE)
+            if html_match:
+                files['index.html'] = html_match.group(1).strip()
         
         return files
 
