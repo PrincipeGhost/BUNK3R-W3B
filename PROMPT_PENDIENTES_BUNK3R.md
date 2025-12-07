@@ -1420,11 +1420,11 @@ app.logger.setLevel(logging.INFO)
 | 30.2 | Implementar DOMPurify | 🔴 CRÍTICA | 4h | ✅ |
 | 30.3 | Headers CSP | 🟠 MEDIA | 1h | ✅ |
 | 30.4 | Limpiar imports | 🟠 MEDIA | 1h | ✅ |
-| 30.5 | Sesiones persistentes | 🟡 MEDIA-BAJA | 2h | ⏳ |
+| 30.5 | Sesiones persistentes | 🟡 MEDIA-BAJA | 2h | ✅ |
 | 30.6 | Documentar APIs | 🟢 BAJA | 3h | ⏳ |
 | 30.7 | Tests automatizados | 🟢 BAJA | 8h | ⏳ |
 | 30.8 | Optimizaciones BD | 🟢 OPCIONAL | 2-4h | ⏳ |
-| 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ⏳ |
+| 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ✅ |
 | 30.10 | Mejorar logs | 🟢 BAJA | 1h | ⏳ |
 
 **TOTAL TIEMPO ESTIMADO: ~22 horas**
@@ -6193,14 +6193,20 @@ FASE 6 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G �
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 8 Diciembre 2025 01:00
-**Sesión:** 11
-**Agente activo:** DOCUMENTACIÓN
+**Última actualización:** 7 Diciembre 2025 20:30
+**Sesión:** 12
+**Agente activo:** 🟡 BACKEND API
 
 ### Última tarea trabajada
-- Sección: SECCIÓN 35 (NUEVA)
-- Nombre: Agregar componentes nivel experto (340+ componentes)
+- Sección: 30.5 y 30.9
+- Nombre: Sesiones persistentes + Endpoint logout demo 2FA
 - Estado: ✅ COMPLETADA
+
+### Cambios realizados en sesión 12:
+- Creado endpoint `/api/demo/2fa/logout` en app.py (líneas 1050-1066)
+- Verificado que Flask-Session ya está configurado con filesystem (líneas 74-86)
+- Las sesiones persisten correctamente entre reinicios del servidor
+- Actualizado resumen de sección 30 (30.5 y 30.9 completados)
 
 ### Cambios realizados en sesión 11:
 - Agregada SECCIÓN 35 completa: Componentes Nivel Experto

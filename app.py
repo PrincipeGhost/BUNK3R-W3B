@@ -1044,6 +1044,25 @@ def verify_demo_2fa():
         return jsonify({'success': False, 'error': 'Error interno'}), 500
 
 
+@app.route('/api/demo/2fa/logout', methods=['POST'])
+def demo_2fa_logout():
+    """Cerrar sesión del modo demo 2FA."""
+    if IS_PRODUCTION:
+        return jsonify({'error': 'Not available in production'}), 403
+    
+    try:
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        invalidate_demo_session()
+        logger.info(f"🚪 Demo session logged out from IP: {client_ip}")
+        return jsonify({
+            'success': True,
+            'message': 'Sesión cerrada correctamente'
+        })
+    except Exception as e:
+        logger.error(f"Error during demo logout: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
 def ensure_user_exists(user_data, db_mgr):
     """Asegura que el usuario exista en la base de datos"""
     user_id = str(user_data.get('id'))
