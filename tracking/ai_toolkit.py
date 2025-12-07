@@ -33,7 +33,7 @@ class AIFileToolkit:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max file size
     MAX_READ_LINES = 5000
     
-    def __init__(self, project_root: str = None):
+    def __init__(self, project_root: Optional[str] = None):
         self.project_root = Path(project_root) if project_root else Path.cwd()
         self.operations_log: List[Dict] = []
     
@@ -57,7 +57,7 @@ class AIFileToolkit:
         except Exception as e:
             return False, str(e)
     
-    def _log_operation(self, operation: str, path: str, success: bool, details: str = None):
+    def _log_operation(self, operation: str, path: str, success: bool, details: Optional[str] = None):
         """Log file operation for audit"""
         self.operations_log.append({
             'timestamp': datetime.now().isoformat(),
@@ -68,7 +68,7 @@ class AIFileToolkit:
         })
         logger.info(f"AIToolkit: {operation} {path} - {'SUCCESS' if success else 'FAILED'}: {details}")
     
-    def read_file(self, path: str, max_lines: int = None) -> Dict[str, Any]:
+    def read_file(self, path: str, max_lines: Optional[int] = None) -> Dict[str, Any]:
         """Read file content with line limit"""
         safe, reason = self._is_safe_path(path)
         if not safe:
@@ -308,7 +308,7 @@ class AIFileToolkit:
             self._log_operation('list_directory', path, False, str(e))
             return {'success': False, 'error': str(e)}
     
-    def search_code(self, query: str, path: str = '.', file_pattern: str = None) -> Dict[str, Any]:
+    def search_code(self, query: str, path: str = '.', file_pattern: Optional[str] = None) -> Dict[str, Any]:
         """Search for text/pattern in code files"""
         safe, reason = self._is_safe_path(path)
         if not safe:
@@ -516,7 +516,7 @@ class AICommandExecutor:
     MAX_TIMEOUT = 300  # 5 minutes max
     MAX_OUTPUT_SIZE = 100 * 1024  # 100KB
     
-    def __init__(self, working_dir: str = None):
+    def __init__(self, working_dir: Optional[str] = None):
         self.working_dir = working_dir or os.getcwd()
         self.execution_log: List[Dict] = []
     
@@ -547,8 +547,8 @@ class AICommandExecutor:
         
         return True, "OK"
     
-    def _log_execution(self, command: str, success: bool, exit_code: int = None, 
-                       output: str = None, error: str = None, duration: float = None):
+    def _log_execution(self, command: str, success: bool, exit_code: Optional[int] = None, 
+                       output: Optional[str] = None, error: Optional[str] = None, duration: Optional[float] = None):
         """Log command execution"""
         self.execution_log.append({
             'timestamp': datetime.now().isoformat(),
@@ -561,7 +561,7 @@ class AICommandExecutor:
         })
         logger.info(f"AICommandExecutor: {command} - {'SUCCESS' if success else 'FAILED'} (exit: {exit_code})")
     
-    def run_command(self, command: str, timeout: int = None) -> Dict[str, Any]:
+    def run_command(self, command: str, timeout: Optional[int] = None) -> Dict[str, Any]:
         """Execute command with security checks and timeout"""
         allowed, reason = self._is_command_allowed(command)
         if not allowed:
@@ -758,7 +758,7 @@ class AIErrorDetector:
     def __init__(self):
         self.detected_errors: List[Dict] = []
     
-    def read_server_logs(self, log_file: str = None, lines: int = 100) -> Dict[str, Any]:
+    def read_server_logs(self, log_file: Optional[str] = None, lines: int = 100) -> Dict[str, Any]:
         """Read server logs"""
         try:
             log_content = []
@@ -926,7 +926,7 @@ class AIProjectAnalyzer:
         'streamlit': ['streamlit', 'st.'],
     }
     
-    def __init__(self, project_root: str = None):
+    def __init__(self, project_root: Optional[str] = None):
         self.project_root = Path(project_root) if project_root else Path.cwd()
     
     def analyze_project(self) -> Dict[str, Any]:
@@ -962,7 +962,7 @@ class AIProjectAnalyzer:
         if not extensions:
             return 'unknown'
         
-        primary = max(extensions, key=extensions.get)
+        primary = max(extensions, key=lambda x: extensions.get(x, 0))
         
         lang_map = {
             '.py': 'python',

@@ -32,16 +32,77 @@ except ImportError:
 
 
 class TaskType(Enum):
-    """Tipos de tareas que BUNK3R puede manejar"""
+    """Tipos de tareas que BUNK3R puede manejar - 30+ tipos de intenciones"""
+    
+    # === CREACIÓN (12 tipos) ===
     CREAR_WEB = "crear_web"
     CREAR_LANDING = "crear_landing"
     CREAR_DASHBOARD = "crear_dashboard"
     CREAR_FORMULARIO = "crear_formulario"
     CREAR_API = "crear_api"
+    CREAR_COMPONENTE = "crear_componente"
+    CREAR_PAGINA = "crear_pagina"
+    CREAR_MODAL = "crear_modal"
+    CREAR_TABLA = "crear_tabla"
+    CREAR_ESTILO = "crear_estilo"
+    CREAR_FUNCION = "crear_funcion"
+    CREAR_CLASE = "crear_clase"
+    
+    # === MODIFICACIÓN (9 tipos) ===
     MODIFICAR_CODIGO = "modificar_codigo"
+    MODIFICAR_ARCHIVO = "modificar_archivo"
+    MODIFICAR_ESTILO = "modificar_estilo"
+    MODIFICAR_CONTENIDO = "modificar_contenido"
+    AGREGAR_FUNCIONALIDAD = "agregar_funcionalidad"
+    QUITAR_ELEMENTO = "quitar_elemento"
+    RENOMBRAR = "renombrar"
+    MOVER_ARCHIVO = "mover_archivo"
+    DUPLICAR = "duplicar"
+    
+    # === CORRECCIÓN (6 tipos) ===
     CORREGIR_ERROR = "corregir_error"
+    CORREGIR_SINTAXIS = "corregir_sintaxis"
+    CORREGIR_ESTILO = "corregir_estilo"
+    CORREGIR_LOGICA = "corregir_logica"
+    CORREGIR_IMPORTACION = "corregir_importacion"
+    CORREGIR_TIPADO = "corregir_tipado"
+    
+    # === EJECUCIÓN (6 tipos) ===
+    EJECUTAR_COMANDO = "ejecutar_comando"
+    INSTALAR_DEPENDENCIA = "instalar_dependencia"
+    EJECUTAR_SCRIPT = "ejecutar_script"
+    REINICIAR_SERVIDOR = "reiniciar_servidor"
+    COMPILAR = "compilar"
+    DESPLEGAR = "desplegar"
+    
+    # === LECTURA (6 tipos) ===
+    LEER_ARCHIVO = "leer_archivo"
+    BUSCAR_CODIGO = "buscar_codigo"
+    LISTAR_ARCHIVOS = "listar_archivos"
+    VER_LOGS = "ver_logs"
+    VER_ESTRUCTURA = "ver_estructura"
+    ANALIZAR_PROYECTO = "analizar_proyecto"
+    
+    # === OPTIMIZACIÓN (5 tipos) ===
     OPTIMIZAR = "optimizar"
+    OPTIMIZAR_RENDIMIENTO = "optimizar_rendimiento"
+    OPTIMIZAR_SEO = "optimizar_seo"
+    REFACTORIZAR = "refactorizar"
+    LIMPIAR_CODIGO = "limpiar_codigo"
+    
+    # === EXPLICACIÓN (4 tipos) ===
     EXPLICAR = "explicar"
+    EXPLICAR_CODIGO = "explicar_codigo"
+    DOCUMENTAR = "documentar"
+    CREAR_TUTORIAL = "crear_tutorial"
+    
+    # === BASE DE DATOS (4 tipos) ===
+    CREAR_MODELO = "crear_modelo"
+    CREAR_MIGRACION = "crear_migracion"
+    CONSULTA_BD = "consulta_bd"
+    MODIFICAR_ESQUEMA = "modificar_esquema"
+    
+    # === OTROS ===
     CONSULTA_GENERAL = "consulta_general"
     DESCONOCIDO = "desconocido"
 
@@ -215,6 +276,7 @@ class IntentParser:
     """
     
     TASK_PATTERNS = {
+        # === CREACIÓN ===
         TaskType.CREAR_LANDING: [
             r"landing\s*page", r"página\s*de\s*aterrizaje", r"landing",
             r"one\s*page", r"página\s*única"
@@ -235,21 +297,127 @@ class IntentParser:
             r"api", r"endpoint", r"backend", r"servidor",
             r"rest\s*api", r"servicio"
         ],
-        TaskType.MODIFICAR_CODIGO: [
-            r"modifica", r"cambia", r"actualiza", r"edita",
-            r"agrega", r"añade", r"quita", r"elimina"
+        TaskType.CREAR_COMPONENTE: [
+            r"crea.*componente", r"nuevo\s*componente", r"componente\s*de",
+            r"widget", r"elemento\s*ui"
         ],
+        TaskType.CREAR_PAGINA: [
+            r"crea.*página", r"nueva\s*página", r"agrega.*página",
+            r"page", r"vista\s*nueva"
+        ],
+        TaskType.CREAR_MODAL: [
+            r"modal", r"popup", r"ventana\s*emergente", r"diálogo",
+            r"dialog"
+        ],
+        TaskType.CREAR_TABLA: [
+            r"tabla", r"table", r"grid", r"listado", r"lista\s*de"
+        ],
+        TaskType.CREAR_ESTILO: [
+            r"estilos?\s*css", r"css\s*para", r"estiliza", r"diseño\s*de"
+        ],
+        TaskType.CREAR_FUNCION: [
+            r"función", r"function", r"método", r"crea.*función"
+        ],
+        TaskType.CREAR_CLASE: [
+            r"clase", r"class", r"modelo", r"crea.*clase"
+        ],
+        
+        # === MODIFICACIÓN ===
+        TaskType.MODIFICAR_CODIGO: [
+            r"modifica", r"cambia", r"actualiza", r"edita"
+        ],
+        TaskType.MODIFICAR_ARCHIVO: [
+            r"modifica.*archivo", r"edita.*archivo", r"cambia.*en\s*el\s*archivo"
+        ],
+        TaskType.AGREGAR_FUNCIONALIDAD: [
+            r"agrega", r"añade", r"incorpora", r"incluye"
+        ],
+        TaskType.QUITAR_ELEMENTO: [
+            r"quita", r"elimina", r"borra", r"remueve", r"delete"
+        ],
+        TaskType.RENOMBRAR: [
+            r"renombra", r"cambia.*nombre", r"rename"
+        ],
+        TaskType.MOVER_ARCHIVO: [
+            r"mueve", r"move", r"traslada"
+        ],
+        
+        # === CORRECCIÓN ===
         TaskType.CORREGIR_ERROR: [
             r"error", r"bug", r"falla", r"no\s*funciona", r"arregla",
             r"corrige", r"fix", r"problema"
         ],
+        TaskType.CORREGIR_SINTAXIS: [
+            r"syntax\s*error", r"error\s*de\s*sintaxis"
+        ],
+        TaskType.CORREGIR_IMPORTACION: [
+            r"import.*error", r"module\s*not\s*found", r"cannot\s*find\s*module"
+        ],
+        
+        # === EJECUCIÓN ===
+        TaskType.EJECUTAR_COMANDO: [
+            r"ejecuta", r"corre", r"run", r"comando"
+        ],
+        TaskType.INSTALAR_DEPENDENCIA: [
+            r"instala", r"install", r"npm\s*install", r"pip\s*install",
+            r"dependencia", r"paquete", r"librería", r"package"
+        ],
+        TaskType.REINICIAR_SERVIDOR: [
+            r"reinicia", r"restart", r"reiniciar.*servidor"
+        ],
+        
+        # === LECTURA ===
+        TaskType.LEER_ARCHIVO: [
+            r"lee", r"muestra.*archivo", r"abre", r"ver\s*contenido",
+            r"qué\s*hay\s*en", r"read"
+        ],
+        TaskType.BUSCAR_CODIGO: [
+            r"busca", r"encuentra", r"dónde\s*está", r"search",
+            r"grep", r"localiza"
+        ],
+        TaskType.LISTAR_ARCHIVOS: [
+            r"lista.*archivos", r"qué\s*archivos", r"ls", r"muestra.*estructura"
+        ],
+        TaskType.VER_LOGS: [
+            r"logs", r"errores\s*del\s*servidor", r"consola", r"ver\s*errores"
+        ],
+        TaskType.ANALIZAR_PROYECTO: [
+            r"analiza.*proyecto", r"estructura.*proyecto", r"qué\s*tecnologías"
+        ],
+        
+        # === OPTIMIZACIÓN ===
         TaskType.OPTIMIZAR: [
             r"optimiza", r"mejora", r"más\s*rápido", r"rendimiento",
-            r"performance", r"refactoriza"
+            r"performance"
         ],
+        TaskType.REFACTORIZAR: [
+            r"refactoriza", r"refactor", r"reorganiza", r"limpia.*código"
+        ],
+        TaskType.OPTIMIZAR_SEO: [
+            r"seo", r"meta\s*tags", r"posicionamiento"
+        ],
+        
+        # === EXPLICACIÓN ===
         TaskType.EXPLICAR: [
             r"explica", r"qué\s*es", r"cómo\s*funciona", r"por\s*qué",
-            r"enseña", r"tutorial"
+            r"enseña"
+        ],
+        TaskType.EXPLICAR_CODIGO: [
+            r"explica.*código", r"qué\s*hace\s*este", r"cómo\s*funciona\s*este"
+        ],
+        TaskType.DOCUMENTAR: [
+            r"documenta", r"documentación", r"readme", r"comments"
+        ],
+        
+        # === BASE DE DATOS ===
+        TaskType.CREAR_MODELO: [
+            r"modelo.*base", r"tabla.*bd", r"schema", r"entity"
+        ],
+        TaskType.CREAR_MIGRACION: [
+            r"migración", r"migration", r"alter\s*table"
+        ],
+        TaskType.CONSULTA_BD: [
+            r"consulta.*sql", r"query", r"select.*from"
         ]
     }
     
