@@ -146,12 +146,12 @@ class HuggingFaceProvider(AIProvider):
 
 
 class GroqProvider(AIProvider):
-    """Groq API - Free tier, very fast inference - UPGRADED to Mixtral 8x7B"""
+    """Groq API - Free tier, very fast inference - Using Llama 3.3 70B"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self.name = "groq"
-        self.model = "mixtral-8x7b-32768"
+        self.model = "llama-3.3-70b-versatile"
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
@@ -191,12 +191,12 @@ class GroqProvider(AIProvider):
 
 
 class GeminiProvider(AIProvider):
-    """Google Gemini API - UPGRADED to gemini-1.5-pro for better reasoning"""
+    """Google Gemini API - Using Gemini 2.0 Flash for speed and quality"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self.name = "gemini"
-        self.model = "gemini-1.5-pro"
+        self.model = "gemini-2.0-flash"
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
@@ -244,12 +244,12 @@ class GeminiProvider(AIProvider):
 
 
 class CerebrasProvider(AIProvider):
-    """Cerebras API - UPGRADED to llama3.1-70b for better reasoning"""
+    """Cerebras API - Using Llama 3.3 70B for best reasoning"""
     
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self.name = "cerebras"
-        self.model = "llama3.1-70b"
+        self.model = "llama-3.3-70b"
         self.base_url = "https://api.cerebras.ai/v1/chat/completions"
     
     def chat(self, messages: List[Dict], system_prompt: str = None) -> Dict:
@@ -578,36 +578,37 @@ Soy BUNK3R AI. Estoy aqui para ayudarte a construir cosas increibles."""
         self._initialize_providers()
     
     def _initialize_providers(self):
-        """Initialize all available AI providers"""
+        """Initialize all available AI providers - ordered by reliability"""
         
-        hf_key = os.environ.get('HUGGINGFACE_API_KEY', '')
-        if hf_key:
-            self.providers.append(DeepSeekV32Provider(hf_key))
-            logger.info("DeepSeek V3.2 (Main Model) provider initialized")
-        
-        deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
-        if deepseek_key:
-            self.providers.append(DeepSeekProvider(deepseek_key))
-            logger.info("DeepSeek API provider initialized")
-        
+        # Priority 1: Groq (fast, reliable, Llama 3.3 70B)
         groq_key = os.environ.get('GROQ_API_KEY', '')
         if groq_key:
             self.providers.append(GroqProvider(groq_key))
-            logger.info("Groq provider initialized")
+            logger.info("Groq provider initialized (Priority 1)")
         
-        gemini_key = os.environ.get('GEMINI_API_KEY', '')
-        if gemini_key:
-            self.providers.append(GeminiProvider(gemini_key))
-            logger.info("Gemini provider initialized")
-        
+        # Priority 2: Cerebras (fast, Llama 3.3 70B)
         cerebras_key = os.environ.get('CEREBRAS_API_KEY', '')
         if cerebras_key:
             self.providers.append(CerebrasProvider(cerebras_key))
-            logger.info("Cerebras provider initialized")
+            logger.info("Cerebras provider initialized (Priority 2)")
         
+        # Priority 3: Gemini (may hit quota limits)
+        gemini_key = os.environ.get('GEMINI_API_KEY', '')
+        if gemini_key:
+            self.providers.append(GeminiProvider(gemini_key))
+            logger.info("Gemini provider initialized (Priority 3)")
+        
+        # Priority 4: DeepSeek API (may have auth issues)
+        deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
+        if deepseek_key:
+            self.providers.append(DeepSeekProvider(deepseek_key))
+            logger.info("DeepSeek API provider initialized (Priority 4)")
+        
+        # Priority 5: HuggingFace Llama (fallback)
+        hf_key = os.environ.get('HUGGINGFACE_API_KEY', '')
         if hf_key:
             self.providers.append(HuggingFaceProvider(hf_key))
-            logger.info("HuggingFace Llama provider initialized")
+            logger.info("HuggingFace Llama provider initialized (Priority 5)")
         
         if not self.providers:
             logger.warning("No AI providers configured. Set API keys in environment variables.")
