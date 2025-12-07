@@ -122,10 +122,14 @@ const AIChat = {
         const textarea = document.getElementById('ai-code-textarea');
         
         if (tabName === 'preview') {
-            if (iframe) iframe.classList.remove('hidden');
             if (codeEditor) codeEditor.classList.add('hidden');
-            if (emptyState && Object.keys(this.files).length === 0) {
-                emptyState.classList.remove('hidden');
+            const hasFiles = Object.keys(this.files).length > 0;
+            if (hasFiles) {
+                if (emptyState) emptyState.classList.add('hidden');
+                if (iframe) iframe.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.remove('hidden');
+                if (iframe) iframe.classList.add('hidden');
             }
             this.updatePreview();
         } else {
@@ -342,11 +346,16 @@ const AIChat = {
         const iframe = document.getElementById('ai-preview-iframe');
         const emptyState = document.getElementById('ai-preview-empty');
         
-        if (!iframe) return;
+        if (!iframe) {
+            console.warn('AIChat: iframe not found');
+            return;
+        }
         
-        const html = this.files['index.html'] || '';
-        const css = this.files['styles.css'] || '';
-        const js = this.files['script.js'] || '';
+        let html = this.files['index.html'] || this.files['html'] || '';
+        let css = this.files['styles.css'] || this.files['style.css'] || this.files['css'] || '';
+        let js = this.files['script.js'] || this.files['main.js'] || this.files['app.js'] || this.files['js'] || '';
+        
+        console.log('AIChat updatePreview - files:', Object.keys(this.files), 'html:', !!html, 'css:', !!css, 'js:', !!js);
         
         if (!html && !css && !js) {
             if (emptyState) emptyState.classList.remove('hidden');
@@ -359,24 +368,61 @@ const AIChat = {
         
         let processedHtml = html;
         
-        if (processedHtml.includes('<link rel="stylesheet" href="styles.css">')) {
-            processedHtml = processedHtml.replace(
-                '<link rel="stylesheet" href="styles.css">',
-                `<style>${css}</style>`
-            );
-        } else if (!processedHtml.includes('<style>') && css) {
-            processedHtml = processedHtml.replace('</head>', `<style>${css}</style></head>`);
-        }
-        
-        if (processedHtml.includes('<script src="script.js">')) {
-            processedHtml = processedHtml.replace(
+        if (!processedHtml && (css || js)) {
+            processedHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview</title>
+    ${css ? `<style>${css}</style>` : ''}
+</head>
+<body>
+    ${js ? `<script>${js}<\/script>` : ''}
+</body>
+</html>`;
+        } else {
+            if (processedHtml.includes('<link rel="stylesheet" href="styles.css">')) {
+                processedHtml = processedHtml.replace(
+                    '<link rel="stylesheet" href="styles.css">',
+                    `<style>${css}</style>`
+                );
+            } else if (processedHtml.includes('<link rel="stylesheet" href="style.css">')) {
+                processedHtml = processedHtml.replace(
+                    '<link rel="stylesheet" href="style.css">',
+                    `<style>${css}</style>`
+                );
+            } else if (css && !processedHtml.includes('<style>')) {
+                if (processedHtml.includes('</head>')) {
+                    processedHtml = processedHtml.replace('</head>', `<style>${css}</style></head>`);
+                } else {
+                    processedHtml = `<style>${css}</style>` + processedHtml;
+                }
+            }
+            
+            const scriptPatterns = [
                 '<script src="script.js"></script>',
-                `<script>${js}<\/script>`
-            );
-        } else if (!processedHtml.includes('<script>') && js) {
-            processedHtml = processedHtml.replace('</body>', `<script>${js}<\/script></body>`);
+                '<script src="main.js"></script>',
+                '<script src="app.js"></script>'
+            ];
+            let scriptReplaced = false;
+            for (const pattern of scriptPatterns) {
+                if (processedHtml.includes(pattern)) {
+                    processedHtml = processedHtml.replace(pattern, `<script>${js}<\/script>`);
+                    scriptReplaced = true;
+                    break;
+                }
+            }
+            if (js && !scriptReplaced && !processedHtml.includes('<script>')) {
+                if (processedHtml.includes('</body>')) {
+                    processedHtml = processedHtml.replace('</body>', `<script>${js}<\/script></body>`);
+                } else {
+                    processedHtml = processedHtml + `<script>${js}<\/script>`;
+                }
+            }
         }
         
+        console.log('AIChat updatePreview - setting srcdoc, length:', processedHtml.length);
         iframe.srcdoc = processedHtml;
     },
     
@@ -438,14 +484,18 @@ const AIChat = {
     },
     
     processFiles(files) {
+        console.log('AIChat processFiles - received files:', Object.keys(files));
+        
         for (const [filename, content] of Object.entries(files)) {
             const isNew = !this.files[filename];
             this.files[filename] = content;
+            console.log(`AIChat processFiles - ${isNew ? 'created' : 'updated'}: ${filename} (${content.length} chars)`);
             this.appendCodeAction(isNew ? 'create' : 'update', filename);
         }
         
+        console.log('AIChat processFiles - all files now:', Object.keys(this.files));
+        
         this.switchTab('preview');
-        this.updatePreview();
         this.saveToStorage();
     },
     

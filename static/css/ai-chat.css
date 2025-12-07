@@ -452,6 +452,16 @@
     color: #4a5568;
     text-align: center;
     padding: 20px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+}
+
+.ai-preview-empty.hidden {
+    display: none;
 }
 
 .ai-preview-icon {
@@ -479,10 +489,13 @@
     height: 100%;
     border: none;
     background: #fff;
+    position: relative;
+    z-index: 2;
 }
 
 .ai-preview-iframe.hidden {
     display: none;
+    visibility: hidden;
 }
 
 #ai-chat-screen .ai-chat-messages {
