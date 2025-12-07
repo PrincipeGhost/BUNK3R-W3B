@@ -815,38 +815,39 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.10: SOPORTE Y TICKETS ⏳
+## FASE 27.10: SOPORTE Y TICKETS ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA
 **Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
 **Archivos Frontend:** `static/js/admin.js`, `templates/admin.html`
 **Archivos Backend:** `app.py`, `tracking/database.py`
+**Completado:** 7 Diciembre 2025
 
 ### 27.10.1 - Sistema de Tickets
-- [ ] Lista de tickets abiertos
-- [ ] Prioridad: Baja, Media, Alta, Urgente
-- [ ] Estado: Nuevo, En progreso, Resuelto, Cerrado
-- [ ] Asignar ticket a admin
-- [ ] Historial de respuestas
+- [x] Lista de tickets abiertos
+- [x] Prioridad: Baja, Media, Alta, Urgente
+- [x] Estado: Nuevo, En progreso, Resuelto, Cerrado
+- [x] Asignar ticket a admin
+- [x] Historial de respuestas
 
 ### 27.10.2 - Chat con Usuario
-- [ ] Responder ticket
-- [ ] Adjuntar imágenes
-- [ ] Templates de respuestas comunes
-- [ ] Cerrar ticket
+- [x] Responder ticket
+- [x] Adjuntar imágenes
+- [x] Templates de respuestas comunes
+- [x] Cerrar ticket
 
 ### 27.10.3 - FAQ Editable
-- [ ] Lista de preguntas frecuentes
-- [ ] Agregar/editar/eliminar FAQs
-- [ ] Ordenar por categoría
-- [ ] Publicar/despublicar
+- [x] Lista de preguntas frecuentes
+- [x] Agregar/editar/eliminar FAQs
+- [x] Ordenar por categoría
+- [x] Publicar/despublicar
 
 ### 27.10.4 - Mensajes Masivos
-- [ ] Enviar notificación a TODOS los usuarios
-- [ ] Enviar a usuarios específicos (filtros)
-- [ ] Programar envío
-- [ ] Ver historial de envíos
+- [x] Enviar notificación a TODOS los usuarios
+- [x] Enviar a usuarios específicos (filtros)
+- [x] Programar envío
+- [x] Ver historial de envíos
 
 ---
 
@@ -884,35 +885,36 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.12: CONFIGURACIÓN DEL SISTEMA ⏳
+## FASE 27.12: CONFIGURACIÓN DEL SISTEMA ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA
 **Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+**Completado:** 7 Diciembre 2025
 
 ### 27.12.1 - Precios y Comisiones
-- [ ] Precio actual de B3C (ver, NO editar aquí)
-- [ ] Comisión por transacción
-- [ ] Comisión por retiro
-- [ ] Monto mínimo de retiro
-- [ ] Monto máximo por transacción
+- [x] Precio actual de B3C (ver, NO editar aquí)
+- [x] Comisión por transacción
+- [x] Comisión por retiro
+- [x] Monto mínimo de retiro
+- [x] Monto máximo por transacción
 
 ### 27.12.2 - Modo Mantenimiento
-- [ ] Activar/desactivar modo mantenimiento
-- [ ] Mensaje personalizado para usuarios
-- [ ] Permitir acceso solo a admins
-- [ ] Programar mantenimiento
+- [x] Activar/desactivar modo mantenimiento
+- [x] Mensaje personalizado para usuarios
+- [x] Permitir acceso solo a admins
+- [x] Programar mantenimiento
 
 ### 27.12.3 - Estado del Sistema
-- [ ] Estado de la base de datos
-- [ ] Estado de conexión a TonCenter API
-- [ ] Estado de SMSPool API
-- [ ] Uptime del servidor
+- [x] Estado de la base de datos
+- [x] Estado de conexión a TonCenter API
+- [x] Estado de SMSPool API
+- [x] Uptime del servidor
 
 ### 27.12.4 - Variables de Entorno (Solo vista)
-- [ ] Ver qué secrets están configurados (SÍ/NO, no el valor)
-- [ ] Indicador de secrets faltantes
-- [ ] Link a panel de Secrets de Replit para configurar
+- [x] Ver qué secrets están configurados (SÍ/NO, no el valor)
+- [x] Indicador de secrets faltantes
+- [x] Link a panel de Secrets de Replit para configurar
 
 ---
 
@@ -946,56 +948,58 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.14: BACKUP Y MANTENIMIENTO ⏳
+## FASE 27.14: BACKUP Y MANTENIMIENTO ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA
 **Agente:** 🟡 BACKEND API
+**Completado:** 7 Diciembre 2025
 
 ### 27.14.1 - Backups
-- [ ] Último backup realizado
-- [ ] Crear backup manual
-- [ ] Descargar backup
-- [ ] Programar backups automáticos
+- [x] Último backup realizado
+- [x] Crear backup manual
+- [x] Descargar backup
+- [x] Programar backups automáticos
 
 ### 27.14.2 - Estado del Servidor
-- [ ] Uso de CPU
-- [ ] Uso de memoria RAM
-- [ ] Uso de disco
-- [ ] Conexiones activas
+- [x] Uso de CPU
+- [x] Uso de memoria RAM
+- [x] Uso de disco
+- [x] Conexiones activas
 
 ### 27.14.3 - Acciones de Mantenimiento
-- [ ] Limpiar cache
-- [ ] Limpiar sesiones expiradas
-- [ ] Limpiar logs antiguos
-- [ ] Reiniciar servicios
+- [x] Limpiar cache
+- [x] Limpiar sesiones expiradas
+- [x] Limpiar logs antiguos
+- [x] Reiniciar servicios
 
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.15: ACCESO Y SESIONES ⏳
+## FASE 27.15: ACCESO Y SESIONES ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA
 **Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+**Completado:** 7 Diciembre 2025
 
 ### 27.15.1 - Sesiones Activas
-- [ ] Lista de sesiones activas de TODOS los usuarios
-- [ ] Usuario, IP, Dispositivo, Última actividad
-- [ ] Cerrar sesión específica
-- [ ] Cerrar TODAS las sesiones de un usuario
+- [x] Lista de sesiones activas de TODOS los usuarios
+- [x] Usuario, IP, Dispositivo, Última actividad
+- [x] Cerrar sesión específica
+- [x] Cerrar TODAS las sesiones de un usuario
 
 ### 27.15.2 - Control de IPs
-- [ ] Lista de IPs bloqueadas
-- [ ] Agregar IP a blacklist
-- [ ] Quitar IP de blacklist
-- [ ] Whitelist de IPs para admin
-- [ ] Ver historial de bloqueos
+- [x] Lista de IPs bloqueadas
+- [x] Agregar IP a blacklist
+- [x] Quitar IP de blacklist
+- [x] Whitelist de IPs para admin
+- [x] Ver historial de bloqueos
 
 ### 27.15.3 - Forzar Logout
-- [ ] Forzar logout de un usuario específico
-- [ ] Forzar logout de TODOS los usuarios
-- [ ] Excluir admins del logout masivo
+- [x] Forzar logout de un usuario específico
+- [x] Forzar logout de TODOS los usuarios
+- [x] Excluir admins del logout masivo
 
 ---
 
