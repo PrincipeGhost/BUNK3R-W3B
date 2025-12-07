@@ -948,3 +948,116 @@ CREATE TABLE IF NOT EXISTS ai_provider_usage (
 CREATE INDEX IF NOT EXISTS idx_ai_usage_provider ON ai_provider_usage(provider);
 CREATE INDEX IF NOT EXISTS idx_ai_usage_date ON ai_provider_usage(usage_date);
 """
+
+CREATE_ADMIN_TABLES_SQL = """
+-- ============================================================
+-- SISTEMA DE ADMINISTRACION - TABLAS ADICIONALES
+-- ============================================================
+
+-- Tabla de IPs bloqueadas
+CREATE TABLE IF NOT EXISTS blocked_ips (
+    id SERIAL PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL,
+    reason TEXT,
+    blocked_by VARCHAR(255),
+    blocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    is_permanent BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    UNIQUE(ip_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_blocked_ips_address ON blocked_ips(ip_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_ips_active ON blocked_ips(is_active);
+
+-- Tabla de alertas de seguridad
+CREATE TABLE IF NOT EXISTS security_alerts (
+    id SERIAL PRIMARY KEY,
+    alert_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) DEFAULT 'medium',
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    ip_address VARCHAR(45),
+    metadata JSONB,
+    resolved BOOLEAN DEFAULT FALSE,
+    resolved_by VARCHAR(255),
+    resolved_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_security_alerts_type ON security_alerts(alert_type);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_resolved ON security_alerts(resolved);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_created ON security_alerts(created_at DESC);
+
+-- Tabla de notas de admin sobre usuarios
+CREATE TABLE IF NOT EXISTS admin_user_notes (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    note TEXT NOT NULL,
+    created_by VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_notes_user ON admin_user_notes(user_id);
+
+-- Tabla de tickets de soporte
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    subject VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'general',
+    priority VARCHAR(20) DEFAULT 'medium',
+    status VARCHAR(20) DEFAULT 'new',
+    assigned_to VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    closed_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tickets_user ON support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_tickets_priority ON support_tickets(priority);
+CREATE INDEX IF NOT EXISTS idx_tickets_created ON support_tickets(created_at DESC);
+
+-- Tabla de mensajes de tickets
+CREATE TABLE IF NOT EXISTS ticket_messages (
+    id SERIAL PRIMARY KEY,
+    ticket_id INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+    sender_id BIGINT,
+    message TEXT NOT NULL,
+    is_admin BOOLEAN DEFAULT FALSE,
+    attachments JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket ON ticket_messages(ticket_id);
+
+-- Tabla de plantillas de respuesta
+CREATE TABLE IF NOT EXISTS response_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(50) DEFAULT 'general',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de FAQs
+CREATE TABLE IF NOT EXISTS faqs (
+    id SERIAL PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(50) DEFAULT 'general',
+    display_order INTEGER DEFAULT 0,
+    is_published BOOLEAN DEFAULT TRUE,
+    views_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_faqs_category ON faqs(category);
+CREATE INDEX IF NOT EXISTS idx_faqs_published ON faqs(is_published);
+CREATE INDEX IF NOT EXISTS idx_faqs_order ON faqs(display_order);
+"""

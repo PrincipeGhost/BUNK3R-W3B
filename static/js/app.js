@@ -1436,7 +1436,11 @@ const App = {
     
     _showPageContent(pageName) {
         const pageScreen = document.getElementById(`${pageName}-screen`);
-        if (!pageScreen) return;
+        if (!pageScreen) {
+            console.warn(`[Navigation] Page "${pageName}" not found, redirecting to home`);
+            this.goToHome();
+            return;
+        }
         
         const isAlreadyVisible = !pageScreen.classList.contains('hidden');
         if (isAlreadyVisible) {
