@@ -528,6 +528,144 @@ Si no sabes algo, admítelo honestamente."""
             "total_providers": len(self.providers),
             "active_conversations": len(self.conversations)
         }
+    
+    def generate_code(self, user_id: str, message: str, current_files: Dict[str, str], 
+                      project_name: str) -> Dict:
+        """
+        Generate code for web projects based on user instructions.
+        Returns files to create/update and a response message.
+        """
+        if not self.providers:
+            return {
+                "success": False,
+                "error": "No hay proveedores de IA configurados.",
+                "provider": None
+            }
+        
+        files_context = ""
+        for filename, content in current_files.items():
+            preview = content[:500] + "..." if len(content) > 500 else content
+            files_context += f"\n--- {filename} ---\n{preview}\n"
+        
+        code_system_prompt = f"""Eres BUNK3R Code Builder, un experto generador de codigo web.
+Tu tarea es crear o modificar archivos HTML, CSS y JavaScript segun las instrucciones del usuario.
+
+REGLAS IMPORTANTES:
+1. Responde SIEMPRE en formato JSON valido con esta estructura exacta:
+{{
+    "files": {{
+        "nombre_archivo.ext": "contenido completo del archivo"
+    }},
+    "message": "Breve explicacion de lo que hiciste"
+}}
+
+2. Genera codigo COMPLETO y funcional, no fragmentos.
+3. Usa HTML5 semantico, CSS moderno (flexbox, grid), y JavaScript ES6+.
+4. El codigo debe ser responsive y accesible.
+5. Incluye comentarios minimos solo cuando sea necesario.
+6. Si modificas un archivo existente, incluye el archivo COMPLETO con los cambios.
+7. Para estilos, prefiere gradientes modernos, sombras suaves y animaciones sutiles.
+8. El proyecto se llama: {project_name}
+
+ARCHIVOS ACTUALES DEL PROYECTO:
+{files_context if files_context else "(Proyecto nuevo, sin archivos)"}
+
+Genera el codigo segun la solicitud del usuario. Responde SOLO con JSON valido."""
+
+        messages = [{"role": "user", "content": message}]
+        
+        for provider in self.providers:
+            if not provider.is_available():
+                continue
+            
+            logger.info(f"Code builder trying provider: {provider.name}")
+            result = provider.chat(messages, code_system_prompt)
+            
+            if result.get("success"):
+                response_text = result.get("response", "")
+                
+                try:
+                    json_match = None
+                    if response_text.strip().startswith('{'):
+                        json_match = response_text.strip()
+                    else:
+                        import re
+                        json_pattern = r'\{[\s\S]*\}'
+                        matches = re.findall(json_pattern, response_text)
+                        if matches:
+                            for match in matches:
+                                try:
+                                    json.loads(match)
+                                    json_match = match
+                                    break
+                                except:
+                                    continue
+                    
+                    if json_match:
+                        parsed = json.loads(json_match)
+                        files = parsed.get("files", {})
+                        msg = parsed.get("message", "Codigo generado exitosamente")
+                        
+                        if files:
+                            return {
+                                "success": True,
+                                "files": files,
+                                "response": msg,
+                                "provider": provider.name
+                            }
+                    
+                    return {
+                        "success": True,
+                        "files": self._extract_code_blocks(response_text),
+                        "response": "He generado el codigo solicitado.",
+                        "provider": provider.name
+                    }
+                    
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON parse error: {e}")
+                    extracted = self._extract_code_blocks(response_text)
+                    if extracted:
+                        return {
+                            "success": True,
+                            "files": extracted,
+                            "response": "He generado el codigo. Revisa los archivos actualizados.",
+                            "provider": provider.name
+                        }
+                    return {
+                        "success": False,
+                        "error": "No se pudo parsear la respuesta de la IA. Intenta de nuevo con instrucciones mas claras.",
+                        "provider": provider.name
+                    }
+            else:
+                logger.warning(f"Provider {provider.name} failed: {result.get('error')}")
+        
+        return {
+            "success": False,
+            "error": "No se pudo generar el codigo. Intenta de nuevo.",
+            "provider": None
+        }
+    
+    def _extract_code_blocks(self, text: str) -> Dict[str, str]:
+        """Extract code blocks from markdown-style response"""
+        import re
+        files = {}
+        
+        pattern = r'```(\w+)?\s*(?:\n)?([^`]+)```'
+        matches = re.findall(pattern, text)
+        
+        lang_to_ext = {
+            'html': 'index.html',
+            'css': 'styles.css',
+            'javascript': 'script.js',
+            'js': 'script.js'
+        }
+        
+        for lang, code in matches:
+            lang = lang.lower() if lang else 'html'
+            filename = lang_to_ext.get(lang, f'file.{lang}')
+            files[filename] = code.strip()
+        
+        return files
 
 
 ai_service: Optional[AIService] = None

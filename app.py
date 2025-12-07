@@ -13362,6 +13362,121 @@ def ai_clear():
         logger.error(f"AI clear error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== CODE BUILDER SECTION ====================
+
+@app.route('/code-builder')
+@require_telegram_auth
+def code_builder():
+    """BUNK3R AI Code Builder - Create web projects with AI"""
+    return render_template('code_builder.html')
+
+@app.route('/api/ai/code-builder', methods=['POST'])
+@require_telegram_auth
+def ai_code_builder():
+    """AI-powered code generation for web projects"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        data = request.json
+        message = data.get('message', '').strip()
+        current_files = data.get('currentFiles', {})
+        project_name = data.get('projectName', 'Mi Proyecto')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        ai = get_ai_service(db_manager)
+        result = ai.generate_code(user_id, message, current_files, project_name)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"AI code builder error: {e}")
+        return jsonify({'success': False, 'error': 'Error generating code'}), 500
+
+@app.route('/api/code-builder/projects', methods=['GET'])
+@require_telegram_auth
+def get_code_projects():
+    """Get user's saved code projects"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, name, files, created_at, updated_at
+                    FROM code_builder_projects
+                    WHERE user_id = %s
+                    ORDER BY updated_at DESC
+                    LIMIT 20
+                """, (user_id,))
+                projects = cur.fetchall()
+                
+        return jsonify({'success': True, 'projects': projects})
+    except Exception as e:
+        logger.error(f"Error getting projects: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/code-builder/projects', methods=['POST'])
+@require_telegram_auth
+def save_code_project():
+    """Save a code project"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        data = request.json
+        project_id = data.get('projectId')
+        name = data.get('name', 'Mi Proyecto')
+        files = data.get('files', {})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if project_id:
+                    cur.execute("""
+                        UPDATE code_builder_projects
+                        SET name = %s, files = %s, updated_at = NOW()
+                        WHERE id = %s AND user_id = %s
+                        RETURNING id
+                    """, (name, json.dumps(files), project_id, user_id))
+                    result = cur.fetchone()
+                    if not result:
+                        project_id = None
+                
+                if not project_id:
+                    cur.execute("""
+                        INSERT INTO code_builder_projects (user_id, name, files, created_at, updated_at)
+                        VALUES (%s, %s, %s, NOW(), NOW())
+                        RETURNING id
+                    """, (user_id, name, json.dumps(files)))
+                    project_id = cur.fetchone()[0]
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'projectId': project_id})
+    except Exception as e:
+        logger.error(f"Error saving project: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/code-builder/projects/<project_id>', methods=['DELETE'])
+@require_telegram_auth
+def delete_code_project(project_id):
+    """Delete a code project"""
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM code_builder_projects
+                    WHERE id = %s AND user_id = %s
+                """, (project_id, user_id))
+                conn.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting project: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== END CODE BUILDER SECTION ====================
+
+
 # ==================== END AI CHAT SECTION ====================
 
 
