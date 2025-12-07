@@ -1318,6 +1318,65 @@ CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE i
 
 ---
 
+### FASE 30.9: ENDPOINT LOGOUT DEMO 2FA ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 30 minutos  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Implementar endpoint explícito para cerrar sesión del demo 2FA.
+
+#### Tareas:
+- [ ] Crear endpoint `/api/demo/2fa/logout` en app.py
+- [ ] Eliminar sesión de demo_2fa_sessions al hacer logout
+- [ ] Añadir botón de logout en UI de demo 2FA
+- [ ] Verificar que la sesión se cierra correctamente
+
+#### Código sugerido:
+```python
+@app.route('/api/demo/2fa/logout', methods=['POST'])
+def demo_2fa_logout():
+    session_id = request.cookies.get('demo_session_id')
+    if session_id and session_id in demo_2fa_sessions:
+        del demo_2fa_sessions[session_id]
+    return jsonify({'success': True, 'message': 'Sesión cerrada'})
+```
+
+---
+
+### FASE 30.10: MEJORAR SISTEMA DE LOGS ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 1 hora  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Mejorar el sistema de logs para capturar más información útil.
+
+#### Tareas:
+- [ ] Configurar logging estructurado con formato JSON
+- [ ] Añadir logs en puntos críticos que faltan:
+  - [ ] Inicios de sesión fallidos
+  - [ ] Transacciones de wallet
+  - [ ] Errores de API externa
+  - [ ] Cambios de configuración admin
+- [ ] Implementar rotación de logs (max 10MB por archivo)
+- [ ] Añadir campo request_id para trazabilidad
+
+#### Configuración sugerida:
+```python
+import logging
+from logging.handlers import RotatingFileHandler
+
+handler = RotatingFileHandler('logs/app.log', maxBytes=10*1024*1024, backupCount=5)
+handler.setFormatter(logging.Formatter(
+    '{"time":"%(asctime)s","level":"%(levelname)s","module":"%(module)s","message":"%(message)s"}'
+))
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
+```
+
+---
+
 ## RESUMEN SECCIÓN 30
 
 | Fase | Descripción | Prioridad | Tiempo | Estado |
@@ -1329,9 +1388,13 @@ CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE i
 | 30.5 | Sesiones persistentes | 🟡 MEDIA-BAJA | 2h | ⏳ |
 | 30.6 | Documentar APIs | 🟢 BAJA | 3h | ⏳ |
 | 30.7 | Tests automatizados | 🟢 BAJA | 8h | ⏳ |
-| 30.8 | Optimizaciones | 🟢 OPCIONAL | 2-4h | ⏳ |
+| 30.8 | Optimizaciones BD | 🟢 OPCIONAL | 2-4h | ⏳ |
+| 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ⏳ |
+| 30.10 | Mejorar logs | 🟢 BAJA | 1h | ⏳ |
 
-**ORDEN RECOMENDADO:** 30.1 → 30.2 → 30.3 → 30.4 → 30.5 → 30.6 → 30.7 → 30.8
+**TOTAL TIEMPO ESTIMADO: ~22 horas**
+
+**ORDEN RECOMENDADO:** 30.1 → 30.2 → 30.3 → 30.4 → 30.5 → 30.9 → 30.10 → 30.6 → 30.7 → 30.8
 
 ---
 
