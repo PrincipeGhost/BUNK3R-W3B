@@ -20,11 +20,11 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║                                                                  ║
 ║ 🔄 EN PROGRESO: Ninguna                                          ║
 ║                                                                  ║
-║ ⏳ PENDIENTES: 27.10→27.25, Sección 28, 29, 30, 31 (Auditoría)   ║
+║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33     ║
 ║                                                                  ║
-║ 🔴 CRÍTICO: 4 problemas                                          ║
-║    30.1 except vacíos | 30.2 innerHTML XSS                       ║
-║    31.1 Botones sin función | 31.2 Códigos 2FA en logs           ║
+║ 🔴 CRÍTICO: 5 problemas                                          ║
+║    30.1 except vacíos | 30.2 innerHTML XSS | 31.1 Botones        ║
+║    31.2 Códigos 2FA en logs | 32.5 Auditar secretos              ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -1889,10 +1889,350 @@ Verificar y completar funcionalidad del AI Constructor.
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 32: LIMPIEZA Y OPTIMIZACIÓN DE CÓDIGO ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Agregado:** 7 Diciembre 2025  
+**Basado en:** Auditoría de código y búsqueda de patrones  
+**Tiempo total estimado:** 15 horas
+
+---
+
+### FASE 32.1: ELIMINAR CONSOLE.LOG DE PRODUCCIÓN ⏳
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 2 horas  
+**Agente:** 🔵 FRONTEND USUARIO + 🟢 FRONTEND ADMIN
+
+#### Objetivo:
+Eliminar o condicionar todos los `console.log` para que no aparezcan en producción.
+
+#### Problema detectado:
+- **47 console.log** en `static/js/app.js`
+- **5 console.log** en `static/js/ai-chat.js`
+- **2 console.log** en `static/js/utils.js`
+- **1 console.log** en `static/js/publications.js`
+
+#### Tareas:
+- [ ] Crear wrapper de logging condicional:
+```javascript
+const Logger = {
+    isDev: window.location.hostname === 'localhost' || window.location.hostname.includes('replit'),
+    log: function(...args) { if(this.isDev) console.log(...args); },
+    warn: function(...args) { if(this.isDev) console.warn(...args); },
+    error: function(...args) { console.error(...args); } // Errores siempre se muestran
+};
+```
+- [ ] Reemplazar `console.log` por `Logger.log` en app.js (47 instancias)
+- [ ] Reemplazar `console.log` por `Logger.log` en ai-chat.js (5 instancias)
+- [ ] Reemplazar `console.log` por `Logger.log` en utils.js (2 instancias)
+- [ ] Reemplazar `console.log` por `Logger.log` en publications.js (1 instancia)
+
+#### Criterios de éxito:
+- [ ] 0 console.log visibles en producción
+- [ ] Logs de desarrollo siguen funcionando
+
+---
+
+### FASE 32.2: IMPLEMENTAR LEGIT SMS API ⏳
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 4 horas  
+**Agente:** 🔴 BLOCKCHAIN
+
+#### Objetivo:
+Implementar la integración con Legit SMS que actualmente devuelve error 501.
+
+#### Problema detectado:
+```python
+# app.py línea 10631
+return jsonify({'success': False, 'error': 'Legit SMS not yet implemented'}), 501
+```
+
+#### Tareas:
+- [ ] Investigar API de Legit SMS (documentación, endpoints, autenticación)
+- [ ] Crear servicio `tracking/legitsms_service.py`
+- [ ] Implementar endpoints:
+  - [ ] Obtener lista de países disponibles
+  - [ ] Obtener servicios disponibles
+  - [ ] Comprar número
+  - [ ] Verificar estado del SMS
+  - [ ] Cancelar orden
+- [ ] Integrar con el sistema de números virtuales existente
+- [ ] Agregar manejo de errores y fallback a SMSPool
+
+#### Criterios de éxito:
+- [ ] Legit SMS funcional como alternativa a SMSPool
+- [ ] Usuario puede elegir proveedor
+
+---
+
+### FASE 32.3: LIMPIAR DATOS DEMO HARDCODEADOS ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 2 horas  
+**Agente:** 🔵 FRONTEND USUARIO + 🟡 BACKEND API
+
+#### Objetivo:
+Eliminar o condicionar datos de demostración que están hardcodeados.
+
+#### Problemas detectados:
+- `username: 'demo_user'` en app.js línea 175
+- `@demo_user` en templates/index.html línea 1186
+- `demo_2fa_sessions` almacenado en memoria (no persistente)
+
+#### Tareas:
+- [ ] Verificar que `demo_user` solo aparece cuando no hay usuario real
+- [ ] Cambiar placeholder `@demo_user` por `@usuario` o vacío
+- [ ] Documentar cuándo se usa el modo demo
+- [ ] Asegurar que modo demo NO está activo en producción
+
+#### Criterios de éxito:
+- [ ] No hay datos demo visibles para usuarios reales
+- [ ] Modo demo claramente documentado
+
+---
+
+### FASE 32.4: FUNCIÓN "EN DESARROLLO" SIN IMPLEMENTAR ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 3 horas  
+**Agente:** 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Implementar o eliminar funciones marcadas como "en desarrollo".
+
+#### Problema detectado:
+```javascript
+// app.js línea 8193
+this.showToast('Funcion en desarrollo', 'info');
+```
+
+#### Tareas:
+- [ ] Buscar todas las funciones que muestran "en desarrollo"
+- [ ] Por cada una, decidir:
+  - Implementar la funcionalidad completa
+  - O eliminar el botón/link que la llama
+- [ ] Documentar cualquier funcionalidad que quede pendiente
+
+#### Criterios de éxito:
+- [ ] 0 toasts de "en desarrollo" en la aplicación
+- [ ] Todas las funciones implementadas o removidas
+
+---
+
+### FASE 32.5: AUDITAR SECRETOS EN CÓDIGO ⏳
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND API + 🔴 BLOCKCHAIN
+
+#### Objetivo:
+Verificar que no hay secretos hardcodeados en el código.
+
+#### Archivos a auditar:
+- [ ] `static/js/utils.js` - Buscar API keys
+- [ ] `static/js/admin.js` - Buscar tokens
+- [ ] `static/js/app.js` - Buscar credenciales
+- [ ] `tracking/encryption.py` - Verificar claves
+- [ ] `tracking/cloudinary_service.py` - Verificar credenciales
+- [ ] `tracking/smspool_service.py` - Verificar API keys
+- [ ] `tracking/b3c_service.py` - Verificar wallet keys
+- [ ] `tracking/security.py` - Verificar secrets
+- [ ] `tracking/wallet_pool_service.py` - Verificar mnemonics
+- [ ] `tracking/database.py` - Verificar connection strings
+
+#### Tareas:
+- [ ] Revisar cada archivo listado
+- [ ] Mover cualquier secreto hardcodeado a variables de entorno
+- [ ] Verificar que `.env` está en `.gitignore`
+- [ ] Documentar todas las variables de entorno requeridas
+
+#### Criterios de éxito:
+- [ ] 0 secretos hardcodeados en el código
+- [ ] Todos los secretos en variables de entorno
+- [ ] Documentación de variables requeridas
+
+---
+
+### FASE 32.6: VALIDACIÓN DE INPUTS EN FRONTEND ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 3 horas  
+**Agente:** 🔵 FRONTEND USUARIO + 🟢 FRONTEND ADMIN
+
+#### Objetivo:
+Agregar validación de inputs del lado del cliente para mejor UX.
+
+#### Tareas:
+- [ ] Validar formularios de login/registro
+- [ ] Validar formularios de wallet (direcciones, montos)
+- [ ] Validar formularios de publicaciones
+- [ ] Validar formularios de admin
+- [ ] Agregar mensajes de error claros
+- [ ] Prevenir envío de formularios inválidos
+
+#### Patrón de validación:
+```javascript
+function validateWalletAddress(address) {
+    // TON address: 48 characters, starts with EQ or UQ
+    const tonRegex = /^(EQ|UQ)[A-Za-z0-9_-]{46}$/;
+    return tonRegex.test(address);
+}
+```
+
+#### Criterios de éxito:
+- [ ] Todos los formularios tienen validación
+- [ ] Mensajes de error claros y útiles
+- [ ] Mejor experiencia de usuario
+
+---
+
+### FASE 32.7: OPTIMIZACIÓN DE CARGA DE PÁGINA ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 2 horas  
+**Agente:** 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Mejorar el tiempo de carga inicial de la aplicación.
+
+#### Tareas:
+- [ ] Minificar archivos CSS en producción
+- [ ] Minificar archivos JS en producción
+- [ ] Implementar lazy loading para imágenes
+- [ ] Agregar prefetch para rutas comunes
+- [ ] Optimizar fuentes web
+- [ ] Agregar loading skeleton mientras carga contenido
+
+#### Criterios de éxito:
+- [ ] Lighthouse Performance score > 80
+- [ ] First Contentful Paint < 2 segundos
+
+---
+
+## RESUMEN SECCIÓN 32
+
+| Fase | Descripción | Prioridad | Tiempo | Agente | Estado |
+|------|-------------|-----------|--------|--------|--------|
+| 32.1 | Eliminar console.log | 🟡 ALTA | 2h | FRONTEND | ⏳ |
+| 32.2 | Implementar Legit SMS | 🟡 ALTA | 4h | BLOCKCHAIN | ⏳ |
+| 32.3 | Limpiar datos demo | 🟠 MEDIA | 2h | FRONTEND/BACKEND | ⏳ |
+| 32.4 | Funciones "en desarrollo" | 🟠 MEDIA | 3h | FRONTEND | ⏳ |
+| 32.5 | Auditar secretos | 🔴 CRÍTICA | 2h | BACKEND/BLOCKCHAIN | ⏳ |
+| 32.6 | Validación inputs | 🟠 MEDIA | 3h | FRONTEND | ⏳ |
+| 32.7 | Optimización carga | 🟢 BAJA | 2h | FRONTEND | ⏳ |
+
+**TOTAL TIEMPO ESTIMADO: ~18 horas**
+
+**ORDEN RECOMENDADO:** 32.5 → 32.1 → 32.2 → 32.3 → 32.4 → 32.6 → 32.7
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 33: FEATURES NUEVAS PENDIENTES ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🟢 MEDIA  
+**Agregado:** 7 Diciembre 2025  
+**Tiempo total estimado:** 25+ horas
+
+---
+
+### FASE 33.1: SISTEMA DE REFERIDOS ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 6 horas  
+**Agente:** 🟡 BACKEND API + 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Implementar sistema de referidos con recompensas.
+
+#### Tareas:
+- [ ] Crear tabla `referrals` en BD
+- [ ] Generar código de referido único por usuario
+- [ ] Implementar endpoint para registrar referido
+- [ ] Calcular y otorgar recompensas (% de comisiones del referido)
+- [ ] Crear UI para ver referidos y ganancias
+- [ ] Agregar link de referido compartible
+
+#### Estructura de tabla:
+```sql
+CREATE TABLE referrals (
+    id SERIAL PRIMARY KEY,
+    referrer_id BIGINT REFERENCES users(telegram_id),
+    referred_id BIGINT REFERENCES users(telegram_id),
+    referral_code VARCHAR(20) UNIQUE,
+    commission_earned DECIMAL(18,8) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+### FASE 33.2: SISTEMA DE NIVELES/GAMIFICACIÓN ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 5 horas  
+**Agente:** 🟡 BACKEND API + 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Implementar sistema de niveles y badges para usuarios.
+
+#### Tareas:
+- [ ] Definir niveles (Bronce, Plata, Oro, Platino, Diamante)
+- [ ] Definir requisitos por nivel (XP, transacciones, tiempo)
+- [ ] Crear sistema de XP por acciones
+- [ ] Diseñar e implementar badges
+- [ ] Mostrar nivel y progreso en perfil
+- [ ] Beneficios por nivel (menos comisiones, features exclusivas)
+
+---
+
+### FASE 33.3: MARKETPLACE DE NFTs ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 8 horas  
+**Agente:** 🔴 BLOCKCHAIN + 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Implementar marketplace básico de NFTs en TON.
+
+#### Tareas:
+- [ ] Integrar con TON NFT standard
+- [ ] Listar NFTs del usuario
+- [ ] Permitir compra/venta de NFTs
+- [ ] Mostrar colecciones populares
+- [ ] Integrar con marketplace de TON existente
+
+---
+
+### FASE 33.4: CHAT PRIVADO ENTRE USUARIOS ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 6 horas  
+**Agente:** 🟡 BACKEND API + 🔵 FRONTEND USUARIO
+
+#### Objetivo:
+Implementar sistema de mensajes privados.
+
+#### Tareas:
+- [ ] Crear tabla `private_messages`
+- [ ] Implementar endpoints de envío/recepción
+- [ ] Crear UI de chat estilo Telegram
+- [ ] Agregar notificaciones de nuevos mensajes
+- [ ] Encriptar mensajes end-to-end (opcional)
+
+---
+
+## RESUMEN SECCIÓN 33
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| 33.1 | Sistema de referidos | 🟠 MEDIA | 6h | ⏳ |
+| 33.2 | Niveles/Gamificación | 🟠 MEDIA | 5h | ⏳ |
+| 33.3 | Marketplace NFTs | 🟢 BAJA | 8h | ⏳ |
+| 33.4 | Chat privado | 🟠 MEDIA | 6h | ⏳ |
+
+**TOTAL TIEMPO ESTIMADO: ~25 horas**
+
+---
+
 ## PUNTO DE GUARDADO
 
 **Última actualización:** 7 Diciembre 2025
-**Estado:** Agregada SECCIÓN 31 con auditoría exhaustiva de problemas detectados
-**Próximo paso:** Ejecutar fase 30.1 (Corregir except: vacíos) o 31.1 (Botones sin funcionalidad)
+**Estado:** Agregadas SECCIONES 31, 32 y 33 con tareas de auditoría y nuevas features
+**Próximo paso:** Ejecutar tareas críticas (30.1, 30.2, 31.1, 31.2, 32.5)
 
 ---
