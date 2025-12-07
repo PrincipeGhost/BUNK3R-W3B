@@ -2578,6 +2578,1931 @@ class BunkrAICapabilities:
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## ESPECIFICACIÓN TÉCNICA COMPLETA: AIToolkit
+## ════════════════════════════════════════════════════════════════
+
+### CLASE PRINCIPAL: AIToolkit
+
+```python
+class AIToolkit:
+    """
+    Herramientas que la IA puede usar para interactuar con el proyecto.
+    INSPIRADO EN: Replit Agent tools (read, write, edit, bash, grep)
+    
+    ARCHIVO: tracking/ai_toolkit.py
+    """
+    
+    def __init__(self, project_root: str, user_id: str):
+        self.project_root = project_root
+        self.user_id = user_id
+        self.logger = AIFlowLogger()
+        self.operation_history = []
+    
+    # ═══════════════════════════════════════════════════════════
+    # GRUPO 1: LECTURA DE ARCHIVOS
+    # ═══════════════════════════════════════════════════════════
+    
+    def read_file(self, path: str, limit: int = 1000, offset: int = 0) -> Dict:
+        """
+        Lee el contenido de un archivo.
+        
+        Parámetros:
+        - path: Ruta relativa al proyecto (ej: "app.py", "static/js/main.js")
+        - limit: Número máximo de líneas a leer (default: 1000)
+        - offset: Línea desde la que empezar (default: 0)
+        
+        Retorna:
+        {
+            "success": True,
+            "content": "contenido del archivo...",
+            "lines": 150,
+            "language": "python",
+            "truncated": False
+        }
+        
+        Seguridad:
+        - Validar que path no salga del proyecto (no ../)
+        - Validar que archivo existe
+        - Limitar tamaño máximo de lectura
+        
+        Uso típico por la IA:
+        - ANTES de editar cualquier archivo
+        - Para entender código existente
+        - Para ver qué hay en el proyecto
+        
+        Ejemplo:
+        content = toolkit.read_file("app.py")
+        content = toolkit.read_file("static/js/app.js", limit=500)
+        content = toolkit.read_file("app.py", offset=100, limit=50)  # líneas 100-150
+        """
+        # Validar seguridad
+        safe_path = self._validate_path(path)
+        if not safe_path:
+            return {"success": False, "error": "Ruta no permitida"}
+        
+        full_path = os.path.join(self.project_root, safe_path)
+        
+        if not os.path.exists(full_path):
+            return {"success": False, "error": f"Archivo no existe: {path}"}
+        
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            total_lines = len(lines)
+            selected_lines = lines[offset:offset + limit]
+            content = ''.join(selected_lines)
+            
+            return {
+                "success": True,
+                "content": content,
+                "lines": total_lines,
+                "language": self._detect_language(path),
+                "truncated": (offset + limit) < total_lines
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def list_directory(self, path: str = ".", recursive: bool = True, 
+                       max_files: int = 500) -> Dict:
+        """
+        Lista archivos y carpetas.
+        
+        Parámetros:
+        - path: Ruta relativa (default: raíz del proyecto)
+        - recursive: Si incluir subcarpetas (default: True)
+        - max_files: Límite de archivos a listar (default: 500)
+        
+        Retorna:
+        {
+            "success": True,
+            "files": [
+                {"path": "app.py", "type": "file", "size": 1234},
+                {"path": "static/", "type": "directory"},
+                {"path": "static/js/main.js", "type": "file", "size": 567}
+            ],
+            "total": 45
+        }
+        
+        Uso típico:
+        - Para entender estructura del proyecto
+        - Para encontrar archivos
+        - Al inicio de cada sesión
+        
+        Ejemplo:
+        files = toolkit.list_directory(".")  # Todo el proyecto
+        files = toolkit.list_directory("static/js", recursive=False)  # Solo JS
+        """
+        pass
+    
+    def search_code(self, pattern: str, path: str = ".", 
+                    file_type: str = None, case_sensitive: bool = False) -> Dict:
+        """
+        Busca texto/patrón en archivos (como grep).
+        
+        Parámetros:
+        - pattern: Texto o regex a buscar
+        - path: Dónde buscar (default: todo el proyecto)
+        - file_type: Filtrar por extensión (ej: "py", "js")
+        - case_sensitive: Si distinguir mayúsculas/minúsculas
+        
+        Retorna:
+        {
+            "success": True,
+            "matches": [
+                {
+                    "file": "app.py",
+                    "line": 45,
+                    "content": "def login(username, password):",
+                    "context_before": "# Función de login",
+                    "context_after": "    user = User.query.filter_by..."
+                }
+            ],
+            "total_matches": 5
+        }
+        
+        Uso típico:
+        - Encontrar dónde se usa una función
+        - Buscar imports específicos
+        - Encontrar código con errores
+        
+        Ejemplo:
+        matches = toolkit.search_code("def login", ".")
+        matches = toolkit.search_code("import flask", ".", file_type="py")
+        matches = toolkit.search_code("getUserId", "static/js")
+        matches = toolkit.search_code("TODO|FIXME", ".", file_type="py")
+        """
+        pass
+    
+    def get_file_info(self, path: str) -> Dict:
+        """
+        Obtiene información de un archivo.
+        
+        Retorna:
+        {
+            "exists": True,
+            "path": "app.py",
+            "size": 15234,
+            "lines": 456,
+            "language": "python",
+            "last_modified": "2025-12-07 20:00:00",
+            "permissions": "rw-r--r--"
+        }
+        """
+        pass
+    
+    # ═══════════════════════════════════════════════════════════
+    # GRUPO 2: ESCRITURA Y EDICIÓN DE ARCHIVOS
+    # ═══════════════════════════════════════════════════════════
+    
+    def write_file(self, path: str, content: str) -> Dict:
+        """
+        Crea o sobrescribe un archivo.
+        
+        Parámetros:
+        - path: Ruta del archivo (crea carpetas intermedias si no existen)
+        - content: Contenido del archivo
+        
+        Retorna:
+        {
+            "success": True,
+            "path": "tracking/auth.py",
+            "size": 1234,
+            "created": True  # o False si sobrescribió
+        }
+        
+        IMPORTANTE: 
+        - Para archivos existentes, preferir edit_file
+        - Esto sobrescribe TODO el contenido
+        
+        Seguridad:
+        - Validar que path está dentro del proyecto
+        - No permitir sobrescribir archivos críticos sin confirmación
+        - Logging de todas las operaciones
+        
+        Ejemplo:
+        toolkit.write_file("tracking/auth.py", auth_code)
+        toolkit.write_file("config.json", json.dumps(config, indent=2))
+        toolkit.write_file("static/css/custom.css", css_styles)
+        """
+        pass
+    
+    def edit_file(self, path: str, old_string: str, new_string: str) -> Dict:
+        """
+        Edita una sección específica de un archivo.
+        
+        ⚠️ ESTA ES LA HERRAMIENTA MÁS IMPORTANTE ⚠️
+        Permite modificar código sin perder el resto del archivo.
+        
+        Parámetros:
+        - path: Archivo a editar
+        - old_string: Texto exacto a reemplazar
+        - new_string: Nuevo texto
+        
+        Retorna:
+        {
+            "success": True,
+            "path": "app.py",
+            "changes": 1,  # número de reemplazos hechos
+            "diff": "..."  # diff visual de los cambios
+        }
+        
+        REGLAS CRÍTICAS:
+        1. SIEMPRE leer el archivo primero con read_file
+        2. old_string debe ser EXACTO (incluyendo espacios/indentación)
+        3. Incluir suficiente contexto para que sea único
+        4. Si old_string no se encuentra, retornar error
+        
+        Uso típico:
+        - Agregar imports
+        - Modificar funciones existentes
+        - Corregir errores
+        - Agregar nuevo código en lugar específico
+        
+        Ejemplo:
+        # Agregar un import
+        toolkit.edit_file("app.py", 
+            "from flask import Flask",
+            "from flask import Flask\nfrom flask_login import LoginManager"
+        )
+        
+        # Corregir un error
+        toolkit.edit_file("app.py",
+            "def login():\n    return None",
+            "def login():\n    # Validación añadida\n    if not user:\n        return None"
+        )
+        
+        # Agregar una ruta
+        toolkit.edit_file("app.py",
+            "@app.route('/dashboard')",
+            "@app.route('/profile')\ndef profile():\n    return render_template('profile.html')\n\n@app.route('/dashboard')"
+        )
+        """
+        # 1. Leer archivo actual
+        current = self.read_file(path)
+        if not current["success"]:
+            return {"success": False, "error": current["error"]}
+        
+        content = current["content"]
+        
+        # 2. Verificar que old_string existe
+        if old_string not in content:
+            return {
+                "success": False, 
+                "error": "No se encontró el texto a reemplazar",
+                "hint": "Asegúrate de copiar el texto exacto incluyendo espacios"
+            }
+        
+        # 3. Contar ocurrencias
+        count = content.count(old_string)
+        if count > 1:
+            return {
+                "success": False,
+                "error": f"Se encontraron {count} coincidencias. Incluye más contexto para que sea único."
+            }
+        
+        # 4. Hacer el reemplazo
+        new_content = content.replace(old_string, new_string)
+        
+        # 5. Guardar el archivo
+        result = self.write_file(path, new_content)
+        
+        # 6. Generar diff
+        diff = self._generate_diff(content, new_content)
+        
+        return {
+            "success": True,
+            "path": path,
+            "changes": 1,
+            "diff": diff
+        }
+    
+    def append_to_file(self, path: str, content: str) -> Dict:
+        """
+        Agrega contenido al final de un archivo.
+        
+        Uso típico:
+        - Agregar nuevas funciones
+        - Agregar nuevas rutas
+        - Agregar estilos CSS
+        
+        Ejemplo:
+        toolkit.append_to_file("app.py", "\n@app.route('/new')\ndef new():\n    pass")
+        toolkit.append_to_file("static/css/styles.css", "\n.new-class { color: red; }")
+        """
+        pass
+    
+    def delete_file(self, path: str, confirm: bool = True) -> Dict:
+        """
+        Elimina un archivo.
+        
+        SEGURIDAD: 
+        - Siempre pedir confirmación al usuario
+        - Logging de archivos eliminados
+        - No permitir eliminar archivos críticos
+        
+        Archivos protegidos (no se pueden eliminar):
+        - app.py, main.py (archivo principal)
+        - requirements.txt, package.json
+        - .env, config.py
+        
+        Ejemplo:
+        result = toolkit.delete_file("temp.py")
+        result = toolkit.delete_file("old_backup.txt")
+        """
+        pass
+    
+    def create_directory(self, path: str) -> Dict:
+        """
+        Crea una carpeta.
+        
+        Ejemplo:
+        toolkit.create_directory("tracking/auth")
+        toolkit.create_directory("static/uploads/images")
+        """
+        pass
+    
+    def move_file(self, old_path: str, new_path: str) -> Dict:
+        """
+        Mueve o renombra un archivo.
+        
+        Ejemplo:
+        toolkit.move_file("temp.py", "tracking/temp.py")
+        toolkit.move_file("old_name.py", "new_name.py")
+        """
+        pass
+    
+    def copy_file(self, source: str, destination: str) -> Dict:
+        """
+        Copia un archivo.
+        
+        Ejemplo:
+        toolkit.copy_file("app.py", "app_backup.py")
+        """
+        pass
+    
+    # ═══════════════════════════════════════════════════════════
+    # GRUPO 3: EJECUCIÓN DE COMANDOS
+    # ═══════════════════════════════════════════════════════════
+    
+    def run_command(self, command: str, timeout: int = 60, 
+                    working_dir: str = None) -> Dict:
+        """
+        Ejecuta un comando del sistema.
+        
+        Parámetros:
+        - command: Comando a ejecutar
+        - timeout: Segundos máximos de ejecución
+        - working_dir: Directorio de trabajo (default: project_root)
+        
+        Retorna:
+        {
+            "success": True,
+            "stdout": "output del comando...",
+            "stderr": "",
+            "exit_code": 0,
+            "duration": 2.5
+        }
+        
+        SEGURIDAD:
+        - Solo comandos de la WHITELIST
+        - Bloquear comandos peligrosos
+        - Timeout obligatorio
+        - Logging de todos los comandos
+        
+        Ejemplo:
+        result = toolkit.run_command("pip install flask-login")
+        result = toolkit.run_command("npm install express")
+        result = toolkit.run_command("python -c 'print(1+1)'")
+        result = toolkit.run_command("ls -la static/")
+        """
+        # Validar comando contra whitelist/blacklist
+        if not self._is_command_allowed(command):
+            return {
+                "success": False,
+                "error": "Comando no permitido por seguridad"
+            }
+        
+        try:
+            import subprocess
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=working_dir or self.project_root
+            )
+            
+            return {
+                "success": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "exit_code": result.returncode
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "error": f"Comando excedió timeout de {timeout}s"
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def install_package(self, name: str, manager: str = "auto") -> Dict:
+        """
+        Instala un paquete/dependencia.
+        
+        Parámetros:
+        - name: Nombre del paquete
+        - manager: "pip", "npm", "auto" (detecta según proyecto)
+        
+        Acciones:
+        1. Detectar manager si es "auto"
+        2. Ejecutar instalación
+        3. Actualizar archivo de dependencias
+        
+        Ejemplo:
+        toolkit.install_package("flask-login")  # auto-detecta pip
+        toolkit.install_package("express", manager="npm")
+        toolkit.install_package("requests==2.28.0")  # con versión
+        """
+        if manager == "auto":
+            manager = self._detect_package_manager()
+        
+        if manager == "pip":
+            cmd = f"pip install {name}"
+        elif manager == "npm":
+            cmd = f"npm install {name}"
+        else:
+            return {"success": False, "error": f"Manager no soportado: {manager}"}
+        
+        result = self.run_command(cmd, timeout=120)
+        
+        if result["success"]:
+            # Actualizar archivo de dependencias
+            self._update_dependencies_file(name, manager)
+        
+        return result
+    
+    def run_script(self, path: str, args: str = "") -> Dict:
+        """
+        Ejecuta un script Python o Node.
+        
+        Ejemplo:
+        toolkit.run_script("test.py")
+        toolkit.run_script("scripts/migrate.py", args="--force")
+        toolkit.run_script("server.js")
+        """
+        language = self._detect_language(path)
+        
+        if language == "python":
+            cmd = f"python {path} {args}"
+        elif language == "javascript":
+            cmd = f"node {path} {args}"
+        else:
+            return {"success": False, "error": f"Lenguaje no soportado: {language}"}
+        
+        return self.run_command(cmd)
+    
+    # ═══════════════════════════════════════════════════════════
+    # GRUPO 4: LECTURA DE LOGS Y ERRORES
+    # ═══════════════════════════════════════════════════════════
+    
+    def read_server_logs(self, lines: int = 100) -> Dict:
+        """
+        Lee los logs del servidor.
+        
+        Retorna:
+        {
+            "success": True,
+            "logs": [
+                {"time": "20:15:30", "level": "INFO", "message": "Server started"},
+                {"time": "20:15:35", "level": "ERROR", "message": "..."}
+            ],
+            "has_errors": True,
+            "error_count": 2
+        }
+        
+        Uso típico:
+        - Después de reiniciar servidor
+        - Para debuggear problemas
+        - Para verificar que algo funciona
+        """
+        pass
+    
+    def detect_errors(self, logs: List[str] = None) -> Dict:
+        """
+        Detecta errores en logs.
+        
+        Retorna:
+        {
+            "success": True,
+            "errors": [
+                {
+                    "type": "ModuleNotFoundError",
+                    "message": "No module named 'flask_login'",
+                    "file": "app.py",
+                    "line": 5,
+                    "severity": "critical",
+                    "suggestion": "pip install flask-login"
+                }
+            ]
+        }
+        
+        Patrones que detecta:
+        - Python: ModuleNotFoundError, ImportError, SyntaxError, etc.
+        - Node: Cannot find module, SyntaxError, TypeError, etc.
+        - General: Exception, Error, Failed, etc.
+        """
+        pass
+    
+    def analyze_error(self, error: str) -> Dict:
+        """
+        Analiza un error usando IA para entender causa y solución.
+        
+        Retorna:
+        {
+            "success": True,
+            "error_type": "ModuleNotFoundError",
+            "cause": "El módulo flask_login no está instalado",
+            "solution": "Ejecutar: pip install flask-login",
+            "auto_fix_available": True,
+            "fix_steps": [
+                {"action": "run_command", "command": "pip install flask-login"},
+                {"action": "restart_server"}
+            ],
+            "related_files": ["app.py", "requirements.txt"],
+            "documentation_url": "https://flask-login.readthedocs.io/"
+        }
+        """
+        pass
+    
+    def auto_fix_error(self, error: Dict) -> Dict:
+        """
+        Intenta corregir un error automáticamente.
+        
+        Flujo:
+        1. Analizar error
+        2. Determinar si es auto-corregible
+        3. Ejecutar pasos de corrección
+        4. Verificar que se corrigió
+        
+        Errores auto-corregibles:
+        - ModuleNotFoundError → pip/npm install
+        - SyntaxError simple → editar archivo
+        - ImportError → agregar import faltante
+        
+        Retorna:
+        {
+            "success": True,
+            "fixed": True,
+            "actions_taken": [
+                "Instalado flask-login",
+                "Reiniciado servidor"
+            ],
+            "verification": "Sin errores en logs"
+        }
+        """
+        pass
+    
+    # ═══════════════════════════════════════════════════════════
+    # GRUPO 5: ANÁLISIS DEL PROYECTO
+    # ═══════════════════════════════════════════════════════════
+    
+    def analyze_project(self) -> Dict:
+        """
+        Analiza el proyecto completo para entender su contexto.
+        
+        DEBE ejecutarse al inicio de cada sesión.
+        
+        Retorna:
+        {
+            "success": True,
+            "language": "python",
+            "framework": "flask",
+            "dependencies": {
+                "installed": ["flask", "sqlalchemy", "requests"],
+                "file": "requirements.txt"
+            },
+            "structure": {
+                "app.py": {"type": "main", "lines": 500},
+                "tracking/": {"type": "services", "files": 10},
+                "templates/": {"type": "views", "files": 25},
+                "static/": {"type": "assets", "files": 50}
+            },
+            "entry_point": "app.py",
+            "port": 5000,
+            "database": {
+                "type": "postgresql",
+                "configured": True
+            },
+            "has_tests": False,
+            "git_initialized": True,
+            "environment_variables": ["DATABASE_URL", "SECRET_KEY"]
+        }
+        
+        Esto permite a la IA:
+        - Saber qué lenguaje usar
+        - Entender la estructura
+        - Saber qué dependencias hay
+        - Adaptar sus respuestas al proyecto
+        """
+        pass
+    
+    def detect_language(self, path: str = None) -> str:
+        """
+        Detecta el lenguaje principal del proyecto o de un archivo.
+        
+        Sin parámetro: detecta del proyecto entero
+        Con path: detecta del archivo específico
+        
+        Retorna: "python", "javascript", "typescript", "html", "css", "sql", etc.
+        """
+        pass
+    
+    def read_dependencies(self) -> Dict:
+        """
+        Lee las dependencias del proyecto.
+        
+        Detecta automáticamente:
+        - requirements.txt (Python)
+        - package.json (Node.js)
+        - Pipfile (Pipenv)
+        - pyproject.toml (Poetry)
+        
+        Retorna:
+        {
+            "success": True,
+            "manager": "pip",
+            "file": "requirements.txt",
+            "dependencies": {
+                "flask": "2.0.0",
+                "sqlalchemy": "1.4.0",
+                "requests": "*"
+            }
+        }
+        """
+        pass
+    
+    # ═══════════════════════════════════════════════════════════
+    # GRUPO 6: UTILIDADES INTERNAS
+    # ═══════════════════════════════════════════════════════════
+    
+    def _validate_path(self, path: str) -> str:
+        """
+        Valida que un path sea seguro.
+        - No permite ..
+        - No permite rutas absolutas
+        - Normaliza el path
+        """
+        import os
+        
+        # Normalizar
+        normalized = os.path.normpath(path)
+        
+        # No permitir escape del proyecto
+        if normalized.startswith('..') or normalized.startswith('/'):
+            return None
+        
+        # No permitir archivos ocultos del sistema
+        if any(part.startswith('.') and part not in ['.env', '.gitignore'] 
+               for part in normalized.split(os.sep)):
+            return None
+        
+        return normalized
+    
+    def _is_command_allowed(self, command: str) -> bool:
+        """
+        Verifica si un comando está permitido.
+        """
+        import re
+        
+        # Whitelist de comandos
+        ALLOWED_PREFIXES = [
+            'pip install', 'pip list', 'pip show', 'pip freeze',
+            'npm install', 'npm run', 'npm init', 'npm list',
+            'python ', 'python3 ',
+            'node ',
+            'npx ',
+            'ls ', 'ls', 
+            'cat ', 'head ', 'tail ',
+            'mkdir ',
+            'touch ',
+            'git status', 'git log', 'git diff', 'git branch',
+            'echo ',
+            'pwd',
+            'which ',
+            'env',
+        ]
+        
+        # Blacklist de patrones peligrosos
+        BLOCKED_PATTERNS = [
+            r'rm\s+-rf',
+            r'rm\s+-r\s+/',
+            r'rm\s+/',
+            r'sudo',
+            r'chmod\s+777',
+            r'curl.*\|.*bash',
+            r'wget.*\|.*sh',
+            r'>\s*/etc/',
+            r'eval\s*\(',
+            r'exec\s*\(',
+            r'__import__',
+            r'subprocess\.Popen',
+        ]
+        
+        # Verificar whitelist
+        allowed = any(command.strip().startswith(prefix) for prefix in ALLOWED_PREFIXES)
+        
+        # Verificar blacklist
+        blocked = any(re.search(pattern, command, re.IGNORECASE) for pattern in BLOCKED_PATTERNS)
+        
+        return allowed and not blocked
+    
+    def _detect_language(self, path: str) -> str:
+        """Detecta lenguaje por extensión"""
+        EXTENSIONS = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.jsx': 'javascript',
+            '.tsx': 'typescript',
+            '.html': 'html',
+            '.css': 'css',
+            '.scss': 'scss',
+            '.json': 'json',
+            '.sql': 'sql',
+            '.md': 'markdown',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
+            '.sh': 'bash',
+            '.env': 'env',
+        }
+        
+        ext = os.path.splitext(path)[1].lower()
+        return EXTENSIONS.get(ext, 'text')
+    
+    def _detect_package_manager(self) -> str:
+        """Detecta el package manager del proyecto"""
+        if os.path.exists(os.path.join(self.project_root, 'requirements.txt')):
+            return 'pip'
+        if os.path.exists(os.path.join(self.project_root, 'package.json')):
+            return 'npm'
+        if os.path.exists(os.path.join(self.project_root, 'Pipfile')):
+            return 'pipenv'
+        if os.path.exists(os.path.join(self.project_root, 'pyproject.toml')):
+            return 'poetry'
+        return 'pip'  # default
+    
+    def _generate_diff(self, old: str, new: str) -> str:
+        """Genera diff visual entre dos strings"""
+        import difflib
+        
+        old_lines = old.splitlines(keepends=True)
+        new_lines = new.splitlines(keepends=True)
+        
+        diff = difflib.unified_diff(old_lines, new_lines, lineterm='')
+        return ''.join(diff)
+    
+    def _update_dependencies_file(self, package: str, manager: str):
+        """Actualiza el archivo de dependencias"""
+        if manager == 'pip':
+            deps_file = 'requirements.txt'
+            # Agregar al final
+            self.append_to_file(deps_file, f"\n{package}")
+        elif manager == 'npm':
+            # npm ya actualiza package.json automáticamente
+            pass
+```
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## ESPECIFICACIÓN: IntentParser EXPANDIDO
+## ════════════════════════════════════════════════════════════════
+
+### TIPOS DE TAREAS EXPANDIDOS
+
+```python
+from enum import Enum
+
+class TaskType(Enum):
+    """
+    TODOS los tipos de tareas que la IA debe entender.
+    EXPANDIDO de 10 a 30+ tipos.
+    
+    ARCHIVO: tracking/ai_constructor.py (reemplazar el existente)
+    """
+    
+    # ═══════════════════════════════════════════════════════════
+    # CREACIÓN - Ya funcionan parcialmente
+    # ═══════════════════════════════════════════════════════════
+    CREAR_PROYECTO = "crear_proyecto"          # "Crea un proyecto de..."
+    CREAR_WEB = "crear_web"                    # "Crea una página web"
+    CREAR_LANDING = "crear_landing"            # "Crea un landing page"
+    CREAR_DASHBOARD = "crear_dashboard"        # "Crea un dashboard"
+    CREAR_FORMULARIO = "crear_formulario"      # "Crea un formulario"
+    CREAR_COMPONENTE = "crear_componente"      # "Crea un componente de..."
+    CREAR_ARCHIVO = "crear_archivo"            # "Crea un archivo llamado..."
+    CREAR_API = "crear_api"                    # "Crea una API REST"
+    CREAR_ENDPOINT = "crear_endpoint"          # "Crea un endpoint para..."
+    CREAR_MODELO = "crear_modelo"              # "Crea un modelo de datos"
+    CREAR_SERVICIO = "crear_servicio"          # "Crea un servicio para..."
+    CREAR_TEST = "crear_test"                  # "Crea tests para..."
+    
+    # ═══════════════════════════════════════════════════════════
+    # MODIFICACIÓN - NO FUNCIONAN - CRÍTICO
+    # ═══════════════════════════════════════════════════════════
+    MODIFICAR_ARCHIVO = "modificar_archivo"    # "Modifica app.py"
+    AGREGAR_CODIGO = "agregar_codigo"          # "Agrega esta función a..."
+    AGREGAR_IMPORT = "agregar_import"          # "Agrega import de..."
+    AGREGAR_RUTA = "agregar_ruta"              # "Agrega ruta /profile"
+    ELIMINAR_CODIGO = "eliminar_codigo"        # "Quita esta parte de..."
+    REEMPLAZAR_CODIGO = "reemplazar_codigo"    # "Cambia X por Y en..."
+    MOVER_ARCHIVO = "mover_archivo"            # "Mueve este archivo a..."
+    RENOMBRAR = "renombrar"                    # "Renombra X a Y"
+    ELIMINAR_ARCHIVO = "eliminar_archivo"      # "Elimina temp.py"
+    
+    # ═══════════════════════════════════════════════════════════
+    # CORRECCIÓN Y DEBUGGING - NO FUNCIONAN - CRÍTICO
+    # ═══════════════════════════════════════════════════════════
+    CORREGIR_ERROR = "corregir_error"          # "Arregla este error"
+    DEBUGGEAR = "debuggear"                    # "¿Por qué no funciona?"
+    ANALIZAR_LOGS = "analizar_logs"            # "Revisa los logs"
+    BUSCAR_BUG = "buscar_bug"                  # "Encuentra el problema"
+    VERIFICAR = "verificar"                    # "¿Está bien esto?"
+    DIAGNOSTICAR = "diagnosticar"              # "Diagnostica el problema"
+    
+    # ═══════════════════════════════════════════════════════════
+    # EJECUCIÓN - NO FUNCIONAN - CRÍTICO
+    # ═══════════════════════════════════════════════════════════
+    EJECUTAR_COMANDO = "ejecutar_comando"      # "Ejecuta npm install"
+    INSTALAR_DEPENDENCIA = "instalar_dep"      # "Instala flask-login"
+    CORRER_SCRIPT = "correr_script"            # "Corre python test.py"
+    REINICIAR_SERVIDOR = "reiniciar_servidor"  # "Reinicia el servidor"
+    CORRER_TESTS = "correr_tests"              # "Corre los tests"
+    BUILD = "build"                            # "Haz el build"
+    
+    # ═══════════════════════════════════════════════════════════
+    # LECTURA Y BÚSQUEDA - NO FUNCIONAN - CRÍTICO
+    # ═══════════════════════════════════════════════════════════
+    LEER_ARCHIVO = "leer_archivo"              # "Muéstrame app.py"
+    BUSCAR_CODIGO = "buscar_codigo"            # "Busca dónde usamos X"
+    LISTAR_ARCHIVOS = "listar_archivos"        # "¿Qué archivos hay?"
+    VER_ESTRUCTURA = "ver_estructura"          # "Muestra la estructura"
+    VER_DEPENDENCIAS = "ver_dependencias"      # "¿Qué dependencias tenemos?"
+    VER_LOGS = "ver_logs"                      # "Muéstrame los logs"
+    
+    # ═══════════════════════════════════════════════════════════
+    # OPTIMIZACIÓN Y MEJORA
+    # ═══════════════════════════════════════════════════════════
+    OPTIMIZAR = "optimizar"                    # "Optimiza este código"
+    REFACTORIZAR = "refactorizar"              # "Refactoriza esto"
+    LIMPIAR_CODIGO = "limpiar_codigo"          # "Limpia el código"
+    MEJORAR = "mejorar"                        # "Mejora esto"
+    SIMPLIFICAR = "simplificar"                # "Simplifica esta función"
+    
+    # ═══════════════════════════════════════════════════════════
+    # EXPLICACIÓN Y DOCUMENTACIÓN
+    # ═══════════════════════════════════════════════════════════
+    EXPLICAR = "explicar"                      # "Explica este código"
+    DOCUMENTAR = "documentar"                  # "Documenta esta función"
+    COMENTAR = "comentar"                      # "Agrega comentarios"
+    GENERAR_README = "generar_readme"          # "Genera un README"
+    
+    # ═══════════════════════════════════════════════════════════
+    # BASE DE DATOS
+    # ═══════════════════════════════════════════════════════════
+    CREAR_TABLA = "crear_tabla"                # "Crea tabla users"
+    MODIFICAR_TABLA = "modificar_tabla"        # "Agrega columna a..."
+    QUERY_SQL = "query_sql"                    # "Ejecuta este SQL"
+    MIGRAR_BD = "migrar_bd"                    # "Migra la base de datos"
+    
+    # ═══════════════════════════════════════════════════════════
+    # DESPLIEGUE
+    # ═══════════════════════════════════════════════════════════
+    DESPLEGAR = "desplegar"                    # "Despliega el proyecto"
+    CONFIGURAR_DEPLOY = "configurar_deploy"    # "Configura el deploy"
+    
+    # ═══════════════════════════════════════════════════════════
+    # GENERAL
+    # ═══════════════════════════════════════════════════════════
+    CONSULTA_GENERAL = "consulta_general"      # Preguntas generales
+    CONVERSAR = "conversar"                    # Conversación casual
+    DESCONOCIDO = "desconocido"                # No se entiende
+```
+
+---
+
+### PATRONES DE DETECCIÓN DE INTENCIONES
+
+```python
+class IntentPatterns:
+    """
+    Patrones regex para detectar qué quiere el usuario.
+    
+    ARCHIVO: tracking/ai_constructor.py
+    """
+    
+    PATTERNS = {
+        # ═══════════════════════════════════════════════════════════
+        # CREAR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.CREAR_ARCHIVO: [
+            r"crea(?:r?)?\s+(?:un\s+)?archivo\s+(?:llamado\s+)?(\w+\.?\w*)",
+            r"genera(?:r?)?\s+(?:un\s+)?archivo\s+(?:llamado\s+)?(\w+\.?\w*)",
+            r"hazme?\s+(?:un\s+)?archivo\s+(?:llamado\s+)?(\w+\.?\w*)",
+            r"nuevo\s+archivo\s+(\w+\.?\w*)",
+        ],
+        
+        TaskType.CREAR_API: [
+            r"crea(?:r?)?\s+(?:una?\s+)?api",
+            r"genera(?:r?)?\s+(?:una?\s+)?api",
+            r"hazme?\s+(?:una?\s+)?api",
+            r"implementa(?:r?)?\s+(?:una?\s+)?api",
+            r"necesito\s+(?:una?\s+)?api",
+        ],
+        
+        TaskType.CREAR_ENDPOINT: [
+            r"crea(?:r?)?\s+(?:un\s+)?endpoint\s+(?:para\s+)?(.+)",
+            r"agrega(?:r?)?\s+(?:una?\s+)?ruta\s+(?:para\s+)?(.+)",
+            r"nuevo\s+endpoint\s+(.+)",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # MODIFICAR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.MODIFICAR_ARCHIVO: [
+            r"modifica(?:r?)?\s+(?:el\s+)?archivo\s+(\S+)",
+            r"cambia(?:r?)?\s+(?:en\s+)?(\S+\.?\w*)",
+            r"actualiza(?:r?)?\s+(?:el\s+)?(\S+\.?\w*)",
+            r"edita(?:r?)?\s+(?:el\s+)?(\S+\.?\w*)",
+            r"abre\s+(?:el\s+)?(\S+\.?\w*)\s+y\s+(?:modifica|cambia|agrega)",
+        ],
+        
+        TaskType.AGREGAR_CODIGO: [
+            r"agrega(?:r?)?\s+(?:esto\s+)?(?:a|en|al\s+archivo)\s+(\S+)",
+            r"añade(?:r?)?\s+(?:esto\s+)?(?:a|en|al\s+archivo)\s+(\S+)",
+            r"pon(?:er?)?\s+(?:esto\s+)?(?:en|al\s+archivo)\s+(\S+)",
+            r"inserta(?:r?)?\s+(?:esto\s+)?(?:en|al\s+archivo)\s+(\S+)",
+        ],
+        
+        TaskType.ELIMINAR_ARCHIVO: [
+            r"elimina(?:r?)?\s+(?:el\s+)?archivo\s+(\S+)",
+            r"borra(?:r?)?\s+(?:el\s+)?archivo\s+(\S+)",
+            r"quita(?:r?)?\s+(?:el\s+)?archivo\s+(\S+)",
+            r"delete\s+(\S+)",
+            r"rm\s+(\S+)",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # CORREGIR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.CORREGIR_ERROR: [
+            r"arregla(?:r?)?\s+(?:el\s+)?error",
+            r"corrige(?:r?)?\s+(?:el\s+)?error",
+            r"fix(?:ear?)?\s+(?:el\s+)?(?:error|bug)",
+            r"no\s+funciona",
+            r"está\s+(?:roto|mal|fallando)",
+            r"da\s+error",
+            r"hay\s+(?:un\s+)?error",
+            r"tengo\s+(?:un\s+)?(?:error|problema)",
+            r"(?:el\s+)?server\s+(?:no\s+)?(?:arranca|inicia|funciona)",
+        ],
+        
+        TaskType.DEBUGGEAR: [
+            r"(?:por\s+)?(?:qué|que)\s+no\s+funciona",
+            r"(?:por\s+)?(?:qué|que)\s+falla",
+            r"(?:por\s+)?(?:qué|que)\s+da\s+error",
+            r"debugg?(?:ea(?:r)?)?",
+            r"investiga(?:r?)?\s+(?:el\s+)?(?:error|problema)",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # EJECUTAR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.EJECUTAR_COMANDO: [
+            r"ejecuta(?:r?)?\s+(.+)",
+            r"corre(?:r?)?\s+(.+)",
+            r"run\s+(.+)",
+            r"haz\s+(.+)",
+        ],
+        
+        TaskType.INSTALAR_DEPENDENCIA: [
+            r"instala(?:r?)?\s+(\S+)",
+            r"(?:pip|npm)\s+install\s+(\S+)",
+            r"agrega(?:r?)?\s+(?:la\s+)?dependencia\s+(\S+)",
+            r"necesito\s+(?:el\s+)?(?:paquete|módulo|librería)\s+(\S+)",
+        ],
+        
+        TaskType.REINICIAR_SERVIDOR: [
+            r"reinicia(?:r?)?\s+(?:el\s+)?(?:servidor|server)",
+            r"restart(?:ear?)?\s+(?:el\s+)?(?:servidor|server)",
+            r"vuelve\s+a\s+(?:iniciar|arrancar)",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # LEER
+        # ═══════════════════════════════════════════════════════════
+        TaskType.LEER_ARCHIVO: [
+            r"muestra(?:me?)?\s+(?:el\s+)?(?:contenido\s+(?:de|del)\s+)?(\S+\.?\w*)",
+            r"enséñame?\s+(?:el\s+)?(\S+\.?\w*)",
+            r"(?:qué\s+hay|cómo\s+está)\s+(?:en\s+)?(\S+\.?\w*)",
+            r"lee(?:r?)?\s+(?:el\s+)?(\S+\.?\w*)",
+            r"ver\s+(?:el\s+)?(\S+\.?\w*)",
+            r"abre\s+(?:el\s+)?(\S+\.?\w*)",
+            r"cat\s+(\S+)",
+        ],
+        
+        TaskType.BUSCAR_CODIGO: [
+            r"busca(?:r?)?\s+(?:dónde\s+)?(.+)",
+            r"encuentra(?:r?)?\s+(.+)",
+            r"(?:dónde|donde)\s+(?:está|usamos|se\s+usa)\s+(.+)",
+            r"grep\s+(.+)",
+            r"en\s+(?:qué|que)\s+archivo\s+(?:está|hay)\s+(.+)",
+        ],
+        
+        TaskType.LISTAR_ARCHIVOS: [
+            r"(?:qué|que)\s+archivos\s+(?:hay|tenemos)",
+            r"lista(?:r?)?\s+(?:los\s+)?archivos",
+            r"muestra(?:me?)?\s+(?:la\s+)?estructura",
+            r"muestra(?:me?)?\s+(?:el\s+)?árbol",
+            r"ls\s*$",
+            r"tree\s*$",
+        ],
+        
+        TaskType.VER_LOGS: [
+            r"muestra(?:me?)?\s+(?:los\s+)?logs?",
+            r"ver\s+(?:los\s+)?logs?",
+            r"(?:qué|que)\s+dicen?\s+(?:los\s+)?logs?",
+            r"(?:hay\s+)?errores?\s+en\s+(?:los\s+)?logs?",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # EXPLICAR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.EXPLICAR: [
+            r"explica(?:me?)?\s+(.+)",
+            r"(?:qué|que)\s+(?:es|hace|significa)\s+(.+)",
+            r"(?:cómo|como)\s+funciona\s+(.+)",
+            r"(?:para\s+)?(?:qué|que)\s+sirve\s+(.+)",
+            r"no\s+entiendo\s+(.+)",
+        ],
+        
+        TaskType.DOCUMENTAR: [
+            r"documenta(?:r?)?\s+(.+)",
+            r"(?:agrega|pon)\s+(?:la\s+)?documentación\s+(?:a|de)\s+(.+)",
+            r"escribe\s+(?:la\s+)?documentación",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # OPTIMIZAR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.OPTIMIZAR: [
+            r"optimiza(?:r?)?\s+(.+)",
+            r"mejora(?:r?)?\s+(.+)",
+            r"haz(?:lo)?\s+más\s+(?:rápido|eficiente)",
+        ],
+        
+        TaskType.REFACTORIZAR: [
+            r"refactoriza(?:r?)?\s+(.+)",
+            r"reorganiza(?:r?)?\s+(.+)",
+            r"limpia(?:r?)?\s+(?:el\s+)?código",
+            r"reestructura(?:r?)?\s+(.+)",
+        ],
+        
+        # ═══════════════════════════════════════════════════════════
+        # BASE DE DATOS
+        # ═══════════════════════════════════════════════════════════
+        TaskType.CREAR_TABLA: [
+            r"crea(?:r?)?\s+(?:una?\s+)?tabla\s+(\w+)",
+            r"(?:agrega|añade)\s+(?:una?\s+)?tabla\s+(\w+)",
+        ],
+        
+        TaskType.QUERY_SQL: [
+            r"ejecuta(?:r?)?\s+(?:este\s+)?sql",
+            r"(?:haz|corre)\s+(?:esta\s+)?(?:consulta|query)",
+            r"SELECT\s+.+\s+FROM",
+            r"INSERT\s+INTO",
+            r"UPDATE\s+.+\s+SET",
+            r"DELETE\s+FROM",
+        ],
+    }
+    
+    @classmethod
+    def detect_intent(cls, message: str) -> Tuple[TaskType, Dict]:
+        """
+        Detecta la intención del usuario.
+        
+        Retorna: (TaskType, extracted_data)
+        
+        extracted_data puede contener:
+        - file_path: ruta del archivo mencionado
+        - search_query: término de búsqueda
+        - command: comando a ejecutar
+        - package_name: paquete a instalar
+        """
+        import re
+        
+        message_lower = message.lower().strip()
+        
+        for task_type, patterns in cls.PATTERNS.items():
+            for pattern in patterns:
+                match = re.search(pattern, message_lower, re.IGNORECASE)
+                if match:
+                    # Extraer datos del match
+                    extracted = {}
+                    if match.groups():
+                        extracted["captured"] = match.group(1)
+                    
+                    return task_type, extracted
+        
+        # Si no se detecta nada específico
+        return TaskType.CONSULTA_GENERAL, {}
+```
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## ESPECIFICACIÓN: AIExecutionFlow (Flujos de Ejecución)
+## ════════════════════════════════════════════════════════════════
+
+```python
+class AIExecutionFlow:
+    """
+    Define cómo se ejecuta cada tipo de tarea paso a paso.
+    
+    ARCHIVO: tracking/ai_constructor.py o tracking/ai_execution_flow.py
+    """
+    
+    FLOWS = {
+        # ═══════════════════════════════════════════════════════════
+        # FLUJO: MODIFICAR ARCHIVO
+        # ═══════════════════════════════════════════════════════════
+        TaskType.MODIFICAR_ARCHIVO: {
+            "description": "Modificar un archivo existente",
+            "steps": [
+                {
+                    "id": "read",
+                    "action": "read_file",
+                    "description": "Leer archivo actual",
+                    "required": True
+                },
+                {
+                    "id": "analyze",
+                    "action": "ai_analyze",
+                    "description": "Entender qué cambiar",
+                    "required": True
+                },
+                {
+                    "id": "plan",
+                    "action": "create_plan",
+                    "description": "Crear plan de cambios",
+                    "required": True
+                },
+                {
+                    "id": "confirm",
+                    "action": "ask_confirmation",
+                    "description": "Pedir confirmación al usuario",
+                    "required": True
+                },
+                {
+                    "id": "edit",
+                    "action": "edit_file",
+                    "description": "Aplicar cambios",
+                    "required": True
+                },
+                {
+                    "id": "verify",
+                    "action": "verify_syntax",
+                    "description": "Verificar sintaxis",
+                    "required": False
+                },
+                {
+                    "id": "report",
+                    "action": "report_result",
+                    "description": "Reportar resultado",
+                    "required": True
+                }
+            ]
+        },
+        
+        # ═══════════════════════════════════════════════════════════
+        # FLUJO: CORREGIR ERROR
+        # ═══════════════════════════════════════════════════════════
+        TaskType.CORREGIR_ERROR: {
+            "description": "Detectar y corregir un error",
+            "steps": [
+                {
+                    "id": "read_logs",
+                    "action": "read_server_logs",
+                    "description": "Leer logs del servidor"
+                },
+                {
+                    "id": "detect",
+                    "action": "detect_errors",
+                    "description": "Identificar el error"
+                },
+                {
+                    "id": "analyze",
+                    "action": "analyze_error",
+                    "description": "Analizar causa del error"
+                },
+                {
+                    "id": "find_code",
+                    "action": "search_code",
+                    "description": "Encontrar código problemático"
+                },
+                {
+                    "id": "plan_fix",
+                    "action": "plan_fix",
+                    "description": "Planear corrección"
+                },
+                {
+                    "id": "confirm",
+                    "action": "ask_confirmation",
+                    "description": "Confirmar con usuario"
+                },
+                {
+                    "id": "apply_fix",
+                    "action": "edit_file",
+                    "description": "Aplicar corrección"
+                },
+                {
+                    "id": "install_if_needed",
+                    "action": "install_package",
+                    "description": "Instalar dependencias si es necesario",
+                    "conditional": True
+                },
+                {
+                    "id": "restart",
+                    "action": "restart_server",
+                    "description": "Reiniciar servidor"
+                },
+                {
+                    "id": "verify",
+                    "action": "verify_no_errors",
+                    "description": "Verificar que se corrigió"
+                },
+                {
+                    "id": "report",
+                    "action": "report_result",
+                    "description": "Reportar resultado"
+                }
+            ]
+        },
+        
+        # ═══════════════════════════════════════════════════════════
+        # FLUJO: INSTALAR DEPENDENCIA
+        # ═══════════════════════════════════════════════════════════
+        TaskType.INSTALAR_DEPENDENCIA: {
+            "description": "Instalar un paquete/dependencia",
+            "steps": [
+                {
+                    "id": "detect_manager",
+                    "action": "detect_package_manager",
+                    "description": "Detectar pip o npm"
+                },
+                {
+                    "id": "confirm",
+                    "action": "ask_confirmation",
+                    "description": "Confirmar instalación"
+                },
+                {
+                    "id": "install",
+                    "action": "install_package",
+                    "description": "Ejecutar instalación"
+                },
+                {
+                    "id": "verify",
+                    "action": "verify_install",
+                    "description": "Verificar instalación"
+                },
+                {
+                    "id": "update_deps",
+                    "action": "update_dependencies_file",
+                    "description": "Actualizar requirements.txt/package.json"
+                },
+                {
+                    "id": "report",
+                    "action": "report_result",
+                    "description": "Reportar resultado"
+                }
+            ]
+        },
+        
+        # ═══════════════════════════════════════════════════════════
+        # FLUJO: CREAR API
+        # ═══════════════════════════════════════════════════════════
+        TaskType.CREAR_API: {
+            "description": "Crear una API REST completa",
+            "steps": [
+                {
+                    "id": "analyze_project",
+                    "action": "analyze_project",
+                    "description": "Ver estructura actual"
+                },
+                {
+                    "id": "detect_lang",
+                    "action": "detect_language",
+                    "description": "Python o Node?"
+                },
+                {
+                    "id": "clarify",
+                    "action": "ask_clarification",
+                    "description": "Preguntar detalles de la API"
+                },
+                {
+                    "id": "plan",
+                    "action": "plan_api",
+                    "description": "Diseñar endpoints y estructura"
+                },
+                {
+                    "id": "confirm",
+                    "action": "ask_confirmation",
+                    "description": "Confirmar plan"
+                },
+                {
+                    "id": "create_files",
+                    "action": "create_api_files",
+                    "description": "Crear archivos necesarios"
+                },
+                {
+                    "id": "integrate",
+                    "action": "integrate_with_main",
+                    "description": "Integrar con archivo principal"
+                },
+                {
+                    "id": "install_deps",
+                    "action": "install_dependencies",
+                    "description": "Instalar dependencias necesarias"
+                },
+                {
+                    "id": "restart",
+                    "action": "restart_server",
+                    "description": "Reiniciar servidor"
+                },
+                {
+                    "id": "verify",
+                    "action": "verify_endpoints",
+                    "description": "Verificar que endpoints funcionan"
+                },
+                {
+                    "id": "report",
+                    "action": "report_result",
+                    "description": "Reportar resultado con documentación"
+                }
+            ]
+        },
+        
+        # ═══════════════════════════════════════════════════════════
+        # FLUJO: LEER ARCHIVO
+        # ═══════════════════════════════════════════════════════════
+        TaskType.LEER_ARCHIVO: {
+            "description": "Mostrar contenido de un archivo",
+            "steps": [
+                {
+                    "id": "validate",
+                    "action": "validate_file_exists",
+                    "description": "Verificar que archivo existe"
+                },
+                {
+                    "id": "read",
+                    "action": "read_file",
+                    "description": "Leer contenido"
+                },
+                {
+                    "id": "format",
+                    "action": "format_for_display",
+                    "description": "Formatear con syntax highlighting"
+                },
+                {
+                    "id": "report",
+                    "action": "show_content",
+                    "description": "Mostrar al usuario"
+                }
+            ]
+        },
+        
+        # ═══════════════════════════════════════════════════════════
+        # FLUJO: BUSCAR EN CÓDIGO
+        # ═══════════════════════════════════════════════════════════
+        TaskType.BUSCAR_CODIGO: {
+            "description": "Buscar texto/patrón en el código",
+            "steps": [
+                {
+                    "id": "parse_query",
+                    "action": "parse_search_query",
+                    "description": "Entender qué buscar"
+                },
+                {
+                    "id": "search",
+                    "action": "search_code",
+                    "description": "Ejecutar búsqueda"
+                },
+                {
+                    "id": "format",
+                    "action": "format_search_results",
+                    "description": "Formatear resultados"
+                },
+                {
+                    "id": "report",
+                    "action": "show_results",
+                    "description": "Mostrar resultados al usuario"
+                }
+            ]
+        },
+    }
+    
+    @classmethod
+    def get_flow(cls, task_type: TaskType) -> Dict:
+        """Obtiene el flujo de ejecución para un tipo de tarea"""
+        return cls.FLOWS.get(task_type, cls.FLOWS[TaskType.CONSULTA_GENERAL])
+    
+    @classmethod
+    def execute_flow(cls, task_type: TaskType, context: Dict, toolkit: AIToolkit) -> Dict:
+        """
+        Ejecuta un flujo completo paso a paso.
+        
+        Retorna progreso y resultado de cada paso.
+        """
+        flow = cls.get_flow(task_type)
+        results = []
+        
+        for step in flow["steps"]:
+            # Ejecutar paso
+            step_result = cls._execute_step(step, context, toolkit)
+            results.append(step_result)
+            
+            # Si falló y era requerido, parar
+            if not step_result["success"] and step.get("required", True):
+                return {
+                    "success": False,
+                    "failed_at": step["id"],
+                    "results": results
+                }
+            
+            # Actualizar contexto con resultado
+            context[step["id"]] = step_result
+        
+        return {
+            "success": True,
+            "results": results
+        }
+```
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## ESPECIFICACIÓN: AIProjectContext (Memoria del Proyecto)
+## ════════════════════════════════════════════════════════════════
+
+```python
+class AIProjectContext:
+    """
+    Mantiene contexto del proyecto entre peticiones.
+    
+    ARCHIVO: tracking/ai_project_context.py
+    
+    Esto permite a la IA recordar:
+    - Qué archivos ha creado/modificado
+    - Qué comandos ha ejecutado
+    - Qué errores ha corregido
+    - La estructura del proyecto
+    """
+    
+    def __init__(self, user_id: str, project_id: str):
+        self.user_id = user_id
+        self.project_id = project_id
+        self.session_start = datetime.now()
+        
+        # Estado del proyecto
+        self.project_info = None
+        self.file_tree = []
+        
+        # Historial de la sesión
+        self.files_created = []
+        self.files_modified = []
+        self.files_deleted = []
+        self.commands_executed = []
+        self.errors_found = []
+        self.errors_fixed = []
+        self.packages_installed = []
+        
+        # Conversación
+        self.conversation_history = []
+        self.current_task = None
+        self.pending_confirmations = []
+    
+    def initialize(self, toolkit: AIToolkit):
+        """
+        Inicializa el contexto analizando el proyecto.
+        DEBE llamarse al inicio de cada sesión.
+        """
+        self.project_info = toolkit.analyze_project()
+        self.file_tree = toolkit.list_directory(".")["files"]
+    
+    def remember_file_created(self, path: str, content: str, description: str = ""):
+        """Registra que se creó un archivo"""
+        self.files_created.append({
+            "path": path,
+            "size": len(content),
+            "description": description,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def remember_file_modified(self, path: str, change_description: str, diff: str = ""):
+        """Registra que se modificó un archivo"""
+        self.files_modified.append({
+            "path": path,
+            "change": change_description,
+            "diff": diff,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def remember_command_executed(self, command: str, result: Dict):
+        """Registra un comando ejecutado"""
+        self.commands_executed.append({
+            "command": command,
+            "success": result.get("success", False),
+            "output": result.get("stdout", "")[:500],  # Limitar tamaño
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def remember_error_found(self, error: Dict):
+        """Registra un error encontrado"""
+        self.errors_found.append({
+            **error,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def remember_error_fixed(self, error: Dict, fix: Dict):
+        """Registra un error corregido"""
+        self.errors_fixed.append({
+            "error": error,
+            "fix": fix,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def remember_package_installed(self, package: str, manager: str):
+        """Registra un paquete instalado"""
+        self.packages_installed.append({
+            "package": package,
+            "manager": manager,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def add_conversation(self, role: str, message: str):
+        """Agrega mensaje al historial de conversación"""
+        self.conversation_history.append({
+            "role": role,  # "user" o "assistant"
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def get_context_summary(self) -> str:
+        """
+        Genera resumen del contexto para incluir en prompts.
+        Esto se pasa a la IA para que entienda el contexto.
+        """
+        summary = f"""
+════════════════════════════════════════════════════════════════
+CONTEXTO DEL PROYECTO
+════════════════════════════════════════════════════════════════
+
+INFORMACIÓN DEL PROYECTO:
+- Lenguaje principal: {self.project_info.get('language', 'desconocido')}
+- Framework: {self.project_info.get('framework', 'ninguno')}
+- Punto de entrada: {self.project_info.get('entry_point', 'desconocido')}
+- Base de datos: {self.project_info.get('database', {}).get('type', 'ninguna')}
+
+ACTIVIDAD EN ESTA SESIÓN:
+- Archivos creados: {len(self.files_created)}
+- Archivos modificados: {len(self.files_modified)}
+- Comandos ejecutados: {len(self.commands_executed)}
+- Errores corregidos: {len(self.errors_fixed)}
+- Paquetes instalados: {len(self.packages_installed)}
+"""
+        
+        # Añadir archivos recientes
+        if self.files_created:
+            summary += "\nARCHIVOS CREADOS:\n"
+            for f in self.files_created[-5:]:  # últimos 5
+                summary += f"  - {f['path']}: {f.get('description', '')}\n"
+        
+        if self.files_modified:
+            summary += "\nARCHIVOS MODIFICADOS:\n"
+            for f in self.files_modified[-5:]:
+                summary += f"  - {f['path']}: {f['change']}\n"
+        
+        if self.packages_installed:
+            summary += "\nPAQUETES INSTALADOS:\n"
+            for p in self.packages_installed:
+                summary += f"  - {p['package']} ({p['manager']})\n"
+        
+        if self.errors_fixed:
+            summary += "\nERRORES CORREGIDOS:\n"
+            for e in self.errors_fixed[-3:]:
+                summary += f"  - {e['error'].get('type', 'Error')}: {e['error'].get('message', '')[:50]}\n"
+        
+        return summary
+    
+    def get_recent_conversation(self, limit: int = 10) -> List[Dict]:
+        """Obtiene los últimos mensajes de la conversación"""
+        return self.conversation_history[-limit:]
+    
+    def save_to_db(self, db_session):
+        """Guarda el contexto en la base de datos para persistencia"""
+        # Implementar según el ORM usado
+        pass
+    
+    @classmethod
+    def load_from_db(cls, user_id: str, project_id: str, db_session) -> 'AIProjectContext':
+        """Carga contexto guardado de la base de datos"""
+        # Implementar según el ORM usado
+        pass
+```
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## ESPECIFICACIÓN: AIVerificationSystem
+## ════════════════════════════════════════════════════════════════
+
+```python
+class AIVerificationSystem:
+    """
+    Verifica que las acciones de la IA se completaron correctamente.
+    
+    ARCHIVO: tracking/ai_verification.py
+    """
+    
+    def __init__(self, toolkit: AIToolkit):
+        self.toolkit = toolkit
+    
+    def verify_file_created(self, path: str) -> Dict:
+        """Verificar que el archivo se creó correctamente"""
+        info = self.toolkit.get_file_info(path)
+        
+        if not info.get("exists"):
+            return {
+                "success": False,
+                "error": f"Archivo no fue creado: {path}"
+            }
+        
+        return {
+            "success": True,
+            "file_info": info
+        }
+    
+    def verify_file_syntax(self, path: str) -> Dict:
+        """Verificar sintaxis del archivo creado/editado"""
+        language = self.toolkit._detect_language(path)
+        content = self.toolkit.read_file(path)
+        
+        if not content["success"]:
+            return content
+        
+        if language == "python":
+            return self._verify_python_syntax(content["content"])
+        elif language == "javascript":
+            return self._verify_js_syntax(content["content"])
+        elif language == "json":
+            return self._verify_json_syntax(content["content"])
+        
+        return {"success": True, "message": "Sintaxis no verificada para este tipo"}
+    
+    def _verify_python_syntax(self, code: str) -> Dict:
+        """Verificar sintaxis Python"""
+        try:
+            import ast
+            ast.parse(code)
+            return {"success": True}
+        except SyntaxError as e:
+            return {
+                "success": False,
+                "error": "SyntaxError",
+                "line": e.lineno,
+                "message": str(e)
+            }
+    
+    def _verify_js_syntax(self, code: str) -> Dict:
+        """Verificar sintaxis JavaScript básica"""
+        # Verificación básica de balance de llaves/paréntesis
+        stack = []
+        pairs = {')': '(', '}': '{', ']': '['}
+        
+        for i, char in enumerate(code):
+            if char in '({[':
+                stack.append((char, i))
+            elif char in ')}]':
+                if not stack or stack[-1][0] != pairs[char]:
+                    return {
+                        "success": False,
+                        "error": f"Desbalance de {char} en posición {i}"
+                    }
+                stack.pop()
+        
+        if stack:
+            return {
+                "success": False,
+                "error": f"Falta cerrar {stack[-1][0]} abierto en posición {stack[-1][1]}"
+            }
+        
+        return {"success": True}
+    
+    def _verify_json_syntax(self, code: str) -> Dict:
+        """Verificar sintaxis JSON"""
+        try:
+            import json
+            json.loads(code)
+            return {"success": True}
+        except json.JSONDecodeError as e:
+            return {
+                "success": False,
+                "error": "JSONDecodeError",
+                "line": e.lineno,
+                "message": str(e)
+            }
+    
+    def verify_server_running(self) -> Dict:
+        """Verificar que el servidor está corriendo sin errores"""
+        logs = self.toolkit.read_server_logs(20)
+        
+        if not logs["success"]:
+            return logs
+        
+        errors = self.toolkit.detect_errors(logs["logs"])
+        
+        return {
+            "success": len(errors.get("errors", [])) == 0,
+            "errors": errors.get("errors", []),
+            "server_status": "running" if len(errors.get("errors", [])) == 0 else "error"
+        }
+    
+    def verify_endpoint_works(self, endpoint: str, method: str = "GET") -> Dict:
+        """Verificar que un endpoint responde correctamente"""
+        import requests
+        
+        try:
+            url = f"http://localhost:5000{endpoint}"
+            response = requests.request(method, url, timeout=5)
+            
+            return {
+                "success": response.status_code < 500,
+                "status_code": response.status_code,
+                "response_time": response.elapsed.total_seconds()
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                "success": False,
+                "error": "No se pudo conectar al servidor"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def verify_package_installed(self, package: str, manager: str = "pip") -> Dict:
+        """Verificar que un paquete está instalado"""
+        if manager == "pip":
+            result = self.toolkit.run_command(f"pip show {package}")
+        elif manager == "npm":
+            result = self.toolkit.run_command(f"npm list {package}")
+        else:
+            return {"success": False, "error": f"Manager no soportado: {manager}"}
+        
+        return {
+            "success": result["exit_code"] == 0,
+            "installed": result["exit_code"] == 0
+        }
+    
+    def full_verification(self, task_type: str, actions_taken: List[Dict]) -> Dict:
+        """
+        Verificación completa después de ejecutar una tarea.
+        """
+        results = {
+            "success": True,
+            "verifications": []
+        }
+        
+        for action in actions_taken:
+            verification = None
+            
+            if action["type"] == "create_file":
+                verification = self.verify_file_created(action["path"])
+                if verification["success"]:
+                    syntax = self.verify_file_syntax(action["path"])
+                    verification["syntax_valid"] = syntax["success"]
+            
+            elif action["type"] == "edit_file":
+                verification = self.verify_file_syntax(action["path"])
+            
+            elif action["type"] == "install_package":
+                verification = self.verify_package_installed(
+                    action["package"], 
+                    action.get("manager", "pip")
+                )
+            
+            elif action["type"] == "restart_server":
+                verification = self.verify_server_running()
+            
+            if verification:
+                results["verifications"].append({
+                    "action": action,
+                    "result": verification
+                })
+                
+                if not verification.get("success"):
+                    results["success"] = False
+        
+        return results
+```
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## LISTA DE PRIORIDADES DE IMPLEMENTACIÓN
+## ════════════════════════════════════════════════════════════════
+
+### PRIORIDAD CRÍTICA (Sin esto no funciona nada):
+
+| # | Componente | Descripción | Archivo | Tiempo |
+|---|------------|-------------|---------|--------|
+| 1 | `AIToolkit.read_file()` | Leer cualquier archivo del proyecto | tracking/ai_toolkit.py | 2h |
+| 2 | `AIToolkit.edit_file()` | Editar archivos existentes (no reemplazar) | tracking/ai_toolkit.py | 3h |
+| 3 | `AIToolkit.write_file()` | Crear archivos (cualquier tipo, no solo HTML) | tracking/ai_toolkit.py | 2h |
+| 4 | `AIToolkit.run_command()` | Ejecutar comandos (npm, pip, python) | tracking/ai_toolkit.py | 3h |
+| 5 | `AIToolkit.read_logs()` | Leer logs del servidor | tracking/ai_toolkit.py | 2h |
+| 6 | `IntentParser` expandido | Detectar 30+ tipos de peticiones | tracking/ai_constructor.py | 4h |
+
+**Subtotal: 16 horas**
+
+---
+
+### PRIORIDAD ALTA (Para ser realmente útil):
+
+| # | Componente | Descripción | Archivo | Tiempo |
+|---|------------|-------------|---------|--------|
+| 7 | `AIToolkit.search_code()` | Buscar texto en código (grep) | tracking/ai_toolkit.py | 2h |
+| 8 | `AIToolkit.list_directory()` | Ver estructura de carpetas | tracking/ai_toolkit.py | 1h |
+| 9 | `AIToolkit.analyze_project()` | Entender el proyecto completo | tracking/ai_toolkit.py | 3h |
+| 10 | `AIVerificationSystem` | Verificar que todo funciona | tracking/ai_verification.py | 3h |
+| 11 | `AIProjectContext` | Recordar lo que se hizo en la sesión | tracking/ai_project_context.py | 4h |
+
+**Subtotal: 13 horas**
+
+---
+
+### PRIORIDAD MEDIA (Para ser excelente):
+
+| # | Componente | Descripción | Archivo | Tiempo |
+|---|------------|-------------|---------|--------|
+| 12 | Auto-corrección de errores | Detectar y corregir errores automáticamente | tracking/ai_toolkit.py | 4h |
+| 13 | Multi-lenguaje | Generar Python, Node, SQL (no solo HTML) | tracking/ai_constructor.py | 5h |
+| 14 | Sistema de diff visual | Mostrar cambios antes de aplicar | Frontend + Backend | 3h |
+| 15 | Memoria persistente | Recordar entre sesiones | Base de datos | 4h |
+
+**Subtotal: 16 horas**
+
+---
+
+### RESUMEN TOTAL
+
+| Prioridad | Tareas | Tiempo |
+|-----------|--------|--------|
+| 🔴 CRÍTICA | 6 componentes | 16 horas |
+| 🟡 ALTA | 5 componentes | 13 horas |
+| 🟠 MEDIA | 4 componentes | 16 horas |
+| **TOTAL** | **15 componentes** | **45 horas** |
+
+---
+
+### ORDEN DE IMPLEMENTACIÓN
+
+```
+SEMANA 1 (CRÍTICO):
+├── Día 1-2: AIToolkit básico (read_file, write_file, list_directory)
+├── Día 3:   AIToolkit.edit_file() (la más importante)
+├── Día 4:   AIToolkit.run_command() + seguridad
+└── Día 5:   IntentParser expandido
+
+SEMANA 2 (ALTO):
+├── Día 1:   AIToolkit.search_code() + read_logs()
+├── Día 2:   AIToolkit.analyze_project()
+├── Día 3:   AIProjectContext
+└── Día 4-5: AIVerificationSystem + testing
+
+SEMANA 3 (MEDIO):
+├── Día 1-2: Auto-corrección de errores
+├── Día 3-4: Multi-lenguaje (Python, Node, SQL)
+└── Día 5:   Sistema de diff + memoria persistente
+```
+
+---
+
 ## ═══════════════════════════════════════
 ## FASE 34.1: CONECTAR FRONTEND CON CONSTRUCTOR 8 FASES ⏳
 ## ═══════════════════════════════════════
@@ -3128,67 +5053,130 @@ FASE 5 (Avanzado):  34.2 → 34.7 → 34.8
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 20:15
-**Sesión:** 7
-**Agente activo:** ANÁLISIS PROFUNDO IA
+**Última actualización:** 7 Diciembre 2025 20:45
+**Sesión:** 8
+**Agente activo:** DOCUMENTACIÓN TÉCNICA COMPLETA
 
 ### Última tarea trabajada
-- Sección: 34 (EXPANDIDA)
+- Sección: 34 (ESPECIFICACIÓN TÉCNICA COMPLETA)
 - Nombre: Sistema IA BUNK3R Constructor
-- Estado: Documentada con 15 fases, pendiente de implementación
+- Estado: Documentada con 15 fases + especificaciones técnicas detalladas
 
 ### Archivos modificados en esta sesión:
-- PROMPT_PENDIENTES_BUNK3R.md (expandida SECCIÓN 34 de 9 a 15 fases)
+- PROMPT_PENDIENTES_BUNK3R.md (añadida especificación técnica completa de +2000 líneas)
 
-### Análisis completado - Comparación REPLIT AGENT vs BUNK3R IA
+### NUEVO CONTENIDO AÑADIDO EN ESTA SESIÓN
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  CAPACIDADES CRÍTICAS FALTANTES EN BUNK3R IA                   │
+│  ESPECIFICACIONES TÉCNICAS COMPLETAS AÑADIDAS                  │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
-│  HERRAMIENTAS:                                                 │
-│  ❌ Leer archivos del proyecto                                 │
-│  ❌ Editar archivos existentes (solo genera nuevos)            │
-│  ❌ Ejecutar comandos (npm, pip, python)                       │
-│  ❌ Ver logs del servidor                                      │
-│  ❌ Detectar y corregir errores                                │
-│  ❌ Buscar en código (grep)                                    │
-│  ❌ Entender estructura del proyecto                           │
+│  1. AIToolkit - Clase completa con todos los métodos:          │
+│     - read_file() con implementación completa                  │
+│     - edit_file() con implementación completa                  │
+│     - write_file(), append_to_file(), delete_file()            │
+│     - list_directory(), search_code(), get_file_info()         │
+│     - run_command() con whitelist/blacklist                    │
+│     - install_package(), run_script()                          │
+│     - read_server_logs(), detect_errors(), analyze_error()     │
+│     - analyze_project(), detect_language()                     │
+│     - _validate_path(), _is_command_allowed() (seguridad)      │
 │                                                                │
-│  INTENCIONES:                                                  │
-│  ❌ "Modifica este archivo" - No puede                         │
-│  ❌ "Arregla este error" - No puede                            │
-│  ❌ "Ejecuta npm install" - No puede                           │
-│  ❌ "Muéstrame app.py" - No puede                              │
-│  ❌ "¿Por qué falla esto?" - No puede analizar                 │
+│  2. TaskType expandido - 30+ tipos de intenciones              │
+│     - Creación: 12 tipos                                       │
+│     - Modificación: 9 tipos                                    │
+│     - Corrección: 6 tipos                                      │
+│     - Ejecución: 6 tipos                                       │
+│     - Lectura: 6 tipos                                         │
+│     - Optimización: 5 tipos                                    │
+│     - Explicación: 4 tipos                                     │
+│     - Base de datos: 4 tipos                                   │
 │                                                                │
-│  LO QUE SÍ FUNCIONA:                                           │
-│  ✅ Crear páginas HTML/CSS/JS                                  │
-│  ✅ Multi-proveedor IA con fallback                            │
-│  ✅ Sistema de 8 fases (existe pero no se usa)                 │
-│  ✅ Auto-rectificación de respuestas                           │
+│  3. IntentPatterns - Patrones regex para cada tipo             │
+│     - Patrones para crear, modificar, corregir, ejecutar       │
+│     - Patrones para leer, buscar, explicar, optimizar          │
+│     - Método detect_intent() que retorna (TaskType, data)      │
+│                                                                │
+│  4. AIExecutionFlow - Flujos de ejecución por tarea            │
+│     - MODIFICAR_ARCHIVO: 7 pasos                               │
+│     - CORREGIR_ERROR: 11 pasos                                 │
+│     - INSTALAR_DEPENDENCIA: 6 pasos                            │
+│     - CREAR_API: 11 pasos                                      │
+│     - LEER_ARCHIVO: 4 pasos                                    │
+│     - BUSCAR_CODIGO: 4 pasos                                   │
+│                                                                │
+│  5. AIProjectContext - Memoria del proyecto                    │
+│     - remember_file_created(), remember_file_modified()        │
+│     - remember_command_executed(), remember_error_fixed()      │
+│     - get_context_summary() para incluir en prompts            │
+│     - save_to_db(), load_from_db() para persistencia           │
+│                                                                │
+│  6. AIVerificationSystem - Verificar acciones                  │
+│     - verify_file_created(), verify_file_syntax()              │
+│     - verify_server_running(), verify_endpoint_works()         │
+│     - verify_package_installed(), full_verification()          │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Nuevas fases añadidas (6 adicionales)
-- **34.10** Toolkit de archivos - Leer/escribir/editar archivos
-- **34.11** Ejecutor de comandos - npm, pip, python, etc.
-- **34.12** Detector de errores - Analizar logs y auto-corregir
-- **34.13** Entendedor de proyectos - Analizar estructura/lenguaje
-- **34.14** Multi-lenguaje - Python, Node, SQL, no solo HTML
-- **34.15** Sistema de diff - Mostrar cambios antes de aplicar
+### LISTA DE PRIORIDADES DEFINITIVA
 
-### RESUMEN SECCIÓN 34 COMPLETA
+```
+PRIORIDAD CRÍTICA (16 horas):
+├── 1. AIToolkit.read_file()      → 2h
+├── 2. AIToolkit.edit_file()      → 3h
+├── 3. AIToolkit.write_file()     → 2h
+├── 4. AIToolkit.run_command()    → 3h
+├── 5. AIToolkit.read_logs()      → 2h
+└── 6. IntentParser expandido     → 4h
 
-| Prioridad | Fases | Tiempo |
-|-----------|-------|--------|
-| 🔴 CRÍTICA | 34.1, 34.2, 34.6, 34.10, 34.11, 34.12 | 29h |
-| 🟡 ALTA | 34.3, 34.4, 34.5, 34.9, 34.13, 34.14 | 23h |
-| 🟠 MEDIA | 34.7, 34.8, 34.15 | 11h |
+PRIORIDAD ALTA (13 horas):
+├── 7. AIToolkit.search_code()    → 2h
+├── 8. AIToolkit.list_directory() → 1h
+├── 9. AIToolkit.analyze_project()→ 3h
+├── 10. AIVerificationSystem      → 3h
+└── 11. AIProjectContext          → 4h
 
-**TOTAL: 63 horas estimadas (15 fases)**
+PRIORIDAD MEDIA (16 horas):
+├── 12. Auto-corrección errores   → 4h
+├── 13. Multi-lenguaje            → 5h
+├── 14. Sistema de diff visual    → 3h
+└── 15. Memoria persistente       → 4h
+
+TOTAL: 45 horas de trabajo
+```
+
+### PLAN DE IMPLEMENTACIÓN POR SEMANAS
+
+```
+SEMANA 1 (CRÍTICO):
+├── Día 1-2: AIToolkit básico (read, write, list)
+├── Día 3:   AIToolkit.edit_file() (la más importante)
+├── Día 4:   AIToolkit.run_command() + seguridad
+└── Día 5:   IntentParser expandido
+
+SEMANA 2 (ALTO):
+├── Día 1:   AIToolkit.search_code() + read_logs()
+├── Día 2:   AIToolkit.analyze_project()
+├── Día 3:   AIProjectContext
+└── Día 4-5: AIVerificationSystem + testing
+
+SEMANA 3 (MEDIO):
+├── Día 1-2: Auto-corrección de errores
+├── Día 3-4: Multi-lenguaje (Python, Node, SQL)
+└── Día 5:   Sistema de diff + memoria persistente
+```
+
+### ARCHIVOS A CREAR
+
+| Archivo | Descripción |
+|---------|-------------|
+| `tracking/ai_toolkit.py` | Clase principal AIToolkit con todas las herramientas |
+| `tracking/ai_project_context.py` | Memoria y contexto del proyecto |
+| `tracking/ai_verification.py` | Sistema de verificación |
+| `tracking/ai_execution_flow.py` | Flujos de ejecución por tarea |
+| `tracking/ai_intent_patterns.py` | Patrones de detección de intenciones |
 
 ### ORDEN DE IMPLEMENTACIÓN RECOMENDADO
 
