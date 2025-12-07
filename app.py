@@ -8235,6 +8235,68 @@ def admin_get_products():
         return jsonify({'success': True, 'products': []})
 
 
+@app.route('/api/admin/products', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_create_product():
+    """Admin: Crear nuevo producto."""
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        price = float(data.get('price', 0))
+        category = data.get('category', 'general').strip()
+        stock = int(data.get('stock', 1))
+        icon = data.get('icon', '')
+        
+        if not title:
+            return jsonify({'success': False, 'error': 'El titulo es requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        user_id = get_user_id()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO products (user_id, title, description, price, category, stock, image_url, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+                    RETURNING id
+                """, (user_id, title, description, price, category, stock, icon))
+                product_id = cur.fetchone()[0]
+                conn.commit()
+        
+        logger.info(f"Product created: {title} (ID: {product_id})")
+        return jsonify({'success': True, 'product_id': product_id, 'message': 'Producto creado correctamente'})
+        
+    except Exception as e:
+        logger.error(f"Error creating product: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/products/<int:product_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_product(product_id):
+    """Admin: Eliminar producto."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM products WHERE id = %s", (product_id,))
+                conn.commit()
+        
+        logger.info(f"Product deleted: ID {product_id}")
+        return jsonify({'success': True, 'message': 'Producto eliminado'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting product: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/transactions', methods=['GET'])
 @require_telegram_auth
 @require_owner
