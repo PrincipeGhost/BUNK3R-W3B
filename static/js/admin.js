@@ -71,7 +71,8 @@ const AdminPanel = {
             massmessages: 'Mensajes Masivos',
             logs: 'Logs',
             analytics: 'Analíticas',
-            settings: 'Configuración'
+            settings: 'Configuración',
+            maintenance: 'Backup y Mantenimiento'
         };
         
         document.getElementById('pageTitle').textContent = titles[section] || section;
@@ -133,6 +134,9 @@ const AdminPanel = {
                 break;
             case 'massmessages':
                 SupportModule.loadMassMessages();
+                break;
+            case 'maintenance':
+                this.loadMaintenance();
                 break;
         }
     },
@@ -3244,64 +3248,113 @@ const AdminPanel = {
             ]);
             
             if (settingsRes.success) {
-                const txCommissionEl = document.getElementById('txCommission');
-                const minWithdrawalEl = document.getElementById('minWithdrawal');
+                const s = settingsRes;
+                this.setInputValue('configB3CPrice', s.b3cPriceUSD || 0.10);
+                this.setInputValue('txCommission', s.transactionFeePercent || 5);
+                this.setInputValue('minWithdrawal', s.minWithdrawal || 10);
+                this.setInputValue('minDepositTON', s.minDepositTON || 0.5);
+                
+                this.setInputValue('vnMinPriceB3C', s.vnMinPriceB3C || 25);
+                this.setInputValue('vnMargin', s.vnMargin || 30);
+                this.setInputValue('smsTimeout', s.smsTimeout || 180);
+                
+                this.setInputValue('rateLimitPerMin', s.rateLimitPerMin || 60);
+                this.setInputValue('autoBlockAfter', s.autoBlockAfter || 3);
+                this.setInputValue('blockDuration', s.blockDuration || 24);
+                
                 const maintenanceModeEl = document.getElementById('maintenanceMode');
                 const maintenanceMessageEl = document.getElementById('maintenanceMessage');
+                const maintenanceEndTimeEl = document.getElementById('maintenanceEndTime');
                 
-                if (txCommissionEl) txCommissionEl.value = settingsRes.transactionFeePercent || 2;
-                if (minWithdrawalEl) minWithdrawalEl.value = settingsRes.minWithdrawal || 0.5;
-                if (maintenanceModeEl) maintenanceModeEl.checked = settingsRes.maintenanceMode || false;
-                if (maintenanceMessageEl) maintenanceMessageEl.value = settingsRes.maintenanceMessage || '';
+                if (maintenanceModeEl) maintenanceModeEl.checked = s.maintenanceMode || false;
+                if (maintenanceMessageEl) maintenanceMessageEl.value = s.maintenanceMessage || '';
+                if (maintenanceEndTimeEl && s.maintenanceEndTime) {
+                    maintenanceEndTimeEl.value = s.maintenanceEndTime.slice(0, 16);
+                }
             }
             
-            if (statusRes.success) {
-                const dbStatusEl = document.getElementById('dbStatus');
-                const tonStatusEl = document.getElementById('tonStatus');
-                const smsStatusEl = document.getElementById('smsStatus');
-                
-                if (dbStatusEl) {
-                    dbStatusEl.textContent = statusRes.status.database.message;
-                    dbStatusEl.className = `status-indicator ${statusRes.status.database.status}`;
-                }
-                
-                if (tonStatusEl) {
-                    tonStatusEl.textContent = statusRes.status.toncenter.message;
-                    tonStatusEl.className = `status-indicator ${statusRes.status.toncenter.status}`;
-                }
-                
-                if (smsStatusEl) {
-                    smsStatusEl.textContent = statusRes.status.smspool.message;
-                    smsStatusEl.className = `status-indicator ${statusRes.status.smspool.status}`;
-                }
-                
-                if (statusRes.secrets) {
-                    const secretsList = document.getElementById('secretsList');
-                    if (secretsList) {
-                        const secretsHtml = Object.entries(statusRes.secrets).map(([name, configured]) => `
-                            <div class="secret-item">
-                                <span class="secret-name">${this.escapeHtml(name)}</span>
-                                <span class="secret-status ${configured ? 'configured' : 'missing'}">
-                                    ${configured ? '✓ Configurado' : '✗ No configurado'}
-                                </span>
-                            </div>
-                        `).join('');
-                        SafeDOM.setHTML(secretsList, secretsHtml);
-                    }
-                }
-            }
+            this.updateSystemStatus(statusRes);
         } catch (error) {
             console.error('Error loading settings:', error);
         }
     },
     
-    async saveSettings() {
+    setInputValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    },
+    
+    updateSystemStatus(statusRes) {
+        if (!statusRes.success) return;
+        
+        const status = statusRes.status || {};
+        
+        const updateStatusEl = (id, data) => {
+            const el = document.getElementById(id);
+            if (el && data) {
+                el.textContent = data.message || data.status;
+                el.className = `status-indicator ${data.status === 'ok' ? 'ok' : data.status === 'warning' ? 'warning' : 'error'}`;
+            }
+        };
+        
+        updateStatusEl('dbStatus', status.database);
+        updateStatusEl('tonStatus', status.toncenter);
+        updateStatusEl('smsStatus', status.smspool);
+        updateStatusEl('walletPoolStatus', status.walletPool);
+        updateStatusEl('hotWalletStatus', status.hotWallet);
+        
+        const lastCheckEl = document.getElementById('lastStatusCheck');
+        if (lastCheckEl) {
+            lastCheckEl.textContent = new Date().toLocaleTimeString();
+        }
+        
+        if (statusRes.secrets) {
+            const secretsList = document.getElementById('secretsList');
+            if (secretsList) {
+                const secretsHtml = Object.entries(statusRes.secrets).map(([name, configured]) => `
+                    <div class="secret-item">
+                        <span class="secret-name">${this.escapeHtml(name)}</span>
+                        <span class="secret-status ${configured ? 'configured' : 'missing'}">
+                            ${configured ? '✓ Configurado' : '✗ No configurado'}
+                        </span>
+                    </div>
+                `).join('');
+                SafeDOM.setHTML(secretsList, secretsHtml);
+            }
+        }
+    },
+    
+    async refreshSystemStatus() {
+        try {
+            this.showToast('Verificando estado del sistema...', 'info');
+            const statusRes = await this.fetchAPI('/api/admin/system-status?refresh=true');
+            this.updateSystemStatus(statusRes);
+            this.showToast('Estado actualizado', 'success');
+        } catch (error) {
+            console.error('Error refreshing status:', error);
+            this.showToast('Error al actualizar estado', 'error');
+        }
+    },
+    
+    async saveSystemConfig() {
         try {
             const data = {
+                b3cPriceUSD: parseFloat(document.getElementById('configB3CPrice')?.value) || 0.10,
+                transactionFeePercent: parseFloat(document.getElementById('txCommission')?.value) || 5,
+                minWithdrawal: parseFloat(document.getElementById('minWithdrawal')?.value) || 10,
+                minDepositTON: parseFloat(document.getElementById('minDepositTON')?.value) || 0.5,
+                
+                vnMinPriceB3C: parseInt(document.getElementById('vnMinPriceB3C')?.value) || 25,
+                vnMargin: parseInt(document.getElementById('vnMargin')?.value) || 30,
+                smsTimeout: parseInt(document.getElementById('smsTimeout')?.value) || 180,
+                
+                rateLimitPerMin: parseInt(document.getElementById('rateLimitPerMin')?.value) || 60,
+                autoBlockAfter: parseInt(document.getElementById('autoBlockAfter')?.value) || 3,
+                blockDuration: parseInt(document.getElementById('blockDuration')?.value) || 24,
+                
                 maintenanceMode: document.getElementById('maintenanceMode')?.checked || false,
                 maintenanceMessage: document.getElementById('maintenanceMessage')?.value || '',
-                transactionFeePercent: parseFloat(document.getElementById('txCommission')?.value) || 2,
-                minWithdrawal: parseFloat(document.getElementById('minWithdrawal')?.value) || 0.5
+                maintenanceEndTime: document.getElementById('maintenanceEndTime')?.value || null
             };
             
             const response = await this.fetchAPI('/api/admin/settings', {
@@ -3317,6 +3370,215 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error saving settings:', error);
             this.showToast('Error al guardar configuración', 'error');
+        }
+    },
+    
+    async toggleMaintenance() {
+        const isActive = document.getElementById('maintenanceMode')?.checked;
+        const message = document.getElementById('maintenanceMessage')?.value || 'Estamos realizando mantenimiento. Volveremos pronto.';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({ active: isActive, message })
+            });
+            
+            if (response.success) {
+                this.showToast(isActive ? 'Modo mantenimiento activado' : 'Modo mantenimiento desactivado', isActive ? 'warning' : 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling maintenance:', error);
+            this.showToast('Error al cambiar modo mantenimiento', 'error');
+        }
+    },
+    
+    async saveSettings() {
+        await this.saveSystemConfig();
+    },
+    
+    async loadMaintenance() {
+        try {
+            const response = await this.fetchAPI('/api/admin/server-status');
+            
+            if (response.success) {
+                const s = response;
+                document.getElementById('serverUptime').textContent = s.uptime || '-';
+                
+                const memoryPct = s.memoryPercent || 0;
+                const cpuPct = s.cpuPercent || 0;
+                const diskPct = s.diskPercent || 0;
+                
+                document.getElementById('memoryUsage').textContent = `${memoryPct}%`;
+                document.getElementById('cpuUsage').textContent = `${cpuPct}%`;
+                document.getElementById('diskUsage').textContent = `${diskPct}%`;
+                
+                const memoryBar = document.getElementById('memoryBar');
+                const cpuBar = document.getElementById('cpuBar');
+                const diskBar = document.getElementById('diskBar');
+                
+                if (memoryBar) {
+                    memoryBar.style.width = `${memoryPct}%`;
+                    memoryBar.className = `bar-fill ${memoryPct > 80 ? 'danger' : memoryPct > 60 ? 'warning' : ''}`;
+                }
+                if (cpuBar) {
+                    cpuBar.style.width = `${cpuPct}%`;
+                    cpuBar.className = `bar-fill ${cpuPct > 80 ? 'danger' : cpuPct > 60 ? 'warning' : ''}`;
+                }
+                if (diskBar) {
+                    diskBar.style.width = `${diskPct}%`;
+                    diskBar.className = `bar-fill ${diskPct > 80 ? 'danger' : diskPct > 60 ? 'warning' : ''}`;
+                }
+                
+                document.getElementById('dbConnections').textContent = s.dbConnections || 0;
+                document.getElementById('lastBackupTime').textContent = s.lastBackup || 'No disponible';
+                document.getElementById('dbSize').textContent = s.dbSize || '-';
+                document.getElementById('errorsLast24h').textContent = s.errorsLast24h || 0;
+                document.getElementById('warningsLast24h').textContent = s.warningsLast24h || 0;
+                document.getElementById('logsSize').textContent = s.logsSize || '-';
+            }
+        } catch (error) {
+            console.error('Error loading maintenance:', error);
+        }
+    },
+    
+    async refreshServerStatus() {
+        this.showToast('Actualizando estado del servidor...', 'info');
+        await this.loadMaintenance();
+        this.showToast('Estado actualizado', 'success');
+    },
+    
+    async createBackup() {
+        if (!confirm('¿Crear un backup de la base de datos?')) return;
+        
+        try {
+            this.showToast('Creando backup...', 'info');
+            const response = await this.fetchAPI('/api/admin/backup/create', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast(`Backup creado: ${response.filename || 'OK'}`, 'success');
+                this.loadMaintenance();
+            } else {
+                this.showToast(response.error || 'Error al crear backup', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating backup:', error);
+            this.showToast('Error al crear backup', 'error');
+        }
+    },
+    
+    async showBackupHistory() {
+        try {
+            const response = await this.fetchAPI('/api/admin/backup/history');
+            
+            if (response.success && response.backups) {
+                const html = response.backups.length > 0 
+                    ? response.backups.map(b => `<div class="backup-item">${b.filename} - ${b.date} - ${b.size}</div>`).join('')
+                    : '<p>No hay backups disponibles</p>';
+                
+                alert('Historial de Backups:\n' + (response.backups.map(b => `${b.filename} (${b.size})`).join('\n') || 'No hay backups'));
+            }
+        } catch (error) {
+            console.error('Error loading backup history:', error);
+            this.showToast('Error al cargar historial', 'error');
+        }
+    },
+    
+    async clearCache() {
+        if (!confirm('¿Limpiar la caché del sistema?')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance/clear-cache', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Caché limpiada correctamente', 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing cache:', error);
+            this.showToast('Error al limpiar caché', 'error');
+        }
+    },
+    
+    async optimizeDatabase() {
+        if (!confirm('¿Optimizar la base de datos? Esto puede tomar unos segundos.')) return;
+        
+        try {
+            this.showToast('Optimizando base de datos...', 'info');
+            const response = await this.fetchAPI('/api/admin/maintenance/optimize-db', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Base de datos optimizada', 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error optimizing database:', error);
+            this.showToast('Error al optimizar', 'error');
+        }
+    },
+    
+    async cleanupOldSessions() {
+        if (!confirm('¿Limpiar sesiones inactivas (más de 30 días)?')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance/cleanup-sessions', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast(`${response.deleted || 0} sesiones eliminadas`, 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error cleaning sessions:', error);
+            this.showToast('Error al limpiar sesiones', 'error');
+        }
+    },
+    
+    async cleanupOldData() {
+        if (!confirm('¿Limpiar datos antiguos (logs, notificaciones, etc. de más de 90 días)? Esta acción no se puede deshacer.')) return;
+        
+        try {
+            this.showToast('Limpiando datos antiguos...', 'info');
+            const response = await this.fetchAPI('/api/admin/maintenance/cleanup-old-data', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast(`Datos limpiados: ${response.summary || 'OK'}`, 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error cleaning old data:', error);
+            this.showToast('Error al limpiar datos', 'error');
+        }
+    },
+    
+    async downloadLogs() {
+        try {
+            window.open('/api/admin/logs/download', '_blank');
+        } catch (error) {
+            console.error('Error downloading logs:', error);
+            this.showToast('Error al descargar logs', 'error');
+        }
+    },
+    
+    async clearLogs() {
+        if (!confirm('¿Limpiar los logs del sistema? Esta acción no se puede deshacer.')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance/clear-logs', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Logs limpiados correctamente', 'success');
+                this.loadMaintenance();
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing logs:', error);
+            this.showToast('Error al limpiar logs', 'error');
         }
     },
     
