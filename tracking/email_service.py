@@ -55,7 +55,8 @@ def format_date(date_str: Optional[str] = None) -> str:
         for en, es in months.items():
             date_formatted = date_formatted.replace(en, es)
         return date_formatted
-    except:
+    except Exception as e:
+        print(f"Error formatting date: {e}")
         return date_str
 
 
@@ -71,7 +72,8 @@ def generate_email_html(data: Dict[str, Any]) -> str:
         total = float(str(shipping_cost).replace(',', '.').replace('$', '').strip()) + \
                 float(str(product_cost).replace(',', '.').replace('$', '').strip())
         total_amount = data.get('totalAmount') or f"{total:.2f}".replace('.', ',')
-    except:
+    except (ValueError, TypeError) as e:
+        print(f"Error calculating total amount: {e}")
         total_amount = data.get('totalAmount') or '20,00'
     
     return f'''<!DOCTYPE html>

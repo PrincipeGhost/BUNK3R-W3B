@@ -4,6 +4,7 @@ Integrates with SMSPool.net API for purchasing virtual numbers and receiving SMS
 """
 
 import os
+import json
 import requests
 import logging
 from typing import Dict, List, Optional, Any
@@ -40,7 +41,8 @@ class SMSPoolService:
                 try:
                     data = response.json()
                     return {'success': True, 'data': data}
-                except:
+                except (ValueError, json.JSONDecodeError) as e:
+                    logger.debug(f"JSON decode error, using raw text: {e}")
                     return {'success': True, 'data': response.text}
             else:
                 logger.error(f"SMSPool API error: {response.status_code} - {response.text}")
@@ -510,7 +512,8 @@ class SMSPoolService:
             else:
                 try:
                     price = float(data)
-                except:
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Error parsing price data: {e}")
                     price = 0.0
             return {'success': True, 'price': price}
         return result

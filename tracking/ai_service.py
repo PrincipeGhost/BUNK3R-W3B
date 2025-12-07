@@ -983,7 +983,8 @@ RESPONDE SOLO CON JSON VALIDO. SIN TEXTO ADICIONAL ANTES O DESPUES."""
                                     json.loads(sanitized)
                                     json_match = sanitized
                                     break
-                                except:
+                                except (json.JSONDecodeError, ValueError) as e:
+                                    logger.debug(f"JSON parse attempt failed: {e}")
                                     continue
                     
                     if json_match:

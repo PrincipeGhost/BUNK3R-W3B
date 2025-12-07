@@ -107,6 +107,20 @@ def get_demo_2fa_code():
     totp = pyotp.TOTP(DEMO_2FA_SECRET, interval=60)
     return totp.now()
 
+HIDE_2FA_LOGS = os.environ.get('HIDE_2FA_LOGS', 'false').lower() == 'true'
+
+def log_demo_2fa_code(code: str, client_ip: str, extra_msg: str = None):
+    """Loguea el código 2FA de forma segura (oculto en producción)."""
+    if IS_PRODUCTION or HIDE_2FA_LOGS:
+        logger.info(f"🔐 Demo 2FA code generated for IP: {client_ip}")
+    else:
+        logger.info(f"═══════════════════════════════════════════════")
+        logger.info(f"🔐 DEMO 2FA CODE: {code}")
+        logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
+        if extra_msg:
+            logger.info(f"   {extra_msg}")
+        logger.info(f"═══════════════════════════════════════════════")
+
 def verify_demo_2fa_code(code: str) -> bool:
     """Verifica el código 2FA para modo demo."""
     totp = pyotp.TOTP(DEMO_2FA_SECRET, interval=60)
@@ -622,7 +636,8 @@ def is_owner(user_id: int) -> bool:
     try:
         owner_id = int(OWNER_TELEGRAM_ID) if OWNER_TELEGRAM_ID else 0
         return user_id == owner_id
-    except:
+    except (ValueError, TypeError) as e:
+        logger.debug(f"Error checking owner: {e}")
         return False
 
 def is_test_user(user_id: int) -> bool:
@@ -630,7 +645,8 @@ def is_test_user(user_id: int) -> bool:
     try:
         test_user_id = int(USER_TELEGRAM_ID) if USER_TELEGRAM_ID else 0
         return user_id == test_user_id
-    except:
+    except (ValueError, TypeError) as e:
+        logger.debug(f"Error checking test user: {e}")
         return False
 
 def is_allowed_user(user_id: int) -> bool:
@@ -655,10 +671,7 @@ def require_telegram_auth(f):
             
             if not verify_demo_session(demo_session_token, client_ip):
                 current_code = get_demo_2fa_code()
-                logger.info(f"═══════════════════════════════════════════════")
-                logger.info(f"🔐 DEMO 2FA CODE: {current_code}")
-                logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
-                logger.info(f"═══════════════════════════════════════════════")
+                log_demo_2fa_code(current_code, client_ip)
                 return jsonify({
                     'error': 'Verificación 2FA requerida para modo demo',
                     'code': 'DEMO_2FA_REQUIRED',
@@ -727,10 +740,7 @@ def require_telegram_user(f):
             
             if not verify_demo_session(demo_session_token, client_ip):
                 current_code = get_demo_2fa_code()
-                logger.info(f"═══════════════════════════════════════════════")
-                logger.info(f"🔐 DEMO 2FA CODE: {current_code}")
-                logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
-                logger.info(f"═══════════════════════════════════════════════")
+                log_demo_2fa_code(current_code, client_ip)
                 return jsonify({
                     'error': 'Verificación 2FA requerida para modo demo',
                     'code': 'DEMO_2FA_REQUIRED',
@@ -962,11 +972,7 @@ def verify_demo_2fa():
             })
         else:
             current_code = get_demo_2fa_code()
-            logger.info(f"═══════════════════════════════════════════════")
-            logger.info(f"🔐 DEMO 2FA CODE: {current_code}")
-            logger.info(f"   Valid for 60 seconds | IP: {client_ip}")
-            logger.info(f"   Attempt failed with code: {code}")
-            logger.info(f"═══════════════════════════════════════════════")
+            log_demo_2fa_code(current_code, client_ip, f"Attempt failed with code: {code}")
             return jsonify({
                 'success': False,
                 'error': 'Código incorrecto. Revisa los logs del servidor.'
@@ -3050,8 +3056,8 @@ def verify_ton_payment(payment_id):
                             if raw_body:
                                 try:
                                     comment = bytes.fromhex(raw_body).decode('utf-8', errors='ignore')
-                                except:
-                                    pass
+                                except (ValueError, UnicodeDecodeError) as e:
+                                    logger.debug(f"Error decoding message body: {e}")
                         
                         if expected_comment.lower() in comment.lower():
                             tx_hash = tx.get('hash', '')
@@ -5504,8 +5510,8 @@ def admin_dashboard_alerts():
                                     'message': f'{pending_reports} reportes de contenido sin revisar',
                                     'timestamp': datetime.now().isoformat()
                                 })
-                        except:
-                            pass
+                        except psycopg2.errors.UndefinedColumn as e:
+                            logger.debug(f"Column is_reported not found: {e}")
                         
                         cur.execute("""
                             SELECT COALESCE(SUM(deposit_amount), 0) 
@@ -5542,7 +5548,7 @@ def admin_dashboard_charts():
             days = int(period)
             if days not in [7, 30, 90]:
                 days = 30
-        except:
+        except (ValueError, TypeError):
             days = 30
         
         users_data = []
@@ -6641,7 +6647,8 @@ def admin_financial_stats():
                     pending = cur.fetchone()
                     pending_withdrawals = int(pending['count']) if pending else 0
                     pending_withdrawals_amount = float(pending['total']) if pending else 0
-                except:
+                except psycopg2.errors.UndefinedTable as e:
+                    logger.debug(f"b3c_withdrawals table not found: {e}")
                     pending_withdrawals = 0
                     pending_withdrawals_amount = 0
                 
@@ -6944,8 +6951,8 @@ def admin_content_stats():
                         WHERE is_active = true AND expires_at > NOW()
                     """)
                     total_stories = cur.fetchone()[0] or 0
-                except:
-                    pass
+                except psycopg2.errors.UndefinedTable as e:
+                    logger.debug(f"stories table not found: {e}")
                 
                 reported_posts = 0
                 try:
@@ -6954,8 +6961,8 @@ def admin_content_stats():
                         WHERE status = 'pending' AND post_id IS NOT NULL
                     """)
                     reported_posts = cur.fetchone()[0] or 0
-                except:
-                    pass
+                except psycopg2.errors.UndefinedTable as e:
+                    logger.debug(f"reports table not found: {e}")
         
         return jsonify({
             'success': True,
@@ -12529,7 +12536,8 @@ def admin_analytics_conversion():
                         FROM virtual_number_orders
                     """)
                     users_used_vn = cur.fetchone()['count'] or 0
-                except:
+                except psycopg2.errors.UndefinedTable as e:
+                    logger.debug(f"virtual_number_orders table not found: {e}")
                     users_used_vn = 0
                 
                 try:
@@ -12539,7 +12547,8 @@ def admin_analytics_conversion():
                         WHERE is_hidden = false
                     """)
                     users_published = cur.fetchone()['count'] or 0
-                except:
+                except psycopg2.errors.UndefinedTable as e:
+                    logger.debug(f"posts table not found: {e}")
                     users_published = 0
                 
                 # Usuarios con wallet conectada
