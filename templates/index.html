@@ -695,7 +695,7 @@
                 </div>
             </div>
 
-            <!-- PAGINA AI CHAT - INTERFAZ 2 PANELES -->
+            <!-- PAGINA AI CHAT - INTERFAZ CODE BUILDER -->
             <div id="ai-chat-screen" class="page-screen hidden">
                 <div class="ai-workspace-container">
                     <!-- PANEL IZQUIERDO: CHAT -->
@@ -709,13 +709,66 @@
                                         <circle cx="15" cy="10" r="1" fill="currentColor"></circle>
                                     </svg>
                                 </div>
-                                <h3>BUNK3R AI</h3>
-                                <p>Preguntame lo que necesites</p>
+                                <h3>BUNK3R AI Builder</h3>
+                                <p>Dime que quieres crear</p>
+                                <div class="ai-quick-actions" id="ai-quick-actions">
+                                    <button class="ai-quick-btn" data-prompt="Crea una landing page moderna con hero, features y contacto">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                                        </svg>
+                                        Landing Page
+                                    </button>
+                                    <button class="ai-quick-btn" data-prompt="Crea un formulario de contacto con validacion">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        </svg>
+                                        Formulario
+                                    </button>
+                                    <button class="ai-quick-btn" data-prompt="Crea una galeria de imagenes con grid responsive">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                            <rect x="3" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="14" width="7" height="7"></rect>
+                                            <rect x="3" y="14" width="7" height="7"></rect>
+                                        </svg>
+                                        Galeria
+                                    </button>
+                                    <button class="ai-quick-btn" data-prompt="Crea una calculadora funcional">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                            <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                                            <line x1="8" y1="6" x2="16" y2="6"></line>
+                                            <line x1="8" y1="10" x2="8" y2="10"></line>
+                                            <line x1="12" y1="10" x2="12" y2="10"></line>
+                                            <line x1="16" y1="10" x2="16" y2="10"></line>
+                                        </svg>
+                                        Calculadora
+                                    </button>
+                                    <button class="ai-quick-btn" data-prompt="Crea un juego simple de memoria con cartas">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                        </svg>
+                                        Juego
+                                    </button>
+                                    <button class="ai-quick-btn" data-prompt="Crea un reloj digital con fecha y hora actual">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        Reloj
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="ai-chat-input-container">
                             <div class="ai-chat-input-wrapper">
-                                <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Escribe tu mensaje..." rows="1"></textarea>
+                                <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Describe lo que quieres crear..." rows="1"></textarea>
                                 <button id="ai-chat-send" class="ai-chat-send-btn" aria-label="Enviar mensaje">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                                         <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -724,15 +777,35 @@
                                 </button>
                             </div>
                             <div class="ai-chat-provider-info" id="ai-provider-info">
-                                <span class="provider-label">Powered by deepseek-v3.2, deepseek, grog, gemini, cerebras, huggingface</span>
+                                <span class="provider-label">Powered by BUNK3R AI</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- PANEL DERECHO: PREVIEW DEL PROYECTO -->
+                    <!-- PANEL DERECHO: PREVIEW + EDITOR -->
                     <div class="ai-panel ai-panel-preview">
                         <div class="ai-panel-header">
-                            <span class="ai-panel-title">Vista Previa</span>
+                            <div class="ai-file-tabs" id="ai-file-tabs">
+                                <button class="ai-file-tab active" data-file="preview">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    Preview
+                                </button>
+                                <button class="ai-file-tab" data-file="html">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm7.031 9.75l-.232-2.718 10.059.003.23-2.622L5.412 4.41l.698 8.01h9.126l-.326 3.426-2.91.804-2.955-.81-.188-2.11H6.248l.33 4.171L12 19.351l5.379-1.443.744-8.157H8.531z"/></svg>
+                                    HTML
+                                </button>
+                                <button class="ai-file-tab" data-file="css">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.565-2.438L1.5 0zm17.09 4.413L5.41 4.41l.213 2.622 10.125.002-.255 2.716h-6.64l.24 2.573h6.182l-.366 3.523-2.91.804-2.956-.81-.188-2.11h-2.61l.29 3.855L12 19.288l5.373-1.53L18.59 4.414z"/></svg>
+                                    CSS
+                                </button>
+                                <button class="ai-file-tab" data-file="js">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M0 0h24v24H0V0zm22.034 18.276c-.175-1.095-.888-2.015-3.003-2.873-.736-.345-1.554-.585-1.797-1.14-.091-.33-.105-.51-.046-.705.15-.646.915-.84 1.515-.66.39.12.75.42.976.9 1.034-.676 1.034-.676 1.755-1.125-.27-.42-.404-.601-.586-.78-.63-.705-1.469-1.065-2.834-1.034l-.705.089c-.676.165-1.32.525-1.71 1.005-1.14 1.291-.811 3.541.569 4.471 1.365 1.02 3.361 1.244 3.616 2.205.24 1.17-.87 1.545-1.966 1.41-.811-.18-1.26-.586-1.755-1.336l-1.83 1.051c.21.48.45.689.81 1.109 1.74 1.756 6.09 1.666 6.871-1.004.029-.09.24-.705.074-1.65l.046.067zm-8.983-7.245h-2.248c0 1.938-.009 3.864-.009 5.805 0 1.232.063 2.363-.138 2.711-.33.689-1.18.601-1.566.48-.396-.196-.597-.466-.83-.855-.063-.105-.11-.196-.127-.196l-1.825 1.125c.305.63.75 1.172 1.324 1.517.855.51 2.004.675 3.207.405.783-.226 1.458-.691 1.811-1.411.51-.93.402-2.07.397-3.346.012-2.054 0-4.109 0-6.179l.004-.056z"/></svg>
+                                    JS
+                                </button>
+                            </div>
                             <div class="ai-preview-actions">
                                 <button class="ai-preview-btn" id="ai-preview-refresh" title="Actualizar">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -743,7 +816,7 @@
                             </div>
                         </div>
                         <div class="ai-preview-content" id="ai-preview-content">
-                            <div class="ai-preview-empty">
+                            <div class="ai-preview-empty" id="ai-preview-empty">
                                 <div class="ai-preview-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
                                         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -752,9 +825,12 @@
                                     </svg>
                                 </div>
                                 <p>Tu proyecto aparecera aqui</p>
-                                <span class="ai-preview-hint">Pide a la IA que cree algo</span>
+                                <span class="ai-preview-hint">Selecciona una accion rapida o describe lo que quieres</span>
                             </div>
-                            <iframe id="ai-preview-iframe" class="ai-preview-iframe hidden" sandbox="allow-scripts allow-same-origin"></iframe>
+                            <iframe id="ai-preview-iframe" class="ai-preview-iframe hidden" sandbox="allow-scripts allow-modals"></iframe>
+                            <div id="ai-code-editor" class="ai-code-editor hidden">
+                                <textarea id="ai-code-textarea" class="ai-code-textarea" spellcheck="false"></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>

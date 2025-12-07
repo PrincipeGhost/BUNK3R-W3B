@@ -3,6 +3,8 @@ const AIChat = {
     messages: [],
     isLoading: false,
     isPageMode: false,
+    files: {},
+    activeTab: 'preview',
     
     init() {
         const pageContainer = document.getElementById('ai-chat-screen');
@@ -13,7 +15,7 @@ const AIChat = {
             this.isPageMode = false;
             this.initWidgetMode();
         }
-        this.loadHistory();
+        this.loadFromStorage();
     },
     
     initPageMode() {
@@ -34,17 +36,111 @@ const AIChat = {
         this.handleKeyDown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                this.sendMessage();
+                this.sendCodeRequest();
             }
         };
         
-        this.handleSendClick = () => this.sendMessage();
+        this.handleSendClick = () => this.sendCodeRequest();
         
         input.addEventListener('input', this.handleInputChange);
         input.addEventListener('keydown', this.handleKeyDown);
         send.addEventListener('click', this.handleSendClick);
         
+        this.bindQuickActions();
+        this.bindFileTabs();
+        this.bindRefreshButton();
+        this.bindCodeEditor();
+        
         input.focus();
+    },
+    
+    bindQuickActions() {
+        document.querySelectorAll('.ai-quick-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const prompt = btn.dataset.prompt;
+                if (prompt) {
+                    document.getElementById('ai-chat-input').value = prompt;
+                    this.sendCodeRequest();
+                }
+            });
+        });
+    },
+    
+    bindFileTabs() {
+        document.querySelectorAll('.ai-file-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.switchTab(tab.dataset.file);
+            });
+        });
+    },
+    
+    bindRefreshButton() {
+        const refreshBtn = document.getElementById('ai-preview-refresh');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.updatePreview();
+            });
+        }
+    },
+    
+    bindCodeEditor() {
+        const textarea = document.getElementById('ai-code-textarea');
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                if (this.activeTab !== 'preview' && this.files[this.activeTab]) {
+                    const fileMap = { html: 'index.html', css: 'styles.css', js: 'script.js' };
+                    const filename = fileMap[this.activeTab];
+                    if (filename) {
+                        this.files[filename] = textarea.value;
+                        this.saveToStorage();
+                    }
+                }
+            });
+            
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 2;
+                }
+            });
+        }
+    },
+    
+    switchTab(tabName) {
+        this.activeTab = tabName;
+        
+        document.querySelectorAll('.ai-file-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.file === tabName);
+        });
+        
+        const iframe = document.getElementById('ai-preview-iframe');
+        const codeEditor = document.getElementById('ai-code-editor');
+        const emptyState = document.getElementById('ai-preview-empty');
+        const textarea = document.getElementById('ai-code-textarea');
+        
+        if (tabName === 'preview') {
+            if (iframe) iframe.classList.remove('hidden');
+            if (codeEditor) codeEditor.classList.add('hidden');
+            if (emptyState && Object.keys(this.files).length === 0) {
+                emptyState.classList.remove('hidden');
+            }
+            this.updatePreview();
+        } else {
+            if (iframe) iframe.classList.add('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+            if (codeEditor) codeEditor.classList.remove('hidden');
+            
+            const fileMap = { html: 'index.html', css: 'styles.css', js: 'script.js' };
+            const filename = fileMap[tabName];
+            if (textarea && filename && this.files[filename]) {
+                textarea.value = this.files[filename];
+            } else if (textarea) {
+                textarea.value = '';
+            }
+        }
     },
     
     initWidgetMode() {
@@ -52,97 +148,11 @@ const AIChat = {
     },
     
     createChatWidget() {
-        const widget = document.createElement('div');
-        widget.id = 'ai-chat-widget';
-        widget.innerHTML = `
-            <button class="ai-chat-toggle" id="ai-chat-toggle" aria-label="Abrir chat de IA">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span class="ai-badge">AI</span>
-            </button>
-            <div class="ai-chat-container-widget hidden" id="ai-chat-container-widget">
-                <div class="ai-chat-header">
-                    <div class="ai-chat-title">
-                        <span class="ai-icon">🤖</span>
-                        <span>BUNK3R AI</span>
-                    </div>
-                    <div class="ai-chat-actions">
-                        <button class="ai-action-btn" id="ai-clear-btn" title="Limpiar chat">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                        <button class="ai-action-btn" id="ai-close-btn" title="Cerrar">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="ai-chat-messages-widget" id="ai-chat-messages-widget">
-                    <div class="ai-welcome-message">
-                        <div class="ai-avatar">🤖</div>
-                        <div class="ai-bubble">
-                            <p>Hola! Soy <strong>BUNK3R AI</strong>, tu asistente inteligente.</p>
-                            <p>Puedo ayudarte con:</p>
-                            <ul>
-                                <li>Rastreo de paquetes</li>
-                                <li>Criptomonedas y blockchain</li>
-                                <li>Preguntas sobre la plataforma</li>
-                                <li>Programacion y tecnologia</li>
-                            </ul>
-                            <p>Escribe tu pregunta!</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="ai-chat-input-area">
-                    <div class="ai-provider-indicator" id="ai-provider-indicator"></div>
-                    <div class="ai-input-wrapper">
-                        <textarea id="ai-chat-input-widget" placeholder="Escribe tu mensaje..." rows="1"></textarea>
-                        <button class="ai-send-btn" id="ai-send-btn-widget" disabled>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(widget);
+        return;
     },
     
     bindWidgetEvents() {
-        const toggle = document.getElementById('ai-chat-toggle');
-        const close = document.getElementById('ai-close-btn');
-        const clear = document.getElementById('ai-clear-btn');
-        const input = document.getElementById('ai-chat-input-widget');
-        const send = document.getElementById('ai-send-btn-widget');
-        
-        if (!toggle) return;
-        
-        toggle.addEventListener('click', () => this.toggle());
-        if (close) close.addEventListener('click', () => this.close());
-        if (clear) clear.addEventListener('click', () => this.clearChat());
-        
-        if (input) {
-            input.addEventListener('input', () => {
-                if (send) send.disabled = !input.value.trim();
-                this.autoResize(input);
-            });
-            
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
-            });
-        }
-        
-        if (send) send.addEventListener('click', () => this.sendMessage());
+        return;
     },
     
     autoResize(textarea) {
@@ -158,8 +168,6 @@ const AIChat = {
         if (this.isOpen) {
             if (container) container.classList.remove('hidden');
             if (toggle) toggle.classList.add('active');
-            const input = document.getElementById('ai-chat-input-widget');
-            if (input) input.focus();
         } else {
             if (container) container.classList.add('hidden');
             if (toggle) toggle.classList.remove('active');
@@ -175,31 +183,19 @@ const AIChat = {
     },
     
     getMessagesContainer() {
-        if (this.isPageMode) {
-            return document.getElementById('ai-chat-messages');
-        }
-        return document.getElementById('ai-chat-messages-widget');
+        return document.getElementById('ai-chat-messages');
     },
     
     getInput() {
-        if (this.isPageMode) {
-            return document.getElementById('ai-chat-input');
-        }
-        return document.getElementById('ai-chat-input-widget');
+        return document.getElementById('ai-chat-input');
     },
     
     getSendButton() {
-        if (this.isPageMode) {
-            return document.getElementById('ai-chat-send');
-        }
-        return document.getElementById('ai-send-btn-widget');
+        return document.getElementById('ai-chat-send');
     },
     
     getProviderIndicator() {
-        if (this.isPageMode) {
-            return document.getElementById('ai-provider-info');
-        }
-        return document.getElementById('ai-provider-indicator');
+        return document.getElementById('ai-provider-info');
     },
     
     getApiHeaders() {
@@ -217,54 +213,41 @@ const AIChat = {
         return headers;
     },
     
-    async loadHistory() {
+    loadFromStorage() {
         try {
-            const response = await fetch('/api/ai/history', { headers: this.getApiHeaders() });
-            const data = await response.json();
-            
-            if (data.success && data.history && data.history.length > 0) {
-                this.messages = data.history;
-                this.renderMessages();
-            }
-            
-            if (data.providers && data.providers.length > 0) {
-                const indicator = this.getProviderIndicator();
-                if (indicator) {
-                    indicator.innerHTML = `<span class="provider-label">Powered by: ${data.providers.join(', ')}</span>`;
+            const saved = localStorage.getItem('bunkr_ai_project');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.files = data.files || {};
+                if (Object.keys(this.files).length > 0) {
+                    this.updatePreview();
                 }
             }
-        } catch (error) {
-            console.error('Error loading AI history:', error);
+        } catch (e) {
+            console.error('Error loading project:', e);
         }
     },
     
-    renderMessages() {
-        const container = this.getMessagesContainer();
-        if (!container) return;
-        
-        const welcomeMsg = container.querySelector('.ai-welcome-message, .ai-chat-welcome');
-        
-        if (this.messages.length > 0 && welcomeMsg) {
-            welcomeMsg.style.display = 'none';
+    saveToStorage() {
+        try {
+            localStorage.setItem('bunkr_ai_project', JSON.stringify({
+                files: this.files,
+                savedAt: new Date().toISOString()
+            }));
+        } catch (e) {
+            console.error('Error saving project:', e);
         }
-        
-        this.messages.forEach(msg => {
-            if (!container.querySelector(`[data-msg-id="${msg.id || msg.content.substring(0, 20)}"]`)) {
-                this.appendMessage(msg.role, msg.content, false);
-            }
-        });
     },
     
     appendMessage(role, content, save = true) {
         const container = this.getMessagesContainer();
         if (!container) return;
         
-        const welcomeMsg = container.querySelector('.ai-welcome-message, .ai-chat-welcome');
+        const welcomeMsg = container.querySelector('.ai-chat-welcome');
         if (welcomeMsg) welcomeMsg.style.display = 'none';
         
         const msgDiv = document.createElement('div');
         msgDiv.className = `ai-message ai-message-${role}`;
-        msgDiv.setAttribute('data-msg-id', content.substring(0, 20));
         
         if (role === 'assistant') {
             msgDiv.innerHTML = `
@@ -289,48 +272,34 @@ const AIChat = {
         }
     },
     
+    appendCodeAction(action, filename) {
+        const container = this.getMessagesContainer();
+        if (!container) return;
+        
+        const actionDiv = document.createElement('div');
+        actionDiv.className = `ai-code-action ${action === 'update' ? 'update' : ''}`;
+        
+        const icon = action === 'create' ? 
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>' :
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+        
+        actionDiv.innerHTML = `
+            ${icon}
+            <span class="ai-code-action-text">${action === 'create' ? 'Archivo creado' : 'Archivo actualizado'}</span>
+            <span class="ai-code-action-file">${filename}</span>
+        `;
+        
+        container.appendChild(actionDiv);
+        container.scrollTop = container.scrollHeight;
+    },
+    
     formatMessage(text) {
         let formatted = this.escapeHtml(text);
         formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
         formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
         formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
         formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        
-        const lines = formatted.split('\n');
-        let result = [];
-        let inList = false;
-        
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const listMatch = line.match(/^[-•]\s+(.+)$/);
-            
-            if (listMatch) {
-                if (!inList) {
-                    result.push('<ul>');
-                    inList = true;
-                }
-                result.push(`<li>${listMatch[1]}</li>`);
-            } else {
-                if (inList) {
-                    result.push('</ul>');
-                    inList = false;
-                }
-                if (line.trim()) {
-                    result.push(line + '<br>');
-                } else {
-                    result.push('<br>');
-                }
-            }
-        }
-        
-        if (inList) {
-            result.push('</ul>');
-        }
-        
-        formatted = result.join('');
-        formatted = formatted.replace(/<br>$/, '');
-        formatted = formatted.replace(/<br><br>/g, '<br>');
-        
+        formatted = formatted.replace(/\n/g, '<br>');
         return formatted;
     },
     
@@ -368,7 +337,49 @@ const AIChat = {
         if (typing) typing.remove();
     },
     
-    async sendMessage() {
+    updatePreview() {
+        const iframe = document.getElementById('ai-preview-iframe');
+        const emptyState = document.getElementById('ai-preview-empty');
+        
+        if (!iframe) return;
+        
+        const html = this.files['index.html'] || '';
+        const css = this.files['styles.css'] || '';
+        const js = this.files['script.js'] || '';
+        
+        if (!html && !css && !js) {
+            if (emptyState) emptyState.classList.remove('hidden');
+            iframe.classList.add('hidden');
+            return;
+        }
+        
+        if (emptyState) emptyState.classList.add('hidden');
+        iframe.classList.remove('hidden');
+        
+        let processedHtml = html;
+        
+        if (processedHtml.includes('<link rel="stylesheet" href="styles.css">')) {
+            processedHtml = processedHtml.replace(
+                '<link rel="stylesheet" href="styles.css">',
+                `<style>${css}</style>`
+            );
+        } else if (!processedHtml.includes('<style>') && css) {
+            processedHtml = processedHtml.replace('</head>', `<style>${css}</style></head>`);
+        }
+        
+        if (processedHtml.includes('<script src="script.js">')) {
+            processedHtml = processedHtml.replace(
+                '<script src="script.js"></script>',
+                `<script>${js}<\/script>`
+            );
+        } else if (!processedHtml.includes('<script>') && js) {
+            processedHtml = processedHtml.replace('</body>', `<script>${js}<\/script></body>`);
+        }
+        
+        iframe.srcdoc = processedHtml;
+    },
+    
+    async sendCodeRequest() {
         const input = this.getInput();
         const send = this.getSendButton();
         
@@ -387,63 +398,130 @@ const AIChat = {
         this.showTyping();
         
         try {
-            const response = await fetch('/api/ai/chat', {
+            const response = await fetch('/api/ai/code-builder', {
                 method: 'POST',
                 headers: this.getApiHeaders(),
-                body: JSON.stringify({ message })
+                body: JSON.stringify({
+                    message: message,
+                    currentFiles: this.files,
+                    projectName: 'BUNK3R Project'
+                })
             });
             
             const data = await response.json();
             this.hideTyping();
             
             if (data.success) {
-                this.appendMessage('assistant', data.response);
+                if (data.files) {
+                    this.processFiles(data.files);
+                }
                 
-                if (data.provider) {
-                    const indicator = this.getProviderIndicator();
-                    if (indicator) {
-                        indicator.innerHTML = `<span class="provider-label">Respondido por: ${data.provider}</span>`;
-                    }
+                if (data.response) {
+                    this.appendMessage('assistant', data.response);
+                }
+                
+                const indicator = this.getProviderIndicator();
+                if (indicator && data.provider) {
+                    indicator.innerHTML = `<span class="provider-label">Generado con ${data.provider}</span>`;
                 }
             } else {
-                this.appendMessage('assistant', data.error || 'Error al procesar tu mensaje. Intenta de nuevo.');
+                this.appendMessage('assistant', data.error || 'Error al generar codigo. Intenta de nuevo.');
             }
         } catch (error) {
             this.hideTyping();
             this.appendMessage('assistant', 'Error de conexion. Verifica tu internet e intenta de nuevo.');
-            console.error('AI Chat error:', error);
+            console.error('AI Code Builder error:', error);
         }
         
         this.isLoading = false;
     },
     
-    async clearChat() {
-        if (!confirm('Limpiar todo el historial del chat?')) return;
-        
-        try {
-            await fetch('/api/ai/clear', { method: 'POST', headers: this.getApiHeaders() });
-            this.messages = [];
-            
-            const container = this.getMessagesContainer();
-            if (container) {
-                container.innerHTML = `
-                    <div class="ai-chat-welcome">
-                        <div class="ai-avatar">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
-                                <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3v-2a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
-                            </svg>
-                        </div>
-                        <h3>Chat limpiado</h3>
-                        <p>Como puedo ayudarte?</p>
-                    </div>
-                `;
-            }
-        } catch (error) {
-            console.error('Error clearing chat:', error);
+    processFiles(files) {
+        for (const [filename, content] of Object.entries(files)) {
+            const isNew = !this.files[filename];
+            this.files[filename] = content;
+            this.appendCodeAction(isNew ? 'create' : 'update', filename);
         }
+        
+        this.switchTab('preview');
+        this.updatePreview();
+        this.saveToStorage();
+    },
+    
+    async clearChat() {
+        if (!confirm('Limpiar el proyecto actual?')) return;
+        
+        this.messages = [];
+        this.files = {};
+        localStorage.removeItem('bunkr_ai_project');
+        
+        const container = this.getMessagesContainer();
+        if (container) {
+            container.innerHTML = `
+                <div class="ai-chat-welcome">
+                    <div class="ai-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+                            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3v-2a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+                            <circle cx="9" cy="10" r="1" fill="currentColor"></circle>
+                            <circle cx="15" cy="10" r="1" fill="currentColor"></circle>
+                        </svg>
+                    </div>
+                    <h3>BUNK3R AI Builder</h3>
+                    <p>Dime que quieres crear</p>
+                    <div class="ai-quick-actions" id="ai-quick-actions">
+                        <button class="ai-quick-btn" data-prompt="Crea una landing page moderna con hero, features y contacto">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                            </svg>
+                            Landing Page
+                        </button>
+                        <button class="ai-quick-btn" data-prompt="Crea un formulario de contacto con validacion">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            Formulario
+                        </button>
+                    </div>
+                </div>
+            `;
+            this.bindQuickActions();
+        }
+        
+        this.switchTab('preview');
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => AIChat.init(), 1000);
+    setTimeout(() => {
+        AIChat.init();
+        AIChat.hookNavigation();
+    }, 500);
 });
+
+AIChat.hookNavigation = function() {
+    document.querySelectorAll('.bottom-nav-item[data-nav="ai-chat"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                AIChat.isPageMode = true;
+                AIChat.initPageMode();
+            }, 100);
+        });
+    });
+    
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.addEventListener('click', (e) => {
+            const menuItem = e.target.closest('[data-screen="ai-chat"]');
+            if (menuItem) {
+                setTimeout(() => {
+                    AIChat.isPageMode = true;
+                    AIChat.initPageMode();
+                }, 100);
+            }
+        });
+    }
+};

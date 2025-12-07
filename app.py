@@ -13362,13 +13362,7 @@ def ai_clear():
         logger.error(f"AI clear error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== CODE BUILDER SECTION ====================
-
-@app.route('/code-builder')
-@require_telegram_auth
-def code_builder():
-    """BUNK3R AI Code Builder - Create web projects with AI"""
-    return render_template('code_builder.html')
+# ==================== CODE BUILDER API ====================
 
 @app.route('/api/ai/code-builder', methods=['POST'])
 @require_telegram_auth
