@@ -22,9 +22,9 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║                                                                  ║
 ║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33     ║
 ║                                                                  ║
-║ 🔴 CRÍTICO: 5 problemas                                          ║
-║    30.1 except vacíos | 30.2 innerHTML XSS | 31.1 Botones        ║
-║    31.2 Códigos 2FA en logs | 32.5 Auditar secretos              ║
+║ 🔴 CRÍTICO: 3 problemas                                          ║
+║    30.2 innerHTML XSS | 31.1 Botones | 32.5 Auditar secretos     ║
+║    ✅ 30.1 except vacíos | ✅ 31.2 Códigos 2FA en logs            ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -1047,34 +1047,35 @@ Rediseñar la pantalla de Configuración/Ajustes con estilo Telegram/Binance
 
 ---
 
-### FASE 30.1: CORRECCIÓN DE BLOQUES EXCEPT VACÍOS ⏳
+### FASE 30.1: CORRECCIÓN DE BLOQUES EXCEPT VACÍOS ✅
 **Prioridad:** 🔴 ALTA  
 **Tiempo:** 1 hora  
-**Agente:** 🟡 BACKEND API
+**Agente:** 🟡 BACKEND API  
+**Completado:** 7 Diciembre 2025
 
 #### Objetivo:
 Corregir los 14 bloques `except:` vacíos que causan errores silenciosos.
 
 #### Tareas:
-- [ ] app.py:625 - Función is_owner → `except Exception as e:` + logging
-- [ ] app.py:633 - Función is_test_user → `except Exception as e:` + logging
-- [ ] app.py:3053 - Pago TON → `except Exception as e:` + logging
-- [ ] app.py:5507 → `except Exception as e:` + logging
-- [ ] app.py:5545 → `except Exception as e:` + logging
-- [ ] app.py:6644 → `except Exception as e:` + logging
-- [ ] app.py:6947 → `except Exception as e:` + logging
-- [ ] app.py:6957 → `except Exception as e:` + logging
-- [ ] app.py:12532 - Analytics → `except Exception as e:` + logging
-- [ ] app.py:12542 - Analytics → `except Exception as e:` + logging
-- [ ] email_service.py:58 → `except Exception as e:` + print error
-- [ ] email_service.py:74 → `except Exception as e:` + print error
-- [ ] smspool_service.py:43 → `except Exception as e:` + print error
-- [ ] smspool_service.py:513 → `except Exception as e:` + print error
+- [x] app.py:625 - Función is_owner → `except Exception as e:` + logging
+- [x] app.py:633 - Función is_test_user → `except Exception as e:` + logging
+- [x] app.py:3053 - Pago TON → `except Exception as e:` + logging
+- [x] app.py:5507 → `except Exception as e:` + logging
+- [x] app.py:5545 → `except Exception as e:` + logging
+- [x] app.py:6644 → `except Exception as e:` + logging
+- [x] app.py:6947 → `except Exception as e:` + logging
+- [x] app.py:6957 → `except Exception as e:` + logging
+- [x] app.py:12532 - Analytics → `except Exception as e:` + logging
+- [x] app.py:12542 - Analytics → `except Exception as e:` + logging
+- [x] email_service.py:58 → `except Exception as e:` + print error
+- [x] email_service.py:74 → `except Exception as e:` + print error
+- [x] smspool_service.py:43 → `except Exception as e:` + print error
+- [x] smspool_service.py:513 → `except Exception as e:` + print error
 
 #### Criterios de éxito:
-- [ ] 0 bloques except: vacíos en el proyecto
-- [ ] Todos los errores se registran en logs
-- [ ] La aplicación no crashea silenciosamente
+- [x] 0 bloques except: vacíos en el proyecto
+- [x] Todos los errores se registran en logs
+- [x] La aplicación no crashea silenciosamente
 
 ---
 
@@ -1383,7 +1384,7 @@ app.logger.setLevel(logging.INFO)
 
 | Fase | Descripción | Prioridad | Tiempo | Estado |
 |------|-------------|-----------|--------|--------|
-| 30.1 | Corregir except: vacíos | 🔴 ALTA | 1h | ⏳ |
+| 30.1 | Corregir except: vacíos | 🔴 ALTA | 1h | ✅ |
 | 30.2 | Implementar DOMPurify | 🔴 CRÍTICA | 4h | ⏳ |
 | 30.3 | Headers CSP | 🟠 MEDIA | 1h | ⏳ |
 | 30.4 | Limpiar imports | 🟠 MEDIA | 1h | ⏳ |
@@ -1444,10 +1445,11 @@ Implementar funcionalidad real para botones que actualmente no hacen nada o solo
 
 ---
 
-### FASE 31.2: SEGURIDAD - CÓDIGO 2FA EN LOGS ⏳
+### FASE 31.2: SEGURIDAD - CÓDIGO 2FA EN LOGS ✅
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 1 hora  
-**Agente:** 🟡 BACKEND API
+**Agente:** 🟡 BACKEND API  
+**Completado:** 7 Diciembre 2025
 
 #### Objetivo:
 Eliminar la exposición de códigos 2FA sensibles en los logs del servidor.
@@ -1458,27 +1460,21 @@ INFO:__main__:🔐 DEMO 2FA CODE: 272557
 ```
 El código 2FA se muestra en logs del servidor, lo cual es un riesgo de seguridad en producción.
 
+#### Solución implementada:
+- Creada función `log_demo_2fa_code()` en app.py (línea ~112)
+- Verifica IS_PRODUCTION y HIDE_2FA_LOGS antes de mostrar código
+- En producción solo muestra: "🔐 Demo 2FA code generated for IP: X"
+- En desarrollo muestra el código completo para debugging
+
 #### Tareas:
-- [ ] Buscar todas las líneas que loguean códigos 2FA en app.py
-- [ ] Reemplazar logs de códigos 2FA con logs genéricos: "2FA code sent to user"
-- [ ] Solo mantener logging de códigos 2FA en modo DEBUG, NO en producción
-- [ ] Añadir variable de entorno `HIDE_2FA_LOGS=true` para producción
-
-#### Código sugerido:
-```python
-# ANTES (INSEGURO):
-logger.info(f"🔐 DEMO 2FA CODE: {code}")
-
-# DESPUÉS (SEGURO):
-if IS_PRODUCTION or os.getenv('HIDE_2FA_LOGS', 'false').lower() == 'true':
-    logger.info("🔐 2FA code generated and sent to user")
-else:
-    logger.debug(f"🔐 DEMO 2FA CODE: {code}")
-```
+- [x] Buscar todas las líneas que loguean códigos 2FA en app.py
+- [x] Reemplazar logs de códigos 2FA con logs genéricos: "2FA code sent to user"
+- [x] Solo mantener logging de códigos 2FA en modo DEBUG, NO en producción
+- [x] Añadir variable de entorno `HIDE_2FA_LOGS=true` para producción
 
 #### Criterios de éxito:
-- [ ] 0 códigos 2FA visibles en logs de producción
-- [ ] Logs de desarrollo mantienen visibilidad para debugging
+- [x] 0 códigos 2FA visibles en logs de producción
+- [x] Logs de desarrollo mantienen visibilidad para debugging
 
 ---
 
@@ -1866,7 +1862,7 @@ Verificar y completar funcionalidad del AI Constructor.
 | Fase | Descripción | Prioridad | Tiempo | Agente | Estado |
 |------|-------------|-----------|--------|--------|--------|
 | 31.1 | Botones sin funcionalidad | 🔴 CRÍTICA | 4h | FRONTEND | ⏳ |
-| 31.2 | Códigos 2FA en logs | 🔴 CRÍTICA | 1h | BACKEND | ⏳ |
+| 31.2 | Códigos 2FA en logs | 🔴 CRÍTICA | 1h | BACKEND | ✅ |
 | 31.3 | Navegación inconsistente | 🟡 ALTA | 3h | FRONTEND | ⏳ |
 | 31.4 | Estadísticas admin vacías | 🟡 ALTA | 2h | BACKEND/ADMIN | ⏳ |
 | 31.5 | Tablas BD faltantes | 🟡 ALTA | 2h | BACKEND | ⏳ |
