@@ -25,7 +25,7 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║    31.5 Tablas BD | 31.9 Rate limiting | 32.4 Sin pendientes     ║
 ║    32.5 Secretos auditados                                       ║
 ║                                                                  ║
-║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33, 34 ║
+║ ⏳ PENDIENTES: 27.10→27.25 (44h), Sección 29 (18h), 30-34        ║
 ║                                                                  ║
 ║ 🔴 CRÍTICO: SECCIÓN 34 - IA BUNK3R CONSTRUCTOR                   ║
 ║    ✅ 34.1, 34.2, 34.6, 34.9-34.14 COMPLETADOS (9 fases)         ║
@@ -1000,22 +1000,247 @@ Crear un Panel de Administración profesional y completo que permita al owner/ad
 ---
 
 ## ═══════════════════════════════════════
-## FASE 27.16-27.25: FUNCIONALIDADES AVANZADAS ⏳
+## FASE 27.16: CENTRO DE VIGILANCIA EN TIEMPO REAL ⏳
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟢 MEDIA
-**Estado:** Pendiente - Ver detalle completo en secciones expandidas
+**Tiempo:** 6 horas
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
 
-- 27.16: Centro de Vigilancia en Tiempo Real
-- 27.17: Perfil Completo del Usuario (Vista 360°)
-- 27.18: Sistema de Puntuación de Riesgo
-- 27.19: Modo Shadow (Impersonación Avanzada)
-- 27.20: Sistema de Etiquetas y Clasificación
-- 27.21: Comunicación Directa con Usuarios
-- 27.22: Detector de Cuentas Relacionadas
-- 27.23: Gestión de Verificaciones
-- 27.24: Reportes y Exportaciones Avanzadas
-- 27.25: Monitoreo de Patrones y Anomalías
+### 27.16.1 - Dashboard de Monitoreo en Vivo
+- [ ] Widget de usuarios conectados ahora (WebSocket)
+- [ ] Mapa de ubicación de usuarios activos (por IP/país)
+- [ ] Feed de actividad en tiempo real (transacciones, posts, logins)
+- [ ] Alertas instantáneas (comportamiento sospechoso)
+- [ ] Gráfico de carga del servidor
+
+### 27.16.2 - Panel de Eventos
+- [ ] Lista de eventos en tiempo real con filtros
+- [ ] Tipos: login, transacción, publicación, reporte, error
+- [ ] Marcar eventos como revisados
+- [ ] Exportar eventos seleccionados
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.17: PERFIL COMPLETO DEL USUARIO (VISTA 360°) ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA
+**Tiempo:** 4 horas
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+
+### 27.17.1 - Vista Unificada del Usuario
+- [ ] Toda la información del usuario en una sola página
+- [ ] Tabs: Perfil | Transacciones | Publicaciones | Seguridad | Logs
+- [ ] Timeline de actividad completo
+- [ ] Gráficos de comportamiento (posts/día, transacciones/semana)
+
+### 27.17.2 - Acciones Rápidas
+- [ ] Botones de acción directa (ban, verificar, contactar, etc.)
+- [ ] Historial de acciones administrativas sobre el usuario
+- [ ] Notas internas del admin sobre el usuario
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.18: SISTEMA DE PUNTUACIÓN DE RIESGO ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA
+**Tiempo:** 5 horas
+**Agente:** 🟡 BACKEND API + 🟢 FRONTEND ADMIN
+
+### 27.18.1 - Cálculo de Risk Score (0-100)
+- [ ] Factores positivos: verificación, antigüedad, actividad normal
+- [ ] Factores negativos: reportes, IPs sospechosas, patrones anómalos
+- [ ] Algoritmo de puntuación configurable
+- [ ] Actualización automática del score
+
+### 27.18.2 - Visualización y Alertas
+- [ ] Badge de riesgo en lista de usuarios (verde/amarillo/rojo)
+- [ ] Filtrar usuarios por nivel de riesgo
+- [ ] Alertas automáticas cuando score > umbral
+- [ ] Historial de cambios en el score
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.19: MODO SHADOW (IMPERSONACIÓN AVANZADA) ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA
+**Tiempo:** 4 horas
+**Agente:** 🟡 BACKEND API + 🟢 FRONTEND ADMIN
+
+### 27.19.1 - Impersonar Usuario
+- [ ] Ver la app exactamente como la ve el usuario
+- [ ] Sin poder realizar acciones destructivas
+- [ ] Banner visible "Modo Admin - Viendo como @usuario"
+- [ ] Log de sesiones de impersonación
+
+### 27.19.2 - Seguridad
+- [ ] Requiere 2FA adicional para activar
+- [ ] Notificar al usuario que fue observado (opcional)
+- [ ] Tiempo límite de sesión shadow (30 min máx)
+- [ ] Auditoría completa de qué se vio
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.20: SISTEMA DE ETIQUETAS Y CLASIFICACIÓN ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟢 BAJA
+**Tiempo:** 3 horas
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+
+### 27.20.1 - Etiquetas de Usuario
+- [ ] Crear etiquetas personalizadas (VIP, Sospechoso, Beta Tester, etc.)
+- [ ] Asignar múltiples etiquetas por usuario
+- [ ] Colores personalizables por etiqueta
+- [ ] Filtrar usuarios por etiqueta
+
+### 27.20.2 - Etiquetas de Contenido
+- [ ] Etiquetas para publicaciones (Destacado, Reportado, Promocionado)
+- [ ] Sistema de categorías
+- [ ] Filtros rápidos por etiqueta
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.21: COMUNICACIÓN DIRECTA CON USUARIOS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA
+**Tiempo:** 4 horas
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+
+### 27.21.1 - Mensajes del Sistema
+- [ ] Enviar notificación push a usuario específico
+- [ ] Enviar mensaje a TODOS los usuarios (broadcast)
+- [ ] Enviar mensaje a grupo/segmento (usuarios premium, etc.)
+- [ ] Templates de mensajes predefinidos
+
+### 27.21.2 - Centro de Soporte
+- [ ] Ver tickets de soporte abiertos
+- [ ] Responder desde el panel admin
+- [ ] Estado de tickets (abierto, en progreso, cerrado)
+- [ ] Historial de conversación con usuario
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.22: DETECTOR DE CUENTAS RELACIONADAS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA
+**Tiempo:** 5 horas
+**Agente:** 🟡 BACKEND API + 🟢 FRONTEND ADMIN
+
+### 27.22.1 - Detección Automática
+- [ ] Detectar cuentas con misma IP
+- [ ] Detectar cuentas con mismo device fingerprint
+- [ ] Detectar patrones de comportamiento similares
+- [ ] Detectar wallets relacionadas (misma seed/transacciones entre ellas)
+
+### 27.22.2 - Visualización
+- [ ] Grafo de relaciones entre cuentas
+- [ ] Lista de cuentas potencialmente relacionadas
+- [ ] Marcar como "Confirmado relacionadas" o "Falso positivo"
+- [ ] Acciones en lote (banear todas las relacionadas)
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.23: GESTIÓN DE VERIFICACIONES ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA
+**Tiempo:** 3 horas
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+
+### 27.23.1 - Cola de Verificaciones
+- [ ] Solicitudes de verificación pendientes
+- [ ] Ver documentos/pruebas enviadas
+- [ ] Aprobar o rechazar con motivo
+- [ ] Verificación automática para casos claros
+
+### 27.23.2 - Tipos de Verificación
+- [ ] Verificación de identidad (documento)
+- [ ] Verificación de creador (contenido original)
+- [ ] Verificación premium (pago confirmado)
+- [ ] Badges personalizados
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.24: REPORTES Y EXPORTACIONES AVANZADAS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟢 BAJA
+**Tiempo:** 4 horas
+**Agente:** 🟢 FRONTEND ADMIN + 🟡 BACKEND API
+
+### 27.24.1 - Generador de Reportes
+- [ ] Reporte de usuarios (filtrable por fecha, país, estado)
+- [ ] Reporte de transacciones (volumen, comisiones, top usuarios)
+- [ ] Reporte de contenido (posts, interacciones, reportes)
+- [ ] Reporte financiero (ingresos, gastos, balance)
+
+### 27.24.2 - Exportaciones
+- [ ] Exportar a CSV
+- [ ] Exportar a PDF (con gráficos)
+- [ ] Exportar a Excel
+- [ ] Programar reportes automáticos (diario/semanal/mensual)
+
+---
+
+## ═══════════════════════════════════════
+## FASE 27.25: MONITOREO DE PATRONES Y ANOMALÍAS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA
+**Tiempo:** 6 horas
+**Agente:** 🟡 BACKEND API + 🟢 FRONTEND ADMIN
+
+### 27.25.1 - Detección de Anomalías
+- [ ] Picos inusuales de registros (bot attack)
+- [ ] Patrones de transacciones sospechosos (lavado)
+- [ ] Comportamiento automatizado (scraping, spam)
+- [ ] Accesos desde ubicaciones inusuales
+
+### 27.25.2 - Machine Learning Básico
+- [ ] Modelo de detección de fraude simple
+- [ ] Aprendizaje de patrones normales vs anormales
+- [ ] Alertas predictivas
+- [ ] Dashboard de anomalías detectadas
+
+### 27.25.3 - Respuesta Automática
+- [ ] Acciones automáticas según tipo de anomalía
+- [ ] Rate limiting dinámico
+- [ ] Bloqueo temporal preventivo
+- [ ] Notificación al admin
+
+---
+
+## RESUMEN FASES 27.16 - 27.25
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| 27.16 | Centro de Vigilancia en Tiempo Real | 🟢 MEDIA | 6h | ⏳ |
+| 27.17 | Perfil Completo del Usuario (Vista 360°) | 🟠 MEDIA | 4h | ⏳ |
+| 27.18 | Sistema de Puntuación de Riesgo | 🟡 ALTA | 5h | ⏳ |
+| 27.19 | Modo Shadow (Impersonación) | 🟠 MEDIA | 4h | ⏳ |
+| 27.20 | Sistema de Etiquetas y Clasificación | 🟢 BAJA | 3h | ⏳ |
+| 27.21 | Comunicación Directa con Usuarios | 🟠 MEDIA | 4h | ⏳ |
+| 27.22 | Detector de Cuentas Relacionadas | 🟡 ALTA | 5h | ⏳ |
+| 27.23 | Gestión de Verificaciones | 🟠 MEDIA | 3h | ⏳ |
+| 27.24 | Reportes y Exportaciones Avanzadas | 🟢 BAJA | 4h | ⏳ |
+| 27.25 | Monitoreo de Patrones y Anomalías | 🟡 ALTA | 6h | ⏳ |
+| **TOTAL** | **10 fases avanzadas** | | **44h** | |
+
+**ORDEN RECOMENDADO:** 27.18 → 27.22 → 27.25 → 27.16 → 27.17 → 27.21 → 27.19 → 27.23 → 27.20 → 27.24
 
 ---
 
@@ -1058,24 +1283,323 @@ Rediseñar el perfil de usuario con estilo profesional tipo Instagram/Binance
 ## ════════════════════════════════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
+**Agregado:** 7 Diciembre 2025
 **Agente:** 🔵 FRONTEND USUARIO + 🟡 BACKEND API
 **Archivos Frontend:** `static/js/app.js`, `static/css/styles.css`, `templates/index.html`
 **Archivos Backend:** `app.py`, `tracking/database.py`, `tracking/security.py`
+**Tiempo estimado:** 18 horas
 
 ### OBJETIVO:
 Rediseñar la pantalla de Configuración/Ajustes con estilo Telegram/Binance
 
-### FASES:
-- 29.1: Estructura Principal
-- 29.2: Sección Cuenta
-- 29.3: Sección Seguridad
-- 29.4: Sección Privacidad
-- 29.5: Sección Notificaciones
-- 29.6: Sección Apariencia
-- 29.7: Sección Wallet
-- 29.8: Sección Datos y Almacenamiento
-- 29.9: Sección Ayuda
-- 29.10: Cerrar Sesión y Eliminar
+---
+
+## ═══════════════════════════════════════
+## FASE 29.1: ESTRUCTURA PRINCIPAL ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA
+**Tiempo:** 2 horas
+**Agente:** 🔵 FRONTEND USUARIO
+
+### 29.1.1 - Layout de Configuración
+- [ ] Sidebar con iconos de cada sección
+- [ ] Panel principal que cambia según sección seleccionada
+- [ ] Header con "Configuración" y botón de volver
+- [ ] Animaciones de transición entre secciones
+
+### 29.1.2 - Componentes Reutilizables
+- [ ] Toggle switches estilizados
+- [ ] Selectores dropdown
+- [ ] Inputs con validación visual
+- [ ] Botones de acción consistentes
+- [ ] Toasts de confirmación
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.2: SECCIÓN CUENTA ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA
+**Tiempo:** 2 horas
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### 29.2.1 - Información Personal
+- [ ] Editar nombre completo
+- [ ] Editar username (validar disponibilidad)
+- [ ] Editar bio/descripción
+- [ ] Cambiar avatar (upload con preview)
+- [ ] Cambiar banner/cover
+
+### 29.2.2 - Información de Contacto
+- [ ] Ver/editar email (con verificación)
+- [ ] Ver/editar teléfono (con verificación)
+- [ ] Vincular Telegram (mostrar estado)
+
+### 29.2.3 - Endpoints Backend
+- [ ] PUT `/api/user/profile` - Actualizar perfil
+- [ ] POST `/api/user/avatar` - Subir avatar
+- [ ] POST `/api/user/verify-email` - Verificar email
+- [ ] GET `/api/user/username-available/{username}` - Verificar username
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.3: SECCIÓN SEGURIDAD ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA
+**Tiempo:** 3 horas
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### 29.3.1 - Contraseña
+- [ ] Cambiar contraseña (actual + nueva + confirmar)
+- [ ] Indicador de fortaleza de contraseña
+- [ ] Requisitos visibles (8+ chars, mayúscula, número)
+
+### 29.3.2 - Autenticación de Dos Factores (2FA)
+- [ ] Activar/desactivar 2FA
+- [ ] Configurar método (email, app, SMS)
+- [ ] Generar códigos de respaldo
+- [ ] Ver códigos de respaldo existentes
+
+### 29.3.3 - Sesiones Activas
+- [ ] Lista de dispositivos con sesión activa
+- [ ] Información: dispositivo, ubicación, última actividad
+- [ ] Cerrar sesión específica
+- [ ] Cerrar TODAS las sesiones excepto actual
+
+### 29.3.4 - Actividad de Seguridad
+- [ ] Log de accesos recientes
+- [ ] Alertas de accesos sospechosos
+- [ ] Historial de cambios de seguridad
+
+### 29.3.5 - Endpoints Backend
+- [ ] POST `/api/user/change-password` - Cambiar contraseña
+- [ ] POST `/api/user/2fa/enable` - Activar 2FA
+- [ ] POST `/api/user/2fa/disable` - Desactivar 2FA
+- [ ] GET `/api/user/sessions` - Lista de sesiones
+- [ ] DELETE `/api/user/sessions/{id}` - Cerrar sesión
+- [ ] GET `/api/user/security-log` - Log de seguridad
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.4: SECCIÓN PRIVACIDAD ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA
+**Tiempo:** 2 horas
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### 29.4.1 - Visibilidad del Perfil
+- [ ] Quién puede ver mi perfil (todos, seguidores, nadie)
+- [ ] Quién puede ver mis publicaciones
+- [ ] Quién puede ver mis seguidores/siguiendo
+- [ ] Quién puede ver mi balance B3C
+
+### 29.4.2 - Interacciones
+- [ ] Quién puede enviarme mensajes
+- [ ] Quién puede comentar en mis posts
+- [ ] Quién puede seguirme (todos, aprobación manual)
+- [ ] Lista de usuarios bloqueados
+
+### 29.4.3 - Datos
+- [ ] Descargar mis datos (GDPR)
+- [ ] Ver qué datos recopilamos
+- [ ] Política de privacidad
+
+### 29.4.4 - Endpoints Backend
+- [ ] PUT `/api/user/privacy-settings` - Actualizar privacidad
+- [ ] GET `/api/user/blocked` - Lista de bloqueados
+- [ ] POST `/api/user/block/{user_id}` - Bloquear usuario
+- [ ] POST `/api/user/export-data` - Exportar datos
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.5: SECCIÓN NOTIFICACIONES ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA
+**Tiempo:** 2 horas
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### 29.5.1 - Notificaciones Push
+- [ ] Toggle global activar/desactivar
+- [ ] Nuevos seguidores
+- [ ] Likes en mis publicaciones
+- [ ] Comentarios en mis publicaciones
+- [ ] Menciones
+- [ ] Mensajes directos
+
+### 29.5.2 - Notificaciones por Email
+- [ ] Toggle global activar/desactivar
+- [ ] Resumen diario/semanal
+- [ ] Alertas de seguridad (siempre activas)
+- [ ] Actualizaciones de la plataforma
+- [ ] Marketing (opcional)
+
+### 29.5.3 - Notificaciones de Wallet
+- [ ] Depósitos recibidos
+- [ ] Retiros procesados
+- [ ] Transacciones B3C
+- [ ] Alertas de precio (si aplica)
+
+### 29.5.4 - Endpoints Backend
+- [ ] GET `/api/user/notification-settings` - Obtener config
+- [ ] PUT `/api/user/notification-settings` - Actualizar config
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.6: SECCIÓN APARIENCIA ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA
+**Tiempo:** 1.5 horas
+**Agente:** 🔵 FRONTEND
+
+### 29.6.1 - Tema
+- [ ] Modo claro / oscuro / automático
+- [ ] Tema personalizado (colores de acento)
+- [ ] Preview en tiempo real del tema
+
+### 29.6.2 - Diseño
+- [ ] Tamaño de fuente (pequeño/normal/grande)
+- [ ] Densidad de contenido (compacto/normal/espaciado)
+- [ ] Animaciones (activar/desactivar)
+
+### 29.6.3 - Idioma
+- [ ] Selector de idioma (español, inglés)
+- [ ] Detectar automáticamente del navegador
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.7: SECCIÓN WALLET ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA
+**Tiempo:** 2 horas
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND + 🔴 BLOCKCHAIN
+
+### 29.7.1 - Wallet Conectada
+- [ ] Ver wallet TON conectada
+- [ ] Conectar nueva wallet (TON Connect)
+- [ ] Desconectar wallet
+- [ ] Ver balance actual
+
+### 29.7.2 - Preferencias de Wallet
+- [ ] Wallet predeterminada para retiros
+- [ ] Límite de retiro diario
+- [ ] Confirmación 2FA para retiros grandes
+- [ ] Whitelist de direcciones
+
+### 29.7.3 - Historial
+- [ ] Link rápido a historial de transacciones
+- [ ] Exportar historial (CSV)
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.8: SECCIÓN DATOS Y ALMACENAMIENTO ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟢 BAJA
+**Tiempo:** 1.5 horas
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### 29.8.1 - Uso de Almacenamiento
+- [ ] Espacio usado por fotos/videos
+- [ ] Espacio usado por mensajes
+- [ ] Espacio total disponible
+- [ ] Barra visual de uso
+
+### 29.8.2 - Gestión de Caché
+- [ ] Limpiar caché del navegador
+- [ ] Limpiar datos temporales
+- [ ] Auto-limpieza configurableo
+
+### 29.8.3 - Descargas
+- [ ] Calidad de descarga de imágenes (alta/media/baja)
+- [ ] Auto-descargar en WiFi solamente
+- [ ] Ubicación de descargas
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.9: SECCIÓN AYUDA ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟢 BAJA
+**Tiempo:** 1 hora
+**Agente:** 🔵 FRONTEND
+
+### 29.9.1 - Centro de Ayuda
+- [ ] FAQ (preguntas frecuentes)
+- [ ] Guías de uso
+- [ ] Tutoriales en video (links externos)
+
+### 29.9.2 - Soporte
+- [ ] Contactar soporte (formulario)
+- [ ] Ver tickets abiertos
+- [ ] Chat en vivo (si disponible)
+
+### 29.9.3 - Información
+- [ ] Términos y condiciones
+- [ ] Política de privacidad
+- [ ] Versión de la app
+- [ ] Changelog / novedades
+
+---
+
+## ═══════════════════════════════════════
+## FASE 29.10: CERRAR SESIÓN Y ELIMINAR ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA
+**Tiempo:** 1 hora
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### 29.10.1 - Cerrar Sesión
+- [ ] Botón "Cerrar sesión" con confirmación
+- [ ] Opción "Cerrar en todos los dispositivos"
+- [ ] Limpiar datos locales al cerrar
+
+### 29.10.2 - Eliminar Cuenta
+- [ ] Botón "Eliminar cuenta" (destacado en rojo)
+- [ ] Modal de confirmación con advertencias
+- [ ] Requerir contraseña o 2FA para confirmar
+- [ ] Período de gracia de 30 días antes de eliminación
+- [ ] Email de confirmación de eliminación
+
+### 29.10.3 - Endpoints Backend
+- [ ] POST `/api/user/logout` - Cerrar sesión
+- [ ] POST `/api/user/logout-all` - Cerrar todas las sesiones
+- [ ] POST `/api/user/delete-account` - Solicitar eliminación
+- [ ] POST `/api/user/cancel-deletion` - Cancelar eliminación
+
+---
+
+## RESUMEN SECCIÓN 29
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| 29.1 | Estructura Principal | 🔴 CRÍTICA | 2h | ⏳ |
+| 29.2 | Sección Cuenta | 🟡 ALTA | 2h | ⏳ |
+| 29.3 | Sección Seguridad | 🔴 CRÍTICA | 3h | ⏳ |
+| 29.4 | Sección Privacidad | 🟡 ALTA | 2h | ⏳ |
+| 29.5 | Sección Notificaciones | 🟠 MEDIA | 2h | ⏳ |
+| 29.6 | Sección Apariencia | 🟠 MEDIA | 1.5h | ⏳ |
+| 29.7 | Sección Wallet | 🔴 CRÍTICA | 2h | ⏳ |
+| 29.8 | Sección Datos y Almacenamiento | 🟢 BAJA | 1.5h | ⏳ |
+| 29.9 | Sección Ayuda | 🟢 BAJA | 1h | ⏳ |
+| 29.10 | Cerrar Sesión y Eliminar | 🟡 ALTA | 1h | ⏳ |
+| **TOTAL** | **10 fases** | | **18h** | |
+
+**ORDEN RECOMENDADO:** 29.1 → 29.3 → 29.7 → 29.2 → 29.4 → 29.10 → 29.5 → 29.6 → 29.8 → 29.9
 
 ---
 
@@ -6697,20 +7221,24 @@ FASE 7 (Avanzados): 34.A → 34.B → 34.C → 34.D → 34.E → 34.F → 34.G �
 - Estado: ✅ COMPLETADA
 
 ### Cambios realizados en sesión 14:
-- Agregadas 8 nuevas fases de Núcleo IA (34.16 - 34.23):
-  - 34.16: Motor de Decisiones Automático (4h) 🔴 CRÍTICA
-  - 34.17: Sistema de Reintentos Inteligente (3h) 🔴 CRÍTICA
-  - 34.18: Contexto de Proyecto Persistente (4h) 🔴 CRÍTICA
-  - 34.19: Validador Pre-Ejecución (3h) 🟡 ALTA
-  - 34.20: Sistema de Rollback Automático (4h) 🟡 ALTA
-  - 34.21: Analizador de Impacto de Cambios (4h) 🟡 ALTA
-  - 34.22: Gestor de Workflows (3h) 🔴 CRÍTICA
-  - 34.23: Gestor de Tareas con Tracking (2h) 🟠 MEDIA
-- Total nuevas fases: 27 horas estimadas
-- Actualizado tablero de inicio con nueva sección
-- Actualizado resumen de Sección 34 con nuevos totales (~259h)
-- Actualizado orden recomendado de implementación
-- Cada fase incluye: objetivo, tareas con checkboxes, código de implementación
+- Agregadas 8 nuevas fases de Núcleo IA (34.16 - 34.23): 27h
+- Expandidas FASES 27.16-27.25 (Funcionalidades Avanzadas Admin): 44h
+  - 27.16: Centro de Vigilancia en Tiempo Real
+  - 27.17: Perfil Completo del Usuario (Vista 360°)
+  - 27.18: Sistema de Puntuación de Riesgo
+  - 27.19: Modo Shadow (Impersonación Avanzada)
+  - 27.20: Sistema de Etiquetas y Clasificación
+  - 27.21: Comunicación Directa con Usuarios
+  - 27.22: Detector de Cuentas Relacionadas
+  - 27.23: Gestión de Verificaciones
+  - 27.24: Reportes y Exportaciones Avanzadas
+  - 27.25: Monitoreo de Patrones y Anomalías
+- Expandida SECCIÓN 29 completa (Configuración del Usuario): 18h
+  - 29.1-29.10: Todas las fases con tareas detalladas
+  - Endpoints backend especificados para cada sección
+  - Incluye: Cuenta, Seguridad, Privacidad, Notificaciones, Wallet, etc.
+- Total nuevo contenido agregado: ~89 horas de trabajo documentado
+- Cada fase incluye: objetivo, tareas con checkboxes, endpoints backend
 
 ### Cambios realizados en sesión 13:
 - Corregidos 6 errores LSP de tipado en tracking/ai_constructor.py:
