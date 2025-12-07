@@ -386,6 +386,8 @@ const AdminPanel = {
     },
     
     async loadDashboard() {
+        this.showDashboardLoading();
+        
         try {
             const [stats, activity, alerts] = await Promise.all([
                 this.fetchAPI('/api/admin/dashboard/stats'),
@@ -395,6 +397,8 @@ const AdminPanel = {
             
             if (stats.success) {
                 this.updateMetrics(stats.data);
+            } else {
+                this.showMetricsError();
             }
             
             if (activity.success) {
@@ -413,32 +417,120 @@ const AdminPanel = {
         }
     },
     
-    loadFallbackDashboard() {
-        document.getElementById('totalUsers').textContent = '-';
-        document.getElementById('activeToday').textContent = '-';
-        document.getElementById('totalB3C').textContent = '-';
-        document.getElementById('hotWalletBalance').textContent = '-';
-        document.getElementById('transactions24h').textContent = '-';
-        document.getElementById('revenueToday').textContent = '-';
+    clearMetricsState() {
+        const metricIds = ['totalUsers', 'activeToday', 'totalB3C', 'hotWalletBalance', 'transactions24h', 'revenueToday'];
+        metricIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('no-data', 'zero-data', 'loading', 'error');
+                const parentCard = el.closest('.metric-card');
+                if (parentCard) {
+                    parentCard.classList.remove('no-data-state', 'zero-data-state', 'error-state');
+                }
+            }
+        });
+    },
+    
+    showDashboardLoading() {
+        this.clearMetricsState();
         
-        document.getElementById('activityList').innerHTML = `
-            <div class="empty-state">No se pudo cargar la actividad</div>
-        `;
+        const metricIds = ['totalUsers', 'activeToday', 'totalB3C', 'hotWalletBalance', 'transactions24h', 'revenueToday'];
+        metricIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.add('loading');
+                el.textContent = '...';
+            }
+        });
+        
+        const activityList = document.getElementById('activityList');
+        if (activityList) {
+            activityList.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><span>Cargando actividad...</span></div>';
+        }
+        
+        const systemAlerts = document.getElementById('systemAlerts');
+        if (systemAlerts) {
+            systemAlerts.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><span>Cargando alertas...</span></div>';
+        }
+    },
+    
+    showMetricsError() {
+        this.clearMetricsState();
+        
+        const metricIds = ['totalUsers', 'activeToday', 'totalB3C', 'hotWalletBalance', 'transactions24h', 'revenueToday'];
+        metricIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = '-';
+                el.classList.add('error');
+            }
+        });
+    },
+    
+    loadFallbackDashboard() {
+        this.clearMetricsState();
+        
+        const metricIds = ['totalUsers', 'activeToday', 'totalB3C', 'hotWalletBalance', 'transactions24h', 'revenueToday'];
+        metricIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = '-';
+                el.classList.add('no-data');
+                const parentCard = el.closest('.metric-card');
+                if (parentCard) parentCard.classList.add('no-data-state');
+            }
+        });
+        
+        const activityList = document.getElementById('activityList');
+        if (activityList) {
+            activityList.innerHTML = '<div class="empty-state-retry"><span>No se pudo cargar la actividad</span><button class="retry-btn" onclick="AdminPanel.loadDashboard()">Reintentar</button></div>';
+        }
+        
+        const systemAlerts = document.getElementById('systemAlerts');
+        if (systemAlerts) {
+            systemAlerts.innerHTML = '<div class="empty-state-retry"><span>No se pudieron cargar las alertas</span></div>';
+        }
     },
     
     updateMetrics(data) {
-        document.getElementById('totalUsers').textContent = this.formatNumber(data.totalUsers || 0);
-        document.getElementById('activeToday').textContent = this.formatNumber(data.activeToday || 0);
-        document.getElementById('totalB3C').textContent = this.formatNumber(data.totalB3C || 0);
-        document.getElementById('hotWalletBalance').textContent = this.formatNumber(data.hotWalletBalance || 0, 2);
-        document.getElementById('transactions24h').textContent = this.formatNumber(data.transactions24h || 0);
-        document.getElementById('revenueToday').textContent = this.formatNumber(data.revenueToday || 0, 4);
+        this.clearMetricsState();
+        
+        const metrics = [
+            { id: 'totalUsers', value: data.totalUsers, decimals: 0 },
+            { id: 'activeToday', value: data.activeToday, decimals: 0 },
+            { id: 'totalB3C', value: data.totalB3C, decimals: 0 },
+            { id: 'hotWalletBalance', value: data.hotWalletBalance, decimals: 2 },
+            { id: 'transactions24h', value: data.transactions24h, decimals: 0 },
+            { id: 'revenueToday', value: data.revenueToday, decimals: 4 }
+        ];
+        
+        metrics.forEach(metric => {
+            const el = document.getElementById(metric.id);
+            if (!el) return;
+            
+            const parentCard = el.closest('.metric-card');
+            
+            if (metric.value === undefined || metric.value === null) {
+                el.textContent = '-';
+                el.classList.add('no-data');
+                if (parentCard) parentCard.classList.add('no-data-state');
+            } else if (metric.value === 0) {
+                el.textContent = '0';
+                el.classList.add('zero-data');
+                if (parentCard) parentCard.classList.add('zero-data-state');
+            } else {
+                el.textContent = this.formatNumber(metric.value, metric.decimals);
+            }
+        });
         
         const usersChange = data.usersChange || 0;
         const changeEl = document.getElementById('usersChange');
         if (changeEl) {
             changeEl.className = `metric-change ${usersChange >= 0 ? 'positive' : 'negative'}`;
-            changeEl.querySelector('span').textContent = `${usersChange >= 0 ? '+' : ''}${usersChange}%`;
+            const spanEl = changeEl.querySelector('span');
+            if (spanEl) {
+                spanEl.textContent = `${usersChange >= 0 ? '+' : ''}${usersChange}%`;
+            }
         }
     },
     

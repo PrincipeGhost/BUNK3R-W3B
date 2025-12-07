@@ -387,6 +387,120 @@
     height: 12px;
 }
 
+/* Empty/Zero Data States */
+.metric-card.no-data-state {
+    opacity: 0.6;
+    border: 1px dashed var(--border-color);
+}
+
+.metric-card.zero-data-state .metric-value {
+    color: var(--text-muted);
+}
+
+.metric-value.no-data {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.metric-value.zero-data {
+    color: var(--text-secondary);
+}
+
+.empty-state-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.empty-state-indicator svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.empty-state-indicator .title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.empty-state-indicator .description {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+.loading-indicator .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.metric-value.loading {
+    color: var(--text-muted);
+}
+
+.loading-dots {
+    animation: loadingDots 1.4s infinite ease-in-out;
+}
+
+@keyframes loadingDots {
+    0%, 80%, 100% { opacity: 0.3; }
+    40% { opacity: 1; }
+}
+
+.metric-value.error {
+    color: var(--accent-danger);
+}
+
+.retry-btn {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: opacity 0.2s;
+}
+
+.retry-btn:hover {
+    opacity: 0.8;
+}
+
+.empty-state-retry {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
 /* Dashboard Grid */
 .dashboard-grid {
     display: grid;
