@@ -13921,6 +13921,96 @@ def ai_constructor_flow_clear():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== AI CONSTRUCTOR DOWNLOAD ZIP ====================
+
+@app.route('/api/ai-constructor/download-zip', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_constructor_download_zip():
+    """Download generated project as ZIP file (OWNER ONLY)"""
+    import zipfile
+    import io
+    from flask import send_file
+    
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        
+        if ai_constructor_service is None:
+            return jsonify({'success': False, 'error': 'AI Constructor service not available'}), 500
+        
+        files = ai_constructor_service.get_generated_files(user_id)
+        
+        if not files:
+            return jsonify({'success': False, 'error': 'No hay archivos generados para descargar'}), 404
+        
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for filename, content in files.items():
+                safe_filename = os.path.normpath(filename).lstrip(os.sep)
+                safe_filename = safe_filename.replace('..', '')
+                if not safe_filename:
+                    safe_filename = 'unnamed_file'
+                zf.writestr(safe_filename, content)
+        
+        memory_file.seek(0)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f'bunkr_project_{timestamp}.zip'
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+    except Exception as e:
+        logger.error(f"Error creating ZIP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-constructor/download-disk-zip', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_constructor_download_disk_zip():
+    """Download ai_generated folder as ZIP file (OWNER ONLY)"""
+    import zipfile
+    import io
+    from flask import send_file
+    
+    try:
+        ai_generated_path = os.path.join(os.getcwd(), 'ai_generated')
+        
+        if not os.path.exists(ai_generated_path):
+            return jsonify({'success': False, 'error': 'No hay archivos generados en disco'}), 404
+        
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(ai_generated_path):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__']]
+                
+                for file in files:
+                    if file.startswith('.'):
+                        continue
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, ai_generated_path)
+                    zf.write(file_path, arcname)
+        
+        memory_file.seek(0)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f'bunkr_project_{timestamp}.zip'
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+    except Exception as e:
+        logger.error(f"Error creating disk ZIP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== END AI CONSTRUCTOR SECTION ====================
 
 

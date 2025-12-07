@@ -1718,6 +1718,19 @@ class AIConstructorService:
         logger.info(f"[FASE 1] Intent analizado: {intent.tipo_tarea.value}, contexto: {intent.contexto}")
         
         # ═══════════════════════════════════════════════════════════════
+        # ACCIONES INMEDIATAS: Operaciones que no requieren plan
+        # ═══════════════════════════════════════════════════════════════
+        immediate_actions = {
+            TaskType.LEER_ARCHIVO, TaskType.LISTAR_ARCHIVOS, TaskType.VER_ESTRUCTURA,
+            TaskType.VER_LOGS, TaskType.BUSCAR_CODIGO, TaskType.ANALIZAR_PROYECTO,
+            TaskType.EJECUTAR_COMANDO, TaskType.INSTALAR_DEPENDENCIA, TaskType.EXPLICAR,
+            TaskType.CONSULTA_GENERAL
+        }
+        
+        if intent.tipo_tarea in immediate_actions:
+            return self._execute_immediate_action(session, message, intent)
+        
+        # ═══════════════════════════════════════════════════════════════
         # FASE 2: INVESTIGACIÓN (si es necesaria)
         # ═══════════════════════════════════════════════════════════════
         research = None
@@ -2383,3 +2396,462 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
             "project_analyzer": self.project_analyzer is not None,
             "project_root": self.project_root
         }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # ACCIONES INMEDIATAS - Sin necesidad de plan/confirmación
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def _execute_immediate_action(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Ejecuta acciones inmediatas que no requieren planificación"""
+        
+        session.fase_actual = 6  # Fase de ejecución directa
+        task_type = intent.tipo_tarea
+        
+        if flow_logger:
+            flow_logger.start_fase(session.user_id, 6, f"Acción Inmediata: {task_type.value}", {"mensaje": message})
+        
+        result = {"success": False, "response": "Acción no implementada", "fase": 6}
+        
+        try:
+            # === LEER ARCHIVO ===
+            if task_type == TaskType.LEER_ARCHIVO:
+                result = self._action_read_file(session, message, intent)
+            
+            # === LISTAR ARCHIVOS / VER ESTRUCTURA ===
+            elif task_type in [TaskType.LISTAR_ARCHIVOS, TaskType.VER_ESTRUCTURA]:
+                result = self._action_list_files(session, message, intent)
+            
+            # === BUSCAR EN CÓDIGO ===
+            elif task_type == TaskType.BUSCAR_CODIGO:
+                result = self._action_search_code(session, message, intent)
+            
+            # === ANALIZAR PROYECTO ===
+            elif task_type == TaskType.ANALIZAR_PROYECTO:
+                result = self._action_analyze_project(session)
+            
+            # === EJECUTAR COMANDO ===
+            elif task_type == TaskType.EJECUTAR_COMANDO:
+                result = self._action_run_command(session, message, intent)
+            
+            # === INSTALAR DEPENDENCIA ===
+            elif task_type == TaskType.INSTALAR_DEPENDENCIA:
+                result = self._action_install_package(session, message, intent)
+            
+            # === VER LOGS ===
+            elif task_type == TaskType.VER_LOGS:
+                result = self._action_view_logs(session)
+            
+            # === EXPLICAR / CONSULTA GENERAL ===
+            elif task_type in [TaskType.EXPLICAR, TaskType.CONSULTA_GENERAL]:
+                result = self._action_explain_or_consult(session, message, intent)
+            
+            else:
+                result = {
+                    "success": True,
+                    "response": f"La acción '{task_type.value}' aún no está completamente implementada. ¿Puedo ayudarte con algo más específico?",
+                    "fase": 6
+                }
+        
+        except Exception as e:
+            logger.error(f"[ACCIÓN INMEDIATA] Error ejecutando {task_type.value}: {e}")
+            result = {
+                "success": False,
+                "error": f"Error ejecutando la acción: {str(e)}",
+                "fase": 6
+            }
+        
+        if flow_logger:
+            flow_logger.end_fase(session.user_id, 6, {"resultado": result.get("success"), "tipo": task_type.value})
+        
+        result["session"] = session.to_dict()
+        result["fase_nombre"] = "Acción Inmediata"
+        return result
+    
+    def _action_read_file(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Lee un archivo del proyecto"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "response": "El toolkit de archivos no está disponible.", "fase": 6}
+        
+        # Extraer ruta del archivo del mensaje
+        file_path = self._extract_file_path(message)
+        if not file_path:
+            # Listar archivos disponibles para ayudar al usuario
+            files_result = self.file_toolkit.list_directory(".", recursive=True)
+            if files_result.get("success"):
+                available = [f["path"] for f in files_result.get("items", [])[:20] if f["type"] == "file"]
+                return {
+                    "success": True,
+                    "response": f"No pude identificar qué archivo quieres ver. Archivos disponibles:\n" + "\n".join([f"• {f}" for f in available]),
+                    "fase": 6,
+                    "needs_clarification": True
+                }
+            return {"success": False, "response": "No pude identificar qué archivo quieres leer. Por favor especifica la ruta.", "fase": 6}
+        
+        # Leer el archivo
+        read_result = self.file_toolkit.read_file(file_path, max_lines=200)
+        
+        if not read_result.get("success"):
+            return {
+                "success": False,
+                "response": f"No pude leer el archivo '{file_path}': {read_result.get('error')}",
+                "fase": 6
+            }
+        
+        content = read_result.get("content", "")
+        lines = read_result.get("lines", 0)
+        truncated = read_result.get("truncated", False)
+        
+        response = f"📄 **Archivo: {file_path}** ({lines} líneas)\n\n```\n{content}\n```"
+        if truncated:
+            response += f"\n\n⚠️ Archivo truncado (mostrando primeras 200 líneas)"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "file_content": content,
+            "file_path": file_path
+        }
+    
+    def _action_list_files(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Lista archivos del proyecto"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "response": "El toolkit de archivos no está disponible.", "fase": 6}
+        
+        # Extraer ruta del mensaje o usar raíz
+        path = self._extract_file_path(message) or "."
+        
+        list_result = self.file_toolkit.list_directory(path, recursive=True, max_depth=3)
+        
+        if not list_result.get("success"):
+            return {
+                "success": False,
+                "response": f"No pude listar archivos en '{path}': {list_result.get('error')}",
+                "fase": 6
+            }
+        
+        items = list_result.get("items", [])
+        
+        # Formatear como árbol
+        response = f"📁 **Estructura del proyecto** ({len(items)} elementos)\n\n"
+        dirs = [i for i in items if i["type"] == "directory"][:15]
+        files = [i for i in items if i["type"] == "file"][:25]
+        
+        if dirs:
+            response += "**Carpetas:**\n"
+            for d in dirs:
+                response += f"  📁 {d['path']}/\n"
+        
+        if files:
+            response += "\n**Archivos:**\n"
+            for f in files:
+                size = f.get("size", 0)
+                size_str = f"{size} bytes" if size < 1024 else f"{size//1024} KB"
+                response += f"  📄 {f['path']} ({size_str})\n"
+        
+        if len(items) > 40:
+            response += f"\n... y {len(items) - 40} elementos más"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "items": items
+        }
+    
+    def _action_search_code(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Busca texto en el código"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "response": "El toolkit de búsqueda no está disponible.", "fase": 6}
+        
+        # Extraer término de búsqueda
+        search_term = self._extract_search_term(message)
+        if not search_term:
+            return {
+                "success": True,
+                "response": "¿Qué término deseas buscar en el código? Por ejemplo: 'busca la función login' o 'busca import flask'",
+                "fase": 6,
+                "needs_clarification": True
+            }
+        
+        search_result = self.file_toolkit.search_code(search_term)
+        
+        if not search_result.get("success"):
+            return {
+                "success": False,
+                "response": f"Error en la búsqueda: {search_result.get('error')}",
+                "fase": 6
+            }
+        
+        matches = search_result.get("matches", [])
+        
+        if not matches:
+            return {
+                "success": True,
+                "response": f"🔍 No se encontraron resultados para: **{search_term}**",
+                "fase": 6
+            }
+        
+        response = f"🔍 **Resultados de búsqueda: '{search_term}'** ({len(matches)} coincidencias)\n\n"
+        for match in matches[:15]:
+            response += f"📄 **{match['file']}** (línea {match['line']}):\n"
+            response += f"```\n{match['content'][:150]}\n```\n\n"
+        
+        if len(matches) > 15:
+            response += f"... y {len(matches) - 15} coincidencias más"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "matches": matches
+        }
+    
+    def _action_analyze_project(self, session: ConstructorSession) -> Dict[str, Any]:
+        """Analiza la estructura del proyecto"""
+        if not self.toolkit_enabled or not self.project_analyzer:
+            return {"success": False, "response": "El analizador de proyecto no está disponible.", "fase": 6}
+        
+        analysis = self.project_analyzer.analyze_project()
+        
+        if not analysis.get("success"):
+            return {
+                "success": False,
+                "response": f"Error analizando el proyecto: {analysis.get('error')}",
+                "fase": 6
+            }
+        
+        data = analysis.get("analysis", {})
+        
+        response = "📊 **Análisis del Proyecto**\n\n"
+        response += f"**Lenguaje principal:** {data.get('language', 'No detectado')}\n"
+        response += f"**Framework:** {data.get('framework', 'Ninguno detectado')}\n"
+        response += f"**Total de archivos:** {data.get('total_files', 0)}\n"
+        
+        if data.get("dependencies"):
+            response += f"\n**Dependencias ({len(data['dependencies'])}):**\n"
+            for dep in list(data["dependencies"])[:10]:
+                response += f"  • {dep}\n"
+        
+        if data.get("entry_points"):
+            response += f"\n**Puntos de entrada:**\n"
+            for ep in data["entry_points"][:5]:
+                response += f"  • {ep}\n"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "analysis": data
+        }
+    
+    def _action_run_command(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Ejecuta un comando del sistema"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "response": "El ejecutor de comandos no está disponible.", "fase": 6}
+        
+        # Extraer comando del mensaje
+        command = self._extract_command(message)
+        if not command:
+            return {
+                "success": True,
+                "response": "¿Qué comando deseas ejecutar? Por ejemplo: 'ejecuta pip list' o 'corre npm install'",
+                "fase": 6,
+                "needs_clarification": True
+            }
+        
+        # Verificar que el comando esté permitido
+        cmd_result = self.command_executor.run_command(command, timeout=60)
+        
+        if not cmd_result.get("success"):
+            error = cmd_result.get("error", "Error desconocido")
+            if "not allowed" in error.lower() or "blocked" in error.lower():
+                return {
+                    "success": False,
+                    "response": f"⚠️ El comando '{command}' no está permitido por seguridad.\n\nComandos permitidos: pip, npm, ls, cat, grep, git status, etc.",
+                    "fase": 6
+                }
+            return {
+                "success": False,
+                "response": f"Error ejecutando comando: {error}",
+                "fase": 6
+            }
+        
+        stdout = cmd_result.get("stdout", "")
+        stderr = cmd_result.get("stderr", "")
+        exit_code = cmd_result.get("exit_code", 0)
+        
+        response = f"⚡ **Comando ejecutado:** `{command}`\n\n"
+        if exit_code == 0:
+            response += "✅ **Éxito**\n\n"
+        else:
+            response += f"⚠️ **Código de salida:** {exit_code}\n\n"
+        
+        if stdout:
+            output = stdout[:2000]
+            response += f"**Salida:**\n```\n{output}\n```\n"
+            if len(stdout) > 2000:
+                response += "(salida truncada...)\n"
+        
+        if stderr:
+            response += f"\n**Errores/Advertencias:**\n```\n{stderr[:500]}\n```"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "command": command,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": exit_code
+        }
+    
+    def _action_install_package(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Instala un paquete"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "response": "El instalador de paquetes no está disponible.", "fase": 6}
+        
+        # Extraer nombre del paquete y manager
+        package, manager = self._extract_package_info(message)
+        if not package:
+            return {
+                "success": True,
+                "response": "¿Qué paquete deseas instalar? Por ejemplo: 'instala flask' o 'npm install express'",
+                "fase": 6,
+                "needs_clarification": True
+            }
+        
+        install_result = self.command_executor.install_package(package, manager)
+        
+        if not install_result.get("success"):
+            error = install_result.get("error", "Error desconocido")
+            return {
+                "success": False,
+                "response": f"❌ No pude instalar **{package}**: {error}",
+                "fase": 6
+            }
+        
+        return {
+            "success": True,
+            "response": f"✅ **Paquete instalado:** {package} ({manager})\n\n{install_result.get('stdout', '')}",
+            "fase": 6,
+            "package": package,
+            "manager": manager
+        }
+    
+    def _action_view_logs(self, session: ConstructorSession) -> Dict[str, Any]:
+        """Muestra logs recientes del servidor"""
+        # Por ahora retornamos un mensaje indicando dónde ver los logs
+        return {
+            "success": True,
+            "response": "📋 **Logs del sistema**\n\nPuedes ver los logs en tiempo real en la consola del servidor.\n\nPara ver errores específicos, puedo buscar patrones en el código con 'busca ERROR' o 'busca Exception'.",
+            "fase": 6
+        }
+    
+    def _action_explain_or_consult(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Responde preguntas generales o explica código"""
+        if not self.ai_service:
+            return {"success": False, "response": "El servicio de IA no está disponible.", "fase": 6}
+        
+        # Para explicaciones, usamos el AI service directamente
+        prompt = f"""Eres BUNK3R Assistant, un asistente experto en programación.
+        
+El usuario pregunta: {message}
+
+Responde de forma clara, concisa y útil. Si es sobre código, da ejemplos prácticos.
+Si necesitas ver un archivo específico para ayudar mejor, indícalo."""
+
+        result = self.ai_service.chat(
+            user_id=f"constructor_{session.user_id}",
+            message=prompt,
+            enable_auto_rectify=False
+        )
+        
+        if not result.get("success"):
+            return {
+                "success": False,
+                "response": "No pude procesar tu consulta. ¿Podrías reformularla?",
+                "fase": 6
+            }
+        
+        return {
+            "success": True,
+            "response": result.get("response", ""),
+            "fase": 6,
+            "is_explanation": True
+        }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # HELPERS PARA EXTRAER INFORMACIÓN DE MENSAJES
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def _extract_file_path(self, message: str) -> Optional[str]:
+        """Extrae una ruta de archivo del mensaje"""
+        # Patrones comunes para detectar rutas de archivo
+        patterns = [
+            r'(?:archivo|file|ver|lee|leer|muestra|mostrar|abre|open)\s+["\']?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)["\']?',
+            r'["\']([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)["\']',
+            r'(?:en|in)\s+([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)',
+            r'([a-zA-Z0-9_\-]+\.(?:py|js|ts|html|css|json|md|txt|jsx|tsx|vue|sql|yaml|yml))'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return None
+    
+    def _extract_search_term(self, message: str) -> Optional[str]:
+        """Extrae un término de búsqueda del mensaje"""
+        patterns = [
+            r'(?:busca|buscar|encuentra|find|search|grep)\s+["\']([^"\']+)["\']',
+            r'(?:busca|buscar|encuentra|find|search|grep)\s+(.+?)(?:\s+en|\s+in|$)',
+            r'["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                term = match.group(1).strip()
+                if len(term) >= 2:
+                    return term
+        
+        return None
+    
+    def _extract_command(self, message: str) -> Optional[str]:
+        """Extrae un comando del mensaje"""
+        patterns = [
+            r'(?:ejecuta|run|corre|lanza)\s+["`]([^"`]+)["`]',
+            r'(?:ejecuta|run|corre|lanza)\s+(.+?)$',
+            r'["`]([^"`]+)["`]'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                cmd = match.group(1).strip()
+                if len(cmd) >= 2:
+                    return cmd
+        
+        return None
+    
+    def _extract_package_info(self, message: str) -> Tuple[Optional[str], str]:
+        """Extrae información del paquete a instalar"""
+        # Detectar manager
+        manager = "pip"  # Default
+        if "npm" in message.lower() or "node" in message.lower():
+            manager = "npm"
+        
+        # Extraer nombre del paquete
+        patterns = [
+            r'(?:instala|install)\s+([a-zA-Z0-9_\-@/]+)',
+            r'(?:pip|npm)\s+install\s+([a-zA-Z0-9_\-@/]+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                return match.group(1).strip(), manager
+        
+        return None, manager
