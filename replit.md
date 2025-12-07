@@ -40,6 +40,35 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 - **Marketplace:** Sections for products and dynamic bot management.
 - **Admin Panel:** Comprehensive logging and auditing system for admin and security actions with filtering, pagination, and export capabilities. Content moderation endpoints for posts, stories, and hashtags. Support system with tickets management, FAQ administration, and mass messaging capabilities.
 
+## AI Constructor Module
+The AI Constructor is an intelligent 8-phase system for generating web projects. Located in `tracking/ai_constructor.py` (~1340 lines).
+
+**Architecture (8 Phases):**
+1. **IntentParser** - Analyzes user messages to extract intent, task type, context, and specifications
+2. **ResearchEngine** - Generates recommendations based on best practices for different contexts (restaurant, ecommerce, portfolio, SaaS, fintech)
+3. **ClarificationManager** - Generates intelligent questions to clarify vague requests
+4. **PromptBuilder** - Constructs optimized super-prompts for AI code generation
+5. **PlanPresenter** - Formats and presents execution plans to users
+6. **TaskOrchestrator** - Divides work into atomic tasks and manages execution
+7. **OutputVerifier** - Verifies generated code for syntax, completeness, and requirements
+8. **DeliveryManager** - Formats and delivers final results
+
+**API Endpoints:**
+- `POST /api/ai-constructor/process` - Processes message through all 8 phases
+- `GET /api/ai-constructor/session` - Gets current session state
+- `POST /api/ai-constructor/reset` - Resets session
+- `GET /api/ai-constructor/files` - Gets generated files
+- `POST /api/ai-constructor/confirm` - Confirms plan and continues execution
+
+**Key Features:**
+- Session management per user with state persistence
+- Multi-language support (Spanish/English detection)
+- Context-aware recommendations (restaurant, ecommerce, portfolio, SaaS, fintech)
+- Style recommendations with color palettes
+- Urgency detection
+- Automatic clarification for vague requests
+- Code verification before delivery
+
 ## External Dependencies
 - **PostgreSQL:** Primary database.
 - **Telegram Web App API:** User authentication and core Telegram integration.
