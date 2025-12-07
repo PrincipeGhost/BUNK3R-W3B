@@ -2287,6 +2287,298 @@ Crear un **AI Constructor tipo Replit/Bolt.new** donde la IA BUNK3R pueda:
 ---
 
 ## ═══════════════════════════════════════
+## ANÁLISIS COMPLETO: REPLIT AGENT vs BUNK3R IA
+## ═══════════════════════════════════════
+
+### CÓMO TRABAJO YO (REPLIT AGENT) - PARA QUE TU IA APRENDA
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  EJEMPLO: Usuario dice "Agrega autenticación JWT a mi API"     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  PASO 1: LEO EL PROYECTO                                        │
+│  ├── Abro app.py para ver estructura actual                    │
+│  ├── Leo requirements.txt para ver qué dependencias hay        │
+│  ├── Busco si ya existe algo de auth                           │
+│  └── Entiendo el contexto completo                             │
+│                                                                 │
+│  PASO 2: CREO UN PLAN                                           │
+│  ├── "Voy a hacer esto:"                                        │
+│  ├── 1. Instalar PyJWT y bcrypt                                 │
+│  ├── 2. Crear modelo User en database.py                        │
+│  ├── 3. Crear endpoints /login y /register                      │
+│  └── 4. Proteger rutas existentes                               │
+│                                                                 │
+│  PASO 3: EJECUTO PASO A PASO                                    │
+│  ├── Corro: pip install PyJWT bcrypt                            │
+│  ├── EDITO app.py (no reemplazo, agrego código)                 │
+│  ├── CREO tracking/auth.py con la lógica                        │
+│  └── MUESTRO cada cambio al usuario                             │
+│                                                                 │
+│  PASO 4: VERIFICO                                                │
+│  ├── Reinicio el servidor                                       │
+│  ├── Leo los logs buscando errores                              │
+│  ├── Si hay error → LO CORRIJO automáticamente                  │
+│  └── Confirmo que funciona                                      │
+│                                                                 │
+│  PASO 5: ENTREGO                                                 │
+│  └── "Listo, la autenticación está implementada"                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### CÓMO TRABAJA TU IA (BUNK3R) ACTUALMENTE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  EJEMPLO: Usuario dice "Agrega autenticación JWT a mi API"     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  PASO 1: DETECTA INTENCIÓN                                      │
+│  └── IntentParser detecta: CREAR_API (✅ bien)                  │
+│                                                                 │
+│  PASO 2: GENERA HTML/CSS/JS                                     │
+│  └── ¿¿¿ Genera un formulario de login en HTML ???              │
+│                                                                 │
+│  ❌ NO lee el código existente                                  │
+│  ❌ NO entiende que es Python/Flask                             │
+│  ❌ NO instala dependencias                                     │
+│  ❌ NO edita archivos, solo genera nuevos                       │
+│  ❌ NO verifica errores                                         │
+│  ❌ NO corrige si falla                                         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### COMPARACIÓN DE HERRAMIENTAS
+
+| Herramienta | Replit Agent | BUNK3R IA | Prioridad |
+|-------------|--------------|-----------|-----------|
+| Leer archivos del proyecto | ✅ | ❌ | 🔴 CRÍTICA |
+| Editar archivos existentes | ✅ | ❌ | 🔴 CRÍTICA |
+| Crear archivos nuevos | ✅ | ⚠️ Solo HTML/CSS/JS | 🔴 CRÍTICA |
+| Eliminar archivos | ✅ | ❌ | 🟡 ALTA |
+| Ejecutar comandos (npm, pip) | ✅ | ❌ | 🔴 CRÍTICA |
+| Ver logs del servidor | ✅ | ❌ | 🔴 CRÍTICA |
+| Buscar en código (grep) | ✅ | ❌ | 🟡 ALTA |
+| Instalar dependencias | ✅ | ❌ | 🔴 CRÍTICA |
+| Ejecutar SQL | ✅ | ❌ | 🟠 MEDIA |
+| Tomar screenshots | ✅ | ❌ | 🟠 MEDIA |
+| Buscar en internet | ✅ | ❌ | 🟠 MEDIA |
+| Corregir errores automático | ✅ | ❌ | 🔴 CRÍTICA |
+| Entender múltiples lenguajes | ✅ | ❌ Solo HTML/CSS/JS | 🔴 CRÍTICA |
+| Crear subdirectorios | ✅ | ❌ | 🟡 ALTA |
+| Listar estructura proyecto | ✅ | ❌ | 🟡 ALTA |
+
+---
+
+### TIPOS DE INTENCIONES
+
+| Intención | Replit Agent | BUNK3R IA | Estado |
+|-----------|--------------|-----------|--------|
+| "Crea una página/landing" | ✅ | ✅ | Funciona |
+| "Crea un dashboard" | ✅ | ✅ | Funciona |
+| "Crea un formulario" | ✅ | ✅ | Funciona |
+| "Crea una API" | ✅ | ⚠️ Genera HTML | FALTA |
+| "Modifica este archivo" | ✅ | ❌ | FALTA |
+| "Arregla este error" | ✅ | ❌ | FALTA |
+| "Explica este código" | ✅ | ⚠️ Responde texto | Parcial |
+| "Optimiza esto" | ✅ | ❌ | FALTA |
+| "Ejecuta npm install" | ✅ | ❌ | FALTA |
+| "Instala Flask" | ✅ | ❌ | FALTA |
+| "Elimina este archivo" | ✅ | ❌ | FALTA |
+| "Muéstrame app.py" | ✅ | ❌ | FALTA |
+| "¿Por qué falla esto?" | ✅ | ❌ | FALTA |
+| "Refactoriza este código" | ✅ | ❌ | FALTA |
+| "Testea esta función" | ✅ | ❌ | FALTA |
+| "Documenta esto" | ✅ | ❌ | FALTA |
+| "Despliega el proyecto" | ✅ | ❌ | FALTA |
+| "Crea base de datos" | ✅ | ❌ | FALTA |
+| "Agrega esta tabla SQL" | ✅ | ❌ | FALTA |
+
+---
+
+### LO QUE YA TIENE TU IA (BIEN PROGRAMADO)
+
+| Componente | Archivo | Estado | Descripción |
+|------------|---------|--------|-------------|
+| `IntentParser` | ai_constructor.py | ✅ Existe | Detecta tipo de tarea |
+| `ResearchEngine` | ai_constructor.py | ✅ Existe | Investiga mejores prácticas |
+| `ClarificationManager` | ai_constructor.py | ✅ Existe | Hace preguntas si falta info |
+| `PromptBuilder` | ai_constructor.py | ✅ Existe | Construye prompt maestro |
+| `TaskOrchestrator` | ai_constructor.py | ✅ Existe | Crea plan de tareas |
+| `OutputVerifier` | ai_constructor.py | ✅ Existe | Verifica código generado |
+| `ConstructorSession` | ai_constructor.py | ✅ Existe | Mantiene estado de sesión |
+| Multi-proveedor IA | ai_service.py | ✅ Funciona | 5+ proveedores con fallback |
+| Auto-rectificación | ai_service.py | ✅ Funciona | Corrige respuestas malas |
+| Flow Logger | ai_flow_logger.py | ✅ Existe | Debug del flujo |
+
+---
+
+### LO QUE LE FALTA A TU IA (NUEVAS TAREAS)
+
+```python
+class BunkrAICapabilities:
+    """Capacidades que DEBE tener BUNK3R IA"""
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 1: LEER CONTEXTO (Prioridad 🔴 CRÍTICA)
+    # ════════════════════════════════════════════════════════════
+    
+    def read_file(self, path: str) -> str:
+        """Leer cualquier archivo del proyecto"""
+        # Permite a la IA entender el código existente
+        pass
+    
+    def list_directory(self, path: str = ".") -> List[str]:
+        """Ver estructura de carpetas"""
+        # Permite a la IA entender la estructura del proyecto
+        pass
+    
+    def search_in_code(self, query: str, path: str = ".") -> List[Match]:
+        """Buscar texto/patrón en todo el código"""
+        # Como grep, para encontrar cosas
+        pass
+    
+    def get_file_info(self, path: str) -> Dict:
+        """Obtener info de un archivo (tamaño, tipo, modificado)"""
+        pass
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 2: MODIFICAR PROYECTO (Prioridad 🔴 CRÍTICA)
+    # ════════════════════════════════════════════════════════════
+    
+    def create_file(self, path: str, content: str) -> bool:
+        """Crear archivo nuevo (cualquier tipo, no solo HTML)"""
+        # .py, .js, .json, .sql, .md, etc.
+        pass
+    
+    def edit_file(self, path: str, old_content: str, new_content: str) -> bool:
+        """EDITAR archivo existente (no reemplazar todo)"""
+        # Crucial: editar una sección sin perder el resto
+        pass
+    
+    def replace_in_file(self, path: str, find: str, replace: str) -> bool:
+        """Reemplazar texto en archivo"""
+        pass
+    
+    def append_to_file(self, path: str, content: str) -> bool:
+        """Agregar contenido al final de un archivo"""
+        pass
+    
+    def delete_file(self, path: str, confirm: bool = True) -> bool:
+        """Eliminar archivo (con confirmación)"""
+        pass
+    
+    def create_directory(self, path: str) -> bool:
+        """Crear carpeta/directorio"""
+        pass
+    
+    def move_file(self, old_path: str, new_path: str) -> bool:
+        """Mover/renombrar archivo"""
+        pass
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 3: EJECUTAR COMANDOS (Prioridad 🔴 CRÍTICA)
+    # ════════════════════════════════════════════════════════════
+    
+    def run_command(self, command: str, timeout: int = 60) -> CommandResult:
+        """Ejecutar comando del sistema"""
+        # npm install, pip install, python script.py, etc.
+        pass
+    
+    def run_server(self, command: str, port: int) -> ServerProcess:
+        """Iniciar servidor (Flask, Node, etc.)"""
+        pass
+    
+    def stop_server(self, process_id: str) -> bool:
+        """Detener servidor"""
+        pass
+    
+    def restart_server(self) -> bool:
+        """Reiniciar servidor actual"""
+        pass
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 4: VERIFICAR Y DEBUGGEAR (Prioridad 🔴 CRÍTICA)
+    # ════════════════════════════════════════════════════════════
+    
+    def read_logs(self, lines: int = 100) -> List[str]:
+        """Leer logs del servidor"""
+        pass
+    
+    def check_errors(self) -> List[Error]:
+        """Detectar errores en consola/logs"""
+        pass
+    
+    def analyze_error(self, error: str) -> ErrorAnalysis:
+        """Analizar un error y sugerir solución"""
+        pass
+    
+    def auto_fix_error(self, error: Error) -> bool:
+        """Intentar corregir error automáticamente"""
+        pass
+    
+    def take_screenshot(self, url: str) -> str:
+        """Tomar captura de pantalla del resultado"""
+        pass
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 5: INTELIGENCIA AVANZADA (Prioridad 🟡 ALTA)
+    # ════════════════════════════════════════════════════════════
+    
+    def understand_project(self) -> ProjectAnalysis:
+        """Entender el proyecto completo (lenguaje, estructura, dependencias)"""
+        pass
+    
+    def detect_language(self, file_path: str = None) -> str:
+        """Detectar lenguaje de programación"""
+        # Python, JavaScript, TypeScript, etc.
+        pass
+    
+    def read_dependencies(self) -> Dict[str, str]:
+        """Leer dependencias (requirements.txt, package.json, etc.)"""
+        pass
+    
+    def suggest_improvements(self, file_path: str) -> List[Suggestion]:
+        """Sugerir mejoras para un archivo"""
+        pass
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 6: BASE DE DATOS (Prioridad 🟠 MEDIA)
+    # ════════════════════════════════════════════════════════════
+    
+    def execute_sql(self, query: str) -> QueryResult:
+        """Ejecutar consulta SQL"""
+        pass
+    
+    def get_tables(self) -> List[str]:
+        """Listar tablas de la base de datos"""
+        pass
+    
+    def describe_table(self, table_name: str) -> TableSchema:
+        """Describir estructura de una tabla"""
+        pass
+    
+    # ════════════════════════════════════════════════════════════
+    # GRUPO 7: BÚSQUEDA EXTERNA (Prioridad 🟠 MEDIA)
+    # ════════════════════════════════════════════════════════════
+    
+    def web_search(self, query: str) -> List[SearchResult]:
+        """Buscar en internet"""
+        pass
+    
+    def fetch_documentation(self, library: str) -> str:
+        """Obtener documentación de una librería"""
+        pass
+```
+
+---
+
+## ═══════════════════════════════════════
 ## FASE 34.1: CONECTAR FRONTEND CON CONSTRUCTOR 8 FASES ⏳
 ## ═══════════════════════════════════════
 
@@ -2566,7 +2858,236 @@ Solo el OWNER ve la IA Constructor completa por ahora.
 
 ---
 
-## RESUMEN SECCIÓN 34
+## ═══════════════════════════════════════
+## FASE 34.10: TOOLKIT DE ARCHIVOS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 6 horas  
+**Agente:** 🟡 BACKEND
+
+### Objetivo:
+Crear las herramientas para que la IA pueda leer/escribir/editar archivos.
+
+### Tareas:
+- [ ] Crear clase `AIFileToolkit` en `tracking/ai_toolkit.py`
+- [ ] Método `read_file(path)` - Leer cualquier archivo
+- [ ] Método `write_file(path, content)` - Crear/sobrescribir archivo
+- [ ] Método `edit_file(path, old, new)` - Editar sección de archivo
+- [ ] Método `append_file(path, content)` - Agregar al final
+- [ ] Método `delete_file(path)` - Eliminar con confirmación
+- [ ] Método `list_directory(path)` - Listar carpeta
+- [ ] Método `search_code(query, path)` - Buscar en código (grep)
+- [ ] Método `create_directory(path)` - Crear carpeta
+- [ ] Método `move_file(old, new)` - Mover/renombrar
+- [ ] Límites de seguridad (no acceder fuera del proyecto)
+- [ ] Logging de todas las operaciones
+
+### Ejemplo de uso:
+```python
+toolkit = AIFileToolkit(project_root="/user_projects/123")
+content = toolkit.read_file("app.py")
+toolkit.edit_file("app.py", "old_code", "new_code")
+toolkit.create_file("tracking/auth.py", auth_code)
+files = toolkit.list_directory("static/js")
+matches = toolkit.search_code("def login", ".")
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.11: EJECUTOR DE COMANDOS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND
+
+### Objetivo:
+Permitir que la IA ejecute comandos del sistema de forma segura.
+
+### Tareas:
+- [ ] Crear clase `AICommandExecutor` en `tracking/ai_toolkit.py`
+- [ ] Método `run_command(cmd, timeout)` - Ejecutar comando
+- [ ] Método `install_package(name, manager)` - npm/pip install
+- [ ] Método `run_script(path)` - Ejecutar script Python/Node
+- [ ] Whitelist de comandos permitidos
+- [ ] Blacklist de comandos peligrosos (rm -rf, etc.)
+- [ ] Timeout para evitar cuelgues
+- [ ] Captura de stdout y stderr
+- [ ] Logging de comandos ejecutados
+
+### Whitelist:
+```python
+ALLOWED_COMMANDS = {
+    'npm': ['install', 'run', 'init', 'list'],
+    'pip': ['install', 'list', 'show'],
+    'python': True,  # cualquier script
+    'python3': True,
+    'node': True,
+    'npx': True,
+    'ls': True,
+    'cat': True,
+    'head': True,
+    'tail': True,
+    'mkdir': True,
+    'touch': True,
+    'git': ['status', 'log', 'diff', 'branch'],
+}
+
+BLOCKED_PATTERNS = [
+    r'rm\s+-rf',
+    r'rm\s+-r\s+/',
+    r'sudo',
+    r'chmod\s+777',
+    r'curl.*\|.*bash',
+    r'wget.*\|.*sh',
+]
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.12: DETECTOR DE ERRORES ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🟡 BACKEND + 🟣 IA
+
+### Objetivo:
+La IA detecta errores en logs y los corrige automáticamente.
+
+### Tareas:
+- [ ] Crear clase `AIErrorDetector` en `tracking/ai_toolkit.py`
+- [ ] Método `read_server_logs(lines)` - Leer logs del servidor
+- [ ] Método `detect_errors(logs)` - Encontrar errores
+- [ ] Método `analyze_error(error)` - Analizar causa raíz
+- [ ] Método `suggest_fix(error)` - Sugerir corrección
+- [ ] Método `auto_fix(error)` - Intentar corregir
+- [ ] Patrones de errores comunes (Python, Node, etc.)
+- [ ] Integración con la IA para análisis inteligente
+
+### Patrones de error:
+```python
+ERROR_PATTERNS = {
+    'python': [
+        r'ModuleNotFoundError: No module named \'(\w+)\'',
+        r'ImportError: cannot import name \'(\w+)\'',
+        r'SyntaxError: (.+)',
+        r'IndentationError: (.+)',
+        r'TypeError: (.+)',
+        r'NameError: name \'(\w+)\' is not defined',
+    ],
+    'node': [
+        r'Error: Cannot find module \'(\w+)\'',
+        r'SyntaxError: (.+)',
+        r'TypeError: (.+)',
+        r'ReferenceError: (\w+) is not defined',
+    ],
+}
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.13: ENTENDEDOR DE PROYECTOS ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 5 horas  
+**Agente:** 🟡 BACKEND + 🟣 IA
+
+### Objetivo:
+La IA entiende el proyecto completo antes de trabajar.
+
+### Tareas:
+- [ ] Crear clase `AIProjectAnalyzer` en `tracking/ai_toolkit.py`
+- [ ] Método `analyze_project()` - Análisis completo
+- [ ] Detectar lenguaje principal (Python, Node, etc.)
+- [ ] Detectar framework (Flask, Express, React, etc.)
+- [ ] Leer dependencias (requirements.txt, package.json)
+- [ ] Mapear estructura de archivos
+- [ ] Identificar archivos principales
+- [ ] Detectar patrones de código
+- [ ] Generar contexto para la IA
+
+### Resultado del análisis:
+```python
+{
+    "language": "python",
+    "framework": "flask",
+    "dependencies": ["flask", "sqlalchemy", "requests"],
+    "structure": {
+        "app.py": "main",
+        "tracking/": "services",
+        "templates/": "views",
+        "static/": "assets"
+    },
+    "entry_point": "app.py",
+    "port": 5000,
+    "database": "postgresql",
+    "has_tests": False
+}
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.14: MULTI-LENGUAJE ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 6 horas  
+**Agente:** 🟣 IA
+
+### Objetivo:
+La IA genera código en cualquier lenguaje, no solo HTML/CSS/JS.
+
+### Tareas:
+- [ ] Expandir prompts para Python
+- [ ] Expandir prompts para Node.js/Express
+- [ ] Expandir prompts para SQL
+- [ ] Expandir prompts para React
+- [ ] Expandir prompts para API REST
+- [ ] Templates de código por lenguaje
+- [ ] Detectar lenguaje del proyecto y adaptar respuestas
+
+### Templates por lenguaje:
+```python
+LANGUAGE_TEMPLATES = {
+    'python_flask': "...",
+    'python_fastapi': "...",
+    'node_express': "...",
+    'react': "...",
+    'sql': "...",
+    'docker': "...",
+}
+```
+
+---
+
+## ═══════════════════════════════════════
+## FASE 34.15: SISTEMA DE DIFF ⏳
+## ═══════════════════════════════════════
+
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 3 horas  
+**Agente:** 🔵 FRONTEND + 🟡 BACKEND
+
+### Objetivo:
+Mostrar diferencias antes de aplicar cambios.
+
+### Tareas:
+- [ ] Implementar generación de diff en backend
+- [ ] Mostrar diff visual en frontend (verde/rojo)
+- [ ] Botón "Aceptar cambios" / "Rechazar"
+- [ ] Historial de cambios por archivo
+- [ ] Rollback a versión anterior
+
+---
+
+## RESUMEN SECCIÓN 34 (ACTUALIZADO)
 
 | Fase | Descripción | Prioridad | Tiempo | Estado |
 |------|-------------|-----------|--------|--------|
@@ -2579,10 +3100,23 @@ Solo el OWNER ve la IA Constructor completa por ahora.
 | 34.7 | Consola de comandos | 🟠 MEDIA | 4h | ⏳ |
 | 34.8 | IA Local DeepSeek | 🟠 MEDIA | 4h | ⏳ |
 | 34.9 | Bloquear IA usuarios | 🟡 ALTA | 2h | ⏳ |
+| **34.10** | **Toolkit de archivos** | 🔴 CRÍTICA | 6h | ⏳ |
+| **34.11** | **Ejecutor de comandos** | 🔴 CRÍTICA | 4h | ⏳ |
+| **34.12** | **Detector de errores** | 🔴 CRÍTICA | 4h | ⏳ |
+| **34.13** | **Entendedor de proyectos** | 🟡 ALTA | 5h | ⏳ |
+| **34.14** | **Multi-lenguaje** | 🟡 ALTA | 6h | ⏳ |
+| **34.15** | **Sistema de diff** | 🟠 MEDIA | 3h | ⏳ |
 
-**TOTAL TIEMPO ESTIMADO: ~35 horas**
+**TOTAL TIEMPO ESTIMADO: ~63 horas**
 
-**ORDEN RECOMENDADO:** 34.9 → 34.1 → 34.6 → 34.2 → 34.3 → 34.4 → 34.5 → 34.7 → 34.8
+**ORDEN RECOMENDADO:**
+```
+FASE 1 (Seguridad): 34.9
+FASE 2 (Core):      34.10 → 34.11 → 34.12 → 34.1
+FASE 3 (Inteligencia): 34.6 → 34.13 → 34.14
+FASE 4 (Frontend):  34.3 → 34.4 → 34.5 → 34.15
+FASE 5 (Avanzado):  34.2 → 34.7 → 34.8
+```
 
 ---
 
@@ -2594,54 +3128,85 @@ Solo el OWNER ve la IA Constructor completa por ahora.
 
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 7 Diciembre 2025 19:45
-**Sesión:** 6
-**Agente activo:** EXPLORACIÓN + DOCUMENTACIÓN IA
+**Última actualización:** 7 Diciembre 2025 20:15
+**Sesión:** 7
+**Agente activo:** ANÁLISIS PROFUNDO IA
 
 ### Última tarea trabajada
-- Sección: 34 (NUEVA)
+- Sección: 34 (EXPANDIDA)
 - Nombre: Sistema IA BUNK3R Constructor
-- Estado: Documentada, pendiente de implementación
+- Estado: Documentada con 15 fases, pendiente de implementación
 
 ### Archivos modificados en esta sesión:
-- PROMPT_PENDIENTES_BUNK3R.md (añadida SECCIÓN 34 completa con 9 fases)
+- PROMPT_PENDIENTES_BUNK3R.md (expandida SECCIÓN 34 de 9 a 15 fases)
 
-### Nueva sección añadida - SECCIÓN 34: IA CONSTRUCTOR
+### Análisis completado - Comparación REPLIT AGENT vs BUNK3R IA
+
 ```
-EXPLORACIÓN COMPLETADA:
-✅ tracking/ai_constructor.py - Constructor 8 fases (1,415 líneas) - NO SE USA
-✅ tracking/ai_service.py - Multi-proveedor IA (1,120 líneas) - FUNCIONA
-✅ tracking/ai_flow_logger.py - Logger flujo (291 líneas) - EXISTE
-✅ static/js/ai-chat.js - USA ENDPOINT INCORRECTO (/api/ai/code-builder)
-✅ static/js/workspace.js - Solo chat, NO genera archivos
-✅ templates/workspace.html - Layout 3 columnas existe
-
-PROBLEMA PRINCIPAL:
-- Frontend usa /api/ai/code-builder → genera todo de una vez
-- Existe /api/ai-constructor/process → 8 fases con plan → NO SE USA
-- La IA solo crea páginas, no entiende otras peticiones
+┌────────────────────────────────────────────────────────────────┐
+│  CAPACIDADES CRÍTICAS FALTANTES EN BUNK3R IA                   │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  HERRAMIENTAS:                                                 │
+│  ❌ Leer archivos del proyecto                                 │
+│  ❌ Editar archivos existentes (solo genera nuevos)            │
+│  ❌ Ejecutar comandos (npm, pip, python)                       │
+│  ❌ Ver logs del servidor                                      │
+│  ❌ Detectar y corregir errores                                │
+│  ❌ Buscar en código (grep)                                    │
+│  ❌ Entender estructura del proyecto                           │
+│                                                                │
+│  INTENCIONES:                                                  │
+│  ❌ "Modifica este archivo" - No puede                         │
+│  ❌ "Arregla este error" - No puede                            │
+│  ❌ "Ejecuta npm install" - No puede                           │
+│  ❌ "Muéstrame app.py" - No puede                              │
+│  ❌ "¿Por qué falla esto?" - No puede analizar                 │
+│                                                                │
+│  LO QUE SÍ FUNCIONA:                                           │
+│  ✅ Crear páginas HTML/CSS/JS                                  │
+│  ✅ Multi-proveedor IA con fallback                            │
+│  ✅ Sistema de 8 fases (existe pero no se usa)                 │
+│  ✅ Auto-rectificación de respuestas                           │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-### Tareas previas completadas:
-- [x] 30.2: Sanitización innerHTML - Completada 100%
-- [x] 30.3: Headers CSP - Implementado con variables de entorno
-- [x] 30.4: Limpieza de imports - Consolidados y eliminados duplicados
-- [x] 31.1: Botones sin funcionalidad - Implementado setupAvatarUpload() y viewUserProfile()
-- [x] 32.5: Auditoría de secretos - Verificado que todos usan variables de entorno
+### Nuevas fases añadidas (6 adicionales)
+- **34.10** Toolkit de archivos - Leer/escribir/editar archivos
+- **34.11** Ejecutor de comandos - npm, pip, python, etc.
+- **34.12** Detector de errores - Analizar logs y auto-corregir
+- **34.13** Entendedor de proyectos - Analizar estructura/lenguaje
+- **34.14** Multi-lenguaje - Python, Node, SQL, no solo HTML
+- **34.15** Sistema de diff - Mostrar cambios antes de aplicar
 
-### Próximos pasos CRÍTICOS (Sección 34)
-1. **34.9** Bloquear IA para usuarios normales (2h) - Seguridad primero
-2. **34.1** Conectar frontend con 8 fases (4h) - Core del sistema
-3. **34.6** Entendimiento de intenciones (5h) - IA más inteligente
-4. **34.2** Expandir capacidades IA (6h) - Editar, ejecutar, etc.
+### RESUMEN SECCIÓN 34 COMPLETA
+
+| Prioridad | Fases | Tiempo |
+|-----------|-------|--------|
+| 🔴 CRÍTICA | 34.1, 34.2, 34.6, 34.10, 34.11, 34.12 | 29h |
+| 🟡 ALTA | 34.3, 34.4, 34.5, 34.9, 34.13, 34.14 | 23h |
+| 🟠 MEDIA | 34.7, 34.8, 34.15 | 11h |
+
+**TOTAL: 63 horas estimadas (15 fases)**
+
+### ORDEN DE IMPLEMENTACIÓN RECOMENDADO
+
+```
+1. SEGURIDAD:    34.9 (Bloquear IA usuarios normales)
+2. CORE TOOLS:   34.10 → 34.11 → 34.12 (Toolkit archivos/comandos/errores)
+3. CONECTAR:     34.1 (Frontend con 8 fases)
+4. INTELIGENCIA: 34.6 → 34.13 → 34.14 (Intenciones/proyecto/multi-lenguaje)
+5. FRONTEND:     34.3 → 34.4 → 34.5 → 34.15 (Archivos/preview/diff)
+6. AVANZADO:     34.2 → 34.7 → 34.8 (Capacidades/consola/DeepSeek)
+```
 
 ### Notas para el próximo agente
-- **PRIORIDAD MÁXIMA**: Sección 34 - Sistema IA Constructor
-- El sistema de 8 fases ya está PROGRAMADO en tracking/ai_constructor.py
-- Solo falta CONECTAR el frontend para que lo use
-- La IA debe poder: crear/editar/eliminar archivos, ejecutar comandos, entender contexto
-- Referencia visual: Replit Agent / Bolt.new / Cursor
-- Multi-proveedor ya configurado: Groq > Cerebras > Gemini > DeepSeek > HuggingFace
-- Los 428 diagnósticos LSP son errores de tipado (Pyright), no críticos para funcionamiento
+- **PRIORIDAD MÁXIMA**: Implementar 34.10 (Toolkit de archivos) primero
+- Sin el toolkit, la IA no puede leer/editar archivos del proyecto
+- Crear archivo `tracking/ai_toolkit.py` con las clases necesarias
+- El constructor de 8 fases ya existe, solo falta conectar herramientas
+- Referencia: Yo (Replit Agent) uso: read, write, edit, bash, grep
+- La IA debe poder hacer lo mismo para ser útil
 
 ---
