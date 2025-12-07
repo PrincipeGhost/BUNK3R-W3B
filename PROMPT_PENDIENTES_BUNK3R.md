@@ -10,7 +10,7 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ╔══════════════════════════════════════════════════════════════════╗
 ║                    🏦 BUNK3R-W3B - ESTADO ACTUAL                 ║
 ╠══════════════════════════════════════════════════════════════════╣
-║ Última actualización: 6 Diciembre 2025                           ║
+║ Última actualización: 7 Diciembre 2025                           ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                                                                  ║
 ║ ✅ COMPLETADAS: 9 secciones                                      ║
@@ -20,9 +20,9 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║                                                                  ║
 ║ 🔄 EN PROGRESO: Ninguna                                          ║
 ║                                                                  ║
-║ ⏳ PENDIENTES: 27.10 → 27.25, Sección 28, Sección 29             ║
+║ ⏳ PENDIENTES: 27.10→27.25, Sección 28, 29, 30 (Auditoría)       ║
 ║                                                                  ║
-║ 🔴 CRÍTICO: 0                                                    ║
+║ 🔴 CRÍTICO: 2 (30.1 except vacíos, 30.2 innerHTML XSS)           ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -1034,10 +1034,311 @@ Rediseñar la pantalla de Configuración/Ajustes con estilo Telegram/Binance
 
 ---
 
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 30: CORRECCIONES DE AUDITORÍA - BUNK3R ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🔴 CRÍTICA  
+**Agregado:** 7 Diciembre 2025  
+**Basado en:** AUDITORIA_COMPLETA_BUNK3R.md  
+**Tiempo total estimado:** 20 horas
+
+---
+
+### FASE 30.1: CORRECCIÓN DE BLOQUES EXCEPT VACÍOS ⏳
+**Prioridad:** 🔴 ALTA  
+**Tiempo:** 1 hora  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Corregir los 14 bloques `except:` vacíos que causan errores silenciosos.
+
+#### Tareas:
+- [ ] app.py:625 - Función is_owner → `except Exception as e:` + logging
+- [ ] app.py:633 - Función is_test_user → `except Exception as e:` + logging
+- [ ] app.py:3053 - Pago TON → `except Exception as e:` + logging
+- [ ] app.py:5507 → `except Exception as e:` + logging
+- [ ] app.py:5545 → `except Exception as e:` + logging
+- [ ] app.py:6644 → `except Exception as e:` + logging
+- [ ] app.py:6947 → `except Exception as e:` + logging
+- [ ] app.py:6957 → `except Exception as e:` + logging
+- [ ] app.py:12532 - Analytics → `except Exception as e:` + logging
+- [ ] app.py:12542 - Analytics → `except Exception as e:` + logging
+- [ ] email_service.py:58 → `except Exception as e:` + print error
+- [ ] email_service.py:74 → `except Exception as e:` + print error
+- [ ] smspool_service.py:43 → `except Exception as e:` + print error
+- [ ] smspool_service.py:513 → `except Exception as e:` + print error
+
+#### Criterios de éxito:
+- [ ] 0 bloques except: vacíos en el proyecto
+- [ ] Todos los errores se registran en logs
+- [ ] La aplicación no crashea silenciosamente
+
+---
+
+### FASE 30.2: SANITIZACIÓN INNERHTML (XSS PREVENTION) ⏳
+**Prioridad:** 🔴 CRÍTICA  
+**Tiempo:** 4 horas  
+**Agente:** 🔵 FRONTEND USUARIO + 🟢 FRONTEND ADMIN
+
+#### Objetivo:
+Implementar DOMPurify para sanitizar los 351 usos de innerHTML.
+
+#### Tareas:
+- [ ] Añadir DOMPurify CDN en <head> de todos los templates:
+  - [ ] templates/index.html
+  - [ ] templates/admin.html
+  - [ ] templates/virtual_numbers.html
+  - [ ] templates/workspace.html
+  
+- [ ] Crear función SafeDOM.setHTML() en static/js/app.js:
+```javascript
+const SafeDOM = {
+    setHTML: function(element, html) {
+        if (typeof DOMPurify !== 'undefined') {
+            element.innerHTML = DOMPurify.sanitize(html, {
+                ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 
+                               'ul', 'ol', 'li', 'img', 'button', 'input', 'label',
+                               'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th'],
+                ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id', 'style', 'onclick', 
+                               'type', 'value', 'placeholder', 'name', 'data-*']
+            });
+        } else {
+            element.innerHTML = html;
+        }
+        return element;
+    }
+};
+```
+
+- [ ] Reemplazar innerHTML en archivos críticos:
+  - [ ] static/js/app.js (~150 usos)
+  - [ ] static/js/publications.js (~80 usos)
+  - [ ] static/js/admin.js (~50 usos)
+  - [ ] static/js/ai-chat.js (~30 usos)
+  - [ ] static/js/virtual-numbers.js (~20 usos)
+  - [ ] static/js/workspace.js (~15 usos)
+
+#### Patrón de reemplazo:
+```
+ANTES: element.innerHTML = htmlContent;
+DESPUÉS: SafeDOM.setHTML(element, htmlContent);
+```
+
+#### Excepciones (NO sanitizar):
+- innerHTML = '' (limpiar elemento)
+- innerHTML = texto_estático_sin_variables
+- innerHTML = número.toString()
+
+#### Criterios de éxito:
+- [ ] DOMPurify cargado en todos los templates
+- [ ] SafeDOM.setHTML() usado para contenido dinámico
+- [ ] 0 vulnerabilidades XSS detectables
+- [ ] La aplicación funciona igual que antes
+
+---
+
+### FASE 30.3: HEADERS CSP (CONTENT SECURITY POLICY) ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 1 hora  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Implementar Content Security Policy headers para prevenir inyecciones.
+
+#### Tareas:
+- [ ] Crear middleware @app.after_request en app.py:
+```python
+@app.after_request
+def add_security_headers(response):
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://telegram.org; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https://api.telegram.org https://*.ton.org wss://*; "
+        "frame-src 'self' https://telegram.org; "
+        "object-src 'none'; "
+        "base-uri 'self';"
+    )
+    response.headers['Content-Security-Policy'] = csp
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    return response
+```
+
+- [ ] Configurar flag para desarrollo vs producción
+- [ ] Verificar que Telegram WebApp sigue funcionando
+- [ ] Verificar que TON Connect sigue funcionando
+
+#### Criterios de éxito:
+- [ ] Headers CSP presentes en todas las respuestas
+- [ ] No hay errores de CSP en consola del navegador
+
+---
+
+### FASE 30.4: LIMPIEZA DE IMPORTS NO USADOS ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 1 hora  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Limpiar los imports no utilizados reportados por LSP.
+
+#### Tareas:
+- [ ] Limpiar imports en app.py (364 diagnósticos LSP)
+- [ ] Limpiar imports en tracking/ai_service.py (17 diagnósticos LSP)
+- [ ] Verificar que la aplicación inicia sin errores
+- [ ] Ejecutar LSP para confirmar 0 warnings de imports
+
+#### Criterios de éxito:
+- [ ] 0 warnings de imports no usados en LSP
+- [ ] Todas las funciones siguen operativas
+
+---
+
+### FASE 30.5: SESIONES PERSISTENTES ⏳
+**Prioridad:** 🟡 MEDIA-BAJA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Migrar sesiones de memoria a base de datos para persistencia.
+
+#### Tareas:
+- [ ] Añadir Flask-Session a requirements.txt
+- [ ] Configurar SESSION_TYPE = 'filesystem' o 'sqlalchemy'
+- [ ] Crear tabla flask_sessions si se usa sqlalchemy
+- [ ] Migrar demo_2fa_sessions de diccionario a tabla BD:
+```sql
+CREATE TABLE demo_2fa_sessions (
+    session_id VARCHAR(255) PRIMARY KEY,
+    user_id BIGINT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP
+);
+```
+- [ ] Verificar que login/logout funcionan correctamente
+- [ ] Verificar expiración automática
+
+#### Criterios de éxito:
+- [ ] Sesiones persisten después de reiniciar servidor
+- [ ] demo_2fa_sessions en base de datos
+
+---
+
+### FASE 30.6: DOCUMENTACIÓN DE APIs ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 3 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Crear documentación completa de las 311 rutas API.
+
+#### Tareas:
+- [ ] Crear archivo docs/API_DOCUMENTATION.md
+- [ ] Documentar endpoints prioritarios:
+  - [ ] API de Autenticación (7 rutas 2FA)
+  - [ ] API de Wallet/Pagos (18 rutas)
+  - [ ] API de B3C Token (10 rutas)
+  - [ ] API de Admin críticas (30 rutas)
+- [ ] Incluir ejemplos request/response para cada endpoint
+- [ ] Documentar códigos de error
+
+#### Formato por endpoint:
+```markdown
+### [MÉTODO] /api/ruta
+**Descripción:** Qué hace
+**Auth:** SÍ/NO
+**Rate Limit:** X/min
+**Request:** { campos }
+**Response:** { ejemplo }
+```
+
+---
+
+### FASE 30.7: TESTS AUTOMATIZADOS ⏳
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 8 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Objetivo:
+Implementar suite de tests para funcionalidades críticas.
+
+#### Estructura:
+```
+tests/
+├── __init__.py
+├── conftest.py
+├── test_auth.py
+├── test_2fa.py
+├── test_wallet.py
+├── test_b3c.py
+├── test_trackings.py
+├── test_publications.py
+├── test_admin.py
+└── test_security.py
+```
+
+#### Dependencias:
+```
+pytest==7.4.3
+pytest-flask==1.3.0
+pytest-cov==4.1.0
+```
+
+#### Tareas:
+- [ ] Configurar pytest y fixtures
+- [ ] Tests de autenticación (4 tests)
+- [ ] Tests de 2FA (4 tests)
+- [ ] Tests de wallet (3 tests)
+- [ ] Tests de seguridad (4 tests)
+- [ ] Cobertura mínima 60%
+
+---
+
+### FASE 30.8: OPTIMIZACIONES DE RENDIMIENTO ⏳
+**Prioridad:** 🟢 OPCIONAL  
+**Tiempo:** 2-4 horas  
+**Agente:** 🟡 BACKEND API
+
+#### Tareas:
+- [ ] Añadir índices BD faltantes:
+```sql
+CREATE INDEX idx_posts_user_created ON posts(user_id, created_at DESC);
+CREATE INDEX idx_transactions_user_date ON wallet_transactions(user_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = false;
+```
+- [ ] Implementar caché con Flask-Caching
+- [ ] Añadir paginación a endpoints pesados
+
+---
+
+## RESUMEN SECCIÓN 30
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| 30.1 | Corregir except: vacíos | 🔴 ALTA | 1h | ⏳ |
+| 30.2 | Implementar DOMPurify | 🔴 CRÍTICA | 4h | ⏳ |
+| 30.3 | Headers CSP | 🟠 MEDIA | 1h | ⏳ |
+| 30.4 | Limpiar imports | 🟠 MEDIA | 1h | ⏳ |
+| 30.5 | Sesiones persistentes | 🟡 MEDIA-BAJA | 2h | ⏳ |
+| 30.6 | Documentar APIs | 🟢 BAJA | 3h | ⏳ |
+| 30.7 | Tests automatizados | 🟢 BAJA | 8h | ⏳ |
+| 30.8 | Optimizaciones | 🟢 OPCIONAL | 2-4h | ⏳ |
+
+**ORDEN RECOMENDADO:** 30.1 → 30.2 → 30.3 → 30.4 → 30.5 → 30.6 → 30.7 → 30.8
+
+---
+
 ## PUNTO DE GUARDADO
 
-**Última actualización:** 6 Diciembre 2025
-**Estado:** Prompt maestro creado con sistema de 4 agentes
-**Próximo paso:** Usuario debe elegir área de trabajo (FRONTEND/BACKEND/ADMIN/BLOCKCHAIN)
+**Última actualización:** 7 Diciembre 2025
+**Estado:** Agregada SECCIÓN 30 con tareas de auditoría
+**Próximo paso:** Ejecutar fase 30.1 (Corregir except: vacíos)
 
 ---
