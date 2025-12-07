@@ -236,6 +236,102 @@ Escribe un número o comando...
 
 ---
 
+## 🔀 GUÍA DE TRABAJO CON RAMAS GIT
+
+### Flujo de Trabajo por Sesión
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                        FLUJO DE TRABAJO CON RAMAS                             ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  PASO 1: TÚ (Usuario) - Antes de iniciar                                      ║
+║  ─────────────────────────────────────────                                    ║
+║  Ejecuta en el Shell de Replit:                                               ║
+║                                                                               ║
+║    git fetch origin                                                           ║
+║    git checkout feature/[nombre-rama]                                         ║
+║                                                                               ║
+║  Ejemplo para Frontend:                                                       ║
+║    git checkout feature/frontend-user                                         ║
+║                                                                               ║
+║  ─────────────────────────────────────────────────────────────────────────────║
+║                                                                               ║
+║  PASO 2: EL AGENTE - Durante la sesión                                        ║
+║  ─────────────────────────────────────────                                    ║
+║  El agente trabaja y edita SOLO sus archivos asignados.                       ║
+║  NO puede hacer git checkout/add/commit/push (está bloqueado).                ║
+║                                                                               ║
+║  ─────────────────────────────────────────────────────────────────────────────║
+║                                                                               ║
+║  PASO 3: TÚ (Usuario) - Al terminar la sesión                                 ║
+║  ─────────────────────────────────────────────                                ║
+║  Ejecuta en el Shell de Replit:                                               ║
+║                                                                               ║
+║    git add .                                                                  ║
+║    git commit -m "[ÁREA] Descripción del cambio"                              ║
+║    git push origin feature/[nombre-rama]                                      ║
+║                                                                               ║
+║  Ejemplo para Frontend:                                                       ║
+║    git add .                                                                  ║
+║    git commit -m "[FRONTEND] Agregado modal de perfil"                        ║
+║    git push origin feature/frontend-user                                      ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+### Comandos Git por Agente
+
+| Agente | Antes de Trabajar | Después de Trabajar |
+|--------|-------------------|---------------------|
+| 🔵 FRONTEND | `git checkout feature/frontend-user` | `git push origin feature/frontend-user` |
+| 🟢 ADMIN | `git checkout feature/frontend-admin` | `git push origin feature/frontend-admin` |
+| 🟡 BACKEND | `git checkout feature/backend-api` | `git push origin feature/backend-api` |
+| 🔴 BLOCKCHAIN | `git checkout feature/blockchain-services` | `git push origin feature/blockchain-services` |
+
+---
+
+### Cómo Unir Todo (Merge a Main)
+
+Cuando los agentes terminen su trabajo, desde GitHub o terminal:
+
+```bash
+# Opción 1: Desde terminal
+git checkout main
+git pull origin main
+git merge feature/frontend-user
+git merge feature/frontend-admin
+git merge feature/backend-api
+git merge feature/blockchain-services
+git push origin main
+
+# Opción 2: Desde GitHub
+# Crear Pull Request de cada rama → main → Merge
+```
+
+---
+
+### Verificar en Qué Rama Estás
+
+```bash
+git branch          # Muestra todas las ramas locales (la actual tiene *)
+git status          # Muestra rama actual y archivos modificados
+```
+
+---
+
+### Si Hay Conflictos
+
+Si dos agentes editaron el mismo archivo (no debería pasar):
+1. Git te avisará del conflicto
+2. Abre el archivo y busca las marcas `<<<<<<<` y `>>>>>>>`
+3. Decide qué código mantener
+4. Guarda, haz `git add .` y `git commit`
+
+---
+
 ## SISTEMA DE PRIORIDADES
 
 Las tareas se trabajan por PRIORIDAD, no por orden numérico:
