@@ -23,11 +23,12 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║ ⏳ PENDIENTES: 27.10→27.25, Secciones 28, 29, 30, 31, 32, 33, 34 ║
 ║                                                                  ║
 ║ 🔴 CRÍTICO NUEVO: SECCIÓN 34 - IA BUNK3R CONSTRUCTOR             ║
+║    ✅ 34.9 Seguridad: @require_owner en endpoints                ║
+║    ✅ 34.10 AIFileToolkit creado con 10+ métodos                 ║
+║    ✅ 34.11 AICommandExecutor con whitelist/blacklist            ║
+║    ✅ 34.12 AIErrorDetector + AIProjectAnalyzer                  ║
 ║    ⏳ 34.1 Conectar frontend con 8 fases                         ║
-║    ⏳ 34.2 Expandir capacidades IA (no solo páginas)             ║
 ║    ⏳ 34.6 Entendimiento de intenciones                          ║
-║    ✅ Sistema 8 fases existe pero no se usa                      ║
-║    ✅ Multi-proveedor IA configurado                             ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -4765,48 +4766,51 @@ Usuario ──> BUNK3R AI (DeepSeek V3.2 local)
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.9: BLOQUEAR IA PARA USUARIOS NORMALES ⏳
+## FASE 34.9: BLOQUEAR IA PARA USUARIOS NORMALES ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 2 horas  
 **Agente:** 🟡 BACKEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Solo el OWNER ve la IA Constructor completa por ahora.
 
 ### Tareas:
-- [ ] Verificar `is_owner` en endpoints de IA
-- [ ] Ocultar botón IA para usuarios normales
-- [ ] Mostrar IA básica (solo chat) para usuarios normales
-- [ ] Configuración para activar IA completa por usuario
+- [x] Verificar `is_owner` en endpoints de IA - Agregado @require_owner a todos los endpoints AI Constructor
+- [ ] Ocultar botón IA para usuarios normales (frontend pendiente)
+- [ ] Mostrar IA básica (solo chat) para usuarios normales (frontend pendiente)
+- [ ] Configuración para activar IA completa por usuario (pendiente)
 
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.10: TOOLKIT DE ARCHIVOS ⏳
+## FASE 34.10: TOOLKIT DE ARCHIVOS ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 6 horas  
 **Agente:** 🟡 BACKEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Crear las herramientas para que la IA pueda leer/escribir/editar archivos.
 
 ### Tareas:
-- [ ] Crear clase `AIFileToolkit` en `tracking/ai_toolkit.py`
-- [ ] Método `read_file(path)` - Leer cualquier archivo
-- [ ] Método `write_file(path, content)` - Crear/sobrescribir archivo
-- [ ] Método `edit_file(path, old, new)` - Editar sección de archivo
-- [ ] Método `append_file(path, content)` - Agregar al final
-- [ ] Método `delete_file(path)` - Eliminar con confirmación
-- [ ] Método `list_directory(path)` - Listar carpeta
-- [ ] Método `search_code(query, path)` - Buscar en código (grep)
-- [ ] Método `create_directory(path)` - Crear carpeta
-- [ ] Método `move_file(old, new)` - Mover/renombrar
-- [ ] Límites de seguridad (no acceder fuera del proyecto)
-- [ ] Logging de todas las operaciones
+- [x] Crear clase `AIFileToolkit` en `tracking/ai_toolkit.py`
+- [x] Método `read_file(path)` - Leer cualquier archivo
+- [x] Método `write_file(path, content)` - Crear/sobrescribir archivo
+- [x] Método `edit_file(path, old, new)` - Editar sección de archivo
+- [x] Método `append_file(path, content)` - Agregar al final
+- [x] Método `delete_file(path)` - Eliminar con confirmación
+- [x] Método `list_directory(path)` - Listar carpeta
+- [x] Método `search_code(query, path)` - Buscar en código (grep)
+- [x] Método `create_directory(path)` - Crear carpeta
+- [x] Método `move_file(old, new)` - Mover/renombrar
+- [x] Límites de seguridad (no acceder fuera del proyecto)
+- [x] Logging de todas las operaciones
+- [x] Endpoints API en /api/ai-toolkit/files/*
 
 ### Ejemplo de uso:
 ```python
@@ -4821,26 +4825,28 @@ matches = toolkit.search_code("def login", ".")
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.11: EJECUTOR DE COMANDOS ⏳
+## FASE 34.11: EJECUTOR DE COMANDOS ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 Permitir que la IA ejecute comandos del sistema de forma segura.
 
 ### Tareas:
-- [ ] Crear clase `AICommandExecutor` en `tracking/ai_toolkit.py`
-- [ ] Método `run_command(cmd, timeout)` - Ejecutar comando
-- [ ] Método `install_package(name, manager)` - npm/pip install
-- [ ] Método `run_script(path)` - Ejecutar script Python/Node
-- [ ] Whitelist de comandos permitidos
-- [ ] Blacklist de comandos peligrosos (rm -rf, etc.)
-- [ ] Timeout para evitar cuelgues
-- [ ] Captura de stdout y stderr
-- [ ] Logging de comandos ejecutados
+- [x] Crear clase `AICommandExecutor` en `tracking/ai_toolkit.py`
+- [x] Método `run_command(cmd, timeout)` - Ejecutar comando
+- [x] Método `install_package(name, manager)` - npm/pip install
+- [x] Método `run_script(path)` - Ejecutar script Python/Node
+- [x] Whitelist de comandos permitidos
+- [x] Blacklist de comandos peligrosos (rm -rf, etc.)
+- [x] Timeout para evitar cuelgues
+- [x] Captura de stdout y stderr
+- [x] Logging de comandos ejecutados
+- [x] Endpoints API en /api/ai-toolkit/command/*
 
 ### Whitelist:
 ```python
@@ -4873,25 +4879,28 @@ BLOCKED_PATTERNS = [
 ---
 
 ## ═══════════════════════════════════════
-## FASE 34.12: DETECTOR DE ERRORES ⏳
+## FASE 34.12: DETECTOR DE ERRORES ✅
 ## ═══════════════════════════════════════
 
 **Prioridad:** 🔴 CRÍTICA  
 **Tiempo:** 4 horas  
 **Agente:** 🟡 BACKEND + 🟣 IA
+**Completado:** 7 Diciembre 2025
 
 ### Objetivo:
 La IA detecta errores en logs y los corrige automáticamente.
 
 ### Tareas:
-- [ ] Crear clase `AIErrorDetector` en `tracking/ai_toolkit.py`
-- [ ] Método `read_server_logs(lines)` - Leer logs del servidor
-- [ ] Método `detect_errors(logs)` - Encontrar errores
-- [ ] Método `analyze_error(error)` - Analizar causa raíz
-- [ ] Método `suggest_fix(error)` - Sugerir corrección
-- [ ] Método `auto_fix(error)` - Intentar corregir
-- [ ] Patrones de errores comunes (Python, Node, etc.)
-- [ ] Integración con la IA para análisis inteligente
+- [x] Crear clase `AIErrorDetector` en `tracking/ai_toolkit.py`
+- [x] Método `read_server_logs(lines)` - Leer logs del servidor
+- [x] Método `detect_errors(logs)` - Encontrar errores
+- [x] Método `analyze_error(error)` - Analizar causa raíz
+- [x] Método `suggest_fix(error)` - Sugerir corrección
+- [ ] Método `auto_fix(error)` - Intentar corregir (pendiente integración con IA)
+- [x] Patrones de errores comunes (Python, Node, etc.)
+- [ ] Integración con la IA para análisis inteligente (pendiente)
+- [x] Endpoints API en /api/ai-toolkit/errors/*
+- [x] Clase `AIProjectAnalyzer` agregada como bonus
 
 ### Patrones de error:
 ```python

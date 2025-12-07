@@ -68,6 +68,40 @@ The AI Constructor is an intelligent 8-phase system for generating web projects.
 - Urgency detection
 - Automatic clarification for vague requests
 - Code verification before delivery
+- OWNER-ONLY access via @require_owner decorator
+
+## AI Toolkit Module (NEW - Dec 7, 2025)
+Located in `tracking/ai_toolkit.py`, provides secure tools for AI Constructor to interact with files and system.
+
+**Classes:**
+1. **AIFileToolkit** - Secure file operations (read, write, edit, delete, search, list directory)
+2. **AICommandExecutor** - Safe command execution with whitelist/blacklist
+3. **AIErrorDetector** - Error pattern detection and fix suggestions for Python/Node
+4. **AIProjectAnalyzer** - Project structure analysis (language, framework, dependencies)
+
+**API Endpoints (OWNER ONLY):**
+- `/api/ai-toolkit/files/read` - Read file content
+- `/api/ai-toolkit/files/write` - Write file content
+- `/api/ai-toolkit/files/edit` - Edit file by replacement
+- `/api/ai-toolkit/files/delete` - Delete file (requires confirm=true AND confirm_text="DELETE")
+- `/api/ai-toolkit/files/list` - List directory contents
+- `/api/ai-toolkit/files/search` - Search code with regex
+- `/api/ai-toolkit/command/run` - Execute whitelisted commands only
+- `/api/ai-toolkit/command/install` - Install packages via pip/npm
+- `/api/ai-toolkit/command/script` - Run validated .py/.js/.ts scripts
+- `/api/ai-toolkit/errors/detect` - Detect errors in logs
+- `/api/ai-toolkit/errors/analyze` - Analyze error and suggest fix
+- `/api/ai-toolkit/project/analyze` - Analyze project structure
+
+**Security Features:**
+- All endpoints require @require_owner decorator
+- File operations restricted to project root
+- Blocked paths: .env, .git, node_modules, __pycache__, etc.
+- Command whitelist: npm, pip, ls, cat, grep, git (safe commands only)
+- Python/Node NOT allowed via run_command (use run_script for validated scripts)
+- Script execution validates: file exists, is a file, has allowed extension (.py/.js/.ts)
+- Command blacklist: rm -rf, sudo, chmod 777, eval, python -c, node -e, curl|bash, etc.
+- Delete requires double confirmation (confirm=true AND confirm_text="DELETE")
 
 ## External Dependencies
 - **PostgreSQL:** Primary database.
