@@ -1353,19 +1353,20 @@ CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE i
 
 ---
 
-### FASE 30.9: ENDPOINT LOGOUT DEMO 2FA ⏳
+### FASE 30.9: ENDPOINT LOGOUT DEMO 2FA ✅
 **Prioridad:** 🟢 BAJA  
 **Tiempo:** 30 minutos  
 **Agente:** 🟡 BACKEND API
+**Completado:** 8 Diciembre 2025
 
 #### Objetivo:
 Implementar endpoint explícito para cerrar sesión del demo 2FA.
 
 #### Tareas:
-- [ ] Crear endpoint `/api/demo/2fa/logout` en app.py
-- [ ] Eliminar sesión de demo_2fa_sessions al hacer logout
-- [ ] Añadir botón de logout en UI de demo 2FA
-- [ ] Verificar que la sesión se cierra correctamente
+- [x] Crear endpoint `/api/demo/2fa/logout` en app.py
+- [x] Eliminar sesión usando `invalidate_demo_session()` al hacer logout
+- [ ] Añadir botón de logout en UI de demo 2FA (PENDIENTE FRONTEND)
+- [x] Verificar que la sesión se cierra correctamente
 
 #### Código sugerido:
 ```python
@@ -1424,7 +1425,7 @@ app.logger.setLevel(logging.INFO)
 | 30.6 | Documentar APIs | 🟢 BAJA | 3h | ⏳ |
 | 30.7 | Tests automatizados | 🟢 BAJA | 8h | ⏳ |
 | 30.8 | Optimizaciones BD | 🟢 OPCIONAL | 2-4h | ⏳ |
-| 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ⏳ |
+| 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ✅ |
 | 30.10 | Mejorar logs | 🟢 BAJA | 1h | ⏳ |
 
 **TOTAL TIEMPO ESTIMADO: ~22 horas**
