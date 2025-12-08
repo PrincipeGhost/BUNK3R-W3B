@@ -14789,8 +14789,8 @@ def send_private_message():
     try:
         sender_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
-        receiver_id = data.get('receiver_id', '').strip()
-        content = data.get('content', '').strip()
+        receiver_id = str(data.get('receiver_id', '')).strip()
+        content = str(data.get('content', '')).strip()
         
         if not receiver_id or not content:
             return jsonify({'success': False, 'error': 'Receptor y contenido son requeridos'}), 400
@@ -14798,8 +14798,13 @@ def send_private_message():
         if len(content) > 2000:
             return jsonify({'success': False, 'error': 'Mensaje muy largo (max 2000 caracteres)'}), 400
         
+        if sender_id == receiver_id:
+            return jsonify({'success': False, 'error': 'No puedes enviarte mensajes a ti mismo'}), 400
+        
         if not db_manager:
             return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        sanitized_content = html.escape(content)
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -14812,9 +14817,11 @@ def send_private_message():
                     INSERT INTO private_messages (sender_id, receiver_id, content)
                     VALUES (%s, %s, %s)
                     RETURNING id, created_at
-                """, (sender_id, receiver_id, html.escape(content)))
+                """, (sender_id, receiver_id, sanitized_content))
                 message = cur.fetchone()
                 conn.commit()
+        
+        logger.info(f"Private message sent from {sender_id} to {receiver_id}")
         
         return jsonify({
             'success': True,
@@ -14822,14 +14829,14 @@ def send_private_message():
                 'id': message['id'],
                 'sender_id': sender_id,
                 'receiver_id': receiver_id,
-                'content': content,
+                'content': sanitized_content,
                 'created_at': message['created_at'].isoformat() if message.get('created_at') else None
             }
         })
         
     except Exception as e:
         logger.error(f"Error sending private message: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Error al enviar mensaje'}), 500
 
 
 @app.route('/api/messages/conversations', methods=['GET'])
