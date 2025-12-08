@@ -14720,6 +14720,11 @@ body.dev-mode-active .dev-lock-badge {
     display: block;
     border: none;
     background: #fff;
+    outline: none;
+}
+
+.browser-iframe:focus {
+    outline: none;
 }
 
 .phone-home-indicator {
