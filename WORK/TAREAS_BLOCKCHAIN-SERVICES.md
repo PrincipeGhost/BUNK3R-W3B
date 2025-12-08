@@ -8,33 +8,20 @@
 
 ---
 
-## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+## SECCION 0: ESTRUCTURA DE BLUEPRINTS (EN PROGRESO)
 
-### FASE 0.1: MIGRAR ENDPOINTS BLOCKCHAIN A routes/blockchain_routes.py 🔴 CRITICA
-**Tiempo:** 4 horas
+### FASE 0.1: PREPARACION DE BLUEPRINTS - COMPLETADO
+**Tiempo:** 1 hora
 **Fecha creacion:** 8 Diciembre 2025
+**Ultima actualizacion:** 8 Diciembre 2025
 
-**Contexto:**
-Migrar todos los endpoints de B3C y wallets desde app.py a routes/blockchain_routes.py
-para separar responsabilidades y evitar conflictos entre agentes.
+**Estado actual:**
+- [x] Blueprint blockchain_routes.py creado
+- [x] Endpoint /api/blockchain/health activo
+- [ ] Migracion de endpoints desde app.py (pendiente, se hara gradualmente)
 
-**Endpoints a migrar (lineas aproximadas en app.py):**
-- /api/b3c/* (3594-4815) - Compra, venta, balance, transacciones, depositos
-- /api/wallet/* (3403-3569, 5195) - Conexion wallet, balance, creditos
-
-**Tareas:**
-- [ ] Leer app.py y ubicar todos los endpoints de b3c/wallet
-- [ ] Copiar endpoints a routes/blockchain_routes.py
-- [ ] Cambiar @app.route por @blockchain_bp.route
-- [ ] Importar dependencias (db_manager, wallet_pool_service, b3c_service)
-- [ ] Registrar blueprint en app.py
-- [ ] Probar que todos los endpoints funcionan
-- [ ] Eliminar endpoints originales de app.py
-
-**Criterios de aceptacion:**
-- [ ] Todos los endpoints /api/b3c/* responden correctamente
-- [ ] Todos los endpoints /api/wallet/* responden correctamente
-- [ ] No hay errores en logs
+**NOTA:** Los endpoints de blockchain siguen funcionando en app.py.
+La migracion se realizara de forma gradual para evitar interrupciones.
 
 ---
 

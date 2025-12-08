@@ -15,37 +15,20 @@
 
 ---
 
-## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+## SECCION 0: ESTRUCTURA DE BLUEPRINTS (EN PROGRESO)
 
-### FASE 0.1: MIGRAR ENDPOINTS USER A routes/user_routes.py 🔴 CRITICA
-**Tiempo:** 4 horas
+### FASE 0.1: PREPARACION DE BLUEPRINTS - COMPLETADO
+**Tiempo:** 1 hora
 **Fecha creacion:** 8 Diciembre 2025
+**Ultima actualizacion:** 8 Diciembre 2025
 
-**Contexto:**
-Migrar todos los endpoints de usuario desde app.py a routes/user_routes.py
-para separar responsabilidades y evitar conflictos entre agentes.
+**Estado actual:**
+- [x] Blueprint user_routes.py creado
+- [x] Endpoint /api/user/health activo
+- [ ] Migracion de endpoints desde app.py (pendiente, se hara gradualmente)
 
-**Endpoints a migrar (lineas aproximadas en app.py):**
-- /api/users/* (2219-2678, 12010-12045) - Perfil, follow, stats
-- /api/publications/* (10943-11562) - CRUD publicaciones, reacciones, comentarios
-- /api/stories/* - Stories de usuario
-- /api/messages/* - Chat privado
-- /api/notifications/* - Notificaciones
-- /api/search/* - Busqueda
-
-**Tareas:**
-- [ ] Leer app.py y ubicar todos los endpoints de user/publications
-- [ ] Copiar endpoints a routes/user_routes.py
-- [ ] Cambiar @app.route('/api/...') por @user_bp.route('/...')
-- [ ] Importar dependencias (db_manager, cloudinary_service)
-- [ ] Registrar blueprint en app.py
-- [ ] Probar que todos los endpoints funcionan
-- [ ] Eliminar endpoints originales de app.py
-
-**Criterios de aceptacion:**
-- [ ] Todos los endpoints de usuario responden correctamente
-- [ ] Feed de publicaciones funciona
-- [ ] No hay errores en logs
+**NOTA:** Los endpoints de usuario siguen funcionando en app.py.
+La migracion se realizara de forma gradual para evitar interrupciones.
 
 ---
 

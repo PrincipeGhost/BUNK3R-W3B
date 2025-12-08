@@ -97,10 +97,47 @@ static/js/
 
 ---
 
-## Recent Changes (December 2024)
+## Recent Changes (December 2025)
+
+### 8 Diciembre 2025
+- **Estructura de Blueprints corregida:** Se solucionó el problema de blueprints duplicados en routes/
+- **Módulo de utilidades compartidas:** Creado tracking/utils.py con InputValidator, RateLimiter, sanitize_error
+- **Documentación actualizada:** 007.md y archivos WORK/*.md actualizados con estado real del proyecto
+- **Endpoints health:** Cada blueprint ahora tiene un endpoint /health para verificación
+
+### Cambios anteriores (December 2024)
 - **Wallet Pool Optimizations:** Added rotation algorithm, low balance alerts, automated cleanup of old consolidated wallets, and pool maintenance routine.
 - **Transaction Auditing:** Implemented `blockchain_audit_log` table with JSONB storage for comprehensive transaction tracking.
 - **Transaction Limits:** Added `TransactionLimits` class enforcing daily withdrawal limits (100k B3C) and single transaction limits (50k B3C), properly filtering by completed/processing status.
 - **Legit SMS Service:** Implemented `LegitSMSService` with automatic fallback to SMSPool when primary provider fails.
 - **Security Improvements:** Enhanced 2FA for large withdrawals (>1000 B3C), address whitelisting, and rate limiting on withdrawal endpoints.
 - **Encryption:** AES-256-GCM for media, AES-256-CBC with unique IVs for private keys. Master key warning for development mode.
+
+## Estado Actual del Proyecto
+
+**Estructura de archivos principal:**
+```
+app.py                    - Aplicación principal (~15,000 líneas, contiene todos los endpoints)
+routes/                   - Blueprints preparados para migración gradual
+  __init__.py             - Exporta todos los blueprints
+  auth_routes.py          - Blueprint de autenticación (/api/auth/*)
+  blockchain_routes.py    - Blueprint de blockchain (/api/blockchain/*)
+  admin_routes.py         - Blueprint de admin (/api/admin/*)
+  user_routes.py          - Blueprint de usuario (/api/user/*)
+tracking/                 - Servicios y modelos
+  utils.py                - Utilidades compartidas (InputValidator, RateLimiter)
+  database.py             - DatabaseManager
+  models.py               - Modelos de datos
+  security.py             - SecurityManager
+  b3c_service.py          - Servicio B3C
+  wallet_pool_service.py  - Pool de wallets
+  ...
+WORK/                     - Archivos de tareas por agente
+  TAREAS_BACKEND-API.md
+  TAREAS_BLOCKCHAIN-SERVICES.md
+  TAREAS_FRONTEND-ADMIN.md
+  TAREAS_FRONTEND-USER.md
+007.md                    - Panel de gestión de tareas
+```
+
+**NOTA:** Los endpoints principales siguen en app.py. La migración a blueprints se realizará de forma gradual para evitar interrupciones.

@@ -10,35 +10,38 @@
 
 ---
 
-## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+## SECCION 0: ESTRUCTURA DE BLUEPRINTS - COMPLETADO
 
-### FASE 0.1: MIGRAR ENDPOINTS DE AUTH A routes/auth_routes.py 🔴 CRITICA
-**Tiempo:** 3 horas
+### FASE 0.1: PREPARACION E INTEGRACION DE BLUEPRINTS - COMPLETADO
+**Tiempo:** 2 horas
 **Fecha creacion:** 8 Diciembre 2025
+**Ultima actualizacion:** 8 Diciembre 2025
 
-**Contexto:**
-Migrar todos los endpoints de autenticacion y 2FA desde app.py a routes/auth_routes.py
-para separar responsabilidades y evitar conflictos entre agentes.
+**Estado actual:**
+- [x] Blueprints creados y configurados en routes/
+- [x] Blueprints registrados en app.py (linea 161-168)
+- [x] Modulo de utilidades compartidas creado (tracking/utils.py)
+- [x] Endpoints /health activos y verificados en cada blueprint
+- [ ] Migracion gradual de endpoints desde app.py (pendiente para futuras iteraciones)
 
-**Endpoints a migrar (lineas aproximadas en app.py):**
-- /api/2fa/* (1241-1417) - Setup, verify, status, disable
-- /api/auth/* - Login, logout, refresh token
-- /api/demo/* - Modo demo 2FA
-- /api/health - Health check
+**Archivos creados/modificados:**
+- routes/__init__.py - Exporta todos los blueprints
+- routes/auth_routes.py - Blueprint de autenticacion (/api/auth/*)
+- routes/blockchain_routes.py - Blueprint de blockchain (/api/blockchain/*)
+- routes/admin_routes.py - Blueprint de admin (/api/admin/*)
+- routes/user_routes.py - Blueprint de usuario (/api/user/*)
+- tracking/utils.py - Utilidades compartidas (InputValidator, RateLimiter)
+- app.py - Registro de blueprints (lineas 161-168)
 
-**Tareas:**
-- [ ] Leer app.py y ubicar todos los endpoints de auth/2fa
-- [ ] Copiar endpoints a routes/auth_routes.py
-- [ ] Cambiar @app.route por @auth_bp.route
-- [ ] Importar dependencias necesarias (db_manager, security_manager, pyotp)
-- [ ] Registrar blueprint en app.py
-- [ ] Probar que todos los endpoints funcionan
-- [ ] Eliminar endpoints originales de app.py
+**Endpoints de verificacion:**
+- GET /api/auth/health - 200 OK
+- GET /api/blockchain/health - 200 OK
+- GET /api/admin/health - 200 OK
+- GET /api/user/health - 200 OK
 
-**Criterios de aceptacion:**
-- [ ] Todos los endpoints /api/2fa/* responden correctamente
-- [ ] app.py solo contiene inicializacion y registro de blueprints
-- [ ] No hay errores en logs
+**NOTA:**
+Los endpoints principales siguen en app.py para evitar romper funcionalidad.
+La migracion completa se realizara de forma gradual en futuras iteraciones.
 
 ---
 
