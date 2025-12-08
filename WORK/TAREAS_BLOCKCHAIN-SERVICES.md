@@ -1,6 +1,6 @@
 # TAREAS AGENTE 🔴 BLOCKCHAIN & SERVICIOS EXTERNOS
 **Rama Git:** `feature/blockchain-services`
-**Archivos asignados:** tracking/b3c_service.py, tracking/wallet_pool_service.py, tracking/deposit_scheduler.py, tracking/smspool_service.py, tracking/cloudinary_service.py, tracking/encryption.py
+**Archivos asignados:** tracking/b3c_service.py, tracking/wallet_pool_service.py, tracking/deposit_scheduler.py, tracking/smspool_service.py, tracking/legitsms_service.py, tracking/cloudinary_service.py, tracking/encryption.py
 
 ---
 

@@ -1,6 +1,6 @@
 # TAREAS AGENTE 🔵 FRONTEND USUARIO
 **Rama Git:** `feature/frontend-user`
-**Archivos asignados:** app.js, publications.js, virtual-numbers.js, utils.js, styles.css, templates/index.html, templates/virtual_numbers.html
+**Archivos asignados:** static/js/app.js, static/js/publications.js, static/js/virtual-numbers.js, static/js/utils.js, static/css/styles.css, templates/index.html, templates/virtual_numbers.html, templates/access_denied.html
 
 ---
 

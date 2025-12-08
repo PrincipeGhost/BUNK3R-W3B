@@ -1,6 +1,6 @@
 # TAREAS AGENTE 🟢 FRONTEND ADMIN
 **Rama Git:** `feature/frontend-admin`
-**Archivos asignados:** admin.js, admin.css, templates/admin.html
+**Archivos asignados:** static/js/admin.js, static/css/admin.css, templates/admin.html
 
 ---
 

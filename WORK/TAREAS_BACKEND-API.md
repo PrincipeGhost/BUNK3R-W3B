@@ -1,6 +1,6 @@
 # TAREAS AGENTE 🟡 BACKEND API
 **Rama Git:** `feature/backend-api`
-**Archivos asignados:** app.py, tracking/database.py, tracking/models.py, tracking/email_service.py, tracking/security.py, tracking/telegram_service.py, init_db.py, seed_data.py, requirements.txt
+**Archivos asignados:** app.py, tracking/__init__.py, tracking/database.py, tracking/models.py, tracking/email_service.py, tracking/security.py, tracking/telegram_service.py, init_db.py, seed_data.py, run.py, runtime.txt, requirements.txt
 
 ---
 
