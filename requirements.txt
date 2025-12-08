@@ -45,3 +45,5 @@ requests==2.31.0
 tonsdk==1.0.7
 werkzeug==3.0.1
 playwright
+numpy
+websockify
