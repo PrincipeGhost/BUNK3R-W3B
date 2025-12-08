@@ -3575,8 +3575,8 @@ const App = {
         const scaleIframes = () => {
             browsers.forEach((browser) => {
                 const content = browser.querySelector('.browser-content');
-                const iframe = browser.querySelector('.browser-iframe');
-                if (!content || !iframe) return;
+                const wrapper = browser.querySelector('.browser-iframe-wrapper');
+                if (!content || !wrapper) return;
                 
                 const containerWidth = content.clientWidth;
                 const containerHeight = content.clientHeight;
@@ -3587,7 +3587,7 @@ const App = {
                 const scaleY = containerHeight / iframeHeight;
                 const scale = Math.min(scaleX, scaleY);
                 
-                iframe.style.transform = `scale(${scale})`;
+                wrapper.style.transform = `scale(${scale})`;
             });
         };
         
