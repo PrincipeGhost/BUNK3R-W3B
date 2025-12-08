@@ -3053,12 +3053,18 @@ def save_wallet_address():
         return jsonify({'success': False, 'error': 'Error al guardar wallet'}), 500
 
 
-# MIGRADO A routes/blockchain_routes.py: /api/wallet/address, /api/b3c/price, /api/b3c/calculate/*, /api/b3c/balance, /api/b3c/config, /api/b3c/network, /api/b3c/testnet/guide
+# MIGRADO A routes/blockchain_routes.py:
+# - /api/wallet/address, /api/b3c/price, /api/b3c/calculate/*, /api/b3c/balance, /api/b3c/config, /api/b3c/network, /api/b3c/testnet/guide
+# - /api/b3c/buy/create, /api/b3c/buy/<id>/verify, /api/b3c/transactions, /api/b3c/transfer
+# - /api/b3c/sell, /api/b3c/withdraw, /api/b3c/withdraw/<id>/status, /api/b3c/deposit/address
+# - /api/b3c/commissions, /api/b3c/scheduler/status, /api/b3c/wallet-pool/*
+# - /api/b3c/admin/force-verify/<id>, /api/b3c/deposits/*, /api/b3c/last-purchase
+# ENDPOINTS DESACTIVADOS - Usar los de blockchain_routes.py
 
 
-@app.route('/api/b3c/buy/create', methods=['POST'])
-@require_telegram_user
-def create_b3c_purchase():
+# @app.route('/api/b3c/buy/create', methods=['POST'])
+# @require_telegram_user
+def _legacy_create_b3c_purchase():
     """Crear solicitud de compra de B3C con wallet única de depósito."""
     try:
         data = request.get_json()
@@ -3128,7 +3134,7 @@ def create_b3c_purchase():
         return jsonify({'success': False, 'error': 'Error al crear compra'}), 500
 
 
-@app.route('/api/b3c/buy/<purchase_id>/verify', methods=['POST'])
+# @app.route('/api/b3c/buy/<purchase_id>/verify', methods=['POST'])
 @require_telegram_user
 @rate_limit('b3c_verify')
 def verify_b3c_purchase(purchase_id):
@@ -3197,7 +3203,7 @@ def verify_b3c_purchase(purchase_id):
         return jsonify({'success': False, 'error': 'Error al verificar compra'}), 500
 
 
-@app.route('/api/b3c/transactions', methods=['GET'])
+# @app.route('/api/b3c/transactions', methods=['GET'])
 @require_telegram_user
 def get_b3c_transactions():
     """Obtener historial de transacciones B3C del usuario."""
@@ -3242,7 +3248,7 @@ def get_b3c_transactions():
         return jsonify({'success': False, 'error': 'Error al obtener transacciones'}), 500
 
 
-@app.route('/api/b3c/transfer', methods=['POST'])
+# @app.route('/api/b3c/transfer', methods=['POST'])
 @require_telegram_user
 @rate_limit('b3c_transfer')
 def transfer_b3c():
@@ -3342,7 +3348,7 @@ def transfer_b3c():
         return jsonify({'success': False, 'error': 'Error al transferir B3C'}), 500
 
 
-@app.route('/api/b3c/sell', methods=['POST'])
+# @app.route('/api/b3c/sell', methods=['POST'])
 @require_telegram_user
 @rate_limit('b3c_sell')
 def sell_b3c():
@@ -3421,7 +3427,7 @@ def sell_b3c():
         return jsonify({'success': False, 'error': 'Error al procesar venta'}), 500
 
 
-@app.route('/api/b3c/withdraw', methods=['POST'])
+# @app.route('/api/b3c/withdraw', methods=['POST'])
 @require_telegram_user
 @rate_limit('b3c_withdraw')
 def withdraw_b3c():
@@ -3514,7 +3520,7 @@ def withdraw_b3c():
         return jsonify({'success': False, 'error': 'Error al procesar retiro'}), 500
 
 
-@app.route('/api/b3c/withdraw/<withdrawal_id>/status', methods=['GET'])
+# @app.route('/api/b3c/withdraw/<withdrawal_id>/status', methods=['GET'])
 @require_telegram_user
 def get_withdrawal_status(withdrawal_id):
     """Obtener estado de un retiro."""
@@ -3553,7 +3559,7 @@ def get_withdrawal_status(withdrawal_id):
         return jsonify({'success': False, 'error': 'Error al obtener estado'}), 500
 
 
-@app.route('/api/b3c/deposit/address', methods=['GET'])
+# @app.route('/api/b3c/deposit/address', methods=['GET'])
 @require_telegram_user
 def get_deposit_address():
     """Crear depósito externo con wallet única del pool (reemplaza wallet maestra)."""
@@ -3615,7 +3621,7 @@ def get_deposit_address():
         return jsonify({'success': False, 'error': 'Error al obtener direccion'}), 500
 
 
-@app.route('/api/b3c/commissions', methods=['GET'])
+# @app.route('/api/b3c/commissions', methods=['GET'])
 @require_telegram_user
 def get_b3c_commissions():
     """Obtener resumen de comisiones B3C (solo admin)."""
@@ -3683,7 +3689,7 @@ def get_b3c_commissions():
         return jsonify({'success': False, 'error': 'Error al obtener comisiones'}), 500
 
 
-@app.route('/api/b3c/scheduler/status', methods=['GET'])
+# @app.route('/api/b3c/scheduler/status', methods=['GET'])
 @require_telegram_user
 def get_scheduler_status():
     """Obtener estado del scheduler de depósitos automáticos (admin)."""
@@ -3713,7 +3719,7 @@ def get_scheduler_status():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/b3c/wallet-pool/stats', methods=['GET'])
+# @app.route('/api/b3c/wallet-pool/stats', methods=['GET'])
 @require_telegram_user
 def get_wallet_pool_stats():
     """Obtener estadísticas del pool de wallets de depósito (admin)."""
@@ -3737,7 +3743,7 @@ def get_wallet_pool_stats():
         return jsonify({'success': False, 'error': 'Error al obtener estadísticas'}), 500
 
 
-@app.route('/api/b3c/wallet-pool/fill', methods=['POST'])
+# @app.route('/api/b3c/wallet-pool/fill', methods=['POST'])
 @require_telegram_user
 def fill_wallet_pool():
     """Rellenar el pool de wallets de depósito (admin)."""
@@ -3771,7 +3777,7 @@ def fill_wallet_pool():
         return jsonify({'success': False, 'error': 'Error al rellenar pool'}), 500
 
 
-@app.route('/api/b3c/wallet-pool/consolidate', methods=['POST'])
+# @app.route('/api/b3c/wallet-pool/consolidate', methods=['POST'])
 @require_telegram_user
 def consolidate_wallets():
     """Consolidar fondos de wallets con depósitos a hot wallet (admin)."""
@@ -3803,7 +3809,7 @@ def consolidate_wallets():
         return jsonify({'success': False, 'error': 'Error en consolidación'}), 500
 
 
-@app.route('/api/b3c/admin/force-verify/<purchase_id>', methods=['POST'])
+# @app.route('/api/b3c/admin/force-verify/<purchase_id>', methods=['POST'])
 @require_telegram_user
 def admin_force_verify_purchase(purchase_id):
     """Forzar verificación de una compra específica (admin) - ignora expiración."""
@@ -3882,7 +3888,7 @@ def admin_force_verify_purchase(purchase_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/b3c/deposits/check', methods=['POST'])
+# @app.route('/api/b3c/deposits/check', methods=['POST'])
 @require_telegram_user
 def check_b3c_deposits():
     """Verificar y procesar depósitos B3C pendientes (admin)."""
@@ -4025,7 +4031,7 @@ def check_b3c_deposits():
         return jsonify({'success': False, 'error': 'Error al verificar depósitos'}), 500
 
 
-@app.route('/api/b3c/deposits/history', methods=['GET'])
+# @app.route('/api/b3c/deposits/history', methods=['GET'])
 @require_telegram_user
 def get_b3c_deposit_history():
     """Obtener historial de depósitos B3C del usuario."""
@@ -4063,7 +4069,7 @@ def get_b3c_deposit_history():
         return jsonify({'success': False, 'error': 'Error al obtener historial'}), 500
 
 
-@app.route('/api/b3c/deposits/pending', methods=['GET'])
+# @app.route('/api/b3c/deposits/pending', methods=['GET'])
 @require_telegram_user
 def get_pending_deposits():
     """Obtener depósitos pendientes (admin)."""
@@ -4108,7 +4114,7 @@ def get_pending_deposits():
         return jsonify({'success': False, 'error': 'Error al obtener pendientes'}), 500
 
 
-@app.route('/api/b3c/last-purchase', methods=['GET'])
+# @app.route('/api/b3c/last-purchase', methods=['GET'])
 @require_telegram_auth
 @require_owner
 @rate_limit('price_check', use_ip=True)

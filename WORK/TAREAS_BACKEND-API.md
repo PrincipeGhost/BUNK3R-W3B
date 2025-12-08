@@ -60,9 +60,9 @@
 - [x] POST /api/2fa/status
 - [x] POST /api/validate
 
-### FASE 0.3: MIGRACION BLOCKCHAIN - EN PROGRESO
+### FASE 0.3: MIGRACION BLOCKCHAIN - COMPLETADO
 **Fecha:** 8 Diciembre 2025
-**Endpoints migrados:** 18
+**Endpoints migrados:** 36
 
 **Exchange (ChangeNow):**
 - [x] GET /api/exchange/currencies
@@ -81,7 +81,7 @@
 - [x] POST /api/wallet/connect
 - [x] GET /api/wallet/address
 
-**B3C Token:**
+**B3C Token (basicos):**
 - [x] GET /api/b3c/price
 - [x] POST /api/b3c/calculate/buy
 - [x] POST /api/b3c/calculate/sell
@@ -90,25 +90,25 @@
 - [x] GET /api/b3c/network
 - [x] GET /api/b3c/testnet/guide
 
-**Pendientes de migrar (~17 endpoints B3C avanzados):**
-- [ ] POST /api/b3c/buy/create
-- [ ] POST /api/b3c/buy/<purchase_id>/verify
-- [ ] GET /api/b3c/transactions
-- [ ] POST /api/b3c/transfer
-- [ ] POST /api/b3c/sell
-- [ ] POST /api/b3c/withdraw
-- [ ] GET /api/b3c/withdraw/<id>/status
-- [ ] GET /api/b3c/deposit/address
-- [ ] GET /api/b3c/commissions
-- [ ] GET /api/b3c/scheduler/status
-- [ ] GET /api/b3c/wallet-pool/stats
-- [ ] POST /api/b3c/wallet-pool/fill
-- [ ] POST /api/b3c/wallet-pool/consolidate
-- [ ] POST /api/b3c/admin/force-verify/<id>
-- [ ] POST /api/b3c/deposits/check
-- [ ] GET /api/b3c/deposits/history
-- [ ] GET /api/b3c/deposits/pending
-- [ ] GET /api/b3c/last-purchase
+**B3C Token (avanzados - migrados 8 Diciembre 2025):**
+- [x] POST /api/b3c/buy/create
+- [x] POST /api/b3c/buy/<purchase_id>/verify
+- [x] GET /api/b3c/transactions
+- [x] POST /api/b3c/transfer
+- [x] POST /api/b3c/sell
+- [x] POST /api/b3c/withdraw
+- [x] GET /api/b3c/withdraw/<id>/status
+- [x] GET /api/b3c/deposit/address
+- [x] GET /api/b3c/commissions
+- [x] GET /api/b3c/scheduler/status
+- [x] GET /api/b3c/wallet-pool/stats
+- [x] POST /api/b3c/wallet-pool/fill
+- [x] POST /api/b3c/wallet-pool/consolidate
+- [x] POST /api/b3c/admin/force-verify/<id>
+- [x] POST /api/b3c/deposits/check
+- [x] GET /api/b3c/deposits/history
+- [x] GET /api/b3c/deposits/pending
+- [x] GET /api/b3c/last-purchase
 
 **Endpoints de verificacion:**
 - GET /api/auth/health - 200 OK
