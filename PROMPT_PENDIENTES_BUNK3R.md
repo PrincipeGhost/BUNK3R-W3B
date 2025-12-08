@@ -128,81 +128,81 @@ SISTEMA DE 4 AGENTES - DIVISIÓN DE TRABAJO
 🔵 AGENTE 1: FRONTEND USUARIO + WORKSPACE IA
 Rama Git: feature/frontend-user Comando para activar: 3 o FRONTEND Responsabilidad: Todo el frontend del usuario final, incluyendo workspace de IA
 
-Archivo	Función	Exclusivo
-static/js/app.js	Lógica frontend principal	✅
-static/js/publications.js	Publicaciones/feed	✅
-static/js/virtual-numbers.js	Números virtuales UI	✅
-static/js/utils.js	Utilidades compartidas JS	✅
-static/js/ai-chat.js	Chat con IA frontend	✅
-static/js/workspace.js	Workspace IA frontend	✅
-static/css/styles.css	Estilos generales	✅
-static/css/ai-chat.css	Estilos chat IA	✅
-static/css/workspace.css	Estilos workspace IA	✅
-templates/index.html	Template principal	✅
-templates/virtual_numbers.html	Template números virtuales	✅
-templates/workspace.html	Template workspace IA	✅
-templates/access_denied.html	Template acceso denegado	✅
-static/images/*	Todas las imágenes	✅
-static/uploads/*	Archivos subidos	✅
+Archivo Función Exclusivo
+static/js/app.js        Lógica frontend principal       ✅
+static/js/publications.js       Publicaciones/feed      ✅
+static/js/virtual-numbers.js    Números virtuales UI    ✅
+static/js/utils.js      Utilidades compartidas JS       ✅
+static/js/ai-chat.js    Chat con IA frontend    ✅
+static/js/workspace.js  Workspace IA frontend   ✅
+static/css/styles.css   Estilos generales       ✅
+static/css/ai-chat.css  Estilos chat IA ✅
+static/css/workspace.css        Estilos workspace IA    ✅
+templates/index.html    Template principal      ✅
+templates/virtual_numbers.html  Template números virtuales      ✅
+templates/workspace.html        Template workspace IA   ✅
+templates/access_denied.html    Template acceso denegado        ✅
+static/images/* Todas las imágenes      ✅
+static/uploads/*        Archivos subidos        ✅
 Total: 15 archivos/carpetas
 
 🟢 AGENTE 2: FRONTEND ADMIN
 Rama Git: feature/frontend-admin Comando para activar: 5 o ADMIN Responsabilidad: Todo el panel de administración
 
-Archivo	Función	Exclusivo
-static/js/admin.js	Lógica panel admin completo	✅
-static/css/admin.css	Estilos panel admin	✅
-templates/admin.html	Template panel admin	✅
+Archivo Función Exclusivo
+static/js/admin.js      Lógica panel admin completo     ✅
+static/css/admin.css    Estilos panel admin     ✅
+templates/admin.html    Template panel admin    ✅
 Total: 3 archivos
 
 🟡 AGENTE 3: BACKEND API + CORE IA
 Rama Git: feature/backend-api Comando para activar: 4 o BACKEND Responsabilidad: API principal, base de datos y motor de IA
 
-Archivo	Función	Exclusivo
-app.py	Endpoints API y rutas Flask	✅
-tracking/database.py	Operaciones de base de datos	✅
-tracking/models.py	Modelos SQLAlchemy	✅
-tracking/email_service.py	Servicio de emails	✅
-tracking/security.py	Seguridad, 2FA, tokens	✅
-tracking/telegram_service.py	Bot de Telegram	✅
-tracking/ai_service.py	Servicio principal IA	✅
-tracking/ai_constructor.py	Constructor IA con 8 fases	✅
-tracking/ai_core_engine.py	Motor central de decisiones IA	✅
-tracking/ai_flow_logger.py	Logger de flujos IA	✅
-tracking/ai_project_context.py	Contexto de proyecto IA	✅
-tracking/ai_toolkit.py	Herramientas IA (archivos/shell)	✅
-tracking/__init__.py	Init del módulo tracking	✅
-init_db.py	Inicialización de BD	✅
-seed_data.py	Datos de prueba	✅
-requirements.txt	Dependencias Python	✅
+Archivo Función Exclusivo
+app.py  Endpoints API y rutas Flask     ✅
+tracking/database.py    Operaciones de base de datos    ✅
+tracking/models.py      Modelos SQLAlchemy      ✅
+tracking/email_service.py       Servicio de emails      ✅
+tracking/security.py    Seguridad, 2FA, tokens  ✅
+tracking/telegram_service.py    Bot de Telegram ✅
+tracking/ai_service.py  Servicio principal IA   ✅
+tracking/ai_constructor.py      Constructor IA con 8 fases      ✅
+tracking/ai_core_engine.py      Motor central de decisiones IA  ✅
+tracking/ai_flow_logger.py      Logger de flujos IA     ✅
+tracking/ai_project_context.py  Contexto de proyecto IA ✅
+tracking/ai_toolkit.py  Herramientas IA (archivos/shell)        ✅
+tracking/__init__.py    Init del módulo tracking        ✅
+init_db.py      Inicialización de BD    ✅
+seed_data.py    Datos de prueba ✅
+requirements.txt        Dependencias Python     ✅
 Total: 16 archivos
 
 🔴 AGENTE 4: BLOCKCHAIN & SERVICIOS EXTERNOS
 Rama Git: feature/blockchain-services Comando para activar: 6 o BLOCKCHAIN Responsabilidad: Blockchain TON, wallets, pagos y servicios externos
 
-Archivo	Función	Exclusivo
-tracking/b3c_service.py	Token B3C en blockchain TON	✅
-tracking/wallet_pool_service.py	Pool de wallets TON	✅
-tracking/deposit_scheduler.py	Detección automática de depósitos	✅
-tracking/smspool_service.py	API de números virtuales SMS	✅
-tracking/cloudinary_service.py	Servicio de subida media	✅
-tracking/encryption.py	Encriptación de contenido	✅
+Archivo Función Exclusivo
+tracking/b3c_service.py Token B3C en blockchain TON     ✅
+tracking/wallet_pool_service.py Pool de wallets TON     ✅
+tracking/deposit_scheduler.py   Detección automática de depósitos       ✅
+tracking/smspool_service.py     API de números virtuales SMS    ✅
+tracking/cloudinary_service.py  Servicio de subida media        ✅
+tracking/encryption.py  Encriptación de contenido       ✅
 Total: 6 archivos
 
 ⚠️ ARCHIVOS COMPARTIDOS (SOLO LECTURA para todos)
-Archivo	Puede leer	Puede editar
-run.py	✅ Todos	❌ Ninguno (archivo de arranque)
-replit.md	✅ Todos	✅ Solo al completar tarea
-PROMPT_PENDIENTES_BUNK3R.md	✅ Todos	✅ Solo al completar tarea
-docs/*	✅ Todos	✅ Solo al completar tarea
-logs/*	✅ Todos	❌ Ninguno (generados automáticamente)
+Archivo Puede leer      Puede editar
+run.py  ✅ Todos ❌ Ninguno (archivo de arranque)
+replit.md       ✅ Todos ✅ Solo al completar tarea
+PROMPT_PENDIENTES_BUNK3R.md     ✅ Todos ✅ Solo al completar tarea
+docs/*  ✅ Todos ✅ Solo al completar tarea
+logs/*  ✅ Todos ❌ Ninguno (generados automáticamente)
 📊 RESUMEN DE DISTRIBUCIÓN
-Agente	Archivos	Área Principal
-🔵 FRONTEND	15	UI usuario + Workspace IA
-🟢 ADMIN	3	Panel administración
-🟡 BACKEND	16	API + Motor IA
-🔴 BLOCKCHAIN	6	TON + Servicios externos
-TOTAL	40	100% del proyecto
+Agente  Archivos        Área Principal
+🔵 FRONTEND      15      UI usuario + Workspace IA
+🟢 ADMIN 3       Panel administración
+🟡 BACKEND       16      API + Motor IA
+🔴 BLOCKCHAIN    6       TON + Servicios externos
+TOTAL   40      100% del proyecto
 🚫 REGLA CRÍTICA: PROHIBIDO TOCAR ARCHIVOS DE OTROS
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║           ⛔ ABSOLUTAMENTE PROHIBIDO MODIFICAR ARCHIVOS DE OTRO AGENTE ⛔      ║
@@ -270,11 +270,11 @@ Flujo de Trabajo por Sesión
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 Comandos Git por Agente
-Agente	Antes de Trabajar	Después de Trabajar
-🔵 FRONTEND	git checkout feature/frontend-user	git push origin feature/frontend-user
-🟢 ADMIN	git checkout feature/frontend-admin	git push origin feature/frontend-admin
-🟡 BACKEND	git checkout feature/backend-api	git push origin feature/backend-api
-🔴 BLOCKCHAIN	git checkout feature/blockchain-services	git push origin feature/blockchain-services
+Agente  Antes de Trabajar       Después de Trabajar
+🔵 FRONTEND      git checkout feature/frontend-user      git push origin feature/frontend-user
+🟢 ADMIN git checkout feature/frontend-admin     git push origin feature/frontend-admin
+🟡 BACKEND       git checkout feature/backend-api        git push origin feature/backend-api
+🔴 BLOCKCHAIN    git checkout feature/blockchain-services        git push origin feature/blockchain-services
 Cómo Unir Todo (Merge a Main)
 Cuando los agentes terminen su trabajo, desde GitHub o terminal:
 
@@ -303,11 +303,11 @@ Guarda, haz git add . y git commit
 SISTEMA DE PRIORIDADES
 Las tareas se trabajan por PRIORIDAD, no por orden numérico:
 
-Prioridad	Símbolo	Significado	Acción
-CRÍTICA	🔴	Bloquea otras tareas o afecta producción	Trabajar PRIMERO
-ALTA	🟡	Importante pero no urgente	Trabajar después de críticas
-MEDIA	🟢	Mejoras y optimizaciones	Cuando no hay críticas/altas
-BAJA	⚪	Nice to have	Solo si hay tiempo
+Prioridad       Símbolo Significado     Acción
+CRÍTICA 🔴       Bloquea otras tareas o afecta producción        Trabajar PRIMERO
+ALTA    🟡       Importante pero no urgente      Trabajar después de críticas
+MEDIA   🟢       Mejoras y optimizaciones        Cuando no hay críticas/altas
+BAJA    ⚪       Nice to have    Solo si hay tiempo
 FORMATO DE COMMITS
 Cada commit DEBE seguir este formato:
 
@@ -332,15 +332,15 @@ Ejemplos:
 ╚═══════════════════════════════════════════════════════════════════╝
 
 📍 CUÁNDO GUARDAR (OBLIGATORIO)
-Momento	Acción de Guardado
-Al COMPLETAR cualquier tarea	Actualizar ⏳ → ✅ inmediatamente
-Al COMPLETAR un checkbox	Cambiar [ ] → [x] inmediatamente
-Al EMPEZAR una sección	Marcar como 🔄 En progreso
-Al DETECTAR un error	Documentarlo en la sección de errores
-Al MODIFICAR un archivo	Agregarlo al historial de cambios
-Al AGREGAR dependencia	Documentar en requirements/package
-Al 90% del contexto	PARAR y guardar TODO
-ANTES de terminar sesión	Actualizar punto de guardado
+Momento Acción de Guardado
+Al COMPLETAR cualquier tarea    Actualizar ⏳ → ✅ inmediatamente
+Al COMPLETAR un checkbox        Cambiar [ ] → [x] inmediatamente
+Al EMPEZAR una sección  Marcar como 🔄 En progreso
+Al DETECTAR un error    Documentarlo en la sección de errores
+Al MODIFICAR un archivo Agregarlo al historial de cambios
+Al AGREGAR dependencia  Documentar en requirements/package
+Al 90% del contexto     PARAR y guardar TODO
+ANTES de terminar sesión        Actualizar punto de guardado
 📝 ACTUALIZACIÓN INMEDIATA DESPUÉS DE CADA TAREA
 El agente DEBE ejecutar estos pasos inmediatamente después de completar cualquier tarea:
 
@@ -502,11 +502,11 @@ Tablas con datos falsos/hardcodeados
 Acciones que solo muestran toast pero no ejecutan nada
 Gráficos con datos inventados
 LEYENDA DE ESTADOS
-Símbolo	Significado
-✅	Completado
-🔄	En progreso
-⏳	Pendiente
-❌	Bloqueado/Error
+Símbolo Significado
+✅       Completado
+🔄       En progreso
+⏳       Pendiente
+❌       Bloqueado/Error
 ════════════════════════════════════════════════════════════════
 SECCIONES DE TRABAJO
 ════════════════════════════════════════════════════════════════
@@ -1082,18 +1082,18 @@ Prioridad: 🟡 ALTA Tiempo: 6 horas Agente: 🟡 BACKEND API + 🟢 FRONTEND AD
  Bloqueo temporal preventivo
  Notificación al admin
 RESUMEN FASES 27.16 - 27.25
-Fase	Descripción	Prioridad	Tiempo	Estado
-27.16	Centro de Vigilancia en Tiempo Real	🟢 MEDIA	6h	⏳
-27.17	Perfil Completo del Usuario (Vista 360°)	🟠 MEDIA	4h	⏳
-27.18	Sistema de Puntuación de Riesgo	🟡 ALTA	5h	⏳
-27.19	Modo Shadow (Impersonación)	🟠 MEDIA	4h	⏳
-27.20	Sistema de Etiquetas y Clasificación	🟢 BAJA	3h	⏳
-27.21	Comunicación Directa con Usuarios	🟠 MEDIA	4h	⏳
-27.22	Detector de Cuentas Relacionadas	🟡 ALTA	5h	⏳
-27.23	Gestión de Verificaciones	🟠 MEDIA	3h	⏳
-27.24	Reportes y Exportaciones Avanzadas	🟢 BAJA	4h	⏳
-27.25	Monitoreo de Patrones y Anomalías	🟡 ALTA	6h	⏳
-TOTAL	10 fases avanzadas		44h	
+Fase    Descripción     Prioridad       Tiempo  Estado
+27.16   Centro de Vigilancia en Tiempo Real     🟢 MEDIA 6h      ⏳
+27.17   Perfil Completo del Usuario (Vista 360°)        🟠 MEDIA 4h      ⏳
+27.18   Sistema de Puntuación de Riesgo 🟡 ALTA  5h      ⏳
+27.19   Modo Shadow (Impersonación)     🟠 MEDIA 4h      ⏳
+27.20   Sistema de Etiquetas y Clasificación    🟢 BAJA  3h      ⏳
+27.21   Comunicación Directa con Usuarios       🟠 MEDIA 4h      ⏳
+27.22   Detector de Cuentas Relacionadas        🟡 ALTA  5h      ⏳
+27.23   Gestión de Verificaciones       🟠 MEDIA 3h      ⏳
+27.24   Reportes y Exportaciones Avanzadas      🟢 BAJA  4h      ⏳
+27.25   Monitoreo de Patrones y Anomalías       🟡 ALTA  6h      ⏳
+TOTAL   10 fases avanzadas              44h     
 ORDEN RECOMENDADO: 27.18 → 27.22 → 27.25 → 27.16 → 27.17 → 27.21 → 27.19 → 27.23 → 27.20 → 27.24
 
 ════════════════════════════════════════════════════════════════
@@ -1338,18 +1338,18 @@ Prioridad: 🟡 ALTA Tiempo: 1 hora Agente: 🔵 FRONTEND + 🟡 BACKEND
  POST /api/user/delete-account - Solicitar eliminación
  POST /api/user/cancel-deletion - Cancelar eliminación
 RESUMEN SECCIÓN 29
-Fase	Descripción	Prioridad	Tiempo	Estado
-29.1	Estructura Principal	🔴 CRÍTICA	2h	⏳
-29.2	Sección Cuenta	🟡 ALTA	2h	⏳
-29.3	Sección Seguridad	🔴 CRÍTICA	3h	⏳
-29.4	Sección Privacidad	🟡 ALTA	2h	⏳
-29.5	Sección Notificaciones	🟠 MEDIA	2h	⏳
-29.6	Sección Apariencia	🟠 MEDIA	1.5h	⏳
-29.7	Sección Wallet	🔴 CRÍTICA	2h	⏳
-29.8	Sección Datos y Almacenamiento	🟢 BAJA	1.5h	⏳
-29.9	Sección Ayuda	🟢 BAJA	1h	⏳
-29.10	Cerrar Sesión y Eliminar	🟡 ALTA	1h	⏳
-TOTAL	10 fases		18h	
+Fase    Descripción     Prioridad       Tiempo  Estado
+29.1    Estructura Principal    🔴 CRÍTICA       2h      ⏳
+29.2    Sección Cuenta  🟡 ALTA  2h      ⏳
+29.3    Sección Seguridad       🔴 CRÍTICA       3h      ⏳
+29.4    Sección Privacidad      🟡 ALTA  2h      ⏳
+29.5    Sección Notificaciones  🟠 MEDIA 2h      ⏳
+29.6    Sección Apariencia      🟠 MEDIA 1.5h    ⏳
+29.7    Sección Wallet  🔴 CRÍTICA       2h      ⏳
+29.8    Sección Datos y Almacenamiento  🟢 BAJA  1.5h    ⏳
+29.9    Sección Ayuda   🟢 BAJA  1h      ⏳
+29.10   Cerrar Sesión y Eliminar        🟡 ALTA  1h      ⏳
+TOTAL   10 fases                18h     
 ORDEN RECOMENDADO: 29.1 → 29.3 → 29.7 → 29.2 → 29.4 → 29.10 → 29.5 → 29.6 → 29.8 → 29.9
 
 ════════════════════════════════════════════════════════════════
@@ -1676,17 +1676,17 @@ app.logger.setLevel(logging.INFO)
 ---
 
 RESUMEN SECCIÓN 30
-Fase	Descripción	Prioridad	Tiempo	Estado
-30.1	Corregir except: vacíos	🔴 ALTA	1h	✅
-30.2	Implementar DOMPurify	🔴 CRÍTICA	4h	✅
-30.3	Headers CSP	🟠 MEDIA	1h	✅
-30.4	Limpiar imports	🟠 MEDIA	1h	✅
-30.5	Sesiones persistentes	🟡 MEDIA-BAJA	2h	✅
-30.6	Documentar APIs	🟢 BAJA	3h	⏳
-30.7	Tests automatizados	🟢 BAJA	8h	⏳
-30.8	Optimizaciones BD	🟢 OPCIONAL	2-4h	⏳
-30.9	Logout demo 2FA	🟢 BAJA	30min	✅
-30.10	Mejorar logs	🟢 BAJA	1h	✅
+Fase    Descripción     Prioridad       Tiempo  Estado
+30.1    Corregir except: vacíos 🔴 ALTA  1h      ✅
+30.2    Implementar DOMPurify   🔴 CRÍTICA       4h      ✅
+30.3    Headers CSP     🟠 MEDIA 1h      ✅
+30.4    Limpiar imports 🟠 MEDIA 1h      ✅
+30.5    Sesiones persistentes   🟡 MEDIA-BAJA    2h      ✅
+30.6    Documentar APIs 🟢 BAJA  3h      ⏳
+30.7    Tests automatizados     🟢 BAJA  8h      ⏳
+30.8    Optimizaciones BD       🟢 OPCIONAL      2-4h    ⏳
+30.9    Logout demo 2FA 🟢 BAJA  30min   ✅
+30.10   Mejorar logs    🟢 BAJA  1h      ✅
 TOTAL TIEMPO ESTIMADO: ~22 horas
 
 ORDEN RECOMENDADO: 30.1 → 30.2 → 30.3 → 30.4 → 30.5 → 30.9 → 30.10 → 30.6 → 30.7 → 30.8
@@ -2075,6 +2075,54 @@ Verificar y completar funcionalidad del AI Constructor.
 
 ---
 
+## 🚨 REGLA OBLIGATORIA: VISIBILIDAD DE CREACIONES DE IA 🚨
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║       TODO LO QUE CREE LA IA DEBE SER VISIBLE EN EL AI CONSTRUCTOR            ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  UBICACIÓN DEL AI CONSTRUCTOR:                                                ║
+║  - Pantalla: #ai-chat-screen en templates/index.html                          ║
+║  - Estructura de 3 paneles:                                                   ║
+║    • IZQUIERDA: Panel de chat (ai-panel-chat)                                 ║
+║    • CENTRO: Preview + Editor con pestañas (ai-panel-preview)                 ║
+║      - Pestañas: Preview, HTML, CSS, JS, Consola                              ║
+║    • DERECHA: Panel de archivos (ai-panel-files)                              ║
+║      - Muestra: index.html, styles.css, script.js                             ║
+║                                                                               ║
+║  REGLAS DE VISUALIZACIÓN:                                                     ║
+║  ─────────────────────────────────────────                                    ║
+║  1. Todo código HTML generado → visible en pestaña HTML y Preview             ║
+║  2. Todo código CSS generado → visible en pestaña CSS y aplicado al Preview   ║
+║  3. Todo código JS generado → visible en pestaña JS y ejecutado en Preview    ║
+║  4. El iframe de Preview (#ai-preview-iframe) muestra el resultado en vivo    ║
+║  5. Los archivos creados aparecen en el panel de archivos (derecha)           ║
+║  6. La consola muestra logs y errores del código generado                     ║
+║                                                                               ║
+║  ARCHIVOS RELACIONADOS:                                                       ║
+║  ─────────────────────────────────────────                                    ║
+║  - templates/index.html → Estructura HTML del AI Constructor                  ║
+║  - static/css/ai-chat.css → Estilos del AI Constructor                        ║
+║  - static/js/ai-chat.js → Lógica de chat y generación de código               ║
+║  - tracking/ai_service.py → Backend de procesamiento IA                       ║
+║  - tracking/ai_constructor.py → Constructor con 8 fases                       ║
+║                                                                               ║
+║  FLUJO DE VISUALIZACIÓN:                                                      ║
+║  ─────────────────────────────────────────                                    ║
+║  1. Usuario envía prompt en el chat                                           ║
+║  2. IA procesa y genera código (HTML/CSS/JS)                                  ║
+║  3. Código se muestra en las pestañas correspondientes                        ║
+║  4. Preview se actualiza automáticamente con el resultado                     ║
+║  5. Archivos aparecen en el panel derecho                                     ║
+║  6. Consola muestra cualquier log o error                                     ║
+║                                                                               ║
+║  ⚠️ NUNCA generar código que no sea visible en el AI Constructor             ║
+║  ⚠️ SIEMPRE actualizar el preview después de cada generación                 ║
+║  ⚠️ SIEMPRE mostrar el código en las pestañas correspondientes               ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+---
+
 ## RESUMEN SECCIÓN 31
 
 | Fase | Descripción | Prioridad | Tiempo | Agente | Estado |
@@ -2282,14 +2330,14 @@ Criterios de éxito:
  Lighthouse Performance score > 80
  First Contentful Paint < 2 segundos
 RESUMEN SECCIÓN 32
-Fase	Descripción	Prioridad	Tiempo	Agente	Estado
-32.1	Eliminar console.log	🟡 ALTA	2h	FRONTEND	✅ COMPLETADO (devLog condicional)
-32.2	Implementar Legit SMS	🟡 ALTA	4h	BLOCKCHAIN	⏳
-32.3	Limpiar datos demo	🟠 MEDIA	2h	FRONTEND/BACKEND	⏳
-32.4	Funciones "en desarrollo"	🟠 MEDIA	3h	FRONTEND	✅ (verificado)
-32.5	Auditar secretos	🔴 CRÍTICA	2h	BACKEND/BLOCKCHAIN	✅ (verificado)
-32.6	Validación inputs	🟠 MEDIA	3h	FRONTEND	⏳
-32.7	Optimización carga	🟢 BAJA	2h	FRONTEND	⏳
+Fase    Descripción     Prioridad       Tiempo  Agente  Estado
+32.1    Eliminar console.log    🟡 ALTA  2h      FRONTEND        ✅ COMPLETADO (devLog condicional)
+32.2    Implementar Legit SMS   🟡 ALTA  4h      BLOCKCHAIN      ⏳
+32.3    Limpiar datos demo      🟠 MEDIA 2h      FRONTEND/BACKEND        ⏳
+32.4    Funciones "en desarrollo"       🟠 MEDIA 3h      FRONTEND        ✅ (verificado)
+32.5    Auditar secretos        🔴 CRÍTICA       2h      BACKEND/BLOCKCHAIN      ✅ (verificado)
+32.6    Validación inputs       🟠 MEDIA 3h      FRONTEND        ⏳
+32.7    Optimización carga      🟢 BAJA  2h      FRONTEND        ⏳
 TOTAL TIEMPO ESTIMADO: ~18 horas (ahora ~11h restantes)
 
 ORDEN RECOMENDADO: 32.5 ✅ → 32.1 (parcial) → 32.2 → 32.3 → 32.4 ✅ → 32.6 → 32.7
@@ -2316,8 +2364,8 @@ Tareas:
  Agregar notificaciones de nuevos mensajes
  Encriptar mensajes end-to-end (opcional)
 RESUMEN SECCIÓN 33
-Fase	Descripción	Prioridad	Tiempo	Estado
-33.1	Chat privado	🟠 MEDIA	6h	⏳
+Fase    Descripción     Prioridad       Tiempo  Estado
+33.1    Chat privado    🟠 MEDIA 6h      ⏳
 TOTAL TIEMPO ESTIMADO: ~6 horas
 
 ════════════════════════════════════════════════════════════════
@@ -2388,23 +2436,23 @@ ARQUITECTURA DESEADA (Layout 3 columnas)
 └─────────────────────────────────────────────────────────────────┘
 
 ARCHIVOS INVOLUCRADOS
-Archivo	Función	Estado
-tracking/ai_constructor.py	Constructor 8 fases	✅ Existe, no se usa
-tracking/ai_service.py	Multi-proveedor IA	✅ Funciona
-tracking/ai_flow_logger.py	Logger de flujo	✅ Existe
-static/js/ai-chat.js	Frontend IA Builder	⚠️ Usa endpoint incorrecto
-static/js/workspace.js	Workspace IDE	⚠️ Solo chat, no genera
-static/css/ai-chat.css	Estilos IA	✅ Existe
-templates/workspace.html	Layout IDE	✅ Tiene 3 columnas
-app.py	Endpoints API	⚠️ Falta conectar
+Archivo Función Estado
+tracking/ai_constructor.py      Constructor 8 fases     ✅ Existe, no se usa
+tracking/ai_service.py  Multi-proveedor IA      ✅ Funciona
+tracking/ai_flow_logger.py      Logger de flujo ✅ Existe
+static/js/ai-chat.js    Frontend IA Builder     ⚠️ Usa endpoint incorrecto
+static/js/workspace.js  Workspace IDE   ⚠️ Solo chat, no genera
+static/css/ai-chat.css  Estilos IA      ✅ Existe
+templates/workspace.html        Layout IDE      ✅ Tiene 3 columnas
+app.py  Endpoints API   ⚠️ Falta conectar
 PROVEEDORES IA CONFIGURADOS
-Prioridad	Proveedor	Modelo	Estado
-1	Groq	llama-3.3-70b-versatile	✅ Configurado
-2	Cerebras	llama-3.3-70b	✅ Configurado
-3	Gemini	gemini-2.0-flash	✅ Configurado
-4	DeepSeek	deepseek-chat	✅ Configurado
-5	HuggingFace	Meta-Llama-3-8B	✅ Configurado
-Local	DeepSeek V3.2	via HuggingFace	⏳ Pendiente como cerebro principal
+Prioridad       Proveedor       Modelo  Estado
+1       Groq    llama-3.3-70b-versatile ✅ Configurado
+2       Cerebras        llama-3.3-70b   ✅ Configurado
+3       Gemini  gemini-2.0-flash        ✅ Configurado
+4       DeepSeek        deepseek-chat   ✅ Configurado
+5       HuggingFace     Meta-Llama-3-8B ✅ Configurado
+Local   DeepSeek V3.2   via HuggingFace ⏳ Pendiente como cerebro principal
 ═══════════════════════════════════════
 ANÁLISIS COMPLETO: REPLIT AGENT vs BUNK3R IA
 ═══════════════════════════════════════
@@ -2464,55 +2512,55 @@ CÓMO TRABAJA TU IA (BUNK3R) ACTUALMENTE
 └─────────────────────────────────────────────────────────────────┘
 
 COMPARACIÓN DE HERRAMIENTAS
-Herramienta	Replit Agent	BUNK3R IA	Prioridad
-Leer archivos del proyecto	✅	❌	🔴 CRÍTICA
-Editar archivos existentes	✅	❌	🔴 CRÍTICA
-Crear archivos nuevos	✅	⚠️ Solo HTML/CSS/JS	🔴 CRÍTICA
-Eliminar archivos	✅	❌	🟡 ALTA
-Ejecutar comandos (npm, pip)	✅	❌	🔴 CRÍTICA
-Ver logs del servidor	✅	❌	🔴 CRÍTICA
-Buscar en código (grep)	✅	❌	🟡 ALTA
-Instalar dependencias	✅	❌	🔴 CRÍTICA
-Ejecutar SQL	✅	❌	🟠 MEDIA
-Tomar screenshots	✅	❌	🟠 MEDIA
-Buscar en internet	✅	❌	🟠 MEDIA
-Corregir errores automático	✅	❌	🔴 CRÍTICA
-Entender múltiples lenguajes	✅	❌ Solo HTML/CSS/JS	🔴 CRÍTICA
-Crear subdirectorios	✅	❌	🟡 ALTA
-Listar estructura proyecto	✅	❌	🟡 ALTA
+Herramienta     Replit Agent    BUNK3R IA       Prioridad
+Leer archivos del proyecto      ✅       ❌       🔴 CRÍTICA
+Editar archivos existentes      ✅       ❌       🔴 CRÍTICA
+Crear archivos nuevos   ✅       ⚠️ Solo HTML/CSS/JS     🔴 CRÍTICA
+Eliminar archivos       ✅       ❌       🟡 ALTA
+Ejecutar comandos (npm, pip)    ✅       ❌       🔴 CRÍTICA
+Ver logs del servidor   ✅       ❌       🔴 CRÍTICA
+Buscar en código (grep) ✅       ❌       🟡 ALTA
+Instalar dependencias   ✅       ❌       🔴 CRÍTICA
+Ejecutar SQL    ✅       ❌       🟠 MEDIA
+Tomar screenshots       ✅       ❌       🟠 MEDIA
+Buscar en internet      ✅       ❌       🟠 MEDIA
+Corregir errores automático     ✅       ❌       🔴 CRÍTICA
+Entender múltiples lenguajes    ✅       ❌ Solo HTML/CSS/JS      🔴 CRÍTICA
+Crear subdirectorios    ✅       ❌       🟡 ALTA
+Listar estructura proyecto      ✅       ❌       🟡 ALTA
 TIPOS DE INTENCIONES
-Intención	Replit Agent	BUNK3R IA	Estado
-"Crea una página/landing"	✅	✅	Funciona
-"Crea un dashboard"	✅	✅	Funciona
-"Crea un formulario"	✅	✅	Funciona
-"Crea una API"	✅	⚠️ Genera HTML	FALTA
-"Modifica este archivo"	✅	❌	FALTA
-"Arregla este error"	✅	❌	FALTA
-"Explica este código"	✅	⚠️ Responde texto	Parcial
-"Optimiza esto"	✅	❌	FALTA
-"Ejecuta npm install"	✅	❌	FALTA
-"Instala Flask"	✅	❌	FALTA
-"Elimina este archivo"	✅	❌	FALTA
-"Muéstrame app.py"	✅	❌	FALTA
-"¿Por qué falla esto?"	✅	❌	FALTA
-"Refactoriza este código"	✅	❌	FALTA
-"Testea esta función"	✅	❌	FALTA
-"Documenta esto"	✅	❌	FALTA
-"Despliega el proyecto"	✅	❌	FALTA
-"Crea base de datos"	✅	❌	FALTA
-"Agrega esta tabla SQL"	✅	❌	FALTA
+Intención       Replit Agent    BUNK3R IA       Estado
+"Crea una página/landing"       ✅       ✅       Funciona
+"Crea un dashboard"     ✅       ✅       Funciona
+"Crea un formulario"    ✅       ✅       Funciona
+"Crea una API"  ✅       ⚠️ Genera HTML  FALTA
+"Modifica este archivo" ✅       ❌       FALTA
+"Arregla este error"    ✅       ❌       FALTA
+"Explica este código"   ✅       ⚠️ Responde texto       Parcial
+"Optimiza esto" ✅       ❌       FALTA
+"Ejecuta npm install"   ✅       ❌       FALTA
+"Instala Flask" ✅       ❌       FALTA
+"Elimina este archivo"  ✅       ❌       FALTA
+"Muéstrame app.py"      ✅       ❌       FALTA
+"¿Por qué falla esto?"  ✅       ❌       FALTA
+"Refactoriza este código"       ✅       ❌       FALTA
+"Testea esta función"   ✅       ❌       FALTA
+"Documenta esto"        ✅       ❌       FALTA
+"Despliega el proyecto" ✅       ❌       FALTA
+"Crea base de datos"    ✅       ❌       FALTA
+"Agrega esta tabla SQL" ✅       ❌       FALTA
 LO QUE YA TIENE TU IA (BIEN PROGRAMADO)
-Componente	Archivo	Estado	Descripción
-IntentParser	ai_constructor.py	✅ Existe	Detecta tipo de tarea
-ResearchEngine	ai_constructor.py	✅ Existe	Investiga mejores prácticas
-ClarificationManager	ai_constructor.py	✅ Existe	Hace preguntas si falta info
-PromptBuilder	ai_constructor.py	✅ Existe	Construye prompt maestro
-TaskOrchestrator	ai_constructor.py	✅ Existe	Crea plan de tareas
-OutputVerifier	ai_constructor.py	✅ Existe	Verifica código generado
-ConstructorSession	ai_constructor.py	✅ Existe	Mantiene estado de sesión
-Multi-proveedor IA	ai_service.py	✅ Funciona	5+ proveedores con fallback
-Auto-rectificación	ai_service.py	✅ Funciona	Corrige respuestas malas
-Flow Logger	ai_flow_logger.py	✅ Existe	Debug del flujo
+Componente      Archivo Estado  Descripción
+IntentParser    ai_constructor.py       ✅ Existe        Detecta tipo de tarea
+ResearchEngine  ai_constructor.py       ✅ Existe        Investiga mejores prácticas
+ClarificationManager    ai_constructor.py       ✅ Existe        Hace preguntas si falta info
+PromptBuilder   ai_constructor.py       ✅ Existe        Construye prompt maestro
+TaskOrchestrator        ai_constructor.py       ✅ Existe        Crea plan de tareas
+OutputVerifier  ai_constructor.py       ✅ Existe        Verifica código generado
+ConstructorSession      ai_constructor.py       ✅ Existe        Mantiene estado de sesión
+Multi-proveedor IA      ai_service.py   ✅ Funciona      5+ proveedores con fallback
+Auto-rectificación      ai_service.py   ✅ Funciona      Corrige respuestas malas
+Flow Logger     ai_flow_logger.py       ✅ Existe        Debug del flujo
 LO QUE LE FALTA A TU IA (NUEVAS TAREAS)
 class BunkrAICapabilities:
     """Capacidades que DEBE tener BUNK3R IA"""
@@ -4482,38 +4530,38 @@ class AIVerificationSystem:
 LISTA DE PRIORIDADES DE IMPLEMENTACIÓN
 ════════════════════════════════════════════════════════════════
 PRIORIDAD CRÍTICA (Sin esto no funciona nada):
-#	Componente	Descripción	Archivo	Tiempo
-1	AIToolkit.read_file()	Leer cualquier archivo del proyecto	tracking/ai_toolkit.py	2h
-2	AIToolkit.edit_file()	Editar archivos existentes (no reemplazar)	tracking/ai_toolkit.py	3h
-3	AIToolkit.write_file()	Crear archivos (cualquier tipo, no solo HTML)	tracking/ai_toolkit.py	2h
-4	AIToolkit.run_command()	Ejecutar comandos (npm, pip, python)	tracking/ai_toolkit.py	3h
-5	AIToolkit.read_logs()	Leer logs del servidor	tracking/ai_toolkit.py	2h
-6	IntentParser expandido	Detectar 30+ tipos de peticiones	tracking/ai_constructor.py	4h
+#       Componente      Descripción     Archivo Tiempo
+1       AIToolkit.read_file()   Leer cualquier archivo del proyecto     tracking/ai_toolkit.py  2h
+2       AIToolkit.edit_file()   Editar archivos existentes (no reemplazar)      tracking/ai_toolkit.py  3h
+3       AIToolkit.write_file()  Crear archivos (cualquier tipo, no solo HTML)   tracking/ai_toolkit.py  2h
+4       AIToolkit.run_command() Ejecutar comandos (npm, pip, python)    tracking/ai_toolkit.py  3h
+5       AIToolkit.read_logs()   Leer logs del servidor  tracking/ai_toolkit.py  2h
+6       IntentParser expandido  Detectar 30+ tipos de peticiones        tracking/ai_constructor.py      4h
 Subtotal: 16 horas
 
 PRIORIDAD ALTA (Para ser realmente útil):
-#	Componente	Descripción	Archivo	Tiempo
-7	AIToolkit.search_code()	Buscar texto en código (grep)	tracking/ai_toolkit.py	2h
-8	AIToolkit.list_directory()	Ver estructura de carpetas	tracking/ai_toolkit.py	1h
-9	AIToolkit.analyze_project()	Entender el proyecto completo	tracking/ai_toolkit.py	3h
-10	AIVerificationSystem	Verificar que todo funciona	tracking/ai_verification.py	3h
-11	AIProjectContext	Recordar lo que se hizo en la sesión	tracking/ai_project_context.py	4h
+#       Componente      Descripción     Archivo Tiempo
+7       AIToolkit.search_code() Buscar texto en código (grep)   tracking/ai_toolkit.py  2h
+8       AIToolkit.list_directory()      Ver estructura de carpetas      tracking/ai_toolkit.py  1h
+9       AIToolkit.analyze_project()     Entender el proyecto completo   tracking/ai_toolkit.py  3h
+10      AIVerificationSystem    Verificar que todo funciona     tracking/ai_verification.py     3h
+11      AIProjectContext        Recordar lo que se hizo en la sesión    tracking/ai_project_context.py  4h
 Subtotal: 13 horas
 
 PRIORIDAD MEDIA (Para ser excelente):
-#	Componente	Descripción	Archivo	Tiempo
-12	Auto-corrección de errores	Detectar y corregir errores automáticamente	tracking/ai_toolkit.py	4h
-13	Multi-lenguaje	Generar Python, Node, SQL (no solo HTML)	tracking/ai_constructor.py	5h
-14	Sistema de diff visual	Mostrar cambios antes de aplicar	Frontend + Backend	3h
-15	Memoria persistente	Recordar entre sesiones	Base de datos	4h
+#       Componente      Descripción     Archivo Tiempo
+12      Auto-corrección de errores      Detectar y corregir errores automáticamente     tracking/ai_toolkit.py  4h
+13      Multi-lenguaje  Generar Python, Node, SQL (no solo HTML)        tracking/ai_constructor.py      5h
+14      Sistema de diff visual  Mostrar cambios antes de aplicar        Frontend + Backend      3h
+15      Memoria persistente     Recordar entre sesiones Base de datos   4h
 Subtotal: 16 horas
 
 RESUMEN TOTAL
-Prioridad	Tareas	Tiempo
-🔴 CRÍTICA	6 componentes	16 horas
-🟡 ALTA	5 componentes	13 horas
-🟠 MEDIA	4 componentes	16 horas
-TOTAL	15 componentes	45 horas
+Prioridad       Tareas  Tiempo
+🔴 CRÍTICA       6 componentes   16 horas
+🟡 ALTA  5 componentes   13 horas
+🟠 MEDIA 4 componentes   16 horas
+TOTAL   15 componentes  45 horas
 ORDEN DE IMPLEMENTACIÓN
 SEMANA 1 (CRÍTICO):
 ├── Día 1-2: AIToolkit básico (read_file, write_file, list_directory)
@@ -5373,16 +5421,16 @@ class TaskManager:
 ═══════════════════════════════════════
 RESUMEN FASES 34.16 - 34.23
 ═══════════════════════════════════════
-Fase	Nombre	Prioridad	Tiempo Est.
-34.16	Motor de Decisiones Automático	🔴 CRÍTICA	4h
-34.17	Sistema de Reintentos Inteligente	🔴 CRÍTICA	3h
-34.18	Contexto de Proyecto Persistente	🔴 CRÍTICA	4h
-34.19	Validador Pre-Ejecución	🟡 ALTA	3h
-34.20	Sistema de Rollback Automático	🟡 ALTA	4h
-34.21	Analizador de Impacto de Cambios	🟡 ALTA	4h
-34.22	Gestor de Workflows	🔴 CRÍTICA	3h
-34.23	Gestor de Tareas con Tracking	🟠 MEDIA	2h
-TOTAL	8 fases nuevas		27h
+Fase    Nombre  Prioridad       Tiempo Est.
+34.16   Motor de Decisiones Automático  🔴 CRÍTICA       4h
+34.17   Sistema de Reintentos Inteligente       🔴 CRÍTICA       3h
+34.18   Contexto de Proyecto Persistente        🔴 CRÍTICA       4h
+34.19   Validador Pre-Ejecución 🟡 ALTA  3h
+34.20   Sistema de Rollback Automático  🟡 ALTA  4h
+34.21   Analizador de Impacto de Cambios        🟡 ALTA  4h
+34.22   Gestor de Workflows     🔴 CRÍTICA       3h
+34.23   Gestor de Tareas con Tracking   🟠 MEDIA 2h
+TOTAL   8 fases nuevas          27h
 ═══════════════════════════════════════
 SECCIÓN 34: IA BUNK3R CONSTRUCTOR - COMPONENTES AVANZADOS
 ═══════════════════════════════════════
@@ -5609,61 +5657,61 @@ FASE 34.H: INTEGRACIONES EXTERNAS
  Actualización de templates
  Templates custom del usuario
 RESUMEN COMPONENTES AVANZADOS (34.A - 34.H)
-Prioridad	Items	Horas
-🔴 CRÍTICA	12	~54h
-🟡 ALTA	17	~72h
-🟠 MEDIA	10	~43h
-TOTAL	39	~169h
+Prioridad       Items   Horas
+🔴 CRÍTICA       12      ~54h
+🟡 ALTA  17      ~72h
+🟠 MEDIA 10      ~43h
+TOTAL   39      ~169h
 RESUMEN SECCIÓN 34 (ACTUALIZADO 7 Dic 2025)
 Fases Core (34.1 - 34.15)
-Fase	Descripción	Prioridad	Tiempo	Estado
-34.1	Conectar frontend con 8 fases	🔴 CRÍTICA	4h	✅
-34.2	Expandir capacidades IA	🔴 CRÍTICA	6h	✅
-34.3	Sistema de archivos virtual	🟡 ALTA	4h	✅
-34.4	Preview tiempo real	🟡 ALTA	3h	✅
-34.5	Panel archivos dinámico	🟡 ALTA	3h	✅
-34.6	Entendimiento intenciones	🔴 CRÍTICA	5h	✅
-34.7	Consola de comandos	🟠 MEDIA	4h	⏳
-34.8	IA Local DeepSeek	🟠 MEDIA	4h	⏳
-34.9	Bloquear IA usuarios	🟡 ALTA	2h	✅
-34.10	Toolkit de archivos	🔴 CRÍTICA	6h	✅
-34.11	Ejecutor de comandos	🔴 CRÍTICA	4h	✅
-34.12	Detector de errores	🔴 CRÍTICA	4h	✅
-34.13	Entendedor de proyectos	🟡 ALTA	5h	✅
-34.14	Multi-lenguaje	🟡 ALTA	6h	✅
-34.15	Sistema de diff	🟠 MEDIA	3h	✅
+Fase    Descripción     Prioridad       Tiempo  Estado
+34.1    Conectar frontend con 8 fases   🔴 CRÍTICA       4h      ✅
+34.2    Expandir capacidades IA 🔴 CRÍTICA       6h      ✅
+34.3    Sistema de archivos virtual     🟡 ALTA  4h      ✅
+34.4    Preview tiempo real     🟡 ALTA  3h      ✅
+34.5    Panel archivos dinámico 🟡 ALTA  3h      ✅
+34.6    Entendimiento intenciones       🔴 CRÍTICA       5h      ✅
+34.7    Consola de comandos     🟠 MEDIA 4h      ⏳
+34.8    IA Local DeepSeek       🟠 MEDIA 4h      ⏳
+34.9    Bloquear IA usuarios    🟡 ALTA  2h      ✅
+34.10   Toolkit de archivos     🔴 CRÍTICA       6h      ✅
+34.11   Ejecutor de comandos    🔴 CRÍTICA       4h      ✅
+34.12   Detector de errores     🔴 CRÍTICA       4h      ✅
+34.13   Entendedor de proyectos 🟡 ALTA  5h      ✅
+34.14   Multi-lenguaje  🟡 ALTA  6h      ✅
+34.15   Sistema de diff 🟠 MEDIA 3h      ✅
 Subtotal Core: ~63 horas
 
 Fases Núcleo IA (34.16 - 34.23) - NUEVO
-Fase	Descripción	Prioridad	Tiempo	Estado
-34.16	Motor de Decisiones Automático	🔴 CRÍTICA	4h	⏳
-34.17	Sistema de Reintentos Inteligente	🔴 CRÍTICA	3h	⏳
-34.18	Contexto de Proyecto Persistente	🔴 CRÍTICA	4h	⏳
-34.19	Validador Pre-Ejecución	🟡 ALTA	3h	⏳
-34.20	Sistema de Rollback Automático	🟡 ALTA	4h	⏳
-34.21	Analizador de Impacto de Cambios	🟡 ALTA	4h	⏳
-34.22	Gestor de Workflows	🔴 CRÍTICA	3h	⏳
-34.23	Gestor de Tareas con Tracking	🟠 MEDIA	2h	⏳
+Fase    Descripción     Prioridad       Tiempo  Estado
+34.16   Motor de Decisiones Automático  🔴 CRÍTICA       4h      ⏳
+34.17   Sistema de Reintentos Inteligente       🔴 CRÍTICA       3h      ⏳
+34.18   Contexto de Proyecto Persistente        🔴 CRÍTICA       4h      ⏳
+34.19   Validador Pre-Ejecución 🟡 ALTA  3h      ⏳
+34.20   Sistema de Rollback Automático  🟡 ALTA  4h      ⏳
+34.21   Analizador de Impacto de Cambios        🟡 ALTA  4h      ⏳
+34.22   Gestor de Workflows     🔴 CRÍTICA       3h      ⏳
+34.23   Gestor de Tareas con Tracking   🟠 MEDIA 2h      ⏳
 Subtotal Núcleo IA: ~27 horas
 
 Componentes Avanzados (34.A - 34.H)
-Fase	Descripción	Prioridad	Items	Tiempo
-34.A	Búsqueda e Información en Vivo	🔴 CRÍTICA	2	10h
-34.B	Memoria y Contexto	🔴/🟡/🟠	4	21h
-34.C	Análisis Profundo de Código	🔴/🟡	4	22h
-34.D	Validación y Testing	🔴/🟡/🟠	6	25h
-34.E	Ejecución Inteligente	🔴/🟡	5	17h
-34.F	Comunicación y UX	🔴/🟡/🟠	4	12h
-34.G	Inteligencia Avanzada	🟡/🟠	6	28h
-34.H	Integraciones Externas	🟡/🟠	5	20h
+Fase    Descripción     Prioridad       Items   Tiempo
+34.A    Búsqueda e Información en Vivo  🔴 CRÍTICA       2       10h
+34.B    Memoria y Contexto      🔴/🟡/🟠   4       21h
+34.C    Análisis Profundo de Código     🔴/🟡     4       22h
+34.D    Validación y Testing    🔴/🟡/🟠   6       25h
+34.E    Ejecución Inteligente   🔴/🟡     5       17h
+34.F    Comunicación y UX       🔴/🟡/🟠   4       12h
+34.G    Inteligencia Avanzada   🟡/🟠     6       28h
+34.H    Integraciones Externas  🟡/🟠     5       20h
 Subtotal Avanzados: ~169 horas
 
 TOTALES SECCIÓN 34
-Categoría	Horas
-Fases Core (34.1-34.15)	~63h
-Fases Núcleo IA (34.16-34.23)	~27h
-Componentes Avanzados (34.A-34.H)	~169h
-TOTAL SECCIÓN 34	~259h
+Categoría       Horas
+Fases Core (34.1-34.15) ~63h
+Fases Núcleo IA (34.16-34.23)   ~27h
+Componentes Avanzados (34.A-34.H)       ~169h
+TOTAL SECCIÓN 34        ~259h
 ORDEN RECOMENDADO:
 
 FASE 1 (Seguridad): 34.9 ✅
@@ -5688,487 +5736,487 @@ Total Componentes: 243+ Horas Estimadas: ~557h+
 ═══════════════════════════════════════
 FASE 35.1: EDICIÓN QUIRÚRGICA DE CÓDIGO 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-40	Multi-Cursor Edit Engine	Editar múltiples ocurrencias simultáneamente con contexto	Cambiar variable en 50 lugares sin romper nada
-41	Semantic Rename	Renombrar entendiendo el contexto (variable vs string vs comment)	Evitar cambiar "user" en un comentario cuando solo quieres la variable
-42	Import Organizer	Auto-ordenar, eliminar imports no usados, agregar faltantes	Código limpio automático
-43	Dead Code Eliminator	Detectar y eliminar código que nunca se ejecuta	Reducir tamaño y complejidad
-44	Code Formatter Bridge	Integrar con Prettier/Black/etc. automáticamente	Formato consistente siempre
-45	Inline Expansion/Collapse	Expandir funciones inline o extraer código a funciones	Refactoring inteligente
+#       Componente      Descripción     Por qué es crítico
+40      Multi-Cursor Edit Engine        Editar múltiples ocurrencias simultáneamente con contexto       Cambiar variable en 50 lugares sin romper nada
+41      Semantic Rename Renombrar entendiendo el contexto (variable vs string vs comment)       Evitar cambiar "user" en un comentario cuando solo quieres la variable
+42      Import Organizer        Auto-ordenar, eliminar imports no usados, agregar faltantes     Código limpio automático
+43      Dead Code Eliminator    Detectar y eliminar código que nunca se ejecuta Reducir tamaño y complejidad
+44      Code Formatter Bridge   Integrar con Prettier/Black/etc. automáticamente        Formato consistente siempre
+45      Inline Expansion/Collapse       Expandir funciones inline o extraer código a funciones  Refactoring inteligente
 ═══════════════════════════════════════
 FASE 35.2: ENTENDIMIENTO PROFUNDO DE ARCHIVOS 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-46	File Relationship Mapper	Mapa visual de qué archivo habla con cuál	Entender arquitectura compleja
-47	Config File Parser Universal	Entender JSON, YAML, TOML, ENV, INI automáticamente	Modificar configs sin errores
-48	Binary File Handler	Detectar y manejar archivos binarios (no intentar editarlos)	Evitar corrupción de imágenes/fonts
-49	Encoding Detector	Detectar UTF-8, Latin-1, etc. y manejar correctamente	Evitar caracteres rotos
-50	Line Ending Normalizer	Manejar CRLF vs LF automáticamente	Evitar diffs falsos
-51	File Size Analyzer	Alertar antes de leer archivos enormes (>1MB)	Evitar crashes de memoria
-52	Symlink Resolver	Seguir symlinks correctamente	Editar el archivo real, no el link
+#       Componente      Descripción     Por qué es crítico
+46      File Relationship Mapper        Mapa visual de qué archivo habla con cuál       Entender arquitectura compleja
+47      Config File Parser Universal    Entender JSON, YAML, TOML, ENV, INI automáticamente     Modificar configs sin errores
+48      Binary File Handler     Detectar y manejar archivos binarios (no intentar editarlos)    Evitar corrupción de imágenes/fonts
+49      Encoding Detector       Detectar UTF-8, Latin-1, etc. y manejar correctamente   Evitar caracteres rotos
+50      Line Ending Normalizer  Manejar CRLF vs LF automáticamente      Evitar diffs falsos
+51      File Size Analyzer      Alertar antes de leer archivos enormes (>1MB)   Evitar crashes de memoria
+52      Symlink Resolver        Seguir symlinks correctamente   Editar el archivo real, no el link
 ═══════════════════════════════════════
 FASE 35.3: DETECCIÓN DE ERRORES AVANZADA 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-53	Stack Trace Parser	Extraer archivo, línea, función de cualquier stack trace	Ir directo al error
-54	Error Pattern Database	Base de datos de errores comunes + soluciones	Resolver sin buscar en Google
-55	Runtime Error Predictor	Detectar errores que solo aparecen en runtime (null reference, etc.)	Prevenir antes de ejecutar
-56	Infinite Loop Detector	Detectar loops que nunca terminan	Evitar que el servidor se cuelgue
-57	Memory Leak Detector	Identificar variables que crecen sin límite	Evitar crashes por RAM
-58	Race Condition Detector	Detectar código async problemático	Evitar bugs intermitentes
-59	Exception Flow Analyzer	Mapear qué excepciones pueden ocurrir y si están manejadas	Evitar crashes inesperados
-60	Log Pattern Analyzer	Aprender qué logs indican problemas vs normales	Filtrar ruido de errores reales
+#       Componente      Descripción     Por qué es crítico
+53      Stack Trace Parser      Extraer archivo, línea, función de cualquier stack trace        Ir directo al error
+54      Error Pattern Database  Base de datos de errores comunes + soluciones   Resolver sin buscar en Google
+55      Runtime Error Predictor Detectar errores que solo aparecen en runtime (null reference, etc.)    Prevenir antes de ejecutar
+56      Infinite Loop Detector  Detectar loops que nunca terminan       Evitar que el servidor se cuelgue
+57      Memory Leak Detector    Identificar variables que crecen sin límite     Evitar crashes por RAM
+58      Race Condition Detector Detectar código async problemático      Evitar bugs intermitentes
+59      Exception Flow Analyzer Mapear qué excepciones pueden ocurrir y si están manejadas      Evitar crashes inesperados
+60      Log Pattern Analyzer    Aprender qué logs indican problemas vs normales Filtrar ruido de errores reales
 ═══════════════════════════════════════
 FASE 35.4: VULNERABILIDADES DE SEGURIDAD AVANZADAS 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-61	OWASP Top 10 Scanner	Detectar las 10 vulnerabilidades más comunes	Seguridad básica garantizada
-62	Regex DoS Detector (ReDoS)	Detectar regex que pueden causar denial of service	Evitar ataques por regex maliciosa
-63	Prototype Pollution Detector	Detectar vulnerabilidades específicas de JavaScript	Evitar hacking de objetos
-64	Path Traversal Detector	Detectar acceso inseguro a archivos (../../../etc/passwd)	Evitar lectura de archivos del sistema
-65	Command Injection Scanner	Detectar ejecución insegura de comandos shell	Evitar RCE (Remote Code Execution)
-66	SSRF Detector	Detectar Server-Side Request Forgery	Evitar acceso a red interna
-67	Hardcoded Credentials Finder	Buscar passwords, API keys, tokens en código	Evitar leaks de credenciales
-68	Insecure Deserialization Checker	Detectar pickle/eval/deserialize inseguros	Evitar ejecución de código arbitrario
-69	CORS Misconfiguration Detector	Detectar headers CORS inseguros	Evitar acceso cross-origin no deseado
-70	JWT Vulnerability Scanner	Detectar tokens sin verificación, algoritmos débiles	Evitar bypass de autenticación
-71	Dependency Vulnerability DB	Base de datos local de CVEs por paquete	Alertar de librerías vulnerables
+#       Componente      Descripción     Por qué es crítico
+61      OWASP Top 10 Scanner    Detectar las 10 vulnerabilidades más comunes    Seguridad básica garantizada
+62      Regex DoS Detector (ReDoS)      Detectar regex que pueden causar denial of service      Evitar ataques por regex maliciosa
+63      Prototype Pollution Detector    Detectar vulnerabilidades específicas de JavaScript     Evitar hacking de objetos
+64      Path Traversal Detector Detectar acceso inseguro a archivos (../../../etc/passwd)       Evitar lectura de archivos del sistema
+65      Command Injection Scanner       Detectar ejecución insegura de comandos shell   Evitar RCE (Remote Code Execution)
+66      SSRF Detector   Detectar Server-Side Request Forgery    Evitar acceso a red interna
+67      Hardcoded Credentials Finder    Buscar passwords, API keys, tokens en código    Evitar leaks de credenciales
+68      Insecure Deserialization Checker        Detectar pickle/eval/deserialize inseguros      Evitar ejecución de código arbitrario
+69      CORS Misconfiguration Detector  Detectar headers CORS inseguros Evitar acceso cross-origin no deseado
+70      JWT Vulnerability Scanner       Detectar tokens sin verificación, algoritmos débiles    Evitar bypass de autenticación
+71      Dependency Vulnerability DB     Base de datos local de CVEs por paquete Alertar de librerías vulnerables
 ═══════════════════════════════════════
 FASE 35.5: CONSTRUCCIÓN INTELIGENTE 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-72	Scaffold Generator	Generar estructura de proyecto completa por framework	Empezar proyectos en segundos
-73	Component Composer	Combinar componentes existentes para crear nuevos	Reutilización máxima
-74	Style Inheritance Analyzer	Entender cascada CSS y evitar conflictos	Estilos predecibles
-75	Route Conflict Detector	Detectar rutas duplicadas o conflictivas	Evitar 404 inesperados
-76	Database Schema Sync	Mantener código y BD sincronizados	Evitar errores de campos faltantes
-77	API Contract Validator	Verificar que frontend y backend hablan el mismo idioma	Evitar errores de integración
-78	Environment Parity Checker	Verificar que dev/staging/prod tienen mismas configs	Evitar "funciona en mi máquina"
+#       Componente      Descripción     Por qué es crítico
+72      Scaffold Generator      Generar estructura de proyecto completa por framework   Empezar proyectos en segundos
+73      Component Composer      Combinar componentes existentes para crear nuevos       Reutilización máxima
+74      Style Inheritance Analyzer      Entender cascada CSS y evitar conflictos        Estilos predecibles
+75      Route Conflict Detector Detectar rutas duplicadas o conflictivas        Evitar 404 inesperados
+76      Database Schema Sync    Mantener código y BD sincronizados      Evitar errores de campos faltantes
+77      API Contract Validator  Verificar que frontend y backend hablan el mismo idioma Evitar errores de integración
+78      Environment Parity Checker      Verificar que dev/staging/prod tienen mismas configs    Evitar "funciona en mi máquina"
 ═══════════════════════════════════════
 FASE 35.6: ANÁLISIS ESTÁTICO PROFUNDO 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-79	Control Flow Graph Builder	Visualizar flujo de ejecución del código	Entender lógica compleja
-80	Data Flow Analyzer	Rastrear de dónde viene y a dónde va cada variable	Detectar fugas de datos
-81	Taint Analysis Engine	Rastrear datos del usuario hasta su uso final	Detectar inyecciones
-82	Cyclomatic Complexity Calculator	Medir complejidad de cada función	Identificar código difícil de mantener
-83	Code Clone Detector	Encontrar código duplicado	Oportunidades de refactoring
-84	API Usage Analyzer	Detectar uso deprecated o incorrecto de APIs	Evitar código obsoleto
-85	Null Safety Checker	Detectar posibles null pointer exceptions	Evitar crashes comunes
+#       Componente      Descripción     Por qué es crítico
+79      Control Flow Graph Builder      Visualizar flujo de ejecución del código        Entender lógica compleja
+80      Data Flow Analyzer      Rastrear de dónde viene y a dónde va cada variable      Detectar fugas de datos
+81      Taint Analysis Engine   Rastrear datos del usuario hasta su uso final   Detectar inyecciones
+82      Cyclomatic Complexity Calculator        Medir complejidad de cada función       Identificar código difícil de mantener
+83      Code Clone Detector     Encontrar código duplicado      Oportunidades de refactoring
+84      API Usage Analyzer      Detectar uso deprecated o incorrecto de APIs    Evitar código obsoleto
+85      Null Safety Checker     Detectar posibles null pointer exceptions       Evitar crashes comunes
 ═══════════════════════════════════════
 FASE 35.7: INTELIGENCIA CONTEXTUAL 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-86	Code Intent Inferrer	Entender QUÉ intenta hacer el código, no solo QUÉ hace	Sugerir mejores implementaciones
-87	Business Logic Extractor	Separar lógica de negocio de lógica técnica	Entender el "por qué"
-88	Comment-Code Consistency Checker	Detectar comentarios que no coinciden con el código	Evitar documentación mentirosa
-89	TODO/FIXME Tracker	Rastrear todos los TODOs y su antigüedad	No olvidar deuda técnica
-90	Magic Number Detector	Detectar números sin explicación (if x > 86400)	Mejorar legibilidad
-91	Naming Convention Enforcer	Verificar camelCase, snake_case, etc. consistente	Código uniforme
+#       Componente      Descripción     Por qué es crítico
+86      Code Intent Inferrer    Entender QUÉ intenta hacer el código, no solo QUÉ hace  Sugerir mejores implementaciones
+87      Business Logic Extractor        Separar lógica de negocio de lógica técnica     Entender el "por qué"
+88      Comment-Code Consistency Checker        Detectar comentarios que no coinciden con el código     Evitar documentación mentirosa
+89      TODO/FIXME Tracker      Rastrear todos los TODOs y su antigüedad        No olvidar deuda técnica
+90      Magic Number Detector   Detectar números sin explicación (if x > 86400) Mejorar legibilidad
+91      Naming Convention Enforcer      Verificar camelCase, snake_case, etc. consistente       Código uniforme
 ═══════════════════════════════════════
 FASE 35.8: HERRAMIENTAS DE DEBUGGING 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-92	Breakpoint Suggester	Sugerir dónde poner breakpoints según el error	Debug más rápido
-93	Variable State Reconstructor	Reconstruir estado de variables en punto de error	Entender contexto del crash
-94	Network Request Analyzer	Parsear y analizar peticiones HTTP del código	Debug de APIs
-95	Database Query Analyzer	Analizar queries, detectar N+1, sugerir índices	Performance de BD
-96	Performance Profiler Integration	Integrar con profilers existentes	Encontrar bottlenecks
-97	Diff-Based Bug Finder	Analizar commits recientes para encontrar cuál introdujo el bug	Git bisect automatizado
+#       Componente      Descripción     Por qué es crítico
+92      Breakpoint Suggester    Sugerir dónde poner breakpoints según el error  Debug más rápido
+93      Variable State Reconstructor    Reconstruir estado de variables en punto de error       Entender contexto del crash
+94      Network Request Analyzer        Parsear y analizar peticiones HTTP del código   Debug de APIs
+95      Database Query Analyzer Analizar queries, detectar N+1, sugerir índices Performance de BD
+96      Performance Profiler Integration        Integrar con profilers existentes       Encontrar bottlenecks
+97      Diff-Based Bug Finder   Analizar commits recientes para encontrar cuál introdujo el bug Git bisect automatizado
 ═══════════════════════════════════════
 FASE 35.9: GENERACIÓN DE CÓDIGO AVANZADA 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-98	Context-Aware Autocomplete	Autocompletado que entiende el contexto del proyecto completo	Escribir código 10x más rápido
-99	Snippet Library Manager	Biblioteca de snippets personalizados por proyecto	Reutilizar patrones frecuentes
-100	Code Translation Engine	Traducir código entre lenguajes (Python→JS, etc.)	Migrar proyectos fácilmente
-101	Boilerplate Reducer	Detectar código repetitivo y generar abstracciones	Menos código = menos bugs
-102	Interface Generator	Generar interfaces/types desde objetos existentes	Tipado automático
-103	Mock Data Generator	Generar datos de prueba realistas según el schema	Testing sin datos reales
-104	Test Case Generator	Generar tests automáticamente desde el código	Cobertura instantánea
-105	Migration Script Builder	Generar scripts de migración de BD automáticamente	Evolucionar schema sin riesgo
+#       Componente      Descripción     Por qué es crítico
+98      Context-Aware Autocomplete      Autocompletado que entiende el contexto del proyecto completo   Escribir código 10x más rápido
+99      Snippet Library Manager Biblioteca de snippets personalizados por proyecto      Reutilizar patrones frecuentes
+100     Code Translation Engine Traducir código entre lenguajes (Python→JS, etc.)       Migrar proyectos fácilmente
+101     Boilerplate Reducer     Detectar código repetitivo y generar abstracciones      Menos código = menos bugs
+102     Interface Generator     Generar interfaces/types desde objetos existentes       Tipado automático
+103     Mock Data Generator     Generar datos de prueba realistas según el schema       Testing sin datos reales
+104     Test Case Generator     Generar tests automáticamente desde el código   Cobertura instantánea
+105     Migration Script Builder        Generar scripts de migración de BD automáticamente      Evolucionar schema sin riesgo
 ═══════════════════════════════════════
 FASE 35.10: TESTING AUTOMÁTICO 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-106	Coverage Analyzer	Medir qué porcentaje del código tiene tests	Identificar código sin probar
-107	Mutation Testing Engine	Mutar código para verificar que los tests detectan cambios	Tests que realmente funcionan
-108	Regression Test Generator	Crear tests basados en bugs corregidos	Evitar que vuelvan los bugs
-109	Load Test Simulator	Simular múltiples usuarios simultáneos	Probar escalabilidad
-110	API Contract Testing	Verificar que la API cumple su contrato	Evitar breaking changes
-111	Snapshot Testing Manager	Comparar output actual vs esperado	Detectar cambios inesperados
-112	Flaky Test Detector	Identificar tests que fallan intermitentemente	Tests confiables
-113	Test Prioritizer	Ejecutar primero los tests más relevantes al cambio	Feedback más rápido
+#       Componente      Descripción     Por qué es crítico
+106     Coverage Analyzer       Medir qué porcentaje del código tiene tests     Identificar código sin probar
+107     Mutation Testing Engine Mutar código para verificar que los tests detectan cambios      Tests que realmente funcionan
+108     Regression Test Generator       Crear tests basados en bugs corregidos  Evitar que vuelvan los bugs
+109     Load Test Simulator     Simular múltiples usuarios simultáneos  Probar escalabilidad
+110     API Contract Testing    Verificar que la API cumple su contrato Evitar breaking changes
+111     Snapshot Testing Manager        Comparar output actual vs esperado      Detectar cambios inesperados
+112     Flaky Test Detector     Identificar tests que fallan intermitentemente  Tests confiables
+113     Test Prioritizer        Ejecutar primero los tests más relevantes al cambio     Feedback más rápido
 ═══════════════════════════════════════
 FASE 35.11: DOCUMENTACIÓN INTELIGENTE 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-114	Architecture Diagram Generator	Generar diagramas desde el código	Documentación visual automática
-115	API Docs Auto-Generator	Generar OpenAPI/Swagger desde código	Docs siempre actualizadas
-116	Changelog Generator	Crear changelog desde commits	Historial automático
-117	Dependency Graph Visualizer	Grafo visual de dependencias del proyecto	Entender el proyecto de un vistazo
-118	Onboarding Doc Creator	Generar guía de inicio para nuevos devs	Reducir tiempo de onboarding
-119	Inline Documentation Scorer	Puntuar calidad de documentación existente	Identificar docs faltantes
+#       Componente      Descripción     Por qué es crítico
+114     Architecture Diagram Generator  Generar diagramas desde el código       Documentación visual automática
+115     API Docs Auto-Generator Generar OpenAPI/Swagger desde código    Docs siempre actualizadas
+116     Changelog Generator     Crear changelog desde commits   Historial automático
+117     Dependency Graph Visualizer     Grafo visual de dependencias del proyecto       Entender el proyecto de un vistazo
+118     Onboarding Doc Creator  Generar guía de inicio para nuevos devs Reducir tiempo de onboarding
+119     Inline Documentation Scorer     Puntuar calidad de documentación existente      Identificar docs faltantes
 ═══════════════════════════════════════
 FASE 35.12: OPTIMIZACIÓN DE RENDIMIENTO 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-120	Bundle Size Analyzer	Analizar tamaño de cada dependencia en el bundle	Reducir tiempo de carga
-121	Lazy Loading Suggester	Identificar qué puede cargarse después	Mejor performance inicial
-122	Image Optimizer	Comprimir/convertir imágenes automáticamente	Menos peso sin perder calidad
-123	Cache Strategy Advisor	Sugerir qué cachear y cómo	Menos requests al servidor
-124	Critical CSS Extractor	Extraer CSS crítico para above-the-fold	Render más rápido
-125	Tree Shaking Verifier	Verificar que el tree shaking funciona correctamente	Eliminar código no usado
-126	Database Index Suggester	Sugerir índices basados en queries	Consultas más rápidas
-127	N+1 Query Detector	Detectar queries en loops	Evitar problemas de rendimiento
-128	Response Time Analyzer	Medir tiempo de respuesta de cada endpoint	Identificar endpoints lentos
+#       Componente      Descripción     Por qué es crítico
+120     Bundle Size Analyzer    Analizar tamaño de cada dependencia en el bundle        Reducir tiempo de carga
+121     Lazy Loading Suggester  Identificar qué puede cargarse después  Mejor performance inicial
+122     Image Optimizer Comprimir/convertir imágenes automáticamente    Menos peso sin perder calidad
+123     Cache Strategy Advisor  Sugerir qué cachear y cómo      Menos requests al servidor
+124     Critical CSS Extractor  Extraer CSS crítico para above-the-fold Render más rápido
+125     Tree Shaking Verifier   Verificar que el tree shaking funciona correctamente    Eliminar código no usado
+126     Database Index Suggester        Sugerir índices basados en queries      Consultas más rápidas
+127     N+1 Query Detector      Detectar queries en loops       Evitar problemas de rendimiento
+128     Response Time Analyzer  Medir tiempo de respuesta de cada endpoint      Identificar endpoints lentos
 ═══════════════════════════════════════
 FASE 35.13: COMPATIBILIDAD Y PORTABILIDAD 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-129	Cross-Browser Compatibility Checker	Detectar código que no funciona en todos los navegadores	Evitar bugs en Safari/Firefox
-130	Node Version Compatibility	Verificar compatibilidad con versiones de Node	Evitar "works on my machine"
-131	Polyfill Suggester	Sugerir polyfills necesarios	Soporte para navegadores antiguos
-132	Mobile Responsiveness Analyzer	Verificar que funciona en móviles	UX consistente
-133	Dark Mode Compatibility	Verificar que el diseño funciona en dark mode	Experiencia completa
-134	Offline Capability Checker	Verificar qué funciona sin internet	PWA ready
+#       Componente      Descripción     Por qué es crítico
+129     Cross-Browser Compatibility Checker     Detectar código que no funciona en todos los navegadores        Evitar bugs en Safari/Firefox
+130     Node Version Compatibility      Verificar compatibilidad con versiones de Node  Evitar "works on my machine"
+131     Polyfill Suggester      Sugerir polyfills necesarios    Soporte para navegadores antiguos
+132     Mobile Responsiveness Analyzer  Verificar que funciona en móviles       UX consistente
+133     Dark Mode Compatibility Verificar que el diseño funciona en dark mode   Experiencia completa
+134     Offline Capability Checker      Verificar qué funciona sin internet     PWA ready
 ═══════════════════════════════════════
 FASE 35.14: CI/CD E INFRAESTRUCTURA 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-135	Pipeline Generator	Generar pipelines de CI/CD automáticamente	Deploy automatizado
-136	Docker Compose Generator	Generar configuración de Docker desde el proyecto	Containerización fácil
-137	Environment Variable Validator	Verificar que todas las env vars existen en cada entorno	Evitar crashes en producción
-138	Health Check Endpoint Generator	Crear endpoints de health check automáticamente	Monitoreo fácil
-139	Rollback Strategy Planner	Planificar cómo hacer rollback si algo falla	Deploy seguro
-140	Blue-Green Deployment Advisor	Sugerir estrategia de deployment	Zero downtime
+#       Componente      Descripción     Por qué es crítico
+135     Pipeline Generator      Generar pipelines de CI/CD automáticamente      Deploy automatizado
+136     Docker Compose Generator        Generar configuración de Docker desde el proyecto       Containerización fácil
+137     Environment Variable Validator  Verificar que todas las env vars existen en cada entorno        Evitar crashes en producción
+138     Health Check Endpoint Generator Crear endpoints de health check automáticamente Monitoreo fácil
+139     Rollback Strategy Planner       Planificar cómo hacer rollback si algo falla    Deploy seguro
+140     Blue-Green Deployment Advisor   Sugerir estrategia de deployment        Zero downtime
 ═══════════════════════════════════════
 FASE 35.15: MONITOREO Y OBSERVABILIDAD 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-141	Logging Best Practices Enforcer	Verificar que logs tienen nivel, contexto, timestamp	Logs útiles para debug
-142	Error Tracking Integration	Integrar con Sentry/Rollbar automáticamente	Errores reportados en tiempo real
-143	Performance Metrics Injector	Agregar métricas de performance automáticamente	Monitorear sin esfuerzo manual
-144	Alerting Rules Generator	Generar reglas de alertas desde el código	Notificaciones de problemas
-145	Distributed Tracing Setup	Configurar tracing entre servicios	Debug de microservicios
-146	Log Aggregation Config	Configurar agregación de logs	Logs centralizados
+#       Componente      Descripción     Por qué es crítico
+141     Logging Best Practices Enforcer Verificar que logs tienen nivel, contexto, timestamp    Logs útiles para debug
+142     Error Tracking Integration      Integrar con Sentry/Rollbar automáticamente     Errores reportados en tiempo real
+143     Performance Metrics Injector    Agregar métricas de performance automáticamente Monitorear sin esfuerzo manual
+144     Alerting Rules Generator        Generar reglas de alertas desde el código       Notificaciones de problemas
+145     Distributed Tracing Setup       Configurar tracing entre servicios      Debug de microservicios
+146     Log Aggregation Config  Configurar agregación de logs   Logs centralizados
 ═══════════════════════════════════════
 FASE 35.16: INTERNACIONALIZACIÓN (i18n) 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-147	String Extractor for i18n	Extraer strings hardcodeados para traducción	Preparar app para múltiples idiomas
-148	Translation Key Generator	Generar keys de traducción automáticamente	Organización de traducciones
-149	Missing Translation Detector	Detectar traducciones faltantes	Experiencia completa en cada idioma
-150	RTL Layout Checker	Verificar soporte para idiomas right-to-left	Soporte para árabe/hebreo
-151	Date/Number Format Validator	Verificar formatos localizados	Fechas correctas por región
+#       Componente      Descripción     Por qué es crítico
+147     String Extractor for i18n       Extraer strings hardcodeados para traducción    Preparar app para múltiples idiomas
+148     Translation Key Generator       Generar keys de traducción automáticamente      Organización de traducciones
+149     Missing Translation Detector    Detectar traducciones faltantes Experiencia completa en cada idioma
+150     RTL Layout Checker      Verificar soporte para idiomas right-to-left    Soporte para árabe/hebreo
+151     Date/Number Format Validator    Verificar formatos localizados  Fechas correctas por región
 ═══════════════════════════════════════
 FASE 35.17: COLABORACIÓN Y CODE REVIEW 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-152	PR Description Generator	Generar descripción de PR desde commits	PRs bien documentados
-153	Code Review Checklist Generator	Generar checklist de review según los cambios	Reviews consistentes
-154	Conflict Predictor	Predecir conflictos antes de hacer merge	Evitar sorpresas
-155	Blame Context Provider	Mostrar por qué se hizo cada cambio, no solo quién	Entender decisiones pasadas
-156	Pair Programming Assistant	Sugerir quién puede ayudar con cada área del código	Colaboración eficiente
+#       Componente      Descripción     Por qué es crítico
+152     PR Description Generator        Generar descripción de PR desde commits PRs bien documentados
+153     Code Review Checklist Generator Generar checklist de review según los cambios   Reviews consistentes
+154     Conflict Predictor      Predecir conflictos antes de hacer merge        Evitar sorpresas
+155     Blame Context Provider  Mostrar por qué se hizo cada cambio, no solo quién      Entender decisiones pasadas
+156     Pair Programming Assistant      Sugerir quién puede ayudar con cada área del código     Colaboración eficiente
 ═══════════════════════════════════════
 FASE 35.18: MACHINE LEARNING PARA CÓDIGO 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-157	Code Similarity Finder	Encontrar código similar en repos públicos	Aprender de otros proyectos
-158	Bug Probability Scorer	Predecir qué código tiene más probabilidad de bugs	Foco en áreas riesgosas
-159	Developer Intent Predictor	Predecir qué va a hacer el dev a continuación	Asistencia proactiva
-160	Code Quality Trend Analyzer	Analizar si la calidad mejora o empeora con el tiempo	Detectar degradación
-161	Optimal Refactoring Path Calculator	Calcular la mejor secuencia de refactorings	Refactoring sin riesgo
+#       Componente      Descripción     Por qué es crítico
+157     Code Similarity Finder  Encontrar código similar en repos públicos      Aprender de otros proyectos
+158     Bug Probability Scorer  Predecir qué código tiene más probabilidad de bugs      Foco en áreas riesgosas
+159     Developer Intent Predictor      Predecir qué va a hacer el dev a continuación   Asistencia proactiva
+160     Code Quality Trend Analyzer     Analizar si la calidad mejora o empeora con el tiempo   Detectar degradación
+161     Optimal Refactoring Path Calculator     Calcular la mejor secuencia de refactorings     Refactoring sin riesgo
 ═══════════════════════════════════════
 FASE 35.19: EDGE CASES Y ROBUSTEZ 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-162	Edge Case Generator	Generar casos límite automáticamente	Encontrar bugs ocultos
-163	Input Fuzzer	Generar inputs malformados para probar robustez	Aplicación resistente
-164	Boundary Value Analyzer	Detectar valores límite no manejados	Evitar off-by-one errors
-165	Unicode Handler Verifier	Verificar manejo correcto de caracteres especiales	Evitar crashes con emojis/unicode
-166	Timezone Bug Detector	Detectar problemas con zonas horarias	Evitar bugs de fechas
-167	Leap Year/DST Handler	Verificar manejo de años bisiestos y horario de verano	Bugs que aparecen 1 vez al año
+#       Componente      Descripción     Por qué es crítico
+162     Edge Case Generator     Generar casos límite automáticamente    Encontrar bugs ocultos
+163     Input Fuzzer    Generar inputs malformados para probar robustez Aplicación resistente
+164     Boundary Value Analyzer Detectar valores límite no manejados    Evitar off-by-one errors
+165     Unicode Handler Verifier        Verificar manejo correcto de caracteres especiales      Evitar crashes con emojis/unicode
+166     Timezone Bug Detector   Detectar problemas con zonas horarias   Evitar bugs de fechas
+167     Leap Year/DST Handler   Verificar manejo de años bisiestos y horario de verano  Bugs que aparecen 1 vez al año
 ═══════════════════════════════════════
 FASE 35.20: GESTIÓN DE ESTADO Y DATOS 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-168	State Machine Validator	Verificar transiciones de estado válidas	Evitar estados imposibles
-169	Data Integrity Checker	Verificar consistencia de datos entre tablas	Evitar datos huérfanos
-170	Cascade Delete Analyzer	Mapear qué se borra cuando se elimina un registro	Evitar eliminar datos importantes
-171	Data Migration Validator	Verificar que migraciones no pierden datos	Migraciones seguras
-172	Backup Strategy Generator	Generar estrategia de backup automática	Nunca perder datos
-173	GDPR Compliance Checker	Verificar cumplimiento de privacidad de datos	Evitar multas legales
-174	PII Detector	Detectar datos personales en logs/código	Proteger privacidad
+#       Componente      Descripción     Por qué es crítico
+168     State Machine Validator Verificar transiciones de estado válidas        Evitar estados imposibles
+169     Data Integrity Checker  Verificar consistencia de datos entre tablas    Evitar datos huérfanos
+170     Cascade Delete Analyzer Mapear qué se borra cuando se elimina un registro       Evitar eliminar datos importantes
+171     Data Migration Validator        Verificar que migraciones no pierden datos      Migraciones seguras
+172     Backup Strategy Generator       Generar estrategia de backup automática Nunca perder datos
+173     GDPR Compliance Checker Verificar cumplimiento de privacidad de datos   Evitar multas legales
+174     PII Detector    Detectar datos personales en logs/código        Proteger privacidad
 ═══════════════════════════════════════
 FASE 35.21: AUTENTICACIÓN Y AUTORIZACIÓN 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-175	Auth Flow Validator	Verificar flujos de login/logout/registro	Evitar bypasses de auth
-176	Permission Matrix Generator	Generar matriz de permisos desde código	Documentar quién puede qué
-177	Session Security Analyzer	Verificar manejo seguro de sesiones	Evitar session hijacking
-178	OAuth Implementation Checker	Verificar implementación correcta de OAuth	Evitar vulnerabilidades de OAuth
-179	Password Policy Enforcer	Verificar políticas de contraseñas	Contraseñas seguras
-180	2FA Implementation Validator	Verificar correcta implementación de 2FA	Seguridad extra real
-181	Token Expiration Checker	Verificar que tokens expiran correctamente	Evitar tokens eternos
+#       Componente      Descripción     Por qué es crítico
+175     Auth Flow Validator     Verificar flujos de login/logout/registro       Evitar bypasses de auth
+176     Permission Matrix Generator     Generar matriz de permisos desde código Documentar quién puede qué
+177     Session Security Analyzer       Verificar manejo seguro de sesiones     Evitar session hijacking
+178     OAuth Implementation Checker    Verificar implementación correcta de OAuth      Evitar vulnerabilidades de OAuth
+179     Password Policy Enforcer        Verificar políticas de contraseñas      Contraseñas seguras
+180     2FA Implementation Validator    Verificar correcta implementación de 2FA        Seguridad extra real
+181     Token Expiration Checker        Verificar que tokens expiran correctamente      Evitar tokens eternos
 ═══════════════════════════════════════
 FASE 35.22: API DESIGN Y CONSISTENCY 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-182	REST Convention Checker	Verificar que API sigue convenciones REST	API predecible
-183	GraphQL Schema Validator	Validar schema GraphQL	Evitar errores de schema
-184	API Versioning Analyzer	Verificar estrategia de versionado	Compatibilidad hacia atrás
-185	Rate Limiting Validator	Verificar implementación de rate limiting	Evitar abuso de API
-186	Pagination Consistency Checker	Verificar paginación consistente	UX predecible
-187	Error Response Standardizer	Verificar formato consistente de errores	Manejo de errores fácil
-188	API Deprecation Tracker	Rastrear endpoints deprecated	Planificar migraciones
+#       Componente      Descripción     Por qué es crítico
+182     REST Convention Checker Verificar que API sigue convenciones REST       API predecible
+183     GraphQL Schema Validator        Validar schema GraphQL  Evitar errores de schema
+184     API Versioning Analyzer Verificar estrategia de versionado      Compatibilidad hacia atrás
+185     Rate Limiting Validator Verificar implementación de rate limiting       Evitar abuso de API
+186     Pagination Consistency Checker  Verificar paginación consistente        UX predecible
+187     Error Response Standardizer     Verificar formato consistente de errores        Manejo de errores fácil
+188     API Deprecation Tracker Rastrear endpoints deprecated   Planificar migraciones
 ═══════════════════════════════════════
 FASE 35.23: FRONTEND ESPECÍFICO 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-189	Component Lifecycle Analyzer	Detectar memory leaks en componentes React/Vue	Evitar app lenta
-190	State Management Auditor	Analizar uso de Redux/Vuex/etc.	Evitar estado innecesario
-191	Event Listener Leak Detector	Detectar listeners no removidos	Evitar memory leaks
-192	Animation Performance Checker	Verificar que animaciones no bloquean UI	UX fluida
-193	Bundle Chunk Analyzer	Analizar división de chunks	Carga optimizada
-194	Hydration Mismatch Detector	Detectar errores de hidratación SSR	Evitar warnings en consola
-195	CSS Unused Selector Finder	Encontrar CSS que no se usa	Reducir tamaño de CSS
-196	Accessibility Tree Inspector	Analizar árbol de accesibilidad	Screen readers funcionales
+#       Componente      Descripción     Por qué es crítico
+189     Component Lifecycle Analyzer    Detectar memory leaks en componentes React/Vue  Evitar app lenta
+190     State Management Auditor        Analizar uso de Redux/Vuex/etc. Evitar estado innecesario
+191     Event Listener Leak Detector    Detectar listeners no removidos Evitar memory leaks
+192     Animation Performance Checker   Verificar que animaciones no bloquean UI        UX fluida
+193     Bundle Chunk Analyzer   Analizar división de chunks     Carga optimizada
+194     Hydration Mismatch Detector     Detectar errores de hidratación SSR     Evitar warnings en consola
+195     CSS Unused Selector Finder      Encontrar CSS que no se usa     Reducir tamaño de CSS
+196     Accessibility Tree Inspector    Analizar árbol de accesibilidad Screen readers funcionales
 ═══════════════════════════════════════
 FASE 35.24: BACKEND ESPECÍFICO 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-197	Connection Pool Monitor	Monitorear pools de conexiones	Evitar connection leaks
-198	Queue Health Checker	Verificar estado de colas (Redis, RabbitMQ)	Evitar jobs perdidos
-199	Cron Job Validator	Verificar sintaxis y lógica de cron jobs	Jobs que corren cuando deben
-200	Background Job Monitor	Monitorear estado de jobs en background	Jobs que completan
-201	Cache Invalidation Analyzer	Verificar lógica de invalidación de cache	Datos frescos
-202	File Upload Security Checker	Verificar validación de uploads	Evitar subida de malware
-203	Email Deliverability Checker	Verificar configuración de emails	Emails que llegan
+#       Componente      Descripción     Por qué es crítico
+197     Connection Pool Monitor Monitorear pools de conexiones  Evitar connection leaks
+198     Queue Health Checker    Verificar estado de colas (Redis, RabbitMQ)     Evitar jobs perdidos
+199     Cron Job Validator      Verificar sintaxis y lógica de cron jobs        Jobs que corren cuando deben
+200     Background Job Monitor  Monitorear estado de jobs en background Jobs que completan
+201     Cache Invalidation Analyzer     Verificar lógica de invalidación de cache       Datos frescos
+202     File Upload Security Checker    Verificar validación de uploads Evitar subida de malware
+203     Email Deliverability Checker    Verificar configuración de emails       Emails que llegan
 ═══════════════════════════════════════
 FASE 35.25: DEVOPS Y OPERACIONES 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-204	Resource Usage Estimator	Estimar CPU/RAM necesarios	Sizing correcto
-205	Cost Estimator	Estimar costo de infraestructura	Presupuesto controlado
-206	Scaling Trigger Analyzer	Analizar cuándo escalar	Auto-scaling optimizado
-207	Disaster Recovery Planner	Generar plan de recuperación	Preparado para lo peor
-208	Security Audit Trail Generator	Generar logs de auditoría de seguridad	Compliance y forense
-209	Incident Response Playbook	Generar playbooks para incidentes	Respuesta rápida
+#       Componente      Descripción     Por qué es crítico
+204     Resource Usage Estimator        Estimar CPU/RAM necesarios      Sizing correcto
+205     Cost Estimator  Estimar costo de infraestructura        Presupuesto controlado
+206     Scaling Trigger Analyzer        Analizar cuándo escalar Auto-scaling optimizado
+207     Disaster Recovery Planner       Generar plan de recuperación    Preparado para lo peor
+208     Security Audit Trail Generator  Generar logs de auditoría de seguridad  Compliance y forense
+209     Incident Response Playbook      Generar playbooks para incidentes       Respuesta rápida
 ═══════════════════════════════════════
 FASE 35.26: INTELIGENCIA ARTIFICIAL INTERNA 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-210	Self-Learning Error Resolver	Aprender de errores resueltos previamente	Mejorar con el tiempo
-211	Code Suggestion Ranker	Ordenar sugerencias por probabilidad de éxito	Mejores sugerencias primero
-212	User Behavior Learner	Aprender patrones del usuario	Asistencia personalizada
-213	Project Pattern Recognizer	Reconocer patrones únicos del proyecto	Consistencia con el proyecto
-214	Auto-Fix Confidence Scorer	Puntuar confianza en cada fix automático	Saber cuándo pedir confirmación
-215	Context Window Optimizer	Optimizar qué incluir en el contexto	Mejor uso de tokens
-216	Multi-Model Router	Elegir el mejor modelo para cada tarea	Costo/calidad optimizado
+#       Componente      Descripción     Por qué es crítico
+210     Self-Learning Error Resolver    Aprender de errores resueltos previamente       Mejorar con el tiempo
+211     Code Suggestion Ranker  Ordenar sugerencias por probabilidad de éxito   Mejores sugerencias primero
+212     User Behavior Learner   Aprender patrones del usuario   Asistencia personalizada
+213     Project Pattern Recognizer      Reconocer patrones únicos del proyecto  Consistencia con el proyecto
+214     Auto-Fix Confidence Scorer      Puntuar confianza en cada fix automático        Saber cuándo pedir confirmación
+215     Context Window Optimizer        Optimizar qué incluir en el contexto    Mejor uso de tokens
+216     Multi-Model Router      Elegir el mejor modelo para cada tarea  Costo/calidad optimizado
 ═══════════════════════════════════════
 FASE 35.27: EXPERIENCIA DE DESARROLLADOR (DX) 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-217	Command Palette Builder	Comandos rápidos personalizados	Acceso rápido a acciones
-218	Keyboard Shortcut Manager	Atajos de teclado consistentes	Productividad
-219	Theme Consistency Checker	Verificar consistencia visual del IDE	Experiencia agradable
-220	Notification Priority Ranker	Priorizar notificaciones importantes	Sin ruido innecesario
-221	Progress Estimation Learner	Estimar tiempo basado en historial	Estimaciones precisas
-222	Workspace State Saver	Guardar estado de trabajo	Continuar donde quedaste
-223	Focus Mode Manager	Ocultar distracciones durante coding	Concentración máxima
+#       Componente      Descripción     Por qué es crítico
+217     Command Palette Builder Comandos rápidos personalizados Acceso rápido a acciones
+218     Keyboard Shortcut Manager       Atajos de teclado consistentes  Productividad
+219     Theme Consistency Checker       Verificar consistencia visual del IDE   Experiencia agradable
+220     Notification Priority Ranker    Priorizar notificaciones importantes    Sin ruido innecesario
+221     Progress Estimation Learner     Estimar tiempo basado en historial      Estimaciones precisas
+222     Workspace State Saver   Guardar estado de trabajo       Continuar donde quedaste
+223     Focus Mode Manager      Ocultar distracciones durante coding    Concentración máxima
 ═══════════════════════════════════════
 FASE 35.28: INTEGRACIÓN CON SERVICIOS CLOUD 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-224	AWS Service Detector	Detectar servicios AWS usados y configurar	Integración cloud
-225	GCP Service Mapper	Mapear servicios GCP	Infraestructura documentada
-226	Serverless Function Optimizer	Optimizar funciones serverless	Menos cold starts
-227	CDN Configuration Generator	Generar config de CDN	Assets rápidos globalmente
-228	DNS Record Generator	Generar records DNS necesarios	Dominios configurados
-229	SSL Certificate Manager	Gestionar certificados SSL	HTTPS siempre
-230	Cloud Cost Optimizer	Sugerir optimizaciones de costo	Factura más baja
+#       Componente      Descripción     Por qué es crítico
+224     AWS Service Detector    Detectar servicios AWS usados y configurar      Integración cloud
+225     GCP Service Mapper      Mapear servicios GCP    Infraestructura documentada
+226     Serverless Function Optimizer   Optimizar funciones serverless  Menos cold starts
+227     CDN Configuration Generator     Generar config de CDN   Assets rápidos globalmente
+228     DNS Record Generator    Generar records DNS necesarios  Dominios configurados
+229     SSL Certificate Manager Gestionar certificados SSL      HTTPS siempre
+230     Cloud Cost Optimizer    Sugerir optimizaciones de costo Factura más baja
 ═══════════════════════════════════════
 FASE 35.29: BLOCKCHAIN Y WEB3 (BUNK3R) 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-231	Smart Contract Auditor	Auditar contratos inteligentes	Evitar hacks de contratos
-232	Gas Optimizer	Optimizar gas en transacciones	Transacciones más baratas
-233	Wallet Integration Validator	Verificar integración con wallets	Conexión correcta
-234	Transaction Simulator	Simular transacciones antes de enviar	Evitar errores costosos
-235	Token Standard Compliance	Verificar cumplimiento ERC-20/721/1155	Tokens compatibles
-236	Blockchain Event Listener Validator	Verificar listeners de eventos	No perder eventos
-237	Private Key Security Scanner	Detectar exposición de private keys	Evitar robo de fondos
+#       Componente      Descripción     Por qué es crítico
+231     Smart Contract Auditor  Auditar contratos inteligentes  Evitar hacks de contratos
+232     Gas Optimizer   Optimizar gas en transacciones  Transacciones más baratas
+233     Wallet Integration Validator    Verificar integración con wallets       Conexión correcta
+234     Transaction Simulator   Simular transacciones antes de enviar   Evitar errores costosos
+235     Token Standard Compliance       Verificar cumplimiento ERC-20/721/1155  Tokens compatibles
+236     Blockchain Event Listener Validator     Verificar listeners de eventos  No perder eventos
+237     Private Key Security Scanner    Detectar exposición de private keys     Evitar robo de fondos
 ═══════════════════════════════════════
 FASE 35.30: REAL-TIME Y WEBSOCKETS 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-238	WebSocket Connection Manager	Gestionar reconexiones automáticas	Conexión estable
-239	Real-time Sync Validator	Verificar sincronización en tiempo real	Datos consistentes
-240	Pub/Sub Channel Analyzer	Analizar canales de pub/sub	Evitar memory leaks en channels
-241	Message Queue Health Monitor	Monitorear salud de colas de mensajes	Mensajes entregados
-242	Broadcast Efficiency Analyzer	Optimizar broadcasts masivos	Escalabilidad de real-time
-243	Heartbeat Implementation Checker	Verificar heartbeats correctos	Detectar desconexiones
+#       Componente      Descripción     Por qué es crítico
+238     WebSocket Connection Manager    Gestionar reconexiones automáticas      Conexión estable
+239     Real-time Sync Validator        Verificar sincronización en tiempo real Datos consistentes
+240     Pub/Sub Channel Analyzer        Analizar canales de pub/sub     Evitar memory leaks en channels
+241     Message Queue Health Monitor    Monitorear salud de colas de mensajes   Mensajes entregados
+242     Broadcast Efficiency Analyzer   Optimizar broadcasts masivos    Escalabilidad de real-time
+243     Heartbeat Implementation Checker        Verificar heartbeats correctos  Detectar desconexiones
 ═══════════════════════════════════════
 FASE 35.31: ORQUESTACIÓN DE TAREAS COMPLEJAS 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-244	Task Decomposer	Dividir tareas grandes en subtareas manejables automáticamente	Ejecutar proyectos complejos paso a paso
-245	Dependency Task Resolver	Ordenar tareas según dependencias (qué hacer primero)	Evitar errores por orden incorrecto
-246	Parallel Task Executor	Ejecutar tareas independientes en paralelo	Velocidad multiplicada
-247	Task Checkpoint System	Guardar progreso de tareas largas para continuar después	Nunca perder trabajo
-248	Task Retry Logic	Reintentar tareas fallidas con estrategia inteligente	Resiliencia automática
-249	Task Progress Tracker	Mostrar % de completado de cada tarea	Visibilidad de progreso
-250	Task Rollback Manager	Deshacer tareas completadas si algo falla después	Consistencia garantizada
+#       Componente      Descripción     Por qué es crítico
+244     Task Decomposer Dividir tareas grandes en subtareas manejables automáticamente  Ejecutar proyectos complejos paso a paso
+245     Dependency Task Resolver        Ordenar tareas según dependencias (qué hacer primero)   Evitar errores por orden incorrecto
+246     Parallel Task Executor  Ejecutar tareas independientes en paralelo      Velocidad multiplicada
+247     Task Checkpoint System  Guardar progreso de tareas largas para continuar después        Nunca perder trabajo
+248     Task Retry Logic        Reintentar tareas fallidas con estrategia inteligente   Resiliencia automática
+249     Task Progress Tracker   Mostrar % de completado de cada tarea   Visibilidad de progreso
+250     Task Rollback Manager   Deshacer tareas completadas si algo falla después       Consistencia garantizada
 ═══════════════════════════════════════
 FASE 35.32: AUTO-CORRECCIÓN DE LA IA 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-251	Hallucination Detector	Detectar cuando la IA inventa código/APIs que no existen	Evitar código imposible
-252	Self-Verification Loop	Verificar el propio output antes de entregar	Menos errores al usuario
-253	Contradiction Detector	Detectar cuando la IA se contradice en la misma respuesta	Respuestas consistentes
-254	Assumption Validator	Verificar suposiciones que la IA hace sobre el proyecto	Evitar errores por suposiciones
-255	Output Confidence Calibrator	Ajustar confianza basada en resultados históricos	Saber cuándo dudar
-256	Explanation Generator	Explicar POR QUÉ se tomó cada decisión	Transparencia total
-257	Alternative Solution Generator	Generar múltiples soluciones y compararlas	Mejor solución elegida
+#       Componente      Descripción     Por qué es crítico
+251     Hallucination Detector  Detectar cuando la IA inventa código/APIs que no existen        Evitar código imposible
+252     Self-Verification Loop  Verificar el propio output antes de entregar    Menos errores al usuario
+253     Contradiction Detector  Detectar cuando la IA se contradice en la misma respuesta       Respuestas consistentes
+254     Assumption Validator    Verificar suposiciones que la IA hace sobre el proyecto Evitar errores por suposiciones
+255     Output Confidence Calibrator    Ajustar confianza basada en resultados históricos       Saber cuándo dudar
+256     Explanation Generator   Explicar POR QUÉ se tomó cada decisión  Transparencia total
+257     Alternative Solution Generator  Generar múltiples soluciones y compararlas      Mejor solución elegida
 ═══════════════════════════════════════
 FASE 35.33: GESTIÓN DE CONTEXTO INTELIGENTE 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-258	Context Prioritizer	Decidir qué información es más relevante para la tarea actual	Usar tokens eficientemente
-259	Context Compression Engine	Comprimir código/docs sin perder información clave	Más contexto en menos tokens
-260	Relevant Code Finder	Encontrar automáticamente código relacionado a la tarea	No buscar manualmente
-261	History Summarizer	Resumir conversaciones largas manteniendo lo esencial	Conversaciones infinitas
-262	Cross-File Context Builder	Construir contexto que abarca múltiples archivos relacionados	Entender dependencias
-263	Stale Context Detector	Detectar cuando el contexto está desactualizado	Evitar usar info vieja
-264	Context Cache Manager	Cachear contextos frecuentes para reutilizar	Respuestas más rápidas
+#       Componente      Descripción     Por qué es crítico
+258     Context Prioritizer     Decidir qué información es más relevante para la tarea actual   Usar tokens eficientemente
+259     Context Compression Engine      Comprimir código/docs sin perder información clave      Más contexto en menos tokens
+260     Relevant Code Finder    Encontrar automáticamente código relacionado a la tarea No buscar manualmente
+261     History Summarizer      Resumir conversaciones largas manteniendo lo esencial   Conversaciones infinitas
+262     Cross-File Context Builder      Construir contexto que abarca múltiples archivos relacionados   Entender dependencias
+263     Stale Context Detector  Detectar cuando el contexto está desactualizado Evitar usar info vieja
+264     Context Cache Manager   Cachear contextos frecuentes para reutilizar    Respuestas más rápidas
 ═══════════════════════════════════════
 FASE 35.34: INTERFAZ HUMANO-IA 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-265	Ambiguity Resolver	Preguntar solo cuando realmente es necesario	No molestar con preguntas obvias
-266	Intent Confirmation	Confirmar entendimiento antes de ejecutar cambios grandes	Evitar malentendidos costosos
-267	Natural Language Parser	Entender instrucciones en lenguaje natural impreciso	UX amigable
-268	Technical Translator	Traducir jerga técnica a lenguaje simple y viceversa	Comunicación clara
-269	Progress Explainer	Explicar en tiempo real qué está haciendo la IA	Transparencia de proceso
-270	Error Explainer	Explicar errores en lenguaje entendible	Usuarios entienden problemas
-271	Suggestion Presenter	Presentar sugerencias de forma clara y accionable	Decisiones fáciles
+#       Componente      Descripción     Por qué es crítico
+265     Ambiguity Resolver      Preguntar solo cuando realmente es necesario    No molestar con preguntas obvias
+266     Intent Confirmation     Confirmar entendimiento antes de ejecutar cambios grandes       Evitar malentendidos costosos
+267     Natural Language Parser Entender instrucciones en lenguaje natural impreciso    UX amigable
+268     Technical Translator    Traducir jerga técnica a lenguaje simple y viceversa    Comunicación clara
+269     Progress Explainer      Explicar en tiempo real qué está haciendo la IA Transparencia de proceso
+270     Error Explainer Explicar errores en lenguaje entendible Usuarios entienden problemas
+271     Suggestion Presenter    Presentar sugerencias de forma clara y accionable       Decisiones fáciles
 ═══════════════════════════════════════
 FASE 35.35: SEGURIDAD DE LA PROPIA IA 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-272	Prompt Injection Detector	Detectar intentos de manipular la IA	Evitar comportamiento malicioso
-273	Dangerous Command Blocker	Bloquear comandos potencialmente destructivos	Proteger el sistema
-274	Scope Limiter	Limitar cambios al scope autorizado por el usuario	No tocar lo que no debe
-275	Audit Trail Generator	Registrar todas las acciones de la IA	Trazabilidad completa
-276	Permission Validator	Verificar permisos antes de cada acción	Respeto de autorización
-277	Sandbox Executor	Ejecutar código en sandbox antes de aplicar	Probar sin riesgo
-278	Rollback Point Creator	Crear puntos de restauración antes de cambios	Siempre poder volver atrás
+#       Componente      Descripción     Por qué es crítico
+272     Prompt Injection Detector       Detectar intentos de manipular la IA    Evitar comportamiento malicioso
+273     Dangerous Command Blocker       Bloquear comandos potencialmente destructivos   Proteger el sistema
+274     Scope Limiter   Limitar cambios al scope autorizado por el usuario      No tocar lo que no debe
+275     Audit Trail Generator   Registrar todas las acciones de la IA   Trazabilidad completa
+276     Permission Validator    Verificar permisos antes de cada acción Respeto de autorización
+277     Sandbox Executor        Ejecutar código en sandbox antes de aplicar     Probar sin riesgo
+278     Rollback Point Creator  Crear puntos de restauración antes de cambios   Siempre poder volver atrás
 ═══════════════════════════════════════
 FASE 35.36: LÍMITES Y RECURSOS 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-279	Token Budget Manager	Controlar uso de tokens por tarea	Costos controlados
-280	Time Budget Controller	Limitar tiempo por tarea	Evitar tareas infinitas
-281	Memory Usage Monitor	Monitorear uso de RAM de la IA	Evitar crashes
-282	Rate Limit Manager	Respetar rate limits de APIs externas	Evitar bloqueos
-283	Concurrent Request Limiter	Limitar requests simultáneos	Estabilidad del sistema
-284	Resource Allocation Optimizer	Asignar recursos según prioridad de tarea	Uso eficiente
-285	Quota Tracker	Rastrear uso de cuotas de servicios	No quedarse sin créditos
+#       Componente      Descripción     Por qué es crítico
+279     Token Budget Manager    Controlar uso de tokens por tarea       Costos controlados
+280     Time Budget Controller  Limitar tiempo por tarea        Evitar tareas infinitas
+281     Memory Usage Monitor    Monitorear uso de RAM de la IA  Evitar crashes
+282     Rate Limit Manager      Respetar rate limits de APIs externas   Evitar bloqueos
+283     Concurrent Request Limiter      Limitar requests simultáneos    Estabilidad del sistema
+284     Resource Allocation Optimizer   Asignar recursos según prioridad de tarea       Uso eficiente
+285     Quota Tracker   Rastrear uso de cuotas de servicios     No quedarse sin créditos
 ═══════════════════════════════════════
 FASE 35.37: ANÁLISIS DE CÓDIGO LEGACY 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-286	Legacy Pattern Detector	Identificar patrones antiguos/deprecated	Saber qué modernizar
-287	Framework Version Analyzer	Detectar versiones antiguas de frameworks	Planificar upgrades
-288	Anti-Pattern Identifier	Detectar malas prácticas establecidas	Oportunidades de mejora
-289	Technical Debt Quantifier	Medir deuda técnica en horas/esfuerzo	Priorizar refactoring
-290	Modernization Suggester	Sugerir cómo modernizar código viejo	Guía de actualización
-291	Backward Compatibility Checker	Verificar si cambios rompen compatibilidad	Migración segura
-292	Deprecated API Finder	Encontrar uso de APIs deprecated	Preparar para el futuro
+#       Componente      Descripción     Por qué es crítico
+286     Legacy Pattern Detector Identificar patrones antiguos/deprecated        Saber qué modernizar
+287     Framework Version Analyzer      Detectar versiones antiguas de frameworks       Planificar upgrades
+288     Anti-Pattern Identifier Detectar malas prácticas establecidas   Oportunidades de mejora
+289     Technical Debt Quantifier       Medir deuda técnica en horas/esfuerzo   Priorizar refactoring
+290     Modernization Suggester Sugerir cómo modernizar código viejo    Guía de actualización
+291     Backward Compatibility Checker  Verificar si cambios rompen compatibilidad      Migración segura
+292     Deprecated API Finder   Encontrar uso de APIs deprecated        Preparar para el futuro
 ═══════════════════════════════════════
 FASE 35.38: MIGRACIÓN DE TECNOLOGÍAS 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-293	Framework Migration Planner	Planificar migración entre frameworks	Migración ordenada
-294	Database Migration Analyzer	Analizar impacto de cambios de BD	Migraciones seguras
-295	API Version Migrator	Migrar entre versiones de API	Actualizaciones sin dolor
-296	Code Converter	Convertir código entre tecnologías similares	Migración automatizada
-297	Dependency Upgrade Path Finder	Encontrar camino de upgrade para dependencias	Actualizaciones paso a paso
-298	Breaking Change Migrator	Automatizar cambios por breaking changes	Menos trabajo manual
-299	Config Migration Tool	Migrar configuraciones entre versiones	Configs actualizadas
+#       Componente      Descripción     Por qué es crítico
+293     Framework Migration Planner     Planificar migración entre frameworks   Migración ordenada
+294     Database Migration Analyzer     Analizar impacto de cambios de BD       Migraciones seguras
+295     API Version Migrator    Migrar entre versiones de API   Actualizaciones sin dolor
+296     Code Converter  Convertir código entre tecnologías similares    Migración automatizada
+297     Dependency Upgrade Path Finder  Encontrar camino de upgrade para dependencias   Actualizaciones paso a paso
+298     Breaking Change Migrator        Automatizar cambios por breaking changes        Menos trabajo manual
+299     Config Migration Tool   Migrar configuraciones entre versiones  Configs actualizadas
 ═══════════════════════════════════════
 FASE 35.39: PATRONES DE DISEÑO 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-300	Design Pattern Recognizer	Identificar patrones usados en el código	Entender arquitectura
-301	Pattern Suggester	Sugerir patrones apropiados para cada situación	Código bien estructurado
-302	SOLID Principle Checker	Verificar cumplimiento de principios SOLID	Código mantenible
-303	Clean Code Enforcer	Aplicar principios de Clean Code	Código legible
-304	DRY Violation Detector	Detectar violaciones de Don't Repeat Yourself	Eliminar duplicación
-305	Coupling Analyzer	Medir acoplamiento entre módulos	Identificar dependencias problemáticas
-306	Cohesion Scorer	Medir cohesión de cada clase/módulo	Módulos bien definidos
+#       Componente      Descripción     Por qué es crítico
+300     Design Pattern Recognizer       Identificar patrones usados en el código        Entender arquitectura
+301     Pattern Suggester       Sugerir patrones apropiados para cada situación Código bien estructurado
+302     SOLID Principle Checker Verificar cumplimiento de principios SOLID      Código mantenible
+303     Clean Code Enforcer     Aplicar principios de Clean Code        Código legible
+304     DRY Violation Detector  Detectar violaciones de Don't Repeat Yourself   Eliminar duplicación
+305     Coupling Analyzer       Medir acoplamiento entre módulos        Identificar dependencias problemáticas
+306     Cohesion Scorer Medir cohesión de cada clase/módulo     Módulos bien definidos
 ═══════════════════════════════════════
 FASE 35.40: PERFORMANCE DE LA PROPIA IA 🟡 ALTA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-307	Response Time Optimizer	Optimizar tiempo de respuesta de la IA	UX más rápida
-308	Caching Strategy for AI	Cachear respuestas similares	Menos llamadas a API
-309	Batch Request Optimizer	Agrupar requests similares	Menos llamadas, más eficiencia
-310	Model Selection Logic	Elegir modelo según complejidad de tarea	Costo/calidad optimizado
-311	Streaming Response Handler	Mostrar respuesta mientras se genera	Feedback inmediato
-312	Partial Response Recovery	Recuperar respuestas parciales si hay error	No perder trabajo
-313	Warm-up Cache	Pre-cargar contexto frecuente	Inicio más rápido
+#       Componente      Descripción     Por qué es crítico
+307     Response Time Optimizer Optimizar tiempo de respuesta de la IA  UX más rápida
+308     Caching Strategy for AI Cachear respuestas similares    Menos llamadas a API
+309     Batch Request Optimizer Agrupar requests similares      Menos llamadas, más eficiencia
+310     Model Selection Logic   Elegir modelo según complejidad de tarea        Costo/calidad optimizado
+311     Streaming Response Handler      Mostrar respuesta mientras se genera    Feedback inmediato
+312     Partial Response Recovery       Recuperar respuestas parciales si hay error     No perder trabajo
+313     Warm-up Cache   Pre-cargar contexto frecuente   Inicio más rápido
 ═══════════════════════════════════════
 FASE 35.41: PLUGINS Y EXTENSIBILIDAD 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-314	Plugin System Architecture	Sistema para agregar funcionalidades via plugins	Extensible infinitamente
-315	Custom Tool Creator	Permitir crear herramientas personalizadas	Adaptar a necesidades
-316	External API Connector	Conectar fácilmente con APIs externas	Integraciones ilimitadas
-317	Webhook Manager	Gestionar webhooks entrantes/salientes	Eventos en tiempo real
-318	Custom Command Definer	Definir comandos personalizados	Automatización custom
-319	Template System	Sistema de templates personalizables	Reutilización de configuraciones
-320	Configuration Override Manager	Permitir overrides por proyecto	Flexibilidad por proyecto
+#       Componente      Descripción     Por qué es crítico
+314     Plugin System Architecture      Sistema para agregar funcionalidades via plugins        Extensible infinitamente
+315     Custom Tool Creator     Permitir crear herramientas personalizadas      Adaptar a necesidades
+316     External API Connector  Conectar fácilmente con APIs externas   Integraciones ilimitadas
+317     Webhook Manager Gestionar webhooks entrantes/salientes  Eventos en tiempo real
+318     Custom Command Definer  Definir comandos personalizados Automatización custom
+319     Template System Sistema de templates personalizables    Reutilización de configuraciones
+320     Configuration Override Manager  Permitir overrides por proyecto Flexibilidad por proyecto
 ═══════════════════════════════════════
 FASE 35.42: MULTI-PROYECTO Y ESCALABILIDAD 🟠 MEDIA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-321	Multi-Project Context Switcher	Cambiar entre proyectos sin perder contexto	Trabajar en varios proyectos
-322	Cross-Project Code Finder	Buscar código en múltiples proyectos	Reutilización entre proyectos
-323	Shared Component Library	Biblioteca de componentes compartidos	Consistencia entre proyectos
-324	Project Template Manager	Gestionar templates de proyectos	Nuevos proyectos instantáneos
-325	Workspace Orchestrator	Orquestar múltiples workspaces	Monorepo support
-326	Team Knowledge Base	Base de conocimiento compartida del equipo	Aprender de todos
-327	Code Standards Enforcer	Aplicar standards del equipo automáticamente	Consistencia de equipo
+#       Componente      Descripción     Por qué es crítico
+321     Multi-Project Context Switcher  Cambiar entre proyectos sin perder contexto     Trabajar en varios proyectos
+322     Cross-Project Code Finder       Buscar código en múltiples proyectos    Reutilización entre proyectos
+323     Shared Component Library        Biblioteca de componentes compartidos   Consistencia entre proyectos
+324     Project Template Manager        Gestionar templates de proyectos        Nuevos proyectos instantáneos
+325     Workspace Orchestrator  Orquestar múltiples workspaces  Monorepo support
+326     Team Knowledge Base     Base de conocimiento compartida del equipo      Aprender de todos
+327     Code Standards Enforcer Aplicar standards del equipo automáticamente    Consistencia de equipo
 ═══════════════════════════════════════
 FASE 35.43: ANÁLISIS SEMÁNTICO PROFUNDO 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-328	Semantic Code Search	Buscar por significado, no solo texto	Encontrar código por intención
-329	Code Summarizer	Resumir qué hace un archivo/función en una línea	Entendimiento rápido
-330	Functionality Mapper	Mapear qué funcionalidad provee cada parte del código	Documentación automática
-331	Impact Analyzer	Analizar impacto de un cambio en todo el sistema	Cambios seguros
-332	Dependency Impact Predictor	Predecir qué se rompe si actualizo X	Actualizaciones informadas
-333	Code Smell Prioritizer	Priorizar code smells por impacto	Foco en lo importante
-334	Refactoring Risk Scorer	Puntuar riesgo de cada refactoring	Decisiones informadas
+#       Componente      Descripción     Por qué es crítico
+328     Semantic Code Search    Buscar por significado, no solo texto   Encontrar código por intención
+329     Code Summarizer Resumir qué hace un archivo/función en una línea        Entendimiento rápido
+330     Functionality Mapper    Mapear qué funcionalidad provee cada parte del código   Documentación automática
+331     Impact Analyzer Analizar impacto de un cambio en todo el sistema        Cambios seguros
+332     Dependency Impact Predictor     Predecir qué se rompe si actualizo X    Actualizaciones informadas
+333     Code Smell Prioritizer  Priorizar code smells por impacto       Foco en lo importante
+334     Refactoring Risk Scorer Puntuar riesgo de cada refactoring      Decisiones informadas
 ═══════════════════════════════════════
 FASE 35.44: DEBUGGING AUTÓNOMO 🔴 CRÍTICA
 ═══════════════════════════════════════
-#	Componente	Descripción	Por qué es crítico
-335	Root Cause Analyzer	Encontrar causa raíz automáticamente	Resolver el problema real
-336	Reproduction Step Generator	Generar pasos para reproducir bug	Debug reproducible
-337	Fix Suggester with Confidence	Sugerir fix con % de confianza	Saber qué tan seguro es
-338	Regression Preventer	Verificar que fix no introduce nuevos bugs	Fixes que no rompen más
-339	Debug Session Recorder	Grabar sesiones de debug para análisis	Aprender de debugging
-340	Similar Bug Finder	Encontrar bugs similares resueltos anteriormente	Soluciones probadas
+#       Componente      Descripción     Por qué es crítico
+335     Root Cause Analyzer     Encontrar causa raíz automáticamente    Resolver el problema real
+336     Reproduction Step Generator     Generar pasos para reproducir bug       Debug reproducible
+337     Fix Suggester with Confidence   Sugerir fix con % de confianza  Saber qué tan seguro es
+338     Regression Preventer    Verificar que fix no introduce nuevos bugs      Fixes que no rompen más
+339     Debug Session Recorder  Grabar sesiones de debug para análisis  Aprender de debugging
+340     Similar Bug Finder      Encontrar bugs similares resueltos anteriormente        Soluciones probadas
 RESUMEN SECCIÓN 35
 RESUMEN POR PRIORIDAD
-Prioridad	Cantidad Fases	Componentes
-🔴 CRÍTICA	16 fases	~120 componentes
-🟡 ALTA	16 fases	~110 componentes
-🟠 MEDIA	8 fases	~50 componentes
-TOTAL	44 fases	~280+ componentes
+Prioridad       Cantidad Fases  Componentes
+🔴 CRÍTICA       16 fases        ~120 componentes
+🟡 ALTA  16 fases        ~110 componentes
+🟠 MEDIA 8 fases ~50 componentes
+TOTAL   44 fases        ~280+ componentes
 TOP 30 ABSOLUTAMENTE ESENCIALES
 Stack Trace Parser (53) - Encontrar errores instantáneamente
 OWASP Top 10 Scanner (61) - Seguridad mínima
@@ -6201,14 +6249,14 @@ Config File Parser Universal (47) - Configs sin errores
 Error Explainer (270) - Comunicación clara
 Progress Explainer (269) - Transparencia total
 GRAN TOTAL ACUMULADO
-Sección	Componentes
-Resumen inicial (1-10)	10
-Primera expansión (11-39)	29
-Segunda expansión (40-97)	58
-Tercera expansión (98-140)	43
-Cuarta expansión (141-243)	103
-Quinta expansión (244-340+)	97+
-TOTAL GENERAL	340+ componentes
+Sección Componentes
+Resumen inicial (1-10)  10
+Primera expansión (11-39)       29
+Segunda expansión (40-97)       58
+Tercera expansión (98-140)      43
+Cuarta expansión (141-243)      103
+Quinta expansión (244-340+)     97+
+TOTAL GENERAL   340+ componentes
 ════════════════════════════════════════════════════════════════
 FIN SECCIÓN 35
 ════════════════════════════════════════════════════════════════
@@ -6386,12 +6434,12 @@ SEMANA 3 (MEDIO):
 └── Día 5:   Sistema de diff + memoria persistente
 
 ARCHIVOS A CREAR
-Archivo	Descripción
-tracking/ai_toolkit.py	Clase principal AIToolkit con todas las herramientas
-tracking/ai_project_context.py	Memoria y contexto del proyecto
-tracking/ai_verification.py	Sistema de verificación
-tracking/ai_execution_flow.py	Flujos de ejecución por tarea
-tracking/ai_intent_patterns.py	Patrones de detección de intenciones
+Archivo Descripción
+tracking/ai_toolkit.py  Clase principal AIToolkit con todas las herramientas
+tracking/ai_project_context.py  Memoria y contexto del proyecto
+tracking/ai_verification.py     Sistema de verificación
+tracking/ai_execution_flow.py   Flujos de ejecución por tarea
+tracking/ai_intent_patterns.py  Patrones de detección de intenciones
 ORDEN DE IMPLEMENTACIÓN RECOMENDADO
 1. SEGURIDAD:    34.9 ✅ (Bloquear IA usuarios normales)
 2. CORE TOOLS:   34.10 ✅ → 34.11 ✅ → 34.12 ✅ (Toolkit archivos/comandos/errores)
