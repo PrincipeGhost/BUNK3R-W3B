@@ -4144,15 +4144,39 @@ const AdminPanel = {
         return localStorage.getItem('demo_session_token') || null;
     },
     
+    getAdminSessionToken() {
+        return localStorage.getItem('admin_session_token') || null;
+    },
+    
+    isTelegramMode() {
+        return window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData && window.Telegram.WebApp.initData.length > 0;
+    },
+    
+    getTelegramInitData() {
+        if (this.isTelegramMode()) {
+            return window.Telegram.WebApp.initData;
+        }
+        return null;
+    },
+    
     async fetchAPI(url, options = {}) {
-        const token = this.getDemoSessionToken();
+        const isTelegram = this.isTelegramMode();
         const headers = {
-            'Content-Type': 'application/json',
-            'X-Demo-Mode': 'true'
+            'Content-Type': 'application/json'
         };
         
-        if (token) {
-            headers['X-Demo-Session'] = token;
+        if (isTelegram) {
+            headers['X-Telegram-Init-Data'] = this.getTelegramInitData();
+            const adminToken = this.getAdminSessionToken();
+            if (adminToken) {
+                headers['X-Admin-Session'] = adminToken;
+            }
+        } else {
+            headers['X-Demo-Mode'] = 'true';
+            const demoToken = this.getDemoSessionToken();
+            if (demoToken) {
+                headers['X-Demo-Session'] = demoToken;
+            }
         }
         
         try {
@@ -4183,6 +4207,11 @@ const AdminPanel = {
     show2FAModal() {
         if (document.getElementById('admin2FAModal')) return;
         
+        const isTelegram = this.isTelegramMode();
+        const message = isTelegram 
+            ? 'Ingresa el código de tu Google Authenticator para acceder al panel de administración.'
+            : 'Ingresa el código 2FA que aparece en la consola del servidor (Logs).';
+        
         const modal = document.createElement('div');
         modal.id = 'admin2FAModal';
         modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.8);';
@@ -4193,7 +4222,7 @@ const AdminPanel = {
                 </div>
                 <div style="padding: 24px;">
                     <p style="color: #848E9C; margin: 0 0 16px 0; font-size: 14px;">
-                        Ingresa el código 2FA que aparece en la consola del servidor (Logs).
+                        ${message}
                     </p>
                     <input type="text" id="admin2FACode" placeholder="Código de 6 dígitos" 
                            style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 8px; border: 1px solid #2B3139; border-radius: 8px; background: #0B0E11; color: #EAECEF; box-sizing: border-box;"
@@ -4226,9 +4255,19 @@ const AdminPanel = {
         }
         
         try {
-            const response = await fetch('/api/demo/2fa/verify', {
+            const isTelegram = this.isTelegramMode();
+            const endpoint = isTelegram ? '/api/admin/2fa/verify' : '/api/demo/2fa/verify';
+            const headers = { 'Content-Type': 'application/json' };
+            
+            if (isTelegram) {
+                headers['X-Telegram-Init-Data'] = this.getTelegramInitData();
+            } else {
+                headers['X-Demo-Mode'] = 'true';
+            }
+            
+            const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Demo-Mode': 'true' },
+                headers: headers,
                 body: JSON.stringify({ code })
             });
             
@@ -4236,8 +4275,13 @@ const AdminPanel = {
             
             const token = data.sessionToken || data.session_token;
             if (data.success && token) {
-                this.demoSessionToken = token;
-                localStorage.setItem('demo_session_token', token);
+                if (isTelegram) {
+                    this.adminSessionToken = token;
+                    localStorage.setItem('admin_session_token', token);
+                } else {
+                    this.demoSessionToken = token;
+                    localStorage.setItem('demo_session_token', token);
+                }
                 document.getElementById('admin2FAModal').remove();
                 this.showToast('Verificación exitosa', 'success');
                 this.loadSectionData(this.currentSection);
