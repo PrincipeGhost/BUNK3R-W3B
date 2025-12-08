@@ -1141,6 +1141,115 @@
     margin: 4px 0;
 }
 
+.ai-console {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #0d1117;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+}
+
+.ai-console-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.console-welcome {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.console-text-muted {
+    color: #6e7681;
+}
+
+.console-line {
+    display: flex;
+    flex-wrap: wrap;
+    line-height: 1.5;
+}
+
+.console-line.command {
+    color: #58a6ff;
+}
+
+.console-line.output {
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.console-line.error {
+    color: #f85149;
+}
+
+.console-line.success {
+    color: #3fb950;
+}
+
+.console-prompt-display {
+    color: #3fb950;
+    margin-right: 8px;
+}
+
+.ai-console-input-container {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    gap: 8px;
+}
+
+.console-prompt {
+    color: #3fb950;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.ai-console-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #c9d1d9;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.ai-console-input::placeholder {
+    color: #484f58;
+}
+
+.console-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #8b949e;
+    padding: 4px 0;
+}
+
+.console-loading::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border: 2px solid #30363d;
+    border-top-color: #F0B90B;
+    border-radius: 50%;
+    animation: consoleSpin 0.8s linear infinite;
+}
+
+@keyframes consoleSpin {
+    to { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
     .ai-workspace-container {
         flex-direction: column;

@@ -61,8 +61,115 @@ const AIChat = {
         this.bindFileTabs();
         this.bindRefreshButton();
         this.bindCodeEditor();
+        this.bindConsole();
         
         input.focus();
+    },
+    
+    consoleHistory: [],
+    consoleHistoryIndex: -1,
+    
+    bindConsole() {
+        const consoleInput = document.getElementById('ai-console-input');
+        if (!consoleInput) return;
+        
+        consoleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const command = consoleInput.value.trim();
+                if (command) {
+                    this.runConsoleCommand(command);
+                    consoleInput.value = '';
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (this.consoleHistoryIndex < this.consoleHistory.length - 1) {
+                    this.consoleHistoryIndex++;
+                    consoleInput.value = this.consoleHistory[this.consoleHistory.length - 1 - this.consoleHistoryIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (this.consoleHistoryIndex > 0) {
+                    this.consoleHistoryIndex--;
+                    consoleInput.value = this.consoleHistory[this.consoleHistory.length - 1 - this.consoleHistoryIndex];
+                } else {
+                    this.consoleHistoryIndex = -1;
+                    consoleInput.value = '';
+                }
+            }
+        });
+    },
+    
+    async runConsoleCommand(command) {
+        const output = document.getElementById('ai-console-output');
+        if (!output) return;
+        
+        this.consoleHistory.push(command);
+        this.consoleHistoryIndex = -1;
+        
+        const cmdLine = document.createElement('div');
+        cmdLine.className = 'console-line command';
+        cmdLine.innerHTML = `<span class="console-prompt-display">$</span>${this.escapeHtml(command)}`;
+        output.appendChild(cmdLine);
+        
+        const loadingLine = document.createElement('div');
+        loadingLine.className = 'console-loading';
+        loadingLine.textContent = 'Ejecutando...';
+        output.appendChild(loadingLine);
+        output.scrollTop = output.scrollHeight;
+        
+        try {
+            const headers = App.getAuthHeaders ? App.getAuthHeaders() : { 'Content-Type': 'application/json' };
+            
+            const response = await fetch('/api/ai-toolkit/command/run', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ command, timeout: 30 })
+            });
+            
+            const data = await response.json();
+            loadingLine.remove();
+            
+            if (data.success) {
+                if (data.stdout) {
+                    const outLine = document.createElement('div');
+                    outLine.className = 'console-line output';
+                    outLine.textContent = data.stdout;
+                    output.appendChild(outLine);
+                }
+                if (data.stderr) {
+                    const errLine = document.createElement('div');
+                    errLine.className = 'console-line error';
+                    errLine.textContent = data.stderr;
+                    output.appendChild(errLine);
+                }
+                if (!data.stdout && !data.stderr) {
+                    const okLine = document.createElement('div');
+                    okLine.className = 'console-line success';
+                    okLine.textContent = 'Comando ejecutado correctamente';
+                    output.appendChild(okLine);
+                }
+            } else {
+                const errLine = document.createElement('div');
+                errLine.className = 'console-line error';
+                errLine.textContent = data.error || 'Error al ejecutar comando';
+                output.appendChild(errLine);
+            }
+        } catch (error) {
+            loadingLine.remove();
+            const errLine = document.createElement('div');
+            errLine.className = 'console-line error';
+            errLine.textContent = `Error: ${error.message}`;
+            output.appendChild(errLine);
+        }
+        
+        output.scrollTop = output.scrollHeight;
+    },
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     },
     
     bindQuickActions() {
@@ -132,21 +239,28 @@ const AIChat = {
         const codeEditor = document.getElementById('ai-code-editor');
         const emptyState = document.getElementById('ai-preview-empty');
         const textarea = document.getElementById('ai-code-textarea');
+        const consolePanel = document.getElementById('ai-console');
+        
+        if (consolePanel) consolePanel.classList.add('hidden');
+        if (codeEditor) codeEditor.classList.add('hidden');
+        if (iframe) iframe.classList.add('hidden');
+        if (emptyState) emptyState.classList.add('hidden');
         
         if (tabName === 'preview') {
-            if (codeEditor) codeEditor.classList.add('hidden');
             const hasFiles = Object.keys(this.files).length > 0;
             if (hasFiles) {
-                if (emptyState) emptyState.classList.add('hidden');
                 if (iframe) iframe.classList.remove('hidden');
             } else {
                 if (emptyState) emptyState.classList.remove('hidden');
-                if (iframe) iframe.classList.add('hidden');
             }
             this.updatePreview();
+        } else if (tabName === 'console') {
+            if (consolePanel) {
+                consolePanel.classList.remove('hidden');
+                const consoleInput = document.getElementById('ai-console-input');
+                if (consoleInput) consoleInput.focus();
+            }
         } else {
-            if (iframe) iframe.classList.add('hidden');
-            if (emptyState) emptyState.classList.add('hidden');
             if (codeEditor) codeEditor.classList.remove('hidden');
             
             const fileMap = { html: 'index.html', css: 'styles.css', js: 'script.js' };
