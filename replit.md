@@ -49,7 +49,16 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 - **Cloudinary:** Encrypted media storage for publications.
 - **Cryptography (Python library):** AES-256-GCM encryption/decryption of media files.
 - **SMSPool API:** Virtual phone numbers provisioning.
+- **Legit SMS API:** Primary SMS provider with automatic fallback to SMSPool.
 - **STON.fi DEX API:** Real-time B3C/TON pricing.
 - **CoinGecko API:** TON/USD conversion.
 - **TON Connect SDK:** For wallet connection and transaction signing.
 - **tonsdk (Python library):** For generating unique TON wallets.
+
+## Recent Changes (December 2024)
+- **Wallet Pool Optimizations:** Added rotation algorithm, low balance alerts, automated cleanup of old consolidated wallets, and pool maintenance routine.
+- **Transaction Auditing:** Implemented `blockchain_audit_log` table with JSONB storage for comprehensive transaction tracking.
+- **Transaction Limits:** Added `TransactionLimits` class enforcing daily withdrawal limits (100k B3C) and single transaction limits (50k B3C), properly filtering by completed/processing status.
+- **Legit SMS Service:** Implemented `LegitSMSService` with automatic fallback to SMSPool when primary provider fails.
+- **Security Improvements:** Enhanced 2FA for large withdrawals (>1000 B3C), address whitelisting, and rate limiting on withdrawal endpoints.
+- **Encryption:** AES-256-GCM for media, AES-256-CBC with unique IVs for private keys. Master key warning for development mode.

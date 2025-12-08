@@ -756,3 +756,163 @@ def get_b3c_service() -> B3CTokenService:
             use_testnet=os.environ.get('B3C_USE_TESTNET', 'true').lower() == 'true'
         )
     return b3c_service
+
+
+class TransactionAuditLog:
+    """
+    Sistema de auditoría para todas las transacciones blockchain.
+    Registra todas las operaciones de compra, venta, retiro y depósito.
+    """
+    
+    @staticmethod
+    def log_transaction(db_manager, transaction_type: str, user_id: str, 
+                       amount: float, details: Dict[str, Any]) -> bool:
+        """
+        Registrar una transacción en el log de auditoría.
+        
+        Args:
+            db_manager: Instancia de DatabaseManager
+            transaction_type: Tipo de transacción (purchase, withdrawal, deposit, consolidation)
+            user_id: ID del usuario
+            amount: Monto de la transacción
+            details: Detalles adicionales de la transacción
+            
+        Returns:
+            True si se registró correctamente
+        """
+        try:
+            from psycopg2.extras import Json
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO blockchain_audit_log 
+                        (transaction_type, user_id, amount, details, created_at)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, (transaction_type, user_id, amount, Json(details)))
+                    conn.commit()
+            
+            logger.info(f"[AUDIT] {transaction_type}: user={user_id}, amount={amount}")
+            return True
+        except Exception as e:
+            logger.error(f"[AUDIT] Failed to log transaction: {e}")
+            return False
+    
+    @staticmethod
+    def get_user_transactions(db_manager, user_id: str, limit: int = 50) -> list:
+        """Obtener historial de transacciones de un usuario"""
+        try:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, transaction_type, amount, details, created_at
+                        FROM blockchain_audit_log 
+                        WHERE user_id = %s
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                    """, (user_id, limit))
+                    rows = cur.fetchall()
+                    return [
+                        {
+                            'id': row[0],
+                            'type': row[1],
+                            'amount': float(row[2]) if row[2] else 0,
+                            'details': row[3],
+                            'created_at': str(row[4]) if row[4] else None
+                        }
+                        for row in rows
+                    ]
+        except Exception as e:
+            logger.error(f"[AUDIT] Failed to get user transactions: {e}")
+            return []
+
+
+class TransactionLimits:
+    """
+    Gestión de límites de transacciones para seguridad.
+    """
+    
+    DEFAULT_DAILY_WITHDRAWAL_LIMIT = 100000  # B3C
+    DEFAULT_SINGLE_TRANSACTION_LIMIT = 50000  # B3C
+    DEFAULT_DAILY_PURCHASE_LIMIT = 10  # TON
+    
+    @staticmethod
+    def check_withdrawal_limits(db_manager, user_id: str, amount: float) -> Dict[str, Any]:
+        """
+        Verificar si el retiro cumple con los límites.
+        Solo cuenta retiros completados o en proceso, no pendientes/rechazados/fallidos.
+        
+        Returns:
+            Dict con 'allowed' y detalles
+        """
+        try:
+            if amount > TransactionLimits.DEFAULT_SINGLE_TRANSACTION_LIMIT:
+                return {
+                    'allowed': False,
+                    'error': f'Monto excede limite por transaccion ({TransactionLimits.DEFAULT_SINGLE_TRANSACTION_LIMIT} B3C)'
+                }
+            
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COALESCE(SUM(b3c_amount), 0)
+                        FROM b3c_withdrawals 
+                        WHERE user_id = %s 
+                        AND status IN ('completed', 'processing', 'confirmed')
+                        AND created_at > NOW() - INTERVAL '24 hours'
+                    """, (user_id,))
+                    daily_total = float(cur.fetchone()[0])
+            
+            if daily_total + amount > TransactionLimits.DEFAULT_DAILY_WITHDRAWAL_LIMIT:
+                remaining = TransactionLimits.DEFAULT_DAILY_WITHDRAWAL_LIMIT - daily_total
+                return {
+                    'allowed': False,
+                    'error': f'Excede limite diario. Disponible: {remaining:.2f} B3C',
+                    'daily_used': daily_total,
+                    'daily_limit': TransactionLimits.DEFAULT_DAILY_WITHDRAWAL_LIMIT,
+                    'remaining': max(0, remaining)
+                }
+            
+            return {
+                'allowed': True,
+                'daily_used': daily_total,
+                'daily_limit': TransactionLimits.DEFAULT_DAILY_WITHDRAWAL_LIMIT,
+                'remaining': TransactionLimits.DEFAULT_DAILY_WITHDRAWAL_LIMIT - daily_total - amount
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking withdrawal limits: {e}")
+            return {'allowed': False, 'error': str(e)}
+    
+    @staticmethod
+    def check_purchase_limits(db_manager, user_id: str, ton_amount: float) -> Dict[str, Any]:
+        """Verificar límites de compra"""
+        try:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COALESCE(SUM(ton_amount), 0)
+                        FROM b3c_purchases 
+                        WHERE user_id = %s 
+                        AND status = 'confirmed'
+                        AND confirmed_at > NOW() - INTERVAL '24 hours'
+                    """, (user_id,))
+                    daily_total = float(cur.fetchone()[0])
+            
+            if daily_total + ton_amount > TransactionLimits.DEFAULT_DAILY_PURCHASE_LIMIT:
+                remaining = TransactionLimits.DEFAULT_DAILY_PURCHASE_LIMIT - daily_total
+                return {
+                    'allowed': False,
+                    'error': f'Excede limite diario de compras. Disponible: {remaining:.4f} TON',
+                    'daily_used': daily_total,
+                    'remaining': max(0, remaining)
+                }
+            
+            return {
+                'allowed': True,
+                'daily_used': daily_total,
+                'remaining': TransactionLimits.DEFAULT_DAILY_PURCHASE_LIMIT - daily_total - ton_amount
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking purchase limits: {e}")
+            return {'allowed': False, 'error': str(e)}
