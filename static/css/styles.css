@@ -14597,7 +14597,7 @@ body.dev-mode-active .dev-lock-badge {
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 16px;
-    padding: 20px;
+    padding: 70px 20px 90px 20px;
     height: 100vh;
     box-sizing: border-box;
 }
