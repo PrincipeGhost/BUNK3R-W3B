@@ -9596,20 +9596,30 @@ def admin_adjust_risk_score():
     """Admin: Ajustar score de riesgo de un usuario."""
     try:
         data = request.get_json() or {}
-        telegram_id = data.get('telegramId')
-        score = data.get('score', 0)
+        user_id = data.get('userId') or data.get('telegramId')
+        adjustment = data.get('adjustment', 0)
+        score = data.get('score')
+        reason = data.get('reason', 'Ajuste manual')
         
-        if not telegram_id:
+        if not user_id:
             return jsonify({'success': False, 'error': 'Usuario requerido'}), 400
         
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
+                if score is not None:
+                    new_score = int(score)
+                else:
+                    cur.execute("SELECT COALESCE(risk_score, 0) FROM users WHERE telegram_id = %s", (user_id,))
+                    row = cur.fetchone()
+                    current_score = row[0] if row else 0
+                    new_score = max(0, min(100, current_score + int(adjustment)))
+                
                 cur.execute("""
                     UPDATE users SET risk_score = %s WHERE telegram_id = %s
-                """, (score, telegram_id))
+                """, (new_score, user_id))
                 conn.commit()
                 
-                return jsonify({'success': True})
+                return jsonify({'success': True, 'newScore': new_score})
                 
     except Exception as e:
         logger.error(f"Error adjusting risk score: {e}")
