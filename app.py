@@ -12698,6 +12698,17 @@ def admin_analytics_conversion():
 def get_support_tickets():
     """Get all support tickets with filters and pagination"""
     try:
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'tickets': [],
+                'total': 0,
+                'page': 1,
+                'per_page': 20,
+                'pages': 0,
+                'stats': {'new_count': 0, 'in_progress_count': 0, 'resolved_count': 0, 'urgent_count': 0}
+            })
+        
         status = request.args.get('status', '')
         priority = request.args.get('priority', '')
         search = request.args.get('search', '')
@@ -12780,6 +12791,9 @@ def get_support_tickets():
 def get_ticket_detail(ticket_id):
     """Get single ticket with messages"""
     try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
@@ -12820,6 +12834,9 @@ def get_ticket_detail(ticket_id):
 def update_ticket(ticket_id):
     """Update ticket status or priority"""
     try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
         data = request.json
         status = data.get('status')
         priority = data.get('priority')
@@ -12867,6 +12884,9 @@ def update_ticket(ticket_id):
 def reply_to_ticket(ticket_id):
     """Send reply to ticket"""
     try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
         data = request.json
         message = data.get('message', '').strip()
         attachment_url = data.get('attachment_url')
@@ -12969,6 +12989,9 @@ def create_response_template():
 def get_faqs():
     """Get all FAQs with filters"""
     try:
+        if not db_manager:
+            return jsonify({'success': True, 'faqs': []})
+        
         category = request.args.get('category', '')
         status = request.args.get('status', '')
         search = request.args.get('search', '')
@@ -13016,6 +13039,9 @@ def get_faqs():
 def create_faq():
     """Create new FAQ"""
     try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
         data = request.json
         question = data.get('question', '').strip()
         answer = data.get('answer', '').strip()
@@ -13052,6 +13078,9 @@ def create_faq():
 def update_faq(faq_id):
     """Update FAQ"""
     try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
         data = request.json
         question = data.get('question', '').strip()
         answer = data.get('answer', '').strip()
@@ -13090,6 +13119,9 @@ def update_faq(faq_id):
 def delete_faq(faq_id):
     """Delete FAQ"""
     try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM faqs WHERE id = %s", (faq_id,))
