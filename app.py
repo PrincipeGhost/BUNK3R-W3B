@@ -6224,6 +6224,387 @@ def admin_notify_user(user_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def calculate_user_risk_score(user_id, conn):
+    """Calcula el score de riesgo de un usuario basado en multiples factores."""
+    factors = {}
+    score = 0
+    
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("SELECT * FROM users WHERE id = %s", (str(user_id),))
+        user = cur.fetchone()
+        if not user:
+            return None, None, None
+        
+        if not user.get('is_verified'):
+            factors['no_verificado'] = 15
+            score += 15
+        
+        cur.execute("""
+            SELECT COUNT(DISTINCT ip_address) as ip_count
+            FROM trusted_devices WHERE user_id = %s
+        """, (str(user_id),))
+        ip_count = cur.fetchone()['ip_count'] or 0
+        if ip_count > 5:
+            factors['multiples_ips'] = min(ip_count * 3, 20)
+            score += factors['multiples_ips']
+        
+        cur.execute("""
+            SELECT ip_address, COUNT(DISTINCT user_id) as user_count
+            FROM trusted_devices
+            WHERE ip_address IN (SELECT ip_address FROM trusted_devices WHERE user_id = %s)
+            AND user_id != %s
+            GROUP BY ip_address
+            HAVING COUNT(DISTINCT user_id) > 0
+        """, (str(user_id), str(user_id)))
+        shared_ips = cur.fetchall()
+        if shared_ips:
+            factors['ips_compartidas'] = min(len(shared_ips) * 10, 25)
+            score += factors['ips_compartidas']
+        
+        cur.execute("""
+            SELECT COUNT(*) as alert_count FROM security_alerts
+            WHERE user_id = %s AND resolved = false
+        """, (user.get('id'),))
+        alerts = cur.fetchone()['alert_count'] or 0
+        if alerts > 0:
+            factors['alertas_activas'] = min(alerts * 5, 20)
+            score += factors['alertas_activas']
+        
+        cur.execute("""
+            SELECT COUNT(*) as tx_count FROM wallet_transactions
+            WHERE user_id = %s AND created_at >= NOW() - INTERVAL '1 hour'
+        """, (str(user_id),))
+        recent_tx = cur.fetchone()['tx_count'] or 0
+        if recent_tx > 10:
+            factors['transacciones_rapidas'] = min(recent_tx, 15)
+            score += factors['transacciones_rapidas']
+        
+        cur.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total FROM wallet_transactions
+            WHERE user_id = %s AND transaction_type = 'withdraw' 
+            AND created_at >= NOW() - INTERVAL '24 hours'
+        """, (str(user_id),))
+        withdrawals = float(cur.fetchone()['total'] or 0)
+        if withdrawals > 1000:
+            factors['retiros_altos'] = min(int(withdrawals / 100), 20)
+            score += factors['retiros_altos']
+        
+        account_age_days = 0
+        if user.get('created_at'):
+            account_age_days = (datetime.now() - user['created_at']).days
+        if account_age_days < 7:
+            factors['cuenta_nueva'] = 10
+            score += 10
+        
+        score = min(score, 100)
+        
+        if score >= 75:
+            risk_level = 'critical'
+        elif score >= 50:
+            risk_level = 'high'
+        elif score >= 25:
+            risk_level = 'medium'
+        else:
+            risk_level = 'low'
+    
+    return score, risk_level, factors
+
+
+@app.route('/api/admin/users/<user_id>/risk-score', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_user_risk_score(user_id):
+    """Admin: Obtener score de riesgo de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM risk_scores WHERE user_id = %s
+                """, (str(user_id),))
+                existing = cur.fetchone()
+                
+                if existing:
+                    result = dict(existing)
+                    if result.get('last_calculated'):
+                        result['last_calculated'] = result['last_calculated'].isoformat()
+                    if result.get('created_at'):
+                        result['created_at'] = result['created_at'].isoformat()
+                    if result.get('updated_at'):
+                        result['updated_at'] = result['updated_at'].isoformat()
+                    return jsonify({'success': True, 'risk_score': result})
+                
+                score, risk_level, factors = calculate_user_risk_score(user_id, conn)
+                if score is None:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'risk_score': {
+                        'user_id': user_id,
+                        'score': score,
+                        'risk_level': risk_level,
+                        'factors': factors,
+                        'last_calculated': None,
+                        'note': 'Score calculado en tiempo real, no guardado'
+                    }
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting risk score: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/risk-score/calculate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_calculate_risk_score(user_id):
+    """Admin: Calcular y guardar score de riesgo de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            score, risk_level, factors = calculate_user_risk_score(user_id, conn)
+            if score is None:
+                return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+            
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM risk_scores WHERE user_id = %s", (str(user_id),))
+                existing = cur.fetchone()
+                
+                if existing:
+                    old_score = existing['score']
+                    old_level = existing['risk_level']
+                    
+                    if old_score != score or old_level != risk_level:
+                        cur.execute("""
+                            INSERT INTO risk_score_history (user_id, old_score, new_score, old_level, new_level, reason)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (str(user_id), old_score, score, old_level, risk_level, 'Recalculo automatico'))
+                    
+                    cur.execute("""
+                        UPDATE risk_scores SET score = %s, risk_level = %s, factors = %s,
+                        last_calculated = NOW(), updated_at = NOW()
+                        WHERE user_id = %s
+                    """, (score, risk_level, json.dumps(factors), str(user_id)))
+                else:
+                    cur.execute("""
+                        INSERT INTO risk_scores (user_id, score, risk_level, factors, last_calculated)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, (str(user_id), score, risk_level, json.dumps(factors)))
+                
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'risk_score': {
+                'user_id': user_id,
+                'score': score,
+                'risk_level': risk_level,
+                'factors': factors
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error calculating risk score: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/risk-score/history', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_risk_score_history(user_id):
+    """Admin: Obtener historial de cambios de score de riesgo."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM risk_score_history
+                    WHERE user_id = %s
+                    ORDER BY changed_at DESC
+                    LIMIT 50
+                """, (str(user_id),))
+                history = []
+                for row in cur.fetchall():
+                    r = dict(row)
+                    if r.get('changed_at'):
+                        r['changed_at'] = r['changed_at'].isoformat()
+                    history.append(r)
+        
+        return jsonify({'success': True, 'history': history})
+        
+    except Exception as e:
+        logger.error(f"Error getting risk score history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/related-accounts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_related_accounts(user_id):
+    """Admin: Obtener cuentas relacionadas de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        related = []
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT DISTINCT td2.user_id, u.username, td.ip_address
+                    FROM trusted_devices td
+                    JOIN trusted_devices td2 ON td.ip_address = td2.ip_address AND td.user_id != td2.user_id
+                    JOIN users u ON td2.user_id = u.id
+                    WHERE td.user_id = %s
+                """, (str(user_id),))
+                for row in cur.fetchall():
+                    related.append({
+                        'user_id': row['user_id'],
+                        'username': row['username'],
+                        'relation_type': 'same_ip',
+                        'evidence': {'ip': row['ip_address']}
+                    })
+                
+                cur.execute("""
+                    SELECT DISTINCT td2.user_id, u.username, td.device_fingerprint
+                    FROM trusted_devices td
+                    JOIN trusted_devices td2 ON td.device_fingerprint = td2.device_fingerprint 
+                        AND td.user_id != td2.user_id
+                        AND td.device_fingerprint IS NOT NULL
+                    JOIN users u ON td2.user_id = u.id
+                    WHERE td.user_id = %s
+                """, (str(user_id),))
+                for row in cur.fetchall():
+                    existing = next((r for r in related if r['user_id'] == row['user_id']), None)
+                    if existing:
+                        existing['relation_type'] = 'same_ip_and_device'
+                        existing['evidence']['fingerprint'] = row['device_fingerprint']
+                    else:
+                        related.append({
+                            'user_id': row['user_id'],
+                            'username': row['username'],
+                            'relation_type': 'same_device',
+                            'evidence': {'fingerprint': row['device_fingerprint']}
+                        })
+                
+                cur.execute("""
+                    SELECT DISTINCT u2.id as user_id, u2.username, u1.wallet_address
+                    FROM users u1
+                    JOIN users u2 ON u1.wallet_address = u2.wallet_address AND u1.id != u2.id
+                    WHERE u1.id = %s AND u1.wallet_address IS NOT NULL AND u1.wallet_address != ''
+                """, (str(user_id),))
+                for row in cur.fetchall():
+                    existing = next((r for r in related if r['user_id'] == row['user_id']), None)
+                    if existing:
+                        existing['evidence']['wallet'] = row['wallet_address']
+                    else:
+                        related.append({
+                            'user_id': row['user_id'],
+                            'username': row['username'],
+                            'relation_type': 'same_wallet',
+                            'evidence': {'wallet': row['wallet_address']}
+                        })
+        
+        return jsonify({
+            'success': True,
+            'user_id': user_id,
+            'related_accounts': related,
+            'count': len(related)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting related accounts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/anomalies', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_anomalies():
+    """Admin: Obtener detecciones de anomalias."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        resolved = request.args.get('resolved', 'false').lower() == 'true'
+        severity = request.args.get('severity', None)
+        anomaly_type = request.args.get('type', None)
+        limit = min(int(request.args.get('limit', 50)), 200)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT a.*, u.username FROM anomaly_detections a LEFT JOIN users u ON a.user_id = u.id WHERE 1=1"
+                params = []
+                
+                if not resolved:
+                    query += " AND a.is_resolved = false"
+                if severity:
+                    query += " AND a.severity = %s"
+                    params.append(severity)
+                if anomaly_type:
+                    query += " AND a.anomaly_type = %s"
+                    params.append(anomaly_type)
+                
+                query += " ORDER BY a.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                anomalies = []
+                for row in cur.fetchall():
+                    r = dict(row)
+                    if r.get('created_at'):
+                        r['created_at'] = r['created_at'].isoformat()
+                    if r.get('resolved_at'):
+                        r['resolved_at'] = r['resolved_at'].isoformat()
+                    anomalies.append(r)
+        
+        return jsonify({'success': True, 'anomalies': anomalies, 'count': len(anomalies)})
+        
+    except Exception as e:
+        logger.error(f"Error getting anomalies: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/anomalies/<int:anomaly_id>/resolve', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_resolve_anomaly(anomaly_id):
+    """Admin: Resolver una anomalia detectada."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.get_json() or {}
+        action_taken = data.get('action_taken', '')
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE anomaly_detections 
+                    SET is_resolved = true, resolved_by = %s, resolved_at = NOW(), action_taken = %s
+                    WHERE id = %s
+                """, (admin_id, action_taken, anomaly_id))
+                
+                if cur.rowcount == 0:
+                    return jsonify({'success': False, 'error': 'Anomalia no encontrada'}), 404
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Anomalia resuelta'})
+        
+    except Exception as e:
+        logger.error(f"Error resolving anomaly: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/fraud/multiple-accounts', methods=['GET'])
 @require_telegram_auth
 @require_owner
@@ -6598,6 +6979,254 @@ def admin_get_stats():
             'success': False,
             'error': 'Error al obtener estadisticas'
         }), 500
+
+
+@app.route('/api/admin/stats/overview', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_stats_overview():
+    """Admin: Estadisticas generales detalladas del sistema."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM users")
+                total_users = cur.fetchone()['total'] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= NOW() - INTERVAL '24 hours'")
+                active_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= NOW() - INTERVAL '7 days'")
+                active_7d = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '24 hours'")
+                new_users_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")
+                new_users_7d = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM wallet_transactions")
+                total_transactions = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM wallet_transactions WHERE created_at >= NOW() - INTERVAL '24 hours'")
+                transactions_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions WHERE transaction_type = 'deposit'")
+                total_deposits = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions WHERE transaction_type = 'withdraw'")
+                total_withdrawals = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("SELECT COALESCE(SUM(credits), 0) FROM users")
+                total_b3c_circulation = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("SELECT COUNT(*) FROM posts WHERE is_active = true")
+                total_posts = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM posts WHERE created_at >= NOW() - INTERVAL '24 hours'")
+                posts_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM security_alerts WHERE resolved = false")
+                pending_alerts = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM user_bots WHERE is_active = true")
+                active_bots = cur.fetchone()[0] or 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'users': {
+                    'total': total_users,
+                    'active_24h': active_24h,
+                    'active_7d': active_7d,
+                    'new_24h': new_users_24h,
+                    'new_7d': new_users_7d
+                },
+                'transactions': {
+                    'total': total_transactions,
+                    'last_24h': transactions_24h,
+                    'total_deposits': total_deposits,
+                    'total_withdrawals': total_withdrawals
+                },
+                'economy': {
+                    'b3c_circulation': total_b3c_circulation
+                },
+                'content': {
+                    'total_posts': total_posts,
+                    'posts_24h': posts_24h
+                },
+                'security': {
+                    'pending_alerts': pending_alerts,
+                    'active_bots': active_bots
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting stats overview: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/stats/users', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_stats_users():
+    """Admin: Estadisticas detalladas de usuarios."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM users")
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE is_verified = true")
+                verified = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE is_active = true")
+                active = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE is_active = false")
+                banned = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= NOW() - INTERVAL '1 hour'")
+                online_now = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count 
+                    FROM users 
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at) 
+                    ORDER BY date DESC
+                """)
+                registrations_by_day = [{'date': str(r['date']), 'count': r['count']} for r in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT LOWER(role) as role, COUNT(*) as count 
+                    FROM users 
+                    GROUP BY LOWER(role)
+                """)
+                by_role = {r['role']: r['count'] for r in cur.fetchall()}
+                
+                cur.execute("""
+                    SELECT level, COUNT(*) as count 
+                    FROM users 
+                    GROUP BY level 
+                    ORDER BY level
+                """)
+                by_level = [{'level': r['level'], 'count': r['count']} for r in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT u.id, u.username, u.credits, u.level, u.is_verified, u.last_seen
+                    FROM users u
+                    ORDER BY u.credits DESC
+                    LIMIT 10
+                """)
+                top_users = [dict(r) for r in cur.fetchall()]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'summary': {
+                    'total': total,
+                    'verified': verified,
+                    'active': active,
+                    'banned': banned,
+                    'online_now': online_now
+                },
+                'registrations_by_day': registrations_by_day,
+                'by_role': by_role,
+                'by_level': by_level,
+                'top_users': top_users
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/stats/transactions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_stats_transactions():
+    """Admin: Estadisticas detalladas de transacciones."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM wallet_transactions")
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT transaction_type, COUNT(*) as count, COALESCE(SUM(amount), 0) as total_amount
+                    FROM wallet_transactions
+                    GROUP BY transaction_type
+                """)
+                by_type = {r['transaction_type']: {'count': r['count'], 'amount': float(r['total_amount'])} for r in cur.fetchall()}
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count, COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date DESC
+                """)
+                by_day = [{'date': str(r['date']), 'count': r['count'], 'volume': float(r['volume'])} for r in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM wallet_transactions WHERE created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                count_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions 
+                    WHERE created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                volume_24h = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("""
+                    SELECT COALESCE(AVG(amount), 0) FROM wallet_transactions
+                """)
+                avg_amount = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("""
+                    SELECT wt.id, wt.user_id, u.username, wt.transaction_type, wt.amount, wt.description, wt.created_at
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON wt.user_id = u.id
+                    ORDER BY wt.created_at DESC
+                    LIMIT 20
+                """)
+                recent = []
+                for r in cur.fetchall():
+                    row = dict(r)
+                    if row.get('created_at'):
+                        row['created_at'] = row['created_at'].isoformat()
+                    recent.append(row)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'summary': {
+                    'total': total,
+                    'count_24h': count_24h,
+                    'volume_24h': volume_24h,
+                    'avg_amount': round(avg_amount, 2)
+                },
+                'by_type': by_type,
+                'by_day': by_day,
+                'recent': recent
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting transaction stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/admin/security/users', methods=['GET'])
@@ -14149,6 +14778,226 @@ def mark_support_notifications_read():
 
 
 # ==================== END SUPPORT SECTION ====================
+
+
+# ==================== PRIVATE MESSAGES SECTION ====================
+
+@app.route('/api/messages', methods=['POST'])
+@require_telegram_auth
+def send_private_message():
+    """Enviar un mensaje privado a otro usuario."""
+    try:
+        sender_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        receiver_id = data.get('receiver_id', '').strip()
+        content = data.get('content', '').strip()
+        
+        if not receiver_id or not content:
+            return jsonify({'success': False, 'error': 'Receptor y contenido son requeridos'}), 400
+        
+        if len(content) > 2000:
+            return jsonify({'success': False, 'error': 'Mensaje muy largo (max 2000 caracteres)'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, username FROM users WHERE id = %s", (receiver_id,))
+                receiver = cur.fetchone()
+                if not receiver:
+                    return jsonify({'success': False, 'error': 'Usuario receptor no encontrado'}), 404
+                
+                cur.execute("""
+                    INSERT INTO private_messages (sender_id, receiver_id, content)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, created_at
+                """, (sender_id, receiver_id, html.escape(content)))
+                message = cur.fetchone()
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': {
+                'id': message['id'],
+                'sender_id': sender_id,
+                'receiver_id': receiver_id,
+                'content': content,
+                'created_at': message['created_at'].isoformat() if message.get('created_at') else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending private message: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/messages/conversations', methods=['GET'])
+@require_telegram_auth
+def get_conversations():
+    """Obtener lista de conversaciones del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    WITH conversations AS (
+                        SELECT 
+                            CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END as other_user_id,
+                            MAX(created_at) as last_message_at,
+                            COUNT(*) FILTER (WHERE receiver_id = %s AND is_read = false) as unread_count
+                        FROM private_messages
+                        WHERE sender_id = %s OR receiver_id = %s
+                        GROUP BY CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END
+                    )
+                    SELECT 
+                        c.other_user_id,
+                        c.last_message_at,
+                        c.unread_count,
+                        u.username,
+                        u.avatar_url,
+                        (SELECT content FROM private_messages pm 
+                         WHERE (pm.sender_id = %s AND pm.receiver_id = c.other_user_id)
+                            OR (pm.sender_id = c.other_user_id AND pm.receiver_id = %s)
+                         ORDER BY pm.created_at DESC LIMIT 1) as last_message
+                    FROM conversations c
+                    JOIN users u ON c.other_user_id = u.id
+                    ORDER BY c.last_message_at DESC
+                    LIMIT 50
+                """, (user_id, user_id, user_id, user_id, user_id, user_id, user_id))
+                
+                conversations = []
+                for row in cur.fetchall():
+                    conv = dict(row)
+                    if conv.get('last_message_at'):
+                        conv['last_message_at'] = conv['last_message_at'].isoformat()
+                    conversations.append(conv)
+        
+        return jsonify({'success': True, 'conversations': conversations})
+        
+    except Exception as e:
+        logger.error(f"Error getting conversations: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/messages/<other_user_id>', methods=['GET'])
+@require_telegram_auth
+def get_messages_with_user(other_user_id):
+    """Obtener mensajes con un usuario especifico."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        before_id = request.args.get('before_id', None)
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT pm.*, 
+                        s.username as sender_username,
+                        r.username as receiver_username
+                    FROM private_messages pm
+                    LEFT JOIN users s ON pm.sender_id = s.id
+                    LEFT JOIN users r ON pm.receiver_id = r.id
+                    WHERE ((pm.sender_id = %s AND pm.receiver_id = %s) 
+                        OR (pm.sender_id = %s AND pm.receiver_id = %s))
+                """
+                params = [user_id, other_user_id, other_user_id, user_id]
+                
+                if before_id:
+                    query += " AND pm.id < %s"
+                    params.append(before_id)
+                
+                query += " ORDER BY pm.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                messages = []
+                for row in cur.fetchall():
+                    msg = dict(row)
+                    if msg.get('created_at'):
+                        msg['created_at'] = msg['created_at'].isoformat()
+                    if msg.get('read_at'):
+                        msg['read_at'] = msg['read_at'].isoformat()
+                    messages.append(msg)
+                
+                cur.execute("""
+                    UPDATE private_messages
+                    SET is_read = true, read_at = NOW()
+                    WHERE receiver_id = %s AND sender_id = %s AND is_read = false
+                """, (user_id, other_user_id))
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'messages': messages[::-1],
+            'count': len(messages)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting messages: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/messages/<int:message_id>/read', methods=['POST'])
+@require_telegram_auth
+def mark_message_read(message_id):
+    """Marcar un mensaje como leido."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE private_messages
+                    SET is_read = true, read_at = NOW()
+                    WHERE id = %s AND receiver_id = %s AND is_read = false
+                """, (message_id, user_id))
+                updated = cur.rowcount
+                conn.commit()
+        
+        return jsonify({'success': True, 'updated': updated > 0})
+        
+    except Exception as e:
+        logger.error(f"Error marking message as read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/messages/unread-count', methods=['GET'])
+@require_telegram_auth
+def get_unread_messages_count():
+    """Obtener cantidad de mensajes no leidos."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) FROM private_messages
+                    WHERE receiver_id = %s AND is_read = false
+                """, (user_id,))
+                count = cur.fetchone()[0] or 0
+        
+        return jsonify({'success': True, 'unread_count': count})
+        
+    except Exception as e:
+        logger.error(f"Error getting unread count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== END PRIVATE MESSAGES SECTION ====================
 
 
 
