@@ -12,7 +12,7 @@ import time
 from functools import wraps
 from urllib.parse import parse_qs, unquote, urlparse
 
-from flask import request, jsonify
+from flask import request, jsonify, session
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,6 @@ IS_PRODUCTION = os.environ.get('REPL_DEPLOYMENT', '') == '1'
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
 USER_TELEGRAM_ID = os.environ.get('USER_TELEGRAM_ID', '')
-
-demo_2fa_sessions = {}
 
 
 def validate_telegram_webapp_data(init_data: str):
@@ -97,36 +95,11 @@ def is_allowed_user(user_id: int) -> bool:
     return is_owner(user_id) or is_test_user(user_id)
 
 
-def verify_demo_session(token: str, client_ip: str) -> bool:
-    """Verifica si una sesion demo es valida."""
-    if not token:
-        return False
-    
-    session_data = demo_2fa_sessions.get(token)
-    if not session_data:
-        return False
-    
-    if session_data.get('ip') != client_ip:
-        logger.warning(f"Demo session IP mismatch: {client_ip} vs {session_data.get('ip')}")
-        return False
-    
-    if time.time() > session_data.get('expires', 0):
-        del demo_2fa_sessions[token]
-        return False
-    
-    return True
-
-
-def create_demo_session(client_ip: str, duration_hours: int = 2) -> str:
-    """Crea una nueva sesion demo."""
-    import secrets
-    token = secrets.token_urlsafe(32)
-    demo_2fa_sessions[token] = {
-        'ip': client_ip,
-        'expires': time.time() + (duration_hours * 3600),
-        'created': time.time()
-    }
-    return token
+from tracking.demo_sessions import (
+    verify_demo_session,
+    create_demo_session,
+    invalidate_demo_session
+)
 
 
 def require_telegram_auth(f):

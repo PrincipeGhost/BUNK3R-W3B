@@ -99,15 +99,39 @@ static/js/
 
 ## Recent Changes (December 2025)
 
-### 8 Diciembre 2025
-- **Estructura de Blueprints completada:** Blueprints creados, configurados y registrados en app.py (lineas 161-168)
-- **Módulo de utilidades compartidas:** Creado tracking/utils.py con InputValidator, RateLimiter, sanitize_error
-- **Documentación actualizada:** 007.md y archivos WORK/*.md actualizados con estado real del proyecto
+### 8 Diciembre 2025 - Migracion a Blueprints
+- **Arquitectura de servicios compartidos creada:**
+  - `tracking/services.py`: Inyeccion de dependencias para db_manager, security_manager, vn_manager
+  - `tracking/decorators.py`: Decoradores de autenticacion usando Flask-Session para modo demo
+  - Patron: app.py inicializa servicios y los inyecta via `set_db_manager()`, blueprints los obtienen via `get_db_manager()`
+
+- **AUTH Blueprint migrado (9 endpoints):**
+  - `/api/demo/2fa/verify` - Login modo demo con contrasena
+  - `/api/demo/2fa/logout` - Cerrar sesion demo
+  - `/api/2fa/status` - Estado 2FA del usuario
+  - `/api/2fa/setup` - Configurar 2FA (genera QR)
+  - `/api/2fa/verify` - Verificar codigo TOTP
+  - `/api/2fa/session` - Verificar sesion 2FA activa
+  - `/api/2fa/refresh` - Refrescar sesion 2FA
+  - `/api/2fa/disable` - Desactivar 2FA
+  - `/api/validate` - Validar usuario Telegram
+
+- **Flujo demo 2FA unificado:**
+  - Todas las sesiones demo usan Flask-Session (no memoria)
+  - Decoradores y endpoints usan la misma implementacion
+  - Sesiones persisten entre reinicios del servidor
+
 - **Endpoints health verificados:** 
-  - GET /api/auth/health - 200 OK
+  - GET /api/auth/health - 200 OK (muestra endpoints migrados)
   - GET /api/blockchain/health - 200 OK  
   - GET /api/admin/health - 200 OK
   - GET /api/user/health - 200 OK
+
+### Pendiente de Migracion
+- **329 endpoints restantes en app.py** distribuidos en:
+  - BLOCKCHAIN: /api/b3c/*, /api/wallet/*, /api/ton/*, /api/exchange/* (~80 endpoints)
+  - ADMIN: /api/admin/* (~60 endpoints)
+  - USER: /api/users/*, /api/publications/*, /api/stories/*, /api/messages/*, /api/notifications/* (~180 endpoints)
 
 ### Cambios anteriores (December 2024)
 - **Wallet Pool Optimizations:** Added rotation algorithm, low balance alerts, automated cleanup of old consolidated wallets, and pool maintenance routine.
@@ -121,27 +145,30 @@ static/js/
 
 **Estructura de archivos principal:**
 ```
-app.py                    - Aplicación principal (~15,000 líneas, contiene todos los endpoints)
-routes/                   - Blueprints preparados para migración gradual
+app.py                    - Aplicacion principal (~15,000 lineas, 338 endpoints)
+routes/                   - Blueprints para migracion gradual
   __init__.py             - Exporta todos los blueprints
-  auth_routes.py          - Blueprint de autenticación (/api/auth/*)
-  blockchain_routes.py    - Blueprint de blockchain (/api/blockchain/*)
-  admin_routes.py         - Blueprint de admin (/api/admin/*)
-  user_routes.py          - Blueprint de usuario (/api/user/*)
-tracking/                 - Servicios y modelos
-  utils.py                - Utilidades compartidas (InputValidator, RateLimiter)
+  auth_routes.py          - Blueprint AUTH (9 endpoints MIGRADOS)
+  blockchain_routes.py    - Blueprint blockchain (pendiente)
+  admin_routes.py         - Blueprint admin (pendiente)
+  user_routes.py          - Blueprint usuario (pendiente)
+tracking/                 - Servicios y modelos compartidos
+  services.py             - Inyeccion de dependencias (get_db_manager, set_db_manager)
+  decorators.py           - Decoradores de autenticacion (require_telegram_auth, require_owner)
+  utils.py                - Utilidades (InputValidator, RateLimiter)
   database.py             - DatabaseManager
-  models.py               - Modelos de datos
   security.py             - SecurityManager
   b3c_service.py          - Servicio B3C
   wallet_pool_service.py  - Pool de wallets
   ...
 WORK/                     - Archivos de tareas por agente
-  TAREAS_BACKEND-API.md
-  TAREAS_BLOCKCHAIN-SERVICES.md
-  TAREAS_FRONTEND-ADMIN.md
-  TAREAS_FRONTEND-USER.md
-007.md                    - Panel de gestión de tareas
+007.md                    - Panel de gestion de tareas
 ```
 
-**NOTA:** Los endpoints principales siguen en app.py. La migración a blueprints se realizará de forma gradual para evitar interrupciones.
+**Patron de Migracion:**
+1. Crear endpoint en blueprint usando decoradores de tracking/decorators.py
+2. Obtener servicios via tracking/services.py (get_db_manager(), etc.)
+3. Eliminar endpoint duplicado de app.py despues de verificar funcionamiento
+4. Los endpoints duplicados funcionan temporalmente (Flask usa el primero registrado)
+
+**NOTA:** 9/338 endpoints migrados. La migracion completa es un proceso gradual.

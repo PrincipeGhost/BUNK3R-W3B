@@ -31,12 +31,8 @@ from tracking.decorators import (
     is_test_user
 )
 from tracking.utils import rate_limit
-from tracking.services import (
-    get_db_manager,
-    get_demo_session_token,
-    invalidate_demo_session,
-    IS_PRODUCTION
-)
+from tracking.services import get_db_manager, IS_PRODUCTION
+from tracking.demo_sessions import get_demo_session_token, invalidate_demo_session
 
 logger = logging.getLogger(__name__)
 
