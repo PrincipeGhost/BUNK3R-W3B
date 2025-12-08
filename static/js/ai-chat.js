@@ -10,6 +10,12 @@ const AIChat = {
     esperandoConfirmacion: false,
     esperandoClarificacion: false,
     
+    devLog(...args) {
+        if (window.App?.isDevMode || window.App?.isDemoMode) {
+            console.log('[AI-DEV]', ...args);
+        }
+    },
+    
     init() {
         const pageContainer = document.getElementById('ai-chat-screen');
         if (pageContainer && !pageContainer.classList.contains('hidden')) {
@@ -267,7 +273,7 @@ const AIChat = {
                 this.updatePhaseIndicator();
             }
         } catch (e) {
-            console.log('No active session');
+            this.devLog('No active session');
         }
     },
     
@@ -503,7 +509,7 @@ const AIChat = {
         let css = this.files['styles.css'] || this.files['style.css'] || this.files['css'] || '';
         let js = this.files['script.js'] || this.files['main.js'] || this.files['app.js'] || this.files['js'] || '';
         
-        console.log('AIChat updatePreview - files:', Object.keys(this.files), 'html:', !!html, 'css:', !!css, 'js:', !!js);
+        this.devLog('AIChat updatePreview - files:', Object.keys(this.files), 'html:', !!html, 'css:', !!css, 'js:', !!js);
         
         if (!html && !css && !js) {
             if (emptyState) emptyState.classList.remove('hidden');
@@ -570,7 +576,7 @@ const AIChat = {
             }
         }
         
-        console.log('AIChat updatePreview - setting srcdoc, length:', processedHtml.length);
+        this.devLog('AIChat updatePreview - setting srcdoc, length:', processedHtml.length);
         iframe.srcdoc = processedHtml;
     },
     
@@ -721,16 +727,16 @@ const AIChat = {
     },
     
     processFiles(files) {
-        console.log('AIChat processFiles - received files:', Object.keys(files));
+        this.devLog('AIChat processFiles - received files:', Object.keys(files));
         
         for (const [filename, content] of Object.entries(files)) {
             const isNew = !this.files[filename];
             this.files[filename] = content;
-            console.log(`AIChat processFiles - ${isNew ? 'created' : 'updated'}: ${filename} (${content.length} chars)`);
+            this.devLog(`AIChat processFiles - ${isNew ? 'created' : 'updated'}: ${filename} (${content.length} chars)`);
             this.appendCodeAction(isNew ? 'create' : 'update', filename);
         }
         
-        console.log('AIChat processFiles - all files now:', Object.keys(this.files));
+        this.devLog('AIChat processFiles - all files now:', Object.keys(this.files));
         
         this.switchTab('preview');
         this.saveToStorage();

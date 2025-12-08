@@ -388,7 +388,7 @@ const PublicationsManager = {
                 }
             }
         } catch (error) {
-            console.log('Trending hashtags not available:', error.message);
+            // Trending hashtags not available - silently fail
         }
     },
     

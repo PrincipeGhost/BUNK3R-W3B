@@ -51,13 +51,19 @@ const App = {
             platform
         };
         
-        console.log(`[CLIENT LOG] ${action}:`, details);
+        this.devLog(`[CLIENT LOG] ${action}:`, details);
         
         fetch('/api/client/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(logData)
         }).catch(() => {});
+    },
+    
+    devLog(...args) {
+        if (this.isDevMode || this.isDemoMode) {
+            console.log('[DEV]', ...args);
+        }
     },
     
     registerInterval(intervalId) {
@@ -116,7 +122,7 @@ const App = {
             PublicationsManager.cleanup();
         }
         
-        console.log('App cleanup completed');
+        this.devLog('App cleanup completed');
     },
     
     async init() {
@@ -165,7 +171,7 @@ const App = {
     },
     
     async initDemoMode() {
-        console.log('Iniciando modo demo (fuera de Telegram)');
+        this.devLog('Iniciando modo demo (fuera de Telegram)');
         this.isDemoMode = true;
         this.isOwner = true;
         this.user = {
@@ -189,53 +195,53 @@ const App = {
     async check2FAStatus() {
         try {
             if (this.isDemoMode) {
-                console.log('Modo demo: verificando sesión 2FA...');
+                this.devLog('Modo demo: verificando sesión 2FA...');
                 try {
                     await this.apiRequest('/api/2fa/status', { method: 'POST' });
-                    console.log('Sesión demo válida, completando login');
+                    this.devLog('Sesión demo válida, completando login');
                     this.completeLogin();
                     return;
                 } catch (error) {
                     if (error.message && error.message.includes('DEMO_2FA_REQUIRED')) {
-                        console.log('Demo 2FA requerido, mostrando pantalla de verificación');
+                        this.devLog('Demo 2FA requerido, mostrando pantalla de verificación');
                         this.showDemo2FAVerifyScreen();
                         return;
                     }
-                    console.log('Error al verificar sesión demo:', error);
+                    this.devLog('Error al verificar sesión demo:', error);
                     this.showDemo2FAVerifyScreen();
                     return;
                 }
             }
             
-            console.log('Checking 2FA status...');
+            this.devLog('Checking 2FA status...');
             const response = await this.apiRequest('/api/2fa/status', { method: 'POST' });
-            console.log('2FA status response:', response);
+            this.devLog('2FA status response:', response);
             
             if (response.success) {
                 this.twoFactorEnabled = response.enabled;
                 
                 if (response.requiresVerification) {
-                    console.log('2FA requires verification, showing verify screen');
+                    this.devLog('2FA requires verification, showing verify screen');
                     this.show2FAVerifyScreen();
                     return;
                 }
                 
                 if (!response.configured && this.isOwner) {
-                    console.log('2FA not configured, showing setup screen');
+                    this.devLog('2FA not configured, showing setup screen');
                     this.show2FASetupScreen();
                     return;
                 }
                 
                 if (response.configured && !response.enabled && this.isOwner) {
-                    console.log('2FA configured but not enabled, showing setup screen to complete activation');
+                    this.devLog('2FA configured but not enabled, showing setup screen to complete activation');
                     this.show2FASetupScreen();
                     return;
                 }
                 
-                console.log('2FA configured or not owner, completing login');
+                this.devLog('2FA configured or not owner, completing login');
                 this.completeLogin();
             } else {
-                console.log('2FA status failed, completing login');
+                this.devLog('2FA status failed, completing login');
                 this.completeLogin();
             }
         } catch (error) {
@@ -254,16 +260,16 @@ const App = {
     },
     
     async show2FASetupScreen() {
-        console.log('Showing 2FA setup screen');
+        this.devLog('Showing 2FA setup screen');
         this.hidePreloadOverlay();
         document.getElementById('loading-screen').classList.add('hidden');
         const setupScreen = document.getElementById('setup-2fa-screen');
         setupScreen.classList.remove('hidden');
-        console.log('Setup screen visible:', !setupScreen.classList.contains('hidden'));
+        this.devLog('Setup screen visible:', !setupScreen.classList.contains('hidden'));
         
         try {
             const response = await this.apiRequest('/api/2fa/setup', { method: 'POST' });
-            console.log('2FA setup response:', response.success ? 'success' : 'failed');
+            this.devLog('2FA setup response:', response.success ? 'success' : 'failed');
             
             if (response.success) {
                 document.getElementById('qr-code-img').src = response.qrCode;
@@ -292,7 +298,7 @@ const App = {
     },
     
     showDemo2FAVerifyScreen() {
-        console.log('Mostrando pantalla de verificación 2FA para modo demo');
+        this.devLog('Mostrando pantalla de verificación 2FA para modo demo');
         this.hidePreloadOverlay();
         document.getElementById('loading-screen').classList.add('hidden');
         
@@ -446,7 +452,7 @@ const App = {
                 const demoScreen = document.getElementById('demo-2fa-screen');
                 if (demoScreen) demoScreen.classList.add('hidden');
                 
-                console.log('Demo 2FA verificado, completando login');
+                this.devLog('Demo 2FA verificado, completando login');
                 this.completeLogin();
             } else {
                 this.showDemo2FAError(data.error || 'Código incorrecto');
@@ -741,7 +747,7 @@ const App = {
     
     initDevPhaseLock() {
         if (this._devPhaseLockInitialized) {
-            console.log('Dev phase lock already initialized, skipping');
+            this.devLog('Dev phase lock already initialized, skipping');
             return;
         }
         this._devPhaseLockInitialized = true;
@@ -795,7 +801,7 @@ const App = {
             this.createDevModeIndicator();
         }
         
-        console.log('Dev phase lock initialized. DevMode:', this.isDevMode);
+        this.devLog('Dev phase lock initialized. DevMode:', this.isDevMode);
     },
     
     createDevModeIndicator() {
@@ -820,7 +826,7 @@ const App = {
             indicator.textContent = this.isDevMode ? 'DEV MODE' : 'LOCKED';
         }
         
-        console.log('Dev mode toggled:', this.isDevMode);
+        this.devLog('Dev mode toggled:', this.isDevMode);
     },
     
     async loadMerchantWallet() {
@@ -828,7 +834,7 @@ const App = {
             const response = await this.apiRequest('/api/wallet/merchant');
             if (response.success && response.merchantWallet) {
                 this.MERCHANT_WALLET = response.merchantWallet;
-                console.log('Merchant wallet loaded:', this.MERCHANT_WALLET);
+                this.devLog('Merchant wallet loaded:', this.MERCHANT_WALLET);
             }
         } catch (error) {
             console.error('Error loading merchant wallet:', error);
@@ -1276,7 +1282,7 @@ const App = {
             document.body.addEventListener('click', (e) => {
                 const editBtn = e.target.closest('#edit-profile-btn');
                 if (editBtn) {
-                    console.log('Edit profile button clicked!');
+                    this.devLog('Edit profile button clicked!');
                     e.preventDefault();
                     e.stopPropagation();
                     this.toggleEditMode();
@@ -1994,9 +2000,9 @@ const App = {
     },
     
     toggleEditMode() {
-        console.log('toggleEditMode called, current state:', this.editModeActive);
+        this.devLog('toggleEditMode called, current state:', this.editModeActive);
         this.editModeActive = !this.editModeActive;
-        console.log('new edit mode state:', this.editModeActive);
+        this.devLog('new edit mode state:', this.editModeActive);
         
         const editBtn = document.getElementById('edit-profile-btn');
         
@@ -2688,7 +2694,7 @@ const App = {
     
     switchSection(sectionId) {
         if (sectionId === 'wallet' && !this.deviceTrusted && !this.isDeviceTrusted) {
-            console.log('Acceso a wallet bloqueado - dispositivo no confiable');
+            this.devLog('Acceso a wallet bloqueado - dispositivo no confiable');
             this.showDeviceBlockedScreen();
             return;
         }
@@ -4198,7 +4204,7 @@ const App = {
                 });
 
                 this.setupTonConnectListeners();
-                console.log('TON Connect initialized successfully');
+                this.devLog('TON Connect initialized successfully');
                 
                 if (!this.tonConnectUI.wallet) {
                     await this.loadSavedWallet();
@@ -4223,7 +4229,7 @@ const App = {
                     initializeSDK();
                 } else if (attempts >= 20) {
                     clearInterval(checkInterval);
-                    console.log('TonConnectUI failed to load after 10 seconds');
+                    this.devLog('TonConnectUI failed to load after 10 seconds');
                 }
             }, 500);
         }
@@ -4395,7 +4401,7 @@ const App = {
                 if (changeBtn) changeBtn.classList.add('hidden');
             }
             
-            console.log('Wallet UI actualizada - Raw:', rawAddress.slice(0, 10) + '..., Friendly:', friendlyAddress, isSyncedFromServer ? '(sincronizada)' : '(conectada)');
+            this.devLog('Wallet UI actualizada - Raw:', rawAddress.slice(0, 10) + '..., Friendly:', friendlyAddress, isSyncedFromServer ? '(sincronizada)' : '(conectada)');
         } else {
             if (notConnected) notConnected.classList.remove('hidden');
             if (connected) connected.classList.add('hidden');
@@ -4406,27 +4412,27 @@ const App = {
 
     async loadSavedWallet() {
         try {
-            console.log('Intentando cargar wallet guardada...');
+            this.devLog('Intentando cargar wallet guardada...');
             const headers = this.getAuthHeaders();
-            console.log('Headers para wallet:', JSON.stringify(headers));
+            this.devLog('Headers para wallet:', JSON.stringify(headers));
             
             const response = await fetch('/api/wallet/address', {
                 method: 'GET',
                 headers: headers
             });
             
-            console.log('Response status:', response.status);
+            this.devLog('Response status:', response.status);
             const data = await response.json();
-            console.log('Wallet response:', JSON.stringify(data));
+            this.devLog('Wallet response:', JSON.stringify(data));
             
             if (data.success && data.address) {
-                console.log('Wallet cargada del servidor:', data.address);
+                this.devLog('Wallet cargada del servidor:', data.address);
                 this.walletSyncedFromServer = true;
                 this.syncedWalletAddress = data.address;
                 this.updateWalletUI(data.address, true);
                 return data.address;
             } else {
-                console.log('No hay wallet guardada para este usuario');
+                this.devLog('No hay wallet guardada para este usuario');
                 this.walletSyncedFromServer = false;
                 this.syncedWalletAddress = null;
             }
@@ -4452,7 +4458,7 @@ const App = {
             });
             const data = await response.json();
             if (data.success) {
-                console.log('Wallet guardada en el servidor:', friendlyAddress);
+                this.devLog('Wallet guardada en el servidor:', friendlyAddress);
                 
                 const checkResponse = await this.apiRequest('/api/security/wallet/primary/check');
                 
@@ -4825,7 +4831,7 @@ const App = {
 
     async buyB3CWithTonConnect(tonAmount) {
         this.sendLog('DEPOSIT_START', { tonAmount, walletConnected: !!this.connectedWallet });
-        console.log('[B3C PURCHASE] Starting purchase for', tonAmount, 'TON');
+        this.devLog('[B3C PURCHASE] Starting purchase for', tonAmount, 'TON');
         
         if (!this.tonConnectUI) {
             this.sendLog('DEPOSIT_ERROR', { error: 'TON Connect not initialized' }, 'error');
@@ -4836,7 +4842,7 @@ const App = {
 
         if (!this.connectedWallet) {
             this.sendLog('WALLET_CONNECT_ATTEMPT', { reason: 'No wallet connected' });
-            console.log('[B3C PURCHASE] Wallet not connected, attempting to connect...');
+            this.devLog('[B3C PURCHASE] Wallet not connected, attempting to connect...');
             this.showToast('Conectando wallet...', 'info');
             try {
                 await this.tonConnectUI.openModal();
@@ -4861,7 +4867,7 @@ const App = {
                     return;
                 }
                 this.sendLog('WALLET_CONNECT_SUCCESS', { address: this.connectedWallet?.account?.address?.substring(0, 20) });
-                console.log('[B3C PURCHASE] Wallet connected successfully');
+                this.devLog('[B3C PURCHASE] Wallet connected successfully');
             } catch (e) {
                 this.sendLog('WALLET_CONNECT_ERROR', { error: e.message }, 'error');
                 console.error('[B3C PURCHASE] Wallet connection failed:', e);
@@ -4877,14 +4883,14 @@ const App = {
         try {
             this.showToast(`Preparando compra de B3C por ${tonAmount} TON...`, 'info');
             this.sendLog('DEPOSIT_CREATE_ORDER', { tonAmount });
-            console.log('[B3C PURCHASE] Creating purchase order...');
+            this.devLog('[B3C PURCHASE] Creating purchase order...');
 
             const response = await this.apiRequest('/api/b3c/buy/create', {
                 method: 'POST',
                 body: JSON.stringify({ tonAmount })
             });
 
-            console.log('[B3C PURCHASE] Create response:', JSON.stringify(response));
+            this.devLog('[B3C PURCHASE] Create response:', JSON.stringify(response));
 
             if (!response.success) {
                 this.showToast(response.error || 'Error al crear compra', 'error');
@@ -4902,7 +4908,7 @@ const App = {
             const amountToSend = response.amountToSend || tonAmount;
             const amountNano = Math.floor(amountToSend * 1e9).toString();
 
-            console.log('[B3C PURCHASE] Transaction details:', {
+            this.devLog('[B3C PURCHASE] Transaction details:', {
                 address: depositAddress,
                 amount: amountNano,
                 purchaseId: purchaseId,
@@ -4925,7 +4931,7 @@ const App = {
             };
 
             this.showToast('Abriendo wallet para confirmar...', 'info');
-            console.log('[B3C PURCHASE] Sending transaction...');
+            this.devLog('[B3C PURCHASE] Sending transaction...');
 
             try {
                 const sendPromise = this.tonConnectUI.sendTransaction(transaction);
@@ -4934,7 +4940,7 @@ const App = {
                 );
                 
                 const result = await Promise.race([sendPromise, timeoutPromise]);
-                console.log('[B3C PURCHASE] Transaction result:', result);
+                this.devLog('[B3C PURCHASE] Transaction result:', result);
 
                 if (result && result.boc) {
                     this.showToast('Transaccion enviada! Verificando...', 'success');
@@ -4946,7 +4952,7 @@ const App = {
             } catch (walletError) {
                 console.error('[B3C PURCHASE] Wallet error:', walletError);
                 if (walletError.message === 'WALLET_TIMEOUT' || walletError.message?.includes('timeout')) {
-                    console.log('[B3C PURCHASE] Wallet timeout, showing manual deposit option');
+                    this.devLog('[B3C PURCHASE] Wallet timeout, showing manual deposit option');
                     this.showManualDepositModal(depositAddress, tonAmount, purchaseId, response.expiresInMinutes || 30);
                 } else if (walletError.message?.includes('Canceled') || walletError.message?.includes('cancel') || walletError.message?.includes('rejected')) {
                     this.showToast('Compra cancelada', 'info');
@@ -5022,7 +5028,7 @@ const App = {
     openTonLink(address, amount) {
         const amountNano = Math.floor(amount * 1e9);
         const tonLink = `ton://transfer/${address}?amount=${amountNano}`;
-        console.log('[TON LINK] Opening:', tonLink);
+        this.devLog('[TON LINK] Opening:', tonLink);
         
         if (window.Telegram?.WebApp?.openLink) {
             window.Telegram.WebApp.openLink(tonLink);
