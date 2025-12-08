@@ -1,6 +1,6 @@
 # TAREAS AGENTE 🟡 BACKEND API
 **Rama Git:** `feature/backend-api`
-**Archivos asignados:** app.py, tracking/database.py, tracking/models.py, tracking/email_service.py, tracking/security.py, tracking/telegram_service.py, tracking/ai_service.py, tracking/ai_constructor.py, tracking/ai_core_engine.py, tracking/ai_flow_logger.py, tracking/ai_project_context.py, tracking/ai_toolkit.py, init_db.py, seed_data.py, requirements.txt
+**Archivos asignados:** app.py, tracking/database.py, tracking/models.py, tracking/email_service.py, tracking/security.py, tracking/telegram_service.py, init_db.py, seed_data.py, requirements.txt
 
 ---
 
@@ -167,16 +167,6 @@
 
 ---
 
-### FASE 31.13: AI CONSTRUCTOR (backend) ⏳ 🟢 BAJA
-**Tiempo:** 3 horas
-
-**Tareas:**
-- [ ] Auditar endpoints de AI Constructor
-- [ ] Verificar integración con ai_constructor.py
-- [ ] Implementar fallback si API AI no disponible
-- [ ] Rate limiting para AI endpoints
-
----
 
 ## SECCIÓN 32: LIMPIEZA Y OPTIMIZACIÓN
 
@@ -204,78 +194,21 @@
 
 ---
 
-## SECCIÓN 34: AI CONSTRUCTOR (Core)
-
-### FASE 34.3-34.5: TOOLKIT IA ⏳ 🔴 CRÍTICA
-**Tiempo:** 8 horas
-
-**Objetivo:** Implementar herramientas tipo Replit Agent
-
-**Tareas:**
-- [ ] read_file(path) - Leer archivo
-- [ ] write_file(path, content) - Escribir archivo
-- [ ] edit_file(path, old, new) - Editar archivo
-- [ ] list_files(path) - Listar directorio
-- [ ] execute_command(cmd) - Ejecutar comando
-- [ ] search_files(pattern) - Buscar en archivos
-
----
-
-### FASE 34.7-34.8: EJECUCIÓN INTELIGENTE ⏳ 🔴 CRÍTICA
-**Tiempo:** 6 horas
-
-**Tareas:**
-- [ ] Sandbox para ejecución segura
-- [ ] Timeout de comandos
-- [ ] Captura de stdout/stderr
-- [ ] Manejo de procesos largos
-
----
-
-### FASE 34.15: ENDPOINTS AI CONSTRUCTOR ⏳ 🔴 CRÍTICA
-**Tiempo:** 4 horas
-
-**Tareas:**
-- [ ] POST /api/ai-constructor/process - Procesar con 8 fases
-- [ ] GET /api/ai-constructor/status/{session_id} - Estado
-- [ ] POST /api/ai-constructor/approve-plan - Aprobar plan
-- [ ] POST /api/ai-constructor/cancel - Cancelar
-
----
-
-### FASES 34.16-34.23: NÚCLEO IA ⏳ 🔴 CRÍTICA
-**Tiempo:** 27 horas
-
-| Fase | Descripción | Tiempo |
-|------|-------------|--------|
-| 34.16 | Motor de Decisiones Automático | 4h |
-| 34.17 | Sistema de Reintentos Inteligente | 3h |
-| 34.18 | Contexto de Proyecto Persistente | 4h |
-| 34.19 | Validador Pre-Ejecución | 3h |
-| 34.20 | Sistema de Rollback Automático | 4h |
-| 34.21 | Analizador de Impacto de Cambios | 4h |
-| 34.22 | Gestor de Workflows | 3h |
-| 34.23 | Gestor de Tareas con Tracking | 2h |
-
----
-
 ## RESUMEN DE HORAS ESTIMADAS
 
 | Sección | Horas |
 |---------|-------|
 | 27.x Admin endpoints | 30h |
 | 30.x Auditoría | 3h |
-| 31.x Verificación | 14h |
+| 31.x Verificación | 11h |
 | 32.x Limpieza | 1h |
 | 33.1 Chat privado | 3h |
-| 34.x AI Constructor | 45h |
-| **TOTAL** | **~96 horas** |
+| **TOTAL** | **~48 horas** |
 
 ---
 
 ## ORDEN RECOMENDADO
 
-1. 🔴 **CRÍTICO:** 34.3-34.5 → 34.7-34.8 → 34.15 → 34.16-34.23
-2. 🟡 **ALTA:** 31.4 → 27.18 → 27.22 → 27.25
-3. 🟠 **MEDIA:** 30.3 → 30.4 → 31.7 → 31.9 → 33.1
-4. 🟢 **BAJA:** 31.10 → 31.11 → 31.13
+1. 🟡 **ALTA:** 31.4 → 27.18 → 27.22 → 27.25
+2. 🟠 **MEDIA:** 30.3 → 30.4 → 31.7 → 31.9 → 33.1
+3. 🟢 **BAJA:** 31.10 → 31.11
