@@ -1580,30 +1580,31 @@ Asegurar que el dashboard admin muestre datos reales y maneje correctamente el c
 
 ---
 
-### FASE 31.5: TABLAS DE BD FALTANTES ⏳
+### FASE 31.5: TABLAS DE BD FALTANTES ✅
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 2 horas  
-**Agente:** 🟡 BACKEND API
+**Agente:** 🟡 BACKEND API  
+**Completado:** 8 Diciembre 2025
 
 #### Objetivo:
 Crear tablas de base de datos que son referenciadas pero podrían no existir.
 
 #### Tablas a verificar/crear:
-- [ ] `blocked_ips` - Usada en `/api/admin/blocked-ips`
-- [ ] `support_tickets` - Usada en `/api/admin/support/tickets`
-- [ ] `faq` - Usada en `/api/admin/faq`
-- [ ] `admin_user_notes` - Usada en detalle de usuario admin
-- [ ] `security_alerts` - Usada en dashboard de alertas
+- [x] `blocked_ips` - Usada en `/api/admin/blocked-ips` (existe en tracking/models.py)
+- [x] `support_tickets` - Usada en `/api/admin/support/tickets` (existe en tracking/models.py)
+- [x] `faqs` - Usada en `/api/admin/faq` (existe en tracking/models.py, nota: tabla se llama "faqs")
+- [x] `admin_user_notes` - Usada en detalle de usuario admin (existe en tracking/models.py)
+- [x] `security_alerts` - Usada en dashboard de alertas (existe en tracking/models.py)
 
 #### Tareas:
-- [ ] Verificar existencia de cada tabla en init_db.py
-- [ ] Crear tablas faltantes con estructura correcta
-- [ ] Agregar migraciones si es necesario
-- [ ] Actualizar endpoints para manejar tablas inexistentes gracefully
+- [x] Verificar existencia de cada tabla en init_db.py (todas existen en CREATE_ADMIN_TABLES_SQL)
+- [x] Crear tablas faltantes con estructura correcta (no necesario, todas existen)
+- [x] Agregar migraciones si es necesario (no necesario)
+- [x] Actualizar endpoints para manejar tablas inexistentes gracefully (8 endpoints actualizados)
 
 #### Criterios de éxito:
-- [ ] Todas las tablas referenciadas existen
-- [ ] Los endpoints no crashean si la tabla está vacía
+- [x] Todas las tablas referenciadas existen
+- [x] Los endpoints no crashean si la tabla está vacía
 
 ---
 
@@ -1898,7 +1899,7 @@ Verificar y completar funcionalidad del AI Constructor.
 | 31.2 | Códigos 2FA en logs | 🔴 CRÍTICA | 1h | BACKEND | ✅ |
 | 31.3 | Navegación inconsistente | 🟡 ALTA | 3h | FRONTEND | ⏳ |
 | 31.4 | Estadísticas admin vacías | 🟡 ALTA | 2h | BACKEND/ADMIN | ⏳ |
-| 31.5 | Tablas BD faltantes | 🟡 ALTA | 2h | BACKEND | ⏳ |
+| 31.5 | Tablas BD faltantes | 🟡 ALTA | 2h | BACKEND | ✅ |
 | 31.6 | PWA completo | 🟠 MEDIA | 4h | FRONTEND | ⏳ |
 | 31.7 | Backup automático | 🟠 MEDIA | 4h | BACKEND | ⏳ |
 | 31.8 | Notificaciones Telegram | 🟠 MEDIA | 4h | BACKEND/BLOCKCHAIN | ⏳ |
