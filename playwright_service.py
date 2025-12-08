@@ -47,15 +47,21 @@ class PlaywrightService:
     
     async def _init_playwright(self):
         from playwright.async_api import async_playwright
+        import shutil
         self.playwright = await async_playwright().start()
+        
+        chromium_path = shutil.which('chromium') or shutil.which('chromium-browser')
+        
         self.browser = await self.playwright.chromium.launch(
             headless=True,
+            executable_path=chromium_path,
             args=[
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
-                '--single-process'
+                '--single-process',
+                '--disable-software-rasterizer'
             ]
         )
     
