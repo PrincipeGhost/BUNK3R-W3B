@@ -21,12 +21,13 @@ class EncryptionManager:
     SALT_SIZE = 16
     ITERATIONS = 480000
     
-    def __init__(self, master_key: str = None):
+    def __init__(self, master_key: str | None = None):
         """Initialize encryption manager with optional master key"""
-        self.master_key = master_key or os.getenv('ENCRYPTION_MASTER_KEY')
+        env_key = os.getenv('ENCRYPTION_MASTER_KEY')
+        self.master_key: str = master_key or env_key or ''
         if not self.master_key:
             self.master_key = self._generate_master_key()
-            logger.warning("No ENCRYPTION_MASTER_KEY found, generated temporary key")
+            logger.warning("ENCRYPTION_MASTER_KEY not configured. Using temporary key - set env var for production!")
     
     def _generate_master_key(self) -> str:
         """Generate a random master key"""
@@ -40,21 +41,20 @@ class EncryptionManager:
         """Generate a random 96-bit nonce"""
         return os.urandom(self.NONCE_SIZE)
     
-    def derive_key_from_password(self, password: str, salt: bytes = None) -> tuple:
+    def derive_key_from_password(self, password: str, salt: bytes | None = None) -> tuple:
         """Derive a 256-bit key from password using PBKDF2"""
-        if salt is None:
-            salt = os.urandom(self.SALT_SIZE)
+        actual_salt: bytes = salt if salt is not None else os.urandom(self.SALT_SIZE)
         
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=self.KEY_SIZE,
-            salt=salt,
+            salt=actual_salt,
             iterations=self.ITERATIONS,
         )
         key = kdf.derive(password.encode())
-        return key, salt
+        return key, actual_salt
     
-    def encrypt_data(self, data: bytes, key: bytes = None) -> dict:
+    def encrypt_data(self, data: bytes, key: bytes | None = None) -> dict:
         """
         Encrypt binary data using AES-256-GCM
         Returns dict with encrypted_data, key, and nonce (all base64 encoded)
@@ -141,7 +141,7 @@ class EncryptionManager:
             logger.error(f"File decryption error: {e}")
             return {'success': False, 'error': str(e)}
     
-    def encrypt_text(self, text: str, key: bytes = None) -> dict:
+    def encrypt_text(self, text: str, key: bytes | None = None) -> dict:
         """Encrypt text content (captions, comments, etc)"""
         return self.encrypt_data(text.encode('utf-8'), key)
     

@@ -1978,6 +1978,22 @@ class DatabaseManager:
                             ('max_assignment_minutes', '30'),
                             ('consolidation_fee', '0.01')
                         ON CONFLICT (config_key) DO NOTHING;
+                        
+                        -- Blockchain Audit Log for transaction tracking
+                        CREATE TABLE IF NOT EXISTS blockchain_audit_log (
+                            id SERIAL PRIMARY KEY,
+                            transaction_type VARCHAR(50) NOT NULL,
+                            user_id VARCHAR(50) NOT NULL,
+                            amount DECIMAL(20, 9),
+                            details JSONB,
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_blockchain_audit_user 
+                            ON blockchain_audit_log(user_id);
+                        CREATE INDEX IF NOT EXISTS idx_blockchain_audit_type 
+                            ON blockchain_audit_log(transaction_type);
+                        CREATE INDEX IF NOT EXISTS idx_blockchain_audit_time 
+                            ON blockchain_audit_log(created_at DESC);
                     """)
                     conn.commit()
             logger.info("B3C tables initialized successfully")

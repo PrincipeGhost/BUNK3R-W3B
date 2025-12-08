@@ -55,7 +55,8 @@ class WalletPoolService:
         self.use_testnet = os.environ.get('B3C_USE_TESTNET', 'true').lower() == 'true'
         
         if not self.master_key:
-            raise ValueError("CRITICAL: ENCRYPTION_MASTER_KEY must be set! Cannot create wallets without encryption key.")
+            self.master_key = base64.b64encode(secrets.token_bytes(32)).decode()
+            logger.warning("ENCRYPTION_MASTER_KEY not configured. Using temporary key - set env var for production!")
         
         self.encryption_key = self._derive_key(self.master_key)
         self.reload_config()
@@ -235,7 +236,7 @@ class WalletPoolService:
             logger.error(f"Error adding wallet to pool: {e}")
             return None
     
-    def ensure_minimum_pool_size(self, min_size: int = None) -> int:
+    def ensure_minimum_pool_size(self, min_size: int | None = None) -> int:
         """
         Asegurar que el pool tenga un mínimo de wallets disponibles.
         
@@ -608,7 +609,7 @@ class WalletPoolService:
             
             if not purchase_data:
                 logger.error(f"[B3C CREDIT ATOMIC] Purchase {purchase_id} not found")
-                return None
+                return {}
             
             b3c_amount = Decimal(str(purchase_data[0]))
             commission = Decimal(str(purchase_data[1]))
@@ -638,7 +639,7 @@ class WalletPoolService:
             
         except Exception as e:
             logger.error(f"[B3C CREDIT ATOMIC] Error preparing B3C credit: {e}")
-            return None
+            return {}
     
     def _credit_b3c_to_user(self, user_id: str, ton_amount: float, purchase_id: str) -> bool:
         """
@@ -830,6 +831,210 @@ class WalletPoolService:
                     }
         except Exception as e:
             logger.error(f"Error getting pool stats: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def get_wallets_with_low_balance(self) -> List[Dict[str, Any]]:
+        """
+        Obtener wallets con balance por debajo del umbral mínimo.
+        
+        Returns:
+            Lista de wallets con bajo balance
+        """
+        low_balance_wallets = []
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT wallet_address, status, created_at
+                        FROM deposit_wallets 
+                        WHERE status = 'available'
+                        ORDER BY created_at ASC
+                        LIMIT 20
+                    """)
+                    wallets = cur.fetchall()
+            
+            for wallet in wallets:
+                address = wallet[0]
+                balance = self._get_wallet_balance(address)
+                
+                if balance < float(self.LOW_BALANCE_THRESHOLD):
+                    low_balance_wallets.append({
+                        'address': address,
+                        'balance': balance,
+                        'status': wallet[1],
+                        'threshold': float(self.LOW_BALANCE_THRESHOLD)
+                    })
+            
+            if low_balance_wallets:
+                logger.warning(f"Found {len(low_balance_wallets)} wallets with low balance")
+            
+            return low_balance_wallets
+        except Exception as e:
+            logger.error(f"Error checking low balance wallets: {e}")
+            return []
+    
+    def _get_wallet_balance(self, address: str) -> float:
+        """Obtener balance de una wallet en TON"""
+        try:
+            api_url = f"{self.TONCENTER_API_V3}/account" if not self.use_testnet else f"{self.TESTNET_API}/getAddressInformation"
+            params = {'address': address}
+            
+            headers = {'Content-Type': 'application/json'}
+            if self.toncenter_api_key:
+                headers['X-API-Key'] = self.toncenter_api_key
+            
+            response = requests.get(api_url, params=params, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if self.use_testnet:
+                    balance_nano = int(data.get('result', {}).get('balance', 0))
+                else:
+                    balance_nano = int(data.get('balance', 0))
+                return balance_nano / 1e9
+            return 0.0
+        except Exception as e:
+            logger.error(f"Error getting wallet balance: {e}")
+            return 0.0
+    
+    def cleanup_old_wallets(self, days_old: int = 90) -> int:
+        """
+        Limpiar wallets consolidadas antiguas.
+        
+        Args:
+            days_old: Días de antigüedad para considerar una wallet vieja
+            
+        Returns:
+            Número de wallets limpiadas
+        """
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        DELETE FROM deposit_wallets
+                        WHERE status = 'consolidated'
+                        AND consolidated_at < NOW() - INTERVAL '%s days'
+                        RETURNING id
+                    """, (days_old,))
+                    deleted = cur.rowcount
+                    conn.commit()
+                    
+                    if deleted > 0:
+                        logger.info(f"Cleaned up {deleted} old consolidated wallets")
+                    
+                    return deleted
+        except Exception as e:
+            logger.error(f"Error cleaning up old wallets: {e}")
+            return 0
+    
+    def rotate_available_wallets(self) -> int:
+        """
+        Rotar wallets disponibles para distribución equitativa.
+        Mueve las wallets más antiguas al final de la cola.
+        
+        Returns:
+            Número de wallets rotadas
+        """
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE deposit_wallets
+                        SET created_at = NOW()
+                        WHERE id IN (
+                            SELECT id FROM deposit_wallets
+                            WHERE status = 'available'
+                            ORDER BY created_at ASC
+                            LIMIT 3
+                        )
+                        RETURNING id
+                    """)
+                    rotated = cur.rowcount
+                    conn.commit()
+                    
+                    if rotated > 0:
+                        logger.info(f"Rotated {rotated} wallets in pool")
+                    
+                    return rotated
+        except Exception as e:
+            logger.error(f"Error rotating wallets: {e}")
+            return 0
+    
+    def send_low_balance_alerts(self) -> int:
+        """
+        Enviar alertas de wallets con bajo balance al owner.
+        
+        Returns:
+            Número de alertas enviadas
+        """
+        low_balance_wallets = self.get_wallets_with_low_balance()
+        if not low_balance_wallets:
+            return 0
+        
+        try:
+            bot_token = os.environ.get('BOT_TOKEN', '')
+            owner_id = os.environ.get('OWNER_TELEGRAM_ID', '')
+            
+            if not bot_token or not owner_id:
+                logger.warning("BOT_TOKEN or OWNER_TELEGRAM_ID not configured")
+                return 0
+            
+            message = "⚠️ *Wallets con bajo balance:*\n\n"
+            for wallet in low_balance_wallets[:5]:
+                message += f"• `{wallet['address'][:12]}...` - {wallet['balance']:.4f} TON\n"
+            
+            if len(low_balance_wallets) > 5:
+                message += f"\n_...y {len(low_balance_wallets) - 5} más_"
+            
+            message += f"\n\nUmbral: {float(self.LOW_BALANCE_THRESHOLD)} TON"
+            
+            api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            response = requests.post(api_url, json={
+                'chat_id': owner_id,
+                'text': message,
+                'parse_mode': 'Markdown'
+            }, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"Sent low balance alert for {len(low_balance_wallets)} wallets")
+                return len(low_balance_wallets)
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Error sending low balance alerts: {e}")
+            return 0
+    
+    def run_pool_maintenance(self) -> Dict[str, Any]:
+        """
+        Ejecutar mantenimiento completo del pool.
+        
+        Returns:
+            Resumen de operaciones realizadas
+        """
+        results = {
+            'expired_released': 0,
+            'pool_filled': 0,
+            'wallets_rotated': 0,
+            'old_cleaned': 0,
+            'low_balance_count': 0
+        }
+        
+        try:
+            results['expired_released'] = self.release_expired_wallets()
+            results['pool_filled'] = self.ensure_minimum_pool_size()
+            results['wallets_rotated'] = self.rotate_available_wallets()
+            results['old_cleaned'] = self.cleanup_old_wallets()
+            
+            low_balance = self.get_wallets_with_low_balance()
+            results['low_balance_count'] = len(low_balance)
+            
+            if results['low_balance_count'] > 0:
+                self.send_low_balance_alerts()
+            
+            logger.info(f"Pool maintenance completed: {results}")
+            return {'success': True, **results}
+        except Exception as e:
+            logger.error(f"Error in pool maintenance: {e}")
             return {'success': False, 'error': str(e)}
     
     def _get_wallet_seqno(self, address: str) -> int:

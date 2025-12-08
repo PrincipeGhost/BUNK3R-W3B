@@ -107,6 +107,35 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_users_primary_wallet ON users(primary_wallet_address);
+
+-- Tabla de whitelist de direcciones de retiro
+CREATE TABLE IF NOT EXISTS withdrawal_whitelist (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    wallet_address VARCHAR(255) NOT NULL,
+    label VARCHAR(100) DEFAULT 'Wallet',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    removed_at TIMESTAMP,
+    UNIQUE(user_id, wallet_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_whitelist_user ON withdrawal_whitelist(user_id, is_active);
+
+-- Tabla de codigos 2FA para retiros grandes
+CREATE TABLE IF NOT EXISTS withdrawal_2fa_codes (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    code_hash VARCHAR(64) NOT NULL,
+    withdrawal_amount DECIMAL(20, 8) NOT NULL,
+    destination_wallet VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_2fa_codes_user ON withdrawal_2fa_codes(user_id, is_used, expires_at);
 """
 
 class SecurityManager:
@@ -956,3 +985,276 @@ class SecurityManager:
         except Exception as e:
             logger.error(f"Error unlocking user: {e}")
             return False
+    
+    # =====================================================
+    # FASE 29.7: Whitelist de Direcciones y 2FA para Retiros
+    # =====================================================
+    
+    LARGE_WITHDRAWAL_THRESHOLD = 10000  # B3C - requiere 2FA
+    WITHDRAWAL_2FA_EXPIRY_MINUTES = 5
+    
+    def add_withdrawal_whitelist(self, user_id: str, wallet_address: str, label: str = '') -> Dict:
+        """Add a wallet address to user's withdrawal whitelist"""
+        try:
+            if not self.validate_ton_address_format(wallet_address):
+                return {'success': False, 'error': 'Direccion de wallet invalida'}
+            
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COUNT(*) FROM withdrawal_whitelist 
+                        WHERE user_id = %s AND is_active = TRUE
+                    """, (user_id,))
+                    count = cur.fetchone()[0]
+                    
+                    if count >= 5:
+                        return {'success': False, 'error': 'Maximo 5 direcciones en whitelist'}
+                    
+                    cur.execute("""
+                        SELECT id FROM withdrawal_whitelist 
+                        WHERE user_id = %s AND wallet_address = %s
+                    """, (user_id, wallet_address))
+                    existing = cur.fetchone()
+                    
+                    if existing:
+                        return {'success': False, 'error': 'Esta direccion ya esta en tu whitelist'}
+                    
+                    cur.execute("""
+                        INSERT INTO withdrawal_whitelist (user_id, wallet_address, label, is_active, created_at)
+                        VALUES (%s, %s, %s, TRUE, NOW())
+                        RETURNING id
+                    """, (user_id, wallet_address, label or 'Wallet'))
+                    whitelist_id = cur.fetchone()[0]
+                    conn.commit()
+            
+            self.log_security_activity(
+                user_id, 'WHITELIST_ADDED',
+                f'Wallet agregada a whitelist: {wallet_address[:8]}...{wallet_address[-4:]}'
+            )
+            
+            return {
+                'success': True,
+                'whitelist_id': whitelist_id,
+                'message': 'Direccion agregada a whitelist correctamente'
+            }
+        except Exception as e:
+            logger.error(f"Error adding to whitelist: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def remove_withdrawal_whitelist(self, user_id: str, whitelist_id: int) -> Dict:
+        """Remove a wallet from user's withdrawal whitelist"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE withdrawal_whitelist 
+                        SET is_active = FALSE, removed_at = NOW()
+                        WHERE id = %s AND user_id = %s
+                        RETURNING wallet_address
+                    """, (whitelist_id, user_id))
+                    result = cur.fetchone()
+                    
+                    if not result:
+                        return {'success': False, 'error': 'Direccion no encontrada'}
+                    
+                    conn.commit()
+            
+            self.log_security_activity(
+                user_id, 'WHITELIST_REMOVED',
+                f'Wallet removida de whitelist: {result[0][:8]}...{result[0][-4:]}'
+            )
+            
+            return {'success': True, 'message': 'Direccion removida de whitelist'}
+        except Exception as e:
+            logger.error(f"Error removing from whitelist: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def get_withdrawal_whitelist(self, user_id: str) -> List[Dict]:
+        """Get user's withdrawal whitelist"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, wallet_address, label, created_at
+                        FROM withdrawal_whitelist 
+                        WHERE user_id = %s AND is_active = TRUE
+                        ORDER BY created_at DESC
+                    """, (user_id,))
+                    rows = cur.fetchall()
+                    
+                    return [
+                        {
+                            'id': row[0],
+                            'wallet_address': row[1],
+                            'wallet_hint': f"{row[1][:8]}...{row[1][-4:]}",
+                            'label': row[2],
+                            'created_at': str(row[3]) if row[3] else None
+                        }
+                        for row in rows
+                    ]
+        except Exception as e:
+            logger.error(f"Error getting whitelist: {e}")
+            return []
+    
+    def is_address_whitelisted(self, user_id: str, wallet_address: str) -> bool:
+        """Check if wallet address is in user's whitelist"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id FROM withdrawal_whitelist 
+                        WHERE user_id = %s AND wallet_address = %s AND is_active = TRUE
+                    """, (user_id, wallet_address))
+                    return cur.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking whitelist: {e}")
+            return False
+    
+    def validate_ton_address_format(self, address: str) -> bool:
+        """Validate TON wallet address format"""
+        import re
+        if not address or not isinstance(address, str):
+            return False
+        address = address.strip()
+        if len(address) != 48:
+            return False
+        if address[:2] not in ['EQ', 'UQ']:
+            return False
+        if not re.match(r'^[A-Za-z0-9_-]+$', address):
+            return False
+        return True
+    
+    def generate_withdrawal_2fa_code(self, user_id: str, withdrawal_amount: float, destination_wallet: str) -> Dict:
+        """Generate 2FA code for large withdrawals"""
+        try:
+            import pyotp
+            import time
+            
+            totp_secret = pyotp.random_base32()
+            totp = pyotp.TOTP(totp_secret, interval=300)  # 5 minutes validity
+            code = totp.now()
+            
+            expires_at = datetime.now() + timedelta(minutes=self.WITHDRAWAL_2FA_EXPIRY_MINUTES)
+            
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO withdrawal_2fa_codes 
+                        (user_id, code_hash, withdrawal_amount, destination_wallet, expires_at, is_used)
+                        VALUES (%s, %s, %s, %s, %s, FALSE)
+                        RETURNING id
+                    """, (user_id, hashlib.sha256(code.encode()).hexdigest(), 
+                          withdrawal_amount, destination_wallet, expires_at))
+                    code_id = cur.fetchone()[0]
+                    conn.commit()
+            
+            self.send_telegram_notification(
+                user_id,
+                f"🔐 Codigo de verificacion para retiro:\n\n"
+                f"Monto: {withdrawal_amount:.2f} B3C\n"
+                f"Destino: {destination_wallet[:8]}...{destination_wallet[-4:]}\n\n"
+                f"Tu codigo: *{code}*\n\n"
+                f"⏰ Expira en {self.WITHDRAWAL_2FA_EXPIRY_MINUTES} minutos.\n"
+                f"⚠️ No compartas este codigo con nadie."
+            )
+            
+            self.log_security_activity(
+                user_id, 'WITHDRAWAL_2FA_GENERATED',
+                f'Codigo 2FA generado para retiro de {withdrawal_amount} B3C'
+            )
+            
+            return {
+                'success': True,
+                'code_id': code_id,
+                'expires_at': expires_at.isoformat(),
+                'message': f'Codigo enviado por Telegram. Expira en {self.WITHDRAWAL_2FA_EXPIRY_MINUTES} minutos.'
+            }
+        except Exception as e:
+            logger.error(f"Error generating 2FA code: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def verify_withdrawal_2fa_code(self, user_id: str, code: str, withdrawal_amount: float, destination_wallet: str) -> Dict:
+        """Verify 2FA code for withdrawal"""
+        try:
+            code_hash = hashlib.sha256(code.encode()).hexdigest()
+            
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id FROM withdrawal_2fa_codes 
+                        WHERE user_id = %s 
+                        AND code_hash = %s 
+                        AND withdrawal_amount = %s 
+                        AND destination_wallet = %s 
+                        AND expires_at > NOW() 
+                        AND is_used = FALSE
+                    """, (user_id, code_hash, withdrawal_amount, destination_wallet))
+                    result = cur.fetchone()
+                    
+                    if not result:
+                        self.log_security_activity(
+                            user_id, 'WITHDRAWAL_2FA_FAILED',
+                            f'Codigo 2FA invalido para retiro de {withdrawal_amount} B3C'
+                        )
+                        return {'success': False, 'error': 'Codigo invalido o expirado'}
+                    
+                    cur.execute("""
+                        UPDATE withdrawal_2fa_codes 
+                        SET is_used = TRUE, used_at = NOW()
+                        WHERE id = %s
+                    """, (result[0],))
+                    conn.commit()
+            
+            self.log_security_activity(
+                user_id, 'WITHDRAWAL_2FA_VERIFIED',
+                f'Codigo 2FA verificado para retiro de {withdrawal_amount} B3C'
+            )
+            
+            return {'success': True, 'message': 'Codigo verificado correctamente'}
+        except Exception as e:
+            logger.error(f"Error verifying 2FA code: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def validate_withdrawal_request(self, user_id: str, b3c_amount: float, destination_wallet: str, 
+                                     verification_code: str | None = None) -> Dict:
+        """Validate a withdrawal request with whitelist and 2FA checks"""
+        try:
+            if not self.validate_ton_address_format(destination_wallet):
+                return {'success': False, 'error': 'Direccion de wallet invalida'}
+            
+            is_whitelisted = self.is_address_whitelisted(user_id, destination_wallet)
+            
+            requires_2fa = b3c_amount >= self.LARGE_WITHDRAWAL_THRESHOLD
+            
+            if requires_2fa:
+                if not verification_code:
+                    gen_result = self.generate_withdrawal_2fa_code(user_id, b3c_amount, destination_wallet)
+                    if gen_result['success']:
+                        return {
+                            'success': False,
+                            'requires_2fa': True,
+                            'code_id': gen_result['code_id'],
+                            'expires_at': gen_result['expires_at'],
+                            'message': 'Retiro grande requiere verificacion 2FA. Codigo enviado a tu Telegram.'
+                        }
+                    return gen_result
+                else:
+                    verify_result = self.verify_withdrawal_2fa_code(user_id, verification_code, b3c_amount, destination_wallet)
+                    if not verify_result['success']:
+                        return verify_result
+            
+            if not is_whitelisted:
+                self.log_security_activity(
+                    user_id, 'WITHDRAWAL_NEW_ADDRESS',
+                    f'Retiro a direccion nueva (no en whitelist): {destination_wallet[:8]}...{destination_wallet[-4:]}'
+                )
+            
+            return {
+                'success': True,
+                'is_whitelisted': is_whitelisted,
+                'requires_2fa': requires_2fa,
+                'message': 'Retiro autorizado'
+            }
+        except Exception as e:
+            logger.error(f"Error validating withdrawal: {e}")
+            return {'success': False, 'error': str(e)}
