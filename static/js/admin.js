@@ -73,7 +73,14 @@ const AdminPanel = {
             analytics: 'Analíticas',
             settings: 'Configuración',
             maintenance: 'Backup y Mantenimiento',
-            notifications: 'Centro de Notificaciones'
+            notifications: 'Centro de Notificaciones',
+            riskscore: 'Puntuación de Riesgo',
+            relatedaccounts: 'Cuentas Relacionadas',
+            anomalies: 'Detector de Anomalías',
+            usertags: 'Sistema de Etiquetas',
+            verifications: 'Cola de Verificaciones',
+            shadowmode: 'Modo Shadow',
+            marketplace: 'Marketplace'
         };
         
         document.getElementById('pageTitle').textContent = titles[section] || section;
