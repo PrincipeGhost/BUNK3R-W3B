@@ -2190,7 +2190,7 @@ Mejorar el tiempo de carga inicial de la aplicación.
 
 | Fase | Descripción | Prioridad | Tiempo | Agente | Estado |
 |------|-------------|-----------|--------|--------|--------|
-| 32.1 | Eliminar console.log | 🟡 ALTA | 2h | FRONTEND | ⏳ |
+| 32.1 | Eliminar console.log | 🟡 ALTA | 2h | FRONTEND | ✅ COMPLETADO (devLog condicional) |
 | 32.2 | Implementar Legit SMS | 🟡 ALTA | 4h | BLOCKCHAIN | ⏳ |
 | 32.3 | Limpiar datos demo | 🟠 MEDIA | 2h | FRONTEND/BACKEND | ⏳ |
 | 32.4 | Funciones "en desarrollo" | 🟠 MEDIA | 3h | FRONTEND | ⏳ |
