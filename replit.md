@@ -64,17 +64,35 @@ El proyecto utiliza un sistema de gestion de tareas basado en agentes especializ
 | Comando | Agente | Rama Git | Archivos |
 |---------|--------|----------|----------|
 | 1 | Crear Tareas | - | Distribuye tareas al agente correcto |
-| 2 | Backend-API | `feature/backend-api` | app.py, tracking/*.py, models, database |
-| 3 | Blockchain-Services | `feature/blockchain-services` | wallet, b3c, encryption, smspool |
-| 4 | Frontend-Admin | `feature/frontend-admin` | admin.js, admin.css, admin.html |
-| 5 | Frontend-User | `feature/frontend-user` | app.js, styles.css, index.html |
+| 2 | Backend-API | `feature/backend-api` | routes/auth_routes.py, app.py (init), tracking/*.py |
+| 3 | Blockchain-Services | `feature/blockchain-services` | routes/blockchain_routes.py, wallet, b3c, encryption |
+| 4 | Frontend-Admin | `feature/frontend-admin` | routes/admin_routes.py, admin.js, admin-utils.js |
+| 5 | Frontend-User | `feature/frontend-user` | routes/user_routes.py, app.js, utils.js |
 
 **Archivos de tareas:** `WORK/TAREAS_*.md`
+
+**Estructura de Rutas (Blueprints):**
+```
+routes/
+  __init__.py         - Definicion de blueprints
+  admin_routes.py     - Endpoints /api/admin/* (Frontend-Admin)
+  user_routes.py      - Endpoints /api/users/*, /api/publications/* (Frontend-User)
+  blockchain_routes.py - Endpoints /api/b3c/*, /api/wallet/* (Blockchain-Services)
+  auth_routes.py      - Endpoints /api/2fa/*, /api/auth/* (Backend-API)
+```
+
+**Archivos de Utilidades JS:**
+```
+static/js/
+  shared-utils.js    - Utilidades compartidas (SOLO LECTURA)
+  admin-utils.js     - Utilidades admin (Frontend-Admin)
+  utils.js           - Utilidades usuario (Frontend-User)
+```
 
 **Flujo obligatorio:**
 1. Conectarse a la rama correspondiente
 2. Esperar confirmacion del usuario
-3. Ejecutar tareas
+3. Ejecutar tareas (prioridad: FASE 0.1 migracion de rutas)
 4. Dar comandos git al finalizar cada tarea
 
 ---
