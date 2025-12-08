@@ -1600,22 +1600,23 @@ CREATE INDEX idx_posts_user_created ON posts(user_id, created_at DESC);
 CREATE INDEX idx_transactions_user_date ON wallet_transactions(user_id, created_at DESC);
 CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = false;
 
- Implementar caché con Flask-Caching
- Añadir paginación a endpoints pesados
-FASE 30.9: ENDPOINT LOGOUT DEMO 2FA ⏳
-Prioridad: 🟢 BAJA
-Tiempo: 30 minutos
-Agente: 🟡 BACKEND API
+### FASE 30.9: ENDPOINT LOGOUT DEMO 2FA ✅
+**Prioridad:** 🟢 BAJA  
+**Tiempo:** 30 minutos  
+**Agente:** 🟡 BACKEND API
+**Completado:** 8 Diciembre 2025
 
 Objetivo:
 Implementar endpoint explícito para cerrar sesión del demo 2FA.
 
-Tareas:
- Crear endpoint /api/demo/2fa/logout en app.py
- Eliminar sesión de demo_2fa_sessions al hacer logout
- Añadir botón de logout en UI de demo 2FA
- Verificar que la sesión se cierra correctamente
-Código sugerido:
+#### Tareas:
+- [x] Crear endpoint `/api/demo/2fa/logout` en app.py
+- [x] Eliminar sesión usando `invalidate_demo_session()` al hacer logout
+- [ ] Añadir botón de logout en UI de demo 2FA (PENDIENTE FRONTEND)
+- [x] Verificar que la sesión se cierra correctamente
+
+#### Código sugerido:
+```python
 @app.route('/api/demo/2fa/logout', methods=['POST'])
 def demo_2fa_logout():
     session_id = request.cookies.get('demo_session_id')
@@ -1649,6 +1650,30 @@ handler.setFormatter(logging.Formatter(
 ))
 app.logger.addHandler(handler)
 app.logger.setLevel(logging.INFO)
+```
+
+---
+
+## RESUMEN SECCIÓN 30
+
+| Fase | Descripción | Prioridad | Tiempo | Estado |
+|------|-------------|-----------|--------|--------|
+| 30.1 | Corregir except: vacíos | 🔴 ALTA | 1h | ✅ |
+| 30.2 | Implementar DOMPurify | 🔴 CRÍTICA | 4h | ✅ |
+| 30.3 | Headers CSP | 🟠 MEDIA | 1h | ✅ |
+| 30.4 | Limpiar imports | 🟠 MEDIA | 1h | ✅ |
+| 30.5 | Sesiones persistentes | 🟡 MEDIA-BAJA | 2h | ⏳ |
+| 30.6 | Documentar APIs | 🟢 BAJA | 3h | ⏳ |
+| 30.7 | Tests automatizados | 🟢 BAJA | 8h | ⏳ |
+| 30.8 | Optimizaciones BD | 🟢 OPCIONAL | 2-4h | ⏳ |
+| 30.9 | Logout demo 2FA | 🟢 BAJA | 30min | ✅ |
+| 30.10 | Mejorar logs | 🟢 BAJA | 1h | ⏳ |
+
+**TOTAL TIEMPO ESTIMADO: ~22 horas**
+
+**ORDEN RECOMENDADO:** 30.1 → 30.2 → 30.3 → 30.4 → 30.5 → 30.9 → 30.10 → 30.6 → 30.7 → 30.8
+
+---
 
 RESUMEN SECCIÓN 30
 Fase	Descripción	Prioridad	Tiempo	Estado
@@ -1768,51 +1793,66 @@ Agente: 🟡 BACKEND API + 🟢 FRONTEND ADMIN Verificado: 7 Diciembre 2025 - YA
 Objetivo:
 Asegurar que el dashboard admin muestre datos reales y maneje correctamente el caso de tablas vacías.
 
-Estado verificado:
-Backend usa COALESCE para manejar NULL correctamente
-Frontend admin.js tiene 10+ casos de "Sin datos" implementados
-Hay datos reales en BD para testing
-Tareas (VERIFICADAS):
- Indicadores "Sin datos" YA EXISTEN en admin.js (líneas 4660, 5207, 5222, etc.)
- /api/admin/dashboard/stats - VERIFICADO (línea 5465 app.py)
- /api/admin/dashboard/activity - VERIFICADO (línea 5559 app.py)
- /api/admin/dashboard/alerts - VERIFICADO (línea 5610 app.py)
- /api/admin/dashboard/charts - VERIFICADO (línea 5694 app.py)
-Tablas verificadas con datos:
- users - 3 registros
- wallet_transactions - 7 registros
- deposit_wallets - EXISTE
- security_alerts - EXISTE (0 alertas actualmente)
-Criterios de éxito:
- Dashboard muestra "Sin datos" cuando tablas están vacías
- Datos de desarrollo disponibles (3 usuarios, 7 transacciones)
- Backend maneja correctamente valores NULL con COALESCE
-FASE 31.5: TABLAS DE BD FALTANTES ✅
-Prioridad: 🟡 ALTA
-Tiempo: 2 horas
-Agente: 🟡 BACKEND API Verificado: 7 Diciembre 2025 - TODAS LAS TABLAS EXISTEN
+#### Problemas detectados:
+- Las estadísticas muestran 0 cuando no hay datos (correcto pero sin indicador visual)
+- Falta mensaje de "No hay datos" vs "Cargando..." vs "0 registros"
+- No hay datos de prueba para desarrollo
 
-Objetivo:
+#### Tareas:
+- [ ] Agregar indicadores visuales cuando no hay datos vs cuando hay 0 real
+- [ ] Crear script de seed data para desarrollo con datos de prueba
+- [ ] Verificar que `/api/admin/dashboard/stats` retorna datos correctos
+- [ ] Verificar que `/api/admin/dashboard/activity` retorna actividad real
+- [ ] Verificar que `/api/admin/dashboard/alerts` retorna alertas reales
+- [ ] Verificar que `/api/admin/dashboard/charts` retorna datos de gráficos
+
+#### Tablas a verificar:
+- [ ] `users` - ¿Tiene registros?
+- [ ] `wallet_transactions` - ¿Tiene registros?
+- [ ] `deposit_wallets` - ¿Tiene registros?
+- [ ] `security_alerts` - ¿Existe la tabla?
+
+#### Criterios de éxito:
+- [ ] Dashboard muestra "Sin datos" cuando tablas están vacías
+- [ ] Datos de desarrollo disponibles para testing
+- [ ] Estadísticas se actualizan en tiempo real
+
+---
+
+### FASE 31.5: TABLAS DE BD FALTANTES ✅
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 2 horas  
+**Agente:** 🟡 BACKEND API  
+**Completado:** 8 Diciembre 2025
+
+#### Objetivo:
 Crear tablas de base de datos que son referenciadas pero podrían no existir.
 
-Tablas verificadas (TODAS EXISTEN):
- blocked_ips - ✅ EXISTE en la BD
- support_tickets - ✅ EXISTE en la BD
- faqs - ✅ EXISTE en la BD (nombre: faqs no faq)
- admin_user_notes - ✅ EXISTE en la BD
- security_alerts - ✅ EXISTE en la BD
-Tareas:
- Verificar existencia de cada tabla - VERIFICADO con SQL query
- Todas las tablas existen, no se requieren migraciones
-Criterios de éxito:
- Todas las tablas referenciadas existen (73 tablas en total)
- Los endpoints pueden funcionar correctamente
-FASE 31.6: PWA - PROGRESSIVE WEB APP ⏳
-Prioridad: 🟠 MEDIA
-Tiempo: 4 horas
-Agente: 🔵 FRONTEND USUARIO
+#### Tablas a verificar/crear:
+- [x] `blocked_ips` - Usada en `/api/admin/blocked-ips` (existe en tracking/models.py)
+- [x] `support_tickets` - Usada en `/api/admin/support/tickets` (existe en tracking/models.py)
+- [x] `faqs` - Usada en `/api/admin/faq` (existe en tracking/models.py, nota: tabla se llama "faqs")
+- [x] `admin_user_notes` - Usada en detalle de usuario admin (existe en tracking/models.py)
+- [x] `security_alerts` - Usada en dashboard de alertas (existe en tracking/models.py)
 
-Objetivo:
+#### Tareas:
+- [x] Verificar existencia de cada tabla en init_db.py (todas existen en CREATE_ADMIN_TABLES_SQL)
+- [x] Crear tablas faltantes con estructura correcta (no necesario, todas existen)
+- [x] Agregar migraciones si es necesario (no necesario)
+- [x] Actualizar endpoints para manejar tablas inexistentes gracefully (8 endpoints actualizados)
+
+#### Criterios de éxito:
+- [x] Todas las tablas referenciadas existen
+- [x] Los endpoints no crashean si la tabla está vacía
+
+---
+
+### FASE 31.6: PWA - PROGRESSIVE WEB APP ⏳
+**Prioridad:** 🟠 MEDIA  
+**Tiempo:** 4 horas  
+**Agente:** 🔵 FRONTEND USUARIO
+
+#### Objetivo:
 Implementar soporte completo de PWA para instalación y funcionamiento offline.
 
 Componentes faltantes:
@@ -2018,70 +2058,79 @@ Agente: 🟡 BACKEND API
 Objetivo:
 Verificar y completar funcionalidad del AI Constructor.
 
-Estado actual:
-Endpoint /api/ai-constructor/process existe
-Funcionalidad puede no estar completa
-Tareas:
- Auditar todos los endpoints de AI Constructor
- Verificar integración con servicios AI externos
- Documentar requisitos de API keys AI
- Implementar fallback si API AI no está disponible
- Agregar rate limiting específico para AI endpoints
-Criterios de éxito:
- AI Constructor funciona completamente
- Errores manejados gracefully
-RESUMEN SECCIÓN 31
-Fase	Descripción	Prioridad	Tiempo	Agente	Estado
-31.1	Botones sin funcionalidad	🔴 CRÍTICA	4h	FRONTEND	✅ (verificado)
-31.2	Códigos 2FA en logs	🔴 CRÍTICA	1h	BACKEND	✅
-31.3	Navegación inconsistente	🟡 ALTA	3h	FRONTEND	✅ (verificado)
-31.4	Estadísticas admin vacías	🟡 ALTA	2h	BACKEND/ADMIN	✅ (verificado)
-31.5	Tablas BD faltantes	🟡 ALTA	2h	BACKEND	✅ (verificado)
-31.6	PWA completo	🟠 MEDIA	4h	FRONTEND	⏳ PENDIENTE
-31.7	Backup automático	🟠 MEDIA	4h	BACKEND	⏳
-31.8	Notificaciones Telegram	🟠 MEDIA	4h	BACKEND/BLOCKCHAIN	⏳
-31.9	Rate limiting global	🟠 MEDIA	2h	BACKEND	✅ (verificado)
-31.10	Modo mantenimiento	🟢 BAJA	2h	ADMIN/BACKEND	⏳
-31.11	Monitoreo y alertas	🟢 BAJA	3h	BACKEND	⏳
-31.12	Cloudinary fallback	🟢 BAJA	1h	BLOCKCHAIN	⏳
-31.13	AI Constructor	🟢 BAJA	3h	BACKEND	⏳
-TOTAL TIEMPO ESTIMADO: ~35 horas (ahora ~19h restantes)
+#### Estado actual:
+- Endpoint `/api/ai-constructor/process` existe
+- Funcionalidad puede no estar completa
 
-ORDEN RECOMENDADO POR PRIORIDAD:
+#### Tareas:
+- [ ] Auditar todos los endpoints de AI Constructor
+- [ ] Verificar integración con servicios AI externos
+- [ ] Documentar requisitos de API keys AI
+- [ ] Implementar fallback si API AI no está disponible
+- [ ] Agregar rate limiting específico para AI endpoints
 
-🔴 CRÍTICO: 31.1 ✅ → 31.2 ✅
-🟡 ALTA: 31.3 ✅ → 31.4 ✅ → 31.5 ✅
-🟠 MEDIA: 31.6 → 31.7 → 31.8 → 31.9 ✅
-🟢 BAJA: 31.10 → 31.11 → 31.12 → 31.13
-════════════════════════════════════════════════════════════════
-SECCIÓN 32: LIMPIEZA Y OPTIMIZACIÓN DE CÓDIGO ⏳
-════════════════════════════════════════════════════════════════
-Prioridad: 🟡 ALTA
-Agregado: 7 Diciembre 2025
-Basado en: Auditoría de código y búsqueda de patrones
-Tiempo total estimado: 15 horas
+#### Criterios de éxito:
+- [ ] AI Constructor funciona completamente
+- [ ] Errores manejados gracefully
 
-FASE 32.1: ELIMINAR CONSOLE.LOG DE PRODUCCIÓN 🔄
-Prioridad: 🟡 ALTA
-Tiempo: 2 horas
-Agente: 🔵 FRONTEND USUARIO + 🟢 FRONTEND ADMIN Estado: Logger YA EXISTE, falta reemplazar console.log gradualmente
+---
 
-Objetivo:
-Eliminar o condicionar todos los console.log para que no aparezcan en producción.
+## RESUMEN SECCIÓN 31
 
-Estado actual (verificado 7 Dic 2025):
-Logger YA EXISTE en static/js/utils.js (líneas 88-130)
-El Logger tiene niveles DEBUG, INFO, WARN, ERROR
-Detecta automáticamente producción vs desarrollo
-Falta reemplazar los console.log restantes gradualmente
-Problema detectado:
-47 console.log en static/js/app.js - Pendiente reemplazo
-6 console.log en static/js/ai-chat.js - Pendiente reemplazo
-2 console.log en static/js/utils.js - Son parte del Logger interno
-1 console.log en static/js/publications.js - Pendiente reemplazo
-Tareas:
- Crear wrapper de logging condicional - YA EXISTE en utils.js línea 88
-// YA IMPLEMENTADO en utils.js
+| Fase | Descripción | Prioridad | Tiempo | Agente | Estado |
+|------|-------------|-----------|--------|--------|--------|
+| 31.1 | Botones sin funcionalidad | 🔴 CRÍTICA | 4h | FRONTEND | ⏳ |
+| 31.2 | Códigos 2FA en logs | 🔴 CRÍTICA | 1h | BACKEND | ✅ |
+| 31.3 | Navegación inconsistente | 🟡 ALTA | 3h | FRONTEND | ⏳ |
+| 31.4 | Estadísticas admin vacías | 🟡 ALTA | 2h | BACKEND/ADMIN | ⏳ |
+| 31.5 | Tablas BD faltantes | 🟡 ALTA | 2h | BACKEND | ✅ |
+| 31.6 | PWA completo | 🟠 MEDIA | 4h | FRONTEND | ⏳ |
+| 31.7 | Backup automático | 🟠 MEDIA | 4h | BACKEND | ⏳ |
+| 31.8 | Notificaciones Telegram | 🟠 MEDIA | 4h | BACKEND/BLOCKCHAIN | ⏳ |
+| 31.9 | Rate limiting global | 🟠 MEDIA | 2h | BACKEND | ⏳ |
+| 31.10 | Modo mantenimiento | 🟢 BAJA | 2h | ADMIN/BACKEND | ⏳ |
+| 31.11 | Monitoreo y alertas | 🟢 BAJA | 3h | BACKEND | ⏳ |
+| 31.12 | Cloudinary fallback | 🟢 BAJA | 1h | BLOCKCHAIN | ⏳ |
+| 31.13 | AI Constructor | 🟢 BAJA | 3h | BACKEND | ⏳ |
+
+**TOTAL TIEMPO ESTIMADO: ~35 horas**
+
+**ORDEN RECOMENDADO POR PRIORIDAD:**
+1. 🔴 **CRÍTICO:** 31.1 → 31.2
+2. 🟡 **ALTA:** 31.3 → 31.4 → 31.5
+3. 🟠 **MEDIA:** 31.6 → 31.7 → 31.8 → 31.9
+4. 🟢 **BAJA:** 31.10 → 31.11 → 31.12 → 31.13
+
+---
+
+## ════════════════════════════════════════════════════════════════
+## SECCIÓN 32: LIMPIEZA Y OPTIMIZACIÓN DE CÓDIGO ⏳
+## ════════════════════════════════════════════════════════════════
+
+**Prioridad:** 🟡 ALTA  
+**Agregado:** 7 Diciembre 2025  
+**Basado en:** Auditoría de código y búsqueda de patrones  
+**Tiempo total estimado:** 15 horas
+
+---
+
+### FASE 32.1: ELIMINAR CONSOLE.LOG DE PRODUCCIÓN ⏳
+**Prioridad:** 🟡 ALTA  
+**Tiempo:** 2 horas  
+**Agente:** 🔵 FRONTEND USUARIO + 🟢 FRONTEND ADMIN
+
+#### Objetivo:
+Eliminar o condicionar todos los `console.log` para que no aparezcan en producción.
+
+#### Problema detectado:
+- **47 console.log** en `static/js/app.js`
+- **5 console.log** en `static/js/ai-chat.js`
+- **2 console.log** en `static/js/utils.js`
+- **1 console.log** en `static/js/publications.js`
+
+#### Tareas:
+- [ ] Crear wrapper de logging condicional:
+```javascript
 const Logger = {
     DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3,
     isProduction: window.location.hostname !== 'localhost' && !window.location.hostname.includes('replit'),
