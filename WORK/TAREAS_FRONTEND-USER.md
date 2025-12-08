@@ -1,6 +1,51 @@
 # TAREAS AGENTE 🔵 FRONTEND USUARIO
 **Rama Git:** `feature/frontend-user`
-**Archivos asignados:** static/js/app.js, static/js/publications.js, static/js/virtual-numbers.js, static/js/utils.js, static/css/styles.css, templates/index.html, templates/virtual_numbers.html, templates/access_denied.html
+**Archivos asignados:** 
+- routes/user_routes.py (endpoints /api/users/*, /api/publications/*)
+- static/js/app.js
+- static/js/publications.js
+- static/js/virtual-numbers.js
+- static/js/utils.js
+- static/css/styles.css
+- templates/index.html, templates/virtual_numbers.html, templates/access_denied.html
+
+**Nota sobre utilidades:**
+- Usar `Utils` de utils.js para funciones de usuario
+- Usar `SharedUtils` de shared-utils.js para funciones compartidas (SOLO LECTURA)
+
+---
+
+## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+
+### FASE 0.1: MIGRAR ENDPOINTS USER A routes/user_routes.py 🔴 CRITICA
+**Tiempo:** 4 horas
+**Fecha creacion:** 8 Diciembre 2025
+
+**Contexto:**
+Migrar todos los endpoints de usuario desde app.py a routes/user_routes.py
+para separar responsabilidades y evitar conflictos entre agentes.
+
+**Endpoints a migrar (lineas aproximadas en app.py):**
+- /api/users/* (2219-2678, 12010-12045) - Perfil, follow, stats
+- /api/publications/* (10943-11562) - CRUD publicaciones, reacciones, comentarios
+- /api/stories/* - Stories de usuario
+- /api/messages/* - Chat privado
+- /api/notifications/* - Notificaciones
+- /api/search/* - Busqueda
+
+**Tareas:**
+- [ ] Leer app.py y ubicar todos los endpoints de user/publications
+- [ ] Copiar endpoints a routes/user_routes.py
+- [ ] Cambiar @app.route('/api/...') por @user_bp.route('/...')
+- [ ] Importar dependencias (db_manager, cloudinary_service)
+- [ ] Registrar blueprint en app.py
+- [ ] Probar que todos los endpoints funcionan
+- [ ] Eliminar endpoints originales de app.py
+
+**Criterios de aceptacion:**
+- [ ] Todos los endpoints de usuario responden correctamente
+- [ ] Feed de publicaciones funciona
+- [ ] No hay errores en logs
 
 ---
 

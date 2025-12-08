@@ -1,6 +1,44 @@
 # TAREAS AGENTE 🟡 BACKEND API
 **Rama Git:** `feature/backend-api`
-**Archivos asignados:** app.py, tracking/__init__.py, tracking/database.py, tracking/models.py, tracking/email_service.py, tracking/security.py, tracking/telegram_service.py, init_db.py, seed_data.py, run.py, runtime.txt, requirements.txt
+**Archivos asignados:** 
+- app.py (solo inicializacion y registro de blueprints)
+- routes/__init__.py
+- routes/auth_routes.py (endpoints de autenticacion y 2FA)
+- tracking/__init__.py, tracking/database.py, tracking/models.py
+- tracking/email_service.py, tracking/security.py, tracking/telegram_service.py
+- init_db.py, seed_data.py, run.py, runtime.txt, requirements.txt
+
+---
+
+## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+
+### FASE 0.1: MIGRAR ENDPOINTS DE AUTH A routes/auth_routes.py 🔴 CRITICA
+**Tiempo:** 3 horas
+**Fecha creacion:** 8 Diciembre 2025
+
+**Contexto:**
+Migrar todos los endpoints de autenticacion y 2FA desde app.py a routes/auth_routes.py
+para separar responsabilidades y evitar conflictos entre agentes.
+
+**Endpoints a migrar (lineas aproximadas en app.py):**
+- /api/2fa/* (1241-1417) - Setup, verify, status, disable
+- /api/auth/* - Login, logout, refresh token
+- /api/demo/* - Modo demo 2FA
+- /api/health - Health check
+
+**Tareas:**
+- [ ] Leer app.py y ubicar todos los endpoints de auth/2fa
+- [ ] Copiar endpoints a routes/auth_routes.py
+- [ ] Cambiar @app.route por @auth_bp.route
+- [ ] Importar dependencias necesarias (db_manager, security_manager, pyotp)
+- [ ] Registrar blueprint en app.py
+- [ ] Probar que todos los endpoints funcionan
+- [ ] Eliminar endpoints originales de app.py
+
+**Criterios de aceptacion:**
+- [ ] Todos los endpoints /api/2fa/* responden correctamente
+- [ ] app.py solo contiene inicializacion y registro de blueprints
+- [ ] No hay errores en logs
 
 ---
 

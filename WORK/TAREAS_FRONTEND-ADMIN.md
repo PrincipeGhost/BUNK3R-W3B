@@ -1,6 +1,55 @@
 # TAREAS AGENTE 🟢 FRONTEND ADMIN
 **Rama Git:** `feature/frontend-admin`
-**Archivos asignados:** static/js/admin.js, static/css/admin.css, templates/admin.html
+**Archivos asignados:** 
+- routes/admin_routes.py (endpoints /api/admin/*)
+- static/js/admin.js
+- static/js/admin-utils.js (utilidades especificas de admin)
+- static/css/admin.css
+- templates/admin.html
+
+**Nota sobre utilidades:**
+- Usar `AdminUtils` de admin-utils.js para funciones especificas de admin
+- Usar `SharedUtils` de shared-utils.js para funciones compartidas (SOLO LECTURA)
+
+---
+
+## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+
+### FASE 0.1: MIGRAR ENDPOINTS ADMIN A routes/admin_routes.py 🔴 CRITICA
+**Tiempo:** 5 horas
+**Fecha creacion:** 8 Diciembre 2025
+
+**Contexto:**
+Migrar todos los endpoints de admin desde app.py a routes/admin_routes.py
+para separar responsabilidades y evitar conflictos entre agentes.
+
+**Endpoints a migrar (lineas aproximadas en app.py):**
+- /api/admin/dashboard/* (5547-5865)
+- /api/admin/users/* (5866-6312, 7380-7511)
+- /api/admin/stats/* (6937-7151)
+- /api/admin/security/* (7232-7379)
+- /api/admin/financial/* (7558-7887)
+- /api/admin/content/* (7888-8500+)
+- /api/admin/fraud/* (6608-6747)
+- /api/admin/sessions/* (6784-6936)
+- /api/admin/anomalies/* (6527-6607)
+- /api/admin/risk-score/* (6313-6446)
+- /api/admin/support/* (tickets, FAQ)
+- /api/admin/config/* (configuracion)
+
+**Tareas:**
+- [ ] Leer app.py y ubicar todos los endpoints de admin
+- [ ] Copiar endpoints a routes/admin_routes.py
+- [ ] Cambiar @app.route('/api/admin/...') por @admin_bp.route('/...')
+- [ ] Importar dependencias (db_manager, security_manager, decorators)
+- [ ] Registrar blueprint en app.py
+- [ ] Probar que todos los endpoints funcionan
+- [ ] Eliminar endpoints originales de app.py
+
+**Criterios de aceptacion:**
+- [ ] Todos los endpoints /api/admin/* responden correctamente
+- [ ] Panel admin funciona sin errores
+- [ ] No hay errores en logs
 
 ---
 

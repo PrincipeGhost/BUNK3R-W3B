@@ -1,6 +1,40 @@
 # TAREAS AGENTE 🔴 BLOCKCHAIN & SERVICIOS EXTERNOS
 **Rama Git:** `feature/blockchain-services`
-**Archivos asignados:** tracking/b3c_service.py, tracking/wallet_pool_service.py, tracking/deposit_scheduler.py, tracking/smspool_service.py, tracking/legitsms_service.py, tracking/cloudinary_service.py, tracking/encryption.py
+**Archivos asignados:** 
+- routes/blockchain_routes.py (endpoints /api/b3c/*, /api/wallet/*)
+- tracking/b3c_service.py, tracking/wallet_pool_service.py
+- tracking/deposit_scheduler.py, tracking/smspool_service.py
+- tracking/legitsms_service.py, tracking/cloudinary_service.py, tracking/encryption.py
+
+---
+
+## SECCION 0: MIGRACION DE RUTAS (PRIORITARIO)
+
+### FASE 0.1: MIGRAR ENDPOINTS BLOCKCHAIN A routes/blockchain_routes.py 🔴 CRITICA
+**Tiempo:** 4 horas
+**Fecha creacion:** 8 Diciembre 2025
+
+**Contexto:**
+Migrar todos los endpoints de B3C y wallets desde app.py a routes/blockchain_routes.py
+para separar responsabilidades y evitar conflictos entre agentes.
+
+**Endpoints a migrar (lineas aproximadas en app.py):**
+- /api/b3c/* (3594-4815) - Compra, venta, balance, transacciones, depositos
+- /api/wallet/* (3403-3569, 5195) - Conexion wallet, balance, creditos
+
+**Tareas:**
+- [ ] Leer app.py y ubicar todos los endpoints de b3c/wallet
+- [ ] Copiar endpoints a routes/blockchain_routes.py
+- [ ] Cambiar @app.route por @blockchain_bp.route
+- [ ] Importar dependencias (db_manager, wallet_pool_service, b3c_service)
+- [ ] Registrar blueprint en app.py
+- [ ] Probar que todos los endpoints funcionan
+- [ ] Eliminar endpoints originales de app.py
+
+**Criterios de aceptacion:**
+- [ ] Todos los endpoints /api/b3c/* responden correctamente
+- [ ] Todos los endpoints /api/wallet/* responden correctamente
+- [ ] No hay errores en logs
 
 ---
 
