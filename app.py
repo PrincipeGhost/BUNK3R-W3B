@@ -1053,6 +1053,9 @@ def browser_proxy():
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-CH-UA-Mobile': '?1',
+            'Sec-CH-UA-Platform': '"iOS"',
+            'Sec-CH-UA': '"Safari";v="17", "Mobile";v="17"',
         }
         
         resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
@@ -1064,7 +1067,17 @@ def browser_proxy():
             base_tag = f'<base href="{base_url}/">'
             viewport_tag = '<meta name="viewport" content="width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
             mobile_style = '<style>html,body{max-width:375px!important;overflow-x:hidden!important;}</style>'
-            inject_tags = f'{base_tag}{viewport_tag}{mobile_style}'
+            mobile_script = '''<script>
+Object.defineProperty(window, 'innerWidth', {get: function() { return 375; }});
+Object.defineProperty(window, 'innerHeight', {get: function() { return 667; }});
+Object.defineProperty(window.screen, 'width', {get: function() { return 375; }});
+Object.defineProperty(window.screen, 'height', {get: function() { return 667; }});
+Object.defineProperty(window.screen, 'availWidth', {get: function() { return 375; }});
+Object.defineProperty(window.screen, 'availHeight', {get: function() { return 667; }});
+Object.defineProperty(navigator, 'maxTouchPoints', {get: function() { return 5; }});
+window.ontouchstart = function() {};
+</script>'''
+            inject_tags = f'{mobile_script}{base_tag}{viewport_tag}{mobile_style}'
             if '<head>' in content:
                 content = content.replace('<head>', f'<head>{inject_tags}', 1)
             elif '<HEAD>' in content:
