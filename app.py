@@ -1062,12 +1062,15 @@ def browser_proxy():
             content = resp.text
             base_url = f"{parsed.scheme}://{parsed.netloc}"
             base_tag = f'<base href="{base_url}/">'
+            viewport_tag = '<meta name="viewport" content="width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
+            mobile_style = '<style>html,body{max-width:375px!important;overflow-x:hidden!important;}</style>'
+            inject_tags = f'{base_tag}{viewport_tag}{mobile_style}'
             if '<head>' in content:
-                content = content.replace('<head>', f'<head>{base_tag}', 1)
+                content = content.replace('<head>', f'<head>{inject_tags}', 1)
             elif '<HEAD>' in content:
-                content = content.replace('<HEAD>', f'<HEAD>{base_tag}', 1)
+                content = content.replace('<HEAD>', f'<HEAD>{inject_tags}', 1)
             else:
-                content = base_tag + content
+                content = inject_tags + content
             
             response = Response(content, status=resp.status_code)
             response.headers['Content-Type'] = content_type
