@@ -283,12 +283,16 @@ def invalidate_demo_session():
     session.pop('demo_2fa_created_at', None)
     session.pop('demo_2fa_valid', None)
 
+from tracking import services as shared_services
+
 try:
     db_manager = DatabaseManager()
     logger.info("Database connection established")
+    shared_services.set_db_manager(db_manager)
     security_manager = SecurityManager(db_manager)
     security_manager.initialize_tables()
     logger.info("Security manager initialized")
+    shared_services.set_security_manager(security_manager)
     db_manager.initialize_virtual_numbers_tables()
     logger.info("Virtual numbers tables initialized")
     db_manager.initialize_payments_tables()
@@ -297,6 +301,7 @@ try:
     logger.info("B3C tables initialized")
     vn_manager = VirtualNumbersManager(db_manager)
     logger.info("Virtual numbers manager initialized")
+    shared_services.set_vn_manager(vn_manager)
 except Exception as e:
     logger.error(f"Database connection failed: {e}")
     db_manager = None
