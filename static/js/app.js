@@ -3571,6 +3571,26 @@ const App = {
         }
         
         const browsers = document.querySelectorAll('.phone-browser');
+        
+        const scaleIframes = () => {
+            browsers.forEach((browser) => {
+                const content = browser.querySelector('.browser-content');
+                const iframe = browser.querySelector('.browser-iframe');
+                if (!content || !iframe) return;
+                
+                const containerWidth = content.clientWidth;
+                const containerHeight = content.clientHeight;
+                const iframeWidth = 375;
+                const iframeHeight = 667;
+                
+                const scaleX = containerWidth / iframeWidth;
+                const scaleY = containerHeight / iframeHeight;
+                const scale = Math.min(scaleX, scaleY);
+                
+                iframe.style.transform = `scale(${scale})`;
+            });
+        };
+        
         browsers.forEach((browser, index) => {
             const iframe = browser.querySelector('.browser-iframe');
             const urlInput = browser.querySelector('.browser-url-input');
@@ -3608,6 +3628,9 @@ const App = {
             this.registerEventListener(urlInput, 'keypress', keypressHandler);
             this.registerEventListener(refreshBtn, 'click', refreshHandler);
         });
+        
+        setTimeout(scaleIframes, 100);
+        this.registerEventListener(window, 'resize', scaleIframes);
         
         this.multiBrowserInitialized = true;
     },

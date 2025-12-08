@@ -14715,12 +14715,13 @@ body.dev-mode-active .dev-lock-badge {
 }
 
 .browser-iframe {
-    width: 100%;
-    height: 100%;
+    width: 375px;
+    height: 667px;
     display: block;
     border: none;
     background: #fff;
     outline: none;
+    transform-origin: top left;
 }
 
 .browser-iframe:focus {
