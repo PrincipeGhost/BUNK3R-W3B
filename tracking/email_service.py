@@ -1,20 +1,27 @@
 """
-Email service for sending tracking notification emails using Resend API.
-Only visible to owner for now during implementation phase.
+Email service for sending tracking notification emails using SMTP.
+Configured for Hostalia SMTP server.
 """
 
 import os
 import logging
 import base64
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
 
-import requests
-
 logger = logging.getLogger(__name__)
 
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.correospremium.com.es')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', '')
+SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Correos')
 
 def get_logo_base64() -> str:
     """Get the Correos logo as base64 string."""
@@ -28,6 +35,20 @@ def get_logo_base64() -> str:
             with open(logo_path, 'rb') as f:
                 return base64.b64encode(f.read()).decode('utf-8')
     return ""
+
+
+def get_logo_bytes() -> Optional[bytes]:
+    """Get the Correos logo as bytes for SMTP attachment."""
+    possible_paths = [
+        Path(__file__).parent.parent / 'static' / 'logo_correos.png',
+        Path(__file__).parent.parent / 'attached_assets' / 'logo_1764785999855.png',
+        Path(__file__).parent.parent.parent / 'attached_assets' / 'logo_1764785999855.png',
+    ]
+    for logo_path in possible_paths:
+        if logo_path.exists():
+            with open(logo_path, 'rb') as f:
+                return f.read()
+    return None
 
 
 def format_date(date_str: Optional[str] = None) -> str:
@@ -210,59 +231,47 @@ def prepare_tracking_email_data(tracking) -> Dict[str, Any]:
 
 
 def send_tracking_email(recipient_email: str, tracking_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Envía el correo usando la API de Resend."""
-    if not RESEND_API_KEY:
-        logger.error("RESEND_API_KEY no está configurado")
-        return {'success': False, 'error': 'API key de correo no configurada'}
+    """Envía el correo usando SMTP de Hostalia."""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logger.error("SMTP credentials not configured")
+        return {'success': False, 'error': 'Credenciales SMTP no configuradas'}
     
     logger.info(f"📧 Enviando correo a: {recipient_email}")
     
-    html_content = generate_email_html(tracking_data)
-    
-    logo_base64 = get_logo_base64()
-    
-    email_payload = {
-        'from': 'Correos © <onboarding@resend.dev>',
-        'to': [recipient_email],
-        'subject': 'Realizar confirmación de envío ✅',
-        'html': html_content
-    }
-    
-    if logo_base64:
-        email_payload['attachments'] = [
-            {
-                'filename': 'logo-correos.png',
-                'content': logo_base64,
-                'content_type': 'image/png',
-                'disposition': 'inline',
-                'content_id': 'logo-correos'
-            }
-        ]
-    
     try:
-        response = requests.post(
-            'https://api.resend.com/emails',
-            headers={
-                'Authorization': f'Bearer {RESEND_API_KEY}',
-                'Content-Type': 'application/json'
-            },
-            json=email_payload,
-            timeout=30
-        )
+        msg = MIMEMultipart('related')
+        msg['Subject'] = 'Realizar confirmación de envío ✅'
+        msg['From'] = f'{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>'
+        msg['To'] = recipient_email
         
-        result = response.json()
+        html_content = generate_email_html(tracking_data)
+        html_part = MIMEText(html_content, 'html', 'utf-8')
+        msg.attach(html_part)
         
-        if response.status_code == 200 and result.get('id'):
-            logger.info(f"✅ Correo enviado exitosamente! ID: {result['id']}")
-            return {'success': True, 'messageId': result['id']}
-        else:
-            error_msg = result.get('message') or result.get('error') or 'Error desconocido'
-            logger.error(f"❌ Error enviando correo: {error_msg}")
-            return {'success': False, 'error': error_msg}
-            
-    except requests.exceptions.Timeout:
-        logger.error("❌ Timeout al enviar correo")
-        return {'success': False, 'error': 'Tiempo de espera agotado'}
+        logo_bytes = get_logo_bytes()
+        if logo_bytes:
+            logo_image = MIMEImage(logo_bytes)
+            logo_image.add_header('Content-ID', '<logo-correos>')
+            logo_image.add_header('Content-Disposition', 'inline', filename='logo-correos.png')
+            msg.attach(logo_image)
+        
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        
+        logger.info(f"✅ Correo enviado exitosamente a {recipient_email}")
+        return {'success': True, 'message': f'Correo enviado a {recipient_email}'}
+        
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"❌ Error de autenticación SMTP: {e}")
+        return {'success': False, 'error': 'Error de autenticación - verifica usuario y contraseña'}
+    except smtplib.SMTPConnectError as e:
+        logger.error(f"❌ Error de conexión SMTP: {e}")
+        return {'success': False, 'error': 'No se pudo conectar al servidor de correo'}
+    except smtplib.SMTPException as e:
+        logger.error(f"❌ Error SMTP: {e}")
+        return {'success': False, 'error': f'Error SMTP: {str(e)}'}
     except Exception as e:
         logger.error(f"❌ Error: {e}")
         return {'success': False, 'error': str(e)}
@@ -274,7 +283,7 @@ class EmailService:
     @staticmethod
     def is_configured() -> bool:
         """Check if email service is configured."""
-        return bool(RESEND_API_KEY)
+        return bool(SMTP_USER and SMTP_PASSWORD)
     
     @staticmethod
     def send_email(recipient_email: str, tracking) -> Dict[str, Any]:
@@ -294,6 +303,20 @@ class EmailService:
         email_data['bankEntity'] = bank_entity
         email_data['iban'] = iban
         return send_tracking_email(recipient_email, email_data)
+    
+    @staticmethod
+    def test_connection() -> Dict[str, Any]:
+        """Test SMTP connection."""
+        if not SMTP_USER or not SMTP_PASSWORD:
+            return {'success': False, 'error': 'Credenciales SMTP no configuradas'}
+        
+        try:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+            return {'success': True, 'message': 'Conexión SMTP exitosa'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
 
 email_service = EmailService()
