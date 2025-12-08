@@ -4208,9 +4208,14 @@ const AdminPanel = {
         if (document.getElementById('admin2FAModal')) return;
         
         const isTelegram = this.isTelegramMode();
+        const title = isTelegram ? 'Verificación 2FA' : 'Acceso Demo';
         const message = isTelegram 
             ? 'Ingresa el código de tu Google Authenticator para acceder al panel de administración.'
-            : 'Ingresa el código 2FA que aparece en la consola del servidor (Logs).';
+            : 'Ingresa la contraseña de administrador para acceder al modo demo.';
+        const placeholder = isTelegram ? 'Código de 6 dígitos' : 'Contraseña';
+        const inputType = isTelegram ? 'text' : 'password';
+        const maxLength = isTelegram ? '6' : '50';
+        const letterSpacing = isTelegram ? 'letter-spacing: 8px;' : '';
         
         const modal = document.createElement('div');
         modal.id = 'admin2FAModal';
@@ -4218,17 +4223,17 @@ const AdminPanel = {
         modal.innerHTML = `
             <div style="background: #1E2329; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
                 <div style="padding: 20px 24px; border-bottom: 1px solid #2B3139;">
-                    <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #EAECEF;">Verificación 2FA</h2>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #EAECEF;">${title}</h2>
                 </div>
                 <div style="padding: 24px;">
                     <p style="color: #848E9C; margin: 0 0 16px 0; font-size: 14px;">
                         ${message}
                     </p>
-                    <input type="text" id="admin2FACode" placeholder="Código de 6 dígitos" 
-                           style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 8px; border: 1px solid #2B3139; border-radius: 8px; background: #0B0E11; color: #EAECEF; box-sizing: border-box;"
-                           maxlength="6" autocomplete="off">
+                    <input type="${inputType}" id="admin2FACode" placeholder="${placeholder}" 
+                           style="width: 100%; padding: 12px; font-size: 18px; text-align: center; ${letterSpacing} border: 1px solid #2B3139; border-radius: 8px; background: #0B0E11; color: #EAECEF; box-sizing: border-box;"
+                           maxlength="${maxLength}" autocomplete="off">
                     <button id="admin2FASubmit" style="width: 100%; margin-top: 16px; padding: 12px; background: #F0B90B; color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">
-                        Verificar
+                        Acceder
                     </button>
                     <p id="admin2FAError" style="color: #F6465D; margin-top: 12px; display: none; text-align: center; font-size: 14px;"></p>
                 </div>

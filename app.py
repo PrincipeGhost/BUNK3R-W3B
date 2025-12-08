@@ -779,10 +779,8 @@ def require_telegram_auth(f):
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             
             if not verify_demo_session(demo_session_token, client_ip):
-                current_code = get_demo_2fa_code()
-                log_demo_2fa_code(current_code, client_ip)
                 return jsonify({
-                    'error': 'Verificación 2FA requerida para modo demo',
+                    'error': 'Se requiere autenticación para modo demo',
                     'code': 'DEMO_2FA_REQUIRED',
                     'requiresDemo2FA': True
                 }), 401
@@ -848,10 +846,8 @@ def require_telegram_user(f):
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             
             if not verify_demo_session(demo_session_token, client_ip):
-                current_code = get_demo_2fa_code()
-                log_demo_2fa_code(current_code, client_ip)
                 return jsonify({
-                    'error': 'Verificación 2FA requerida para modo demo',
+                    'error': 'Se requiere autenticación para modo demo',
                     'code': 'DEMO_2FA_REQUIRED',
                     'requiresDemo2FA': True
                 }), 401
@@ -1084,40 +1080,41 @@ def browser_proxy():
 
 @app.route('/api/demo/2fa/verify', methods=['POST'])
 def verify_demo_2fa():
-    """Verificar código 2FA para modo demo."""
+    """Verificar contraseña para modo demo."""
     if IS_PRODUCTION:
         return jsonify({'error': 'Not available in production'}), 403
     
     try:
         data = request.get_json() or {}
-        code = data.get('code', '').strip()
+        password = data.get('code', '').strip() or data.get('password', '').strip()
         
-        if not code:
+        if not password:
             return jsonify({
                 'success': False,
-                'error': 'Código requerido'
+                'error': 'Contraseña requerida'
             }), 400
         
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         
-        if verify_demo_2fa_code(code):
+        demo_password = os.environ.get('ADMIN_TOKEN', '110917')
+        
+        if password == demo_password:
             session_token = get_demo_session_token(client_ip)
-            logger.info(f"✅ Demo 2FA verified successfully from IP: {client_ip}")
+            logger.info(f"✅ Demo login successful from IP: {client_ip}")
             return jsonify({
                 'success': True,
                 'sessionToken': session_token,
-                'message': 'Verificación exitosa'
+                'message': 'Acceso concedido'
             })
         else:
-            current_code = get_demo_2fa_code()
-            log_demo_2fa_code(current_code, client_ip, f"Attempt failed with code: {code}")
+            logger.warning(f"❌ Demo login failed from IP: {client_ip}")
             return jsonify({
                 'success': False,
-                'error': 'Código incorrecto. Revisa los logs del servidor.'
+                'error': 'Contraseña incorrecta'
             }), 401
             
     except Exception as e:
-        logger.error(f"Error verifying demo 2FA: {e}")
+        logger.error(f"Error verifying demo password: {e}")
         return jsonify({'success': False, 'error': 'Error interno'}), 500
 
 
