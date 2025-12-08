@@ -100,10 +100,14 @@ static/js/
 ## Recent Changes (December 2025)
 
 ### 8 Diciembre 2025
-- **Estructura de Blueprints corregida:** Se solucionó el problema de blueprints duplicados en routes/
+- **Estructura de Blueprints completada:** Blueprints creados, configurados y registrados en app.py (lineas 161-168)
 - **Módulo de utilidades compartidas:** Creado tracking/utils.py con InputValidator, RateLimiter, sanitize_error
 - **Documentación actualizada:** 007.md y archivos WORK/*.md actualizados con estado real del proyecto
-- **Endpoints health:** Cada blueprint ahora tiene un endpoint /health para verificación
+- **Endpoints health verificados:** 
+  - GET /api/auth/health - 200 OK
+  - GET /api/blockchain/health - 200 OK  
+  - GET /api/admin/health - 200 OK
+  - GET /api/user/health - 200 OK
 
 ### Cambios anteriores (December 2024)
 - **Wallet Pool Optimizations:** Added rotation algorithm, low balance alerts, automated cleanup of old consolidated wallets, and pool maintenance routine.
