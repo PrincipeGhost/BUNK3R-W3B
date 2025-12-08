@@ -163,6 +163,71 @@
                 </div>
                 
                 <div class="nav-section">
+                    <div class="nav-section-title">Seguridad</div>
+                    <a href="#riskscore" class="nav-item" data-section="riskscore">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <path d="M12 8v4"></path>
+                            <path d="M12 16h.01"></path>
+                        </svg>
+                        <span>Score de Riesgo</span>
+                    </a>
+                    <a href="#relatedaccounts" class="nav-item" data-section="relatedaccounts">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                        <span>Cuentas Relacionadas</span>
+                    </a>
+                    <a href="#anomalies" class="nav-item" data-section="anomalies">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>Anomalias</span>
+                        <span class="nav-badge danger" id="anomaliesCount">0</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Gestion Avanzada</div>
+                    <a href="#usertags" class="nav-item" data-section="usertags">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                        </svg>
+                        <span>Etiquetas</span>
+                    </a>
+                    <a href="#verifications" class="nav-item" data-section="verifications">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span>Verificaciones</span>
+                        <span class="nav-badge" id="verificationsCount">0</span>
+                    </a>
+                    <a href="#shadowmode" class="nav-item" data-section="shadowmode">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span>Modo Shadow</span>
+                    </a>
+                    <a href="#marketplace" class="nav-item" data-section="marketplace">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <span>Marketplace</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <a href="#logs" class="nav-item" data-section="logs">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3099,6 +3164,326 @@
                         </div>
                     </div>
                 </section>
+                
+                <!-- RISK SCORE SECTION -->
+                <section class="admin-section" id="section-riskscore">
+                    <div class="section-header">
+                        <h2>Sistema de Puntuacion de Riesgo</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="RiskScoreModule.refreshData()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="risk-stats-grid">
+                        <div class="risk-stat-card low">
+                            <div class="risk-stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                            <div class="risk-stat-value" id="riskLowCount">0</div>
+                            <div class="risk-stat-label">Riesgo Bajo</div>
+                        </div>
+                        <div class="risk-stat-card medium">
+                            <div class="risk-stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
+                            <div class="risk-stat-value" id="riskMediumCount">0</div>
+                            <div class="risk-stat-label">Riesgo Medio</div>
+                        </div>
+                        <div class="risk-stat-card high">
+                            <div class="risk-stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
+                            <div class="risk-stat-value" id="riskHighCount">0</div>
+                            <div class="risk-stat-label">Riesgo Alto</div>
+                        </div>
+                        <div class="risk-stat-card critical">
+                            <div class="risk-stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg></div>
+                            <div class="risk-stat-value" id="riskCriticalCount">0</div>
+                            <div class="risk-stat-label">Riesgo Critico</div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-toolbar">
+                        <div class="toolbar-left">
+                            <div class="search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="riskUserSearch" placeholder="Buscar usuario...">
+                            </div>
+                            <select id="riskLevelFilter" class="form-select">
+                                <option value="">Todos los niveles</option>
+                                <option value="low">Riesgo Bajo (0-25)</option>
+                                <option value="medium">Riesgo Medio (26-50)</option>
+                                <option value="high">Riesgo Alto (51-75)</option>
+                                <option value="critical">Riesgo Critico (76-100)</option>
+                            </select>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn-secondary" onclick="RiskScoreModule.exportData()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                Exportar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table-container">
+                        <table class="data-table" id="riskScoreTable">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Score</th>
+                                    <th>Nivel</th>
+                                    <th>Factores</th>
+                                    <th>Ultimo Cambio</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="riskScoreTableBody">
+                                <tr class="loading-row"><td colspan="6">Cargando datos de riesgo...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <!-- RELATED ACCOUNTS SECTION -->
+                <section class="admin-section" id="section-relatedaccounts">
+                    <div class="section-header">
+                        <h2>Detector de Cuentas Relacionadas</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="RelatedAccountsModule.runScan()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                Ejecutar Escaneo
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="related-accounts-grid">
+                        <div class="related-accounts-list-panel">
+                            <div class="panel-header">
+                                <h3>Grupos Detectados</h3>
+                                <span class="badge" id="relatedGroupsCount">0</span>
+                            </div>
+                            <div class="related-filters">
+                                <select id="relatedStatusFilter" class="form-select">
+                                    <option value="">Todos</option>
+                                    <option value="pending">Pendientes</option>
+                                    <option value="confirmed">Confirmados</option>
+                                    <option value="false_positive">Falso Positivo</option>
+                                </select>
+                            </div>
+                            <div class="related-groups-list" id="relatedGroupsList">
+                                <div class="loading-placeholder">Escaneando cuentas...</div>
+                            </div>
+                        </div>
+                        <div class="related-accounts-detail-panel">
+                            <div class="panel-header">
+                                <h3>Detalle del Grupo</h3>
+                            </div>
+                            <div class="related-detail-content" id="relatedDetailContent">
+                                <div class="empty-state">Selecciona un grupo para ver los detalles</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- ANOMALIES SECTION -->
+                <section class="admin-section" id="section-anomalies">
+                    <div class="section-header">
+                        <h2>Monitoreo de Anomalias</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="AnomaliesModule.configureThresholds()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Umbrales
+                            </button>
+                            <button class="btn-primary" onclick="AnomaliesModule.refreshData()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="anomalies-stats-grid">
+                        <div class="anomaly-stat-card">
+                            <div class="stat-value" id="anomaliesTodayCount">0</div>
+                            <div class="stat-label">Hoy</div>
+                        </div>
+                        <div class="anomaly-stat-card">
+                            <div class="stat-value" id="anomaliesWeekCount">0</div>
+                            <div class="stat-label">Esta Semana</div>
+                        </div>
+                        <div class="anomaly-stat-card">
+                            <div class="stat-value" id="anomaliesUnresolvedCount">0</div>
+                            <div class="stat-label">Sin Resolver</div>
+                        </div>
+                    </div>
+                    
+                    <div class="anomalies-tabs">
+                        <button class="tab-btn active" data-tab="active">Activas</button>
+                        <button class="tab-btn" data-tab="history">Historial</button>
+                    </div>
+                    
+                    <div class="anomalies-list" id="anomaliesList">
+                        <div class="loading-placeholder">Cargando anomalias...</div>
+                    </div>
+                </section>
+                
+                <!-- USER TAGS SECTION -->
+                <section class="admin-section" id="section-usertags">
+                    <div class="section-header">
+                        <h2>Sistema de Etiquetas</h2>
+                        <div class="header-actions">
+                            <button class="btn-primary" onclick="TagsModule.showCreateModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Nueva Etiqueta
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tags-grid">
+                        <div class="tags-list-panel">
+                            <div class="panel-header">
+                                <h3>Etiquetas Disponibles</h3>
+                            </div>
+                            <div class="tags-list" id="tagsList">
+                                <div class="loading-placeholder">Cargando etiquetas...</div>
+                            </div>
+                        </div>
+                        <div class="tags-users-panel">
+                            <div class="panel-header">
+                                <h3>Usuarios con Etiqueta</h3>
+                                <span class="current-tag-name" id="currentTagName">-</span>
+                            </div>
+                            <div class="tags-users-list" id="tagsUsersList">
+                                <div class="empty-state">Selecciona una etiqueta</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- VERIFICATIONS SECTION -->
+                <section class="admin-section" id="section-verifications">
+                    <div class="section-header">
+                        <h2>Cola de Verificaciones</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="VerificationsModule.refreshData()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="verifications-stats">
+                        <div class="verif-stat"><span class="stat-value" id="verifPendingCount">0</span><span class="stat-label">Pendientes</span></div>
+                        <div class="verif-stat"><span class="stat-value" id="verifApprovedCount">0</span><span class="stat-label">Aprobadas</span></div>
+                        <div class="verif-stat"><span class="stat-value" id="verifRejectedCount">0</span><span class="stat-label">Rechazadas</span></div>
+                    </div>
+                    
+                    <div class="section-toolbar">
+                        <div class="toolbar-left">
+                            <select id="verifTypeFilter" class="form-select">
+                                <option value="">Todos los tipos</option>
+                                <option value="identity">Identidad</option>
+                                <option value="address">Direccion</option>
+                                <option value="phone">Telefono</option>
+                                <option value="payment">Metodo Pago</option>
+                            </select>
+                            <select id="verifStatusFilter" class="form-select">
+                                <option value="pending">Pendientes</option>
+                                <option value="">Todos</option>
+                                <option value="approved">Aprobados</option>
+                                <option value="rejected">Rechazados</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="verifications-grid">
+                        <div class="verifications-queue" id="verificationsQueue">
+                            <div class="loading-placeholder">Cargando verificaciones...</div>
+                        </div>
+                        <div class="verification-detail-panel" id="verificationDetailPanel">
+                            <div class="empty-state">Selecciona una verificacion</div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- SHADOW MODE SECTION -->
+                <section class="admin-section" id="section-shadowmode">
+                    <div class="section-header">
+                        <h2>Modo Shadow (Impersonacion)</h2>
+                    </div>
+                    
+                    <div class="shadow-mode-content">
+                        <div class="shadow-info-card">
+                            <div class="info-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </div>
+                            <h3>Ver como Usuario</h3>
+                            <p>Esta funcion te permite ver la aplicacion exactamente como la ve un usuario especifico, sin afectar su cuenta.</p>
+                        </div>
+                        
+                        <div class="shadow-search">
+                            <label>Buscar usuario para impersonar</label>
+                            <div class="search-input-group">
+                                <input type="text" id="shadowUserSearch" placeholder="ID o username del usuario...">
+                                <button class="btn-primary" onclick="ShadowModule.searchUser()">Buscar</button>
+                            </div>
+                        </div>
+                        
+                        <div class="shadow-search-results" id="shadowSearchResults" style="display: none;">
+                        </div>
+                        
+                        <div class="shadow-sessions-log">
+                            <h4>Historial de Sesiones Shadow</h4>
+                            <div class="sessions-list" id="shadowSessionsList">
+                                <div class="empty-state">Sin sesiones recientes</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- MARKETPLACE SECTION -->
+                <section class="admin-section" id="section-marketplace">
+                    <div class="section-header">
+                        <h2>Marketplace</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="MarketplaceModule.configureCommissions()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Comisiones
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="marketplace-stats-grid">
+                        <div class="market-stat-card">
+                            <div class="stat-value" id="marketActiveListings">0</div>
+                            <div class="stat-label">Listings Activos</div>
+                        </div>
+                        <div class="market-stat-card">
+                            <div class="stat-value" id="marketPendingApproval">0</div>
+                            <div class="stat-label">Pendientes</div>
+                        </div>
+                        <div class="market-stat-card">
+                            <div class="stat-value" id="marketTotalSales">0</div>
+                            <div class="stat-label">Ventas Totales</div>
+                        </div>
+                        <div class="market-stat-card">
+                            <div class="stat-value" id="marketRevenue">0</div>
+                            <div class="stat-label">Comisiones (TON)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="marketplace-tabs">
+                        <button class="tab-btn active" data-tab="pending">Pendientes</button>
+                        <button class="tab-btn" data-tab="active">Activos</button>
+                        <button class="tab-btn" data-tab="sales">Ventas</button>
+                    </div>
+                    
+                    <div class="marketplace-content" id="marketplaceContent">
+                        <div class="loading-placeholder">Cargando marketplace...</div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -3310,6 +3695,6 @@
     <div class="toast-container" id="toastContainer"></div>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/static/js/admin.js?v=20251206204"></script>
+    <script src="/static/js/admin.js?v=20251208002"></script>
 </body>
 </html>

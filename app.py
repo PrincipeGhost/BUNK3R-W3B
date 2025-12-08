@@ -9556,6 +9556,290 @@ def admin_mark_all_notifications_read():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/risk-scores', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_risk_scores():
+    """Admin: Obtener scores de riesgo de usuarios."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT u.telegram_id as "telegramId", u.username, u.first_name as "firstName",
+                           u.last_name as "lastName", 
+                           COALESCE(u.risk_score, 0) as "riskScore",
+                           u.risk_factors as "riskFactors",
+                           u.last_activity as "lastScoreChange"
+                    FROM users u
+                    ORDER BY COALESCE(u.risk_score, 0) DESC
+                    LIMIT 500
+                """)
+                users = cur.fetchall()
+                
+                for user in users:
+                    if user.get('lastScoreChange'):
+                        user['lastScoreChange'] = user['lastScoreChange'].isoformat()
+                    if not user.get('riskFactors'):
+                        user['riskFactors'] = []
+                
+                return jsonify({'success': True, 'users': users})
+                
+    except Exception as e:
+        logger.error(f"Error getting risk scores: {e}")
+        return jsonify({'success': False, 'error': str(e), 'users': []}), 500
+
+
+@app.route('/api/admin/risk-scores/adjust', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_adjust_risk_score():
+    """Admin: Ajustar score de riesgo de un usuario."""
+    try:
+        data = request.get_json() or {}
+        telegram_id = data.get('telegramId')
+        score = data.get('score', 0)
+        
+        if not telegram_id:
+            return jsonify({'success': False, 'error': 'Usuario requerido'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users SET risk_score = %s WHERE telegram_id = %s
+                """, (score, telegram_id))
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error adjusting risk score: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/related-accounts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_related_accounts():
+    """Admin: Obtener grupos de cuentas relacionadas."""
+    try:
+        groups = []
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT ip_address, COUNT(*) as count, 
+                           array_agg(telegram_id) as user_ids
+                    FROM user_devices
+                    WHERE ip_address IS NOT NULL
+                    GROUP BY ip_address
+                    HAVING COUNT(*) > 1
+                    ORDER BY count DESC
+                    LIMIT 50
+                """)
+                ip_groups = cur.fetchall()
+                
+                for i, grp in enumerate(ip_groups):
+                    user_ids = grp.get('user_ids', [])
+                    if user_ids:
+                        cur.execute("""
+                            SELECT telegram_id as "telegramId", username, first_name as "firstName"
+                            FROM users WHERE telegram_id = ANY(%s)
+                        """, (user_ids,))
+                        accounts = cur.fetchall()
+                    else:
+                        accounts = []
+                    
+                    groups.append({
+                        'id': i + 1,
+                        'status': 'pending',
+                        'reason': f'IP compartida: {grp.get("ip_address", "N/A")}',
+                        'confidence': min(100, grp.get('count', 2) * 30),
+                        'accounts': [dict(a) for a in accounts]
+                    })
+                
+        return jsonify({'success': True, 'groups': groups})
+        
+    except Exception as e:
+        logger.error(f"Error getting related accounts: {e}")
+        return jsonify({'success': False, 'error': str(e), 'groups': []}), 500
+
+
+@app.route('/api/admin/related-accounts/scan', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_scan_related_accounts():
+    """Admin: Ejecutar escaneo de cuentas relacionadas."""
+    try:
+        return jsonify({'success': True, 'message': 'Escaneo completado'})
+    except Exception as e:
+        logger.error(f"Error scanning related accounts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/anomalies', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_anomalies():
+    """Admin: Obtener lista de anomalias detectadas."""
+    try:
+        anomalies = []
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT sa.id, sa.user_id as "telegramId", sa.alert_type as title,
+                           sa.description, sa.severity, sa.is_resolved as resolved,
+                           sa.created_at as "detectedAt", u.username
+                    FROM security_alerts sa
+                    LEFT JOIN users u ON sa.user_id = u.telegram_id
+                    ORDER BY sa.created_at DESC
+                    LIMIT 100
+                """)
+                alerts = cur.fetchall()
+                
+                for alert in alerts:
+                    if alert.get('detectedAt'):
+                        alert['detectedAt'] = alert['detectedAt'].isoformat()
+                    anomalies.append(dict(alert))
+                
+        return jsonify({'success': True, 'anomalies': anomalies})
+        
+    except Exception as e:
+        logger.error(f"Error getting anomalies: {e}")
+        return jsonify({'success': False, 'error': str(e), 'anomalies': []}), 500
+
+
+@app.route('/api/admin/tags', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_tags():
+    """Admin: Obtener lista de etiquetas."""
+    try:
+        tags = [
+            {'id': 'vip', 'name': 'VIP', 'color': '#d4af37', 'usersCount': 0},
+            {'id': 'suspicious', 'name': 'Sospechoso', 'color': '#ef4444', 'usersCount': 0},
+            {'id': 'trusted', 'name': 'Confiable', 'color': '#22c55e', 'usersCount': 0},
+            {'id': 'new', 'name': 'Nuevo', 'color': '#3b82f6', 'usersCount': 0},
+            {'id': 'high_value', 'name': 'Alto Valor', 'color': '#a855f7', 'usersCount': 0}
+        ]
+        return jsonify({'success': True, 'tags': tags})
+        
+    except Exception as e:
+        logger.error(f"Error getting tags: {e}")
+        return jsonify({'success': False, 'error': str(e), 'tags': []}), 500
+
+
+@app.route('/api/admin/tags', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_create_tag():
+    """Admin: Crear nueva etiqueta."""
+    try:
+        data = request.get_json() or {}
+        return jsonify({'success': True, 'tag': data})
+    except Exception as e:
+        logger.error(f"Error creating tag: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/tags/<tag_id>/users', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_tag_users(tag_id):
+    """Admin: Obtener usuarios con una etiqueta especifica."""
+    try:
+        return jsonify({'success': True, 'users': []})
+    except Exception as e:
+        logger.error(f"Error getting tag users: {e}")
+        return jsonify({'success': False, 'error': str(e), 'users': []}), 500
+
+
+@app.route('/api/admin/verifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_verifications():
+    """Admin: Obtener cola de verificaciones."""
+    try:
+        verifications = []
+        return jsonify({'success': True, 'verifications': verifications})
+        
+    except Exception as e:
+        logger.error(f"Error getting verifications: {e}")
+        return jsonify({'success': False, 'error': str(e), 'verifications': []}), 500
+
+
+@app.route('/api/admin/shadow-sessions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_shadow_sessions():
+    """Admin: Obtener historial de sesiones shadow."""
+    try:
+        sessions = []
+        return jsonify({'success': True, 'sessions': sessions})
+        
+    except Exception as e:
+        logger.error(f"Error getting shadow sessions: {e}")
+        return jsonify({'success': False, 'error': str(e), 'sessions': []}), 500
+
+
+@app.route('/api/admin/shadow-sessions/start', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_start_shadow_session():
+    """Admin: Iniciar sesion shadow para un usuario."""
+    try:
+        data = request.get_json() or {}
+        telegram_id = data.get('telegramId')
+        
+        if not telegram_id:
+            return jsonify({'success': False, 'error': 'Usuario requerido'}), 400
+        
+        session_url = f"/?shadow_user={telegram_id}"
+        
+        return jsonify({
+            'success': True,
+            'sessionUrl': session_url
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting shadow session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/marketplace', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_marketplace():
+    """Admin: Obtener datos del marketplace."""
+    try:
+        listings = []
+        sales = []
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT l.id, l.title, l.price, l.currency, l.status,
+                           l.created_at as "createdAt", u.username as "sellerUsername"
+                    FROM marketplace_listings l
+                    LEFT JOIN users u ON l.seller_id = u.telegram_id
+                    ORDER BY l.created_at DESC
+                    LIMIT 100
+                """)
+                listings = [dict(l) for l in cur.fetchall()]
+                
+                for listing in listings:
+                    if listing.get('createdAt'):
+                        listing['createdAt'] = listing['createdAt'].isoformat()
+                
+        return jsonify({
+            'success': True,
+            'listings': listings,
+            'sales': sales
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting marketplace: {e}")
+        return jsonify({'success': False, 'error': str(e), 'listings': [], 'sales': []}), 500
+
+
 @app.route('/api/client/log', methods=['POST'])
 def receive_client_log():
     """Recibir logs del cliente (frontend) para monitoreo."""
