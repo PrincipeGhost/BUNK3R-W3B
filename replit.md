@@ -116,6 +116,14 @@ static/js/
   - `/api/2fa/disable` - Desactivar 2FA
   - `/api/validate` - Validar usuario Telegram
 
+- **BLOCKCHAIN Blueprint migrado (25 endpoints B3C):**
+  - Endpoints basicos: `/api/wallet/address`, `/api/b3c/price`, `/api/b3c/calculate/*`, `/api/b3c/balance`, `/api/b3c/config`, `/api/b3c/network`, `/api/b3c/testnet/guide`
+  - Compra/Venta: `/api/b3c/buy/create`, `/api/b3c/buy/<id>/verify`, `/api/b3c/sell`
+  - Transacciones: `/api/b3c/transactions`, `/api/b3c/transfer`, `/api/b3c/withdraw`, `/api/b3c/withdraw/<id>/status`
+  - Depositos: `/api/b3c/deposit/address`, `/api/b3c/deposits/check`, `/api/b3c/deposits/history`, `/api/b3c/deposits/pending`, `/api/b3c/last-purchase`
+  - Admin: `/api/b3c/commissions`, `/api/b3c/scheduler/status`, `/api/b3c/wallet-pool/*`, `/api/b3c/admin/force-verify/<id>`
+  - Endpoints originales en app.py desactivados (comentados)
+
 - **Flujo demo 2FA unificado:**
   - Todas las sesiones demo usan Flask-Session (no memoria)
   - Decoradores y endpoints usan la misma implementacion
@@ -128,8 +136,8 @@ static/js/
   - GET /api/user/health - 200 OK
 
 ### Pendiente de Migracion
-- **329 endpoints restantes en app.py** distribuidos en:
-  - BLOCKCHAIN: /api/b3c/*, /api/wallet/*, /api/ton/*, /api/exchange/* (~80 endpoints)
+- **~304 endpoints restantes en app.py** distribuidos en:
+  - BLOCKCHAIN: /api/wallet/*, /api/ton/*, /api/exchange/* (~55 endpoints - B3C endpoints ya migrados)
   - ADMIN: /api/admin/* (~60 endpoints)
   - USER: /api/users/*, /api/publications/*, /api/stories/*, /api/messages/*, /api/notifications/* (~180 endpoints)
 
@@ -145,11 +153,11 @@ static/js/
 
 **Estructura de archivos principal:**
 ```
-app.py                    - Aplicacion principal (~15,000 lineas, 338 endpoints)
+app.py                    - Aplicacion principal (~14,500 lineas, ~304 endpoints activos)
 routes/                   - Blueprints para migracion gradual
   __init__.py             - Exporta todos los blueprints
   auth_routes.py          - Blueprint AUTH (9 endpoints MIGRADOS)
-  blockchain_routes.py    - Blueprint blockchain (pendiente)
+  blockchain_routes.py    - Blueprint BLOCKCHAIN (25 endpoints B3C MIGRADOS)
   admin_routes.py         - Blueprint admin (pendiente)
   user_routes.py          - Blueprint usuario (pendiente)
 tracking/                 - Servicios y modelos compartidos
@@ -171,4 +179,4 @@ WORK/                     - Archivos de tareas por agente
 3. Eliminar endpoint duplicado de app.py despues de verificar funcionamiento
 4. Los endpoints duplicados funcionan temporalmente (Flask usa el primero registrado)
 
-**NOTA:** 9/338 endpoints migrados. La migracion completa es un proceso gradual.
+**NOTA:** 34/338 endpoints migrados (9 AUTH + 25 B3C). La migracion completa es un proceso gradual.
