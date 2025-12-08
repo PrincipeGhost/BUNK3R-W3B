@@ -13,45 +13,14 @@ Al iniciar cada sesión, el agente DEBE mostrar este tablero automáticamente:
 ║    27.4 Wallets | 27.5 Contenido | 27.6 Números Virtuales        ║
 ║    27.7 Bots | 27.8 Logs | 27.9 Analytics                        ║
 ║                                                                  ║
-║ ✅ 34.1 Frontend IA conectado con 8 fases                        ║
-║                                                                  ║
 ║ ✅ VERIFICADOS (7 Dic 2025):                                     ║
 ║    31.1 Funciones | 31.3 Navegación | 31.4 Stats admin           ║
 ║    31.5 Tablas BD | 31.9 Rate limiting | 32.4 Sin pendientes     ║
 ║    32.5 Secretos auditados                                       ║
 ║                                                                  ║
-║ ⏳ PENDIENTES: 27.10→27.25 (44h), Sección 29 (18h), 30-34        ║
+║ ⏳ PENDIENTES: 27.10→27.25 (44h), Sección 29 (18h), 30-33        ║
 ║                                                                  ║
-║ 🔴 CRÍTICO: SECCIÓN 34 - IA BUNK3R CONSTRUCTOR                   ║
-║    ✅ 34.1, 34.2, 34.6, 34.9-34.14 COMPLETADOS (9 fases)         ║
-║    ⏳ 34.3-34.5, 34.7-34.8, 34.15 PENDIENTES (6 fases)           ║
-║                                                                  ║
-║ 🆕 FASES NÚCLEO IA (34.16 - 34.23) - NUEVO 7 Dic 2025            ║
-║    ⏳ 34.16 Motor de Decisiones Automático (4h) 🔴               ║
-║    ⏳ 34.17 Sistema de Reintentos Inteligente (3h) 🔴            ║
-║    ⏳ 34.18 Contexto de Proyecto Persistente (4h) 🔴             ║
-║    ⏳ 34.19 Validador Pre-Ejecución (3h) 🟡                      ║
-║    ⏳ 34.20 Sistema de Rollback Automático (4h) 🟡               ║
-║    ⏳ 34.21 Analizador de Impacto de Cambios (4h) 🟡             ║
-║    ⏳ 34.22 Gestor de Workflows (3h) 🔴                          ║
-║    ⏳ 34.23 Gestor de Tareas con Tracking (2h) 🟠                ║
-║    TOTAL: 8 fases nuevas, ~27 horas                              ║
-║                                                                  ║
-║ 🆕 COMPONENTES AVANZADOS (34.A - 34.H)                           ║
-║    ⏳ 34.A Búsqueda en Vivo (Serper + Playwright)                ║
-║    ⏳ 34.B Memoria Vectorial (ChromaDB + Embeddings)             ║
-║    ⏳ 34.C Análisis AST + Grafos de Dependencias                 ║
-║    ⏳ 34.D Validación, Testing y Seguridad                       ║
-║    ⏳ 34.E Ejecución Inteligente + Process Manager               ║
-║    ⏳ 34.F Progress Streaming + Diff Previewer                   ║
-║    ⏳ 34.G Self-Healing Loop + Agentes Encadenados               ║
-║    ⏳ 34.H Git Avanzado + Template Manager                       ║
-║    TOTAL: 39 items, ~169 horas                                   ║
-║                                                                  ║
-║ 🆕 SECCIÓN 35: COMPONENTES NIVEL EXPERTO (NUEVO)                 ║
-║    ⏳ 35.1-35.44: 44 fases con 340+ componentes                  ║
-║    ⏳ Incluye: Seguridad, Testing, Performance, IA, Web3         ║
-║    TOTAL: 340+ componentes, ~557h+                               ║
+║ ✅ SECCIÓN 34 - IA MIGRADA A PROYECTO SEPARADO (BUNK3R_IA)       ║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                        COMANDOS DISPONIBLES                      ║
@@ -133,18 +102,16 @@ static/js/app.js        Lógica frontend principal       ✅
 static/js/publications.js       Publicaciones/feed      ✅
 static/js/virtual-numbers.js    Números virtuales UI    ✅
 static/js/utils.js      Utilidades compartidas JS       ✅
-static/js/ai-chat.js    Chat con IA frontend    ✅
-static/js/workspace.js  Workspace IA frontend   ✅
+static/js/workspace.js  Workspace frontend   ✅
 static/css/styles.css   Estilos generales       ✅
-static/css/ai-chat.css  Estilos chat IA ✅
-static/css/workspace.css        Estilos workspace IA    ✅
+static/css/workspace.css        Estilos workspace    ✅
 templates/index.html    Template principal      ✅
 templates/virtual_numbers.html  Template números virtuales      ✅
-templates/workspace.html        Template workspace IA   ✅
+templates/workspace.html        Template workspace   ✅
 templates/access_denied.html    Template acceso denegado        ✅
 static/images/* Todas las imágenes      ✅
 static/uploads/*        Archivos subidos        ✅
-Total: 15 archivos/carpetas
+Total: 12 archivos/carpetas
 
 🟢 AGENTE 2: FRONTEND ADMIN
 Rama Git: feature/frontend-admin Comando para activar: 5 o ADMIN Responsabilidad: Todo el panel de administración
@@ -165,17 +132,11 @@ tracking/models.py      Modelos SQLAlchemy      ✅
 tracking/email_service.py       Servicio de emails      ✅
 tracking/security.py    Seguridad, 2FA, tokens  ✅
 tracking/telegram_service.py    Bot de Telegram ✅
-tracking/ai_service.py  Servicio principal IA   ✅
-tracking/ai_constructor.py      Constructor IA con 8 fases      ✅
-tracking/ai_core_engine.py      Motor central de decisiones IA  ✅
-tracking/ai_flow_logger.py      Logger de flujos IA     ✅
-tracking/ai_project_context.py  Contexto de proyecto IA ✅
-tracking/ai_toolkit.py  Herramientas IA (archivos/shell)        ✅
 tracking/__init__.py    Init del módulo tracking        ✅
 init_db.py      Inicialización de BD    ✅
 seed_data.py    Datos de prueba ✅
 requirements.txt        Dependencias Python     ✅
-Total: 16 archivos
+Total: 10 archivos
 
 🔴 AGENTE 4: BLOCKCHAIN & SERVICIOS EXTERNOS
 Rama Git: feature/blockchain-services Comando para activar: 6 o BLOCKCHAIN Responsabilidad: Blockchain TON, wallets, pagos y servicios externos
@@ -198,11 +159,11 @@ docs/*  ✅ Todos ✅ Solo al completar tarea
 logs/*  ✅ Todos ❌ Ninguno (generados automáticamente)
 📊 RESUMEN DE DISTRIBUCIÓN
 Agente  Archivos        Área Principal
-🔵 FRONTEND      15      UI usuario + Workspace IA
+🔵 FRONTEND      12      UI usuario + Workspace
 🟢 ADMIN 3       Panel administración
-🟡 BACKEND       16      API + Motor IA
+🟡 BACKEND       10      API + Servicios
 🔴 BLOCKCHAIN    6       TON + Servicios externos
-TOTAL   40      100% del proyecto
+TOTAL   31      100% del proyecto (IA migrada a BUNK3R_IA)
 🚫 REGLA CRÍTICA: PROHIBIDO TOCAR ARCHIVOS DE OTROS
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║           ⛔ ABSOLUTAMENTE PROHIBIDO MODIFICAR ARCHIVOS DE OTRO AGENTE ⛔      ║
@@ -220,10 +181,10 @@ TOTAL   40      100% del proyecto
 ║  🟡 AGENTE BACKEND (4/BACKEND):                                               ║
 ║  ❌ NO toques: static/js/*.js, static/css/*.css, templates/*.html             ║
 ║  ✅ SÍ puedes: app.py, tracking/database.py, tracking/models.py,              ║
-║               tracking/ai_*.py, tracking/security.py, etc.                    ║
+║               tracking/security.py, tracking/telegram_service.py, etc.        ║
 ║                                                                               ║
 ║  🔴 AGENTE BLOCKCHAIN (6/BLOCKCHAIN):                                         ║
-║  ❌ NO toques: frontend, backend principal, archivos de IA                    ║
+║  ❌ NO toques: frontend, backend principal                                    ║
 ║  ✅ SÍ puedes: b3c_service.py, wallet_pool_service.py, deposit_scheduler.py,  ║
 ║               smspool_service.py, cloudinary_service.py, encryption.py        ║
 ║                                                                               ║
