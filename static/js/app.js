@@ -3572,32 +3572,48 @@ const App = {
         
         const browsers = document.querySelectorAll('.phone-browser');
         
-        const scaleIframes = () => {
-            browsers.forEach((browser) => {
-                const content = browser.querySelector('.browser-content');
-                const wrapper = browser.querySelector('.browser-iframe-wrapper');
-                if (!content || !wrapper) return;
-                
-                const containerWidth = content.clientWidth;
-                const containerHeight = content.clientHeight;
-                const iframeWidth = 375;
-                const iframeHeight = 667;
-                
-                const scaleX = containerWidth / iframeWidth;
-                const scaleY = containerHeight / iframeHeight;
-                const scale = Math.min(scaleX, scaleY);
-                
-                wrapper.style.transform = `scale(${scale})`;
-            });
-        };
-        
         browsers.forEach((browser, index) => {
-            const iframe = browser.querySelector('.browser-iframe');
+            const screenshotImg = browser.querySelector('.browser-screenshot');
             const urlInput = browser.querySelector('.browser-url-input');
             const goBtn = browser.querySelector('.browser-go-btn');
             const refreshBtn = browser.querySelector('.browser-refresh-btn');
+            const loading = browser.querySelector('.browser-loading');
+            const placeholder = browser.querySelector('.browser-placeholder');
+            const sessionId = 'browser_' + (index + 1);
             
             browser._currentUrl = '';
+            
+            const loadScreenshot = async (url) => {
+                if (!url) return;
+                
+                loading.classList.remove('hidden');
+                screenshotImg.classList.remove('loaded');
+                if (placeholder) placeholder.style.display = 'none';
+                
+                try {
+                    const response = await fetch('/api/mobile-screenshot?url=' + encodeURIComponent(url) + '&session=' + sessionId);
+                    const data = await response.json();
+                    
+                    if (data.success && data.screenshot) {
+                        screenshotImg.src = 'data:image/png;base64,' + data.screenshot;
+                        screenshotImg.classList.add('loaded');
+                    } else {
+                        console.error('Screenshot error:', data.error);
+                        if (placeholder) {
+                            placeholder.textContent = 'Error: ' + (data.error || 'No se pudo cargar');
+                            placeholder.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    if (placeholder) {
+                        placeholder.textContent = 'Error de conexion';
+                        placeholder.style.display = 'block';
+                    }
+                } finally {
+                    loading.classList.add('hidden');
+                }
+            };
             
             const goHandler = () => {
                 let url = urlInput.value.trim();
@@ -3609,7 +3625,7 @@ const App = {
                 
                 browser._currentUrl = url;
                 urlInput.value = url;
-                iframe.src = '/api/proxy?url=' + encodeURIComponent(url);
+                loadScreenshot(url);
             };
             
             const keypressHandler = (e) => {
@@ -3620,7 +3636,7 @@ const App = {
             
             const refreshHandler = () => {
                 if (browser._currentUrl) {
-                    iframe.src = '/api/proxy?url=' + encodeURIComponent(browser._currentUrl);
+                    loadScreenshot(browser._currentUrl);
                 }
             };
             
@@ -3628,9 +3644,6 @@ const App = {
             this.registerEventListener(urlInput, 'keypress', keypressHandler);
             this.registerEventListener(refreshBtn, 'click', refreshHandler);
         });
-        
-        setTimeout(scaleIframes, 100);
-        this.registerEventListener(window, 'resize', scaleIframes);
         
         this.multiBrowserInitialized = true;
     },

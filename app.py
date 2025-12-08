@@ -1096,6 +1096,32 @@ def browser_proxy():
         return f'<html><body style="background:#1a1a1a;color:#f44;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;text-align:center;padding:20px;"><p>Error al cargar<br><small style="color:#888;">{str(e)}</small></p></body></html>', 500
 
 
+@app.route('/api/mobile-screenshot')
+def mobile_screenshot():
+    """Captura screenshot de página web renderizada como dispositivo móvil usando Playwright."""
+    url = request.args.get('url', '')
+    session_id = request.args.get('session', 'default')
+    
+    if not url:
+        return jsonify({'success': False, 'error': 'URL requerida'}), 400
+    
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'https://' + url
+    
+    try:
+        parsed = urlparse(url)
+        if not parsed.netloc or '.' not in parsed.netloc:
+            return jsonify({'success': False, 'error': 'URL inválida'}), 400
+        
+        from playwright_service import capture_mobile_screenshot
+        result = capture_mobile_screenshot(url, session_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Mobile screenshot error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ENDPOINTS PARA 2FA (Two-Factor Authentication)
 # ============================================================
