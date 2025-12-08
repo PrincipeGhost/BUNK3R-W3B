@@ -73,7 +73,14 @@ const AdminPanel = {
             analytics: 'Analíticas',
             settings: 'Configuración',
             maintenance: 'Backup y Mantenimiento',
-            notifications: 'Centro de Notificaciones'
+            notifications: 'Centro de Notificaciones',
+            riskscore: 'Puntuación de Riesgo',
+            relatedaccounts: 'Cuentas Relacionadas',
+            anomalies: 'Detector de Anomalías',
+            usertags: 'Sistema de Etiquetas',
+            verifications: 'Cola de Verificaciones',
+            shadowmode: 'Modo Shadow',
+            marketplace: 'Marketplace'
         };
         
         document.getElementById('pageTitle').textContent = titles[section] || section;
@@ -142,6 +149,27 @@ const AdminPanel = {
             case 'notifications':
                 NotificationsModule.loadNotifications();
                 NotificationsModule.loadTelegramSettings();
+                break;
+            case 'riskscore':
+                RiskScoreModule.init();
+                break;
+            case 'relatedaccounts':
+                RelatedAccountsModule.init();
+                break;
+            case 'anomalies':
+                AnomaliesModule.init();
+                break;
+            case 'usertags':
+                TagsModule.init();
+                break;
+            case 'verifications':
+                VerificationsModule.init();
+                break;
+            case 'shadowmode':
+                ShadowModule.init();
+                break;
+            case 'marketplace':
+                MarketplaceModule.init();
                 break;
         }
     },
@@ -1096,19 +1124,37 @@ const AdminPanel = {
                         ` : '<div class="empty-state" style="margin-top: 16px;">Sin notas</div>'}
                     </div>
                     
-                    <div class="user-actions">
-                        <button class="btn-secondary" onclick="AdminPanel.adjustBalance('${user.user_id}')">
-                            Ajustar Balance
-                        </button>
-                        <button class="btn-secondary" onclick="AdminPanel.sendNotification('${user.user_id}')">
-                            Enviar Notificación
-                        </button>
-                        <button class="btn-warning" onclick="AdminPanel.logoutUser('${user.user_id}')">
-                            Cerrar Sesiones
-                        </button>
-                        <button class="btn-danger" onclick="AdminPanel.banUser('${user.user_id}', ${!user.is_banned})">
-                            ${user.is_banned ? 'Desbanear' : 'Banear Usuario'}
-                        </button>
+                    <div class="user-actions-grid">
+                        <div class="actions-group">
+                            <h4>Acciones Básicas</h4>
+                            <button class="btn-secondary" onclick="AdminPanel.adjustBalance('${user.user_id}')">
+                                Ajustar Balance
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.sendNotification('${user.user_id}')">
+                                Enviar Notificación
+                            </button>
+                            <button class="btn-warning" onclick="AdminPanel.logoutUser('${user.user_id}')">
+                                Cerrar Sesiones
+                            </button>
+                            <button class="btn-danger" onclick="AdminPanel.banUser('${user.user_id}', ${!user.is_banned})">
+                                ${user.is_banned ? 'Desbanear' : 'Banear Usuario'}
+                            </button>
+                        </div>
+                        <div class="actions-group">
+                            <h4>Acciones Avanzadas</h4>
+                            <button class="btn-secondary" onclick="ShadowModule.startSession('${user.user_id}')">
+                                Modo Shadow
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.openTagsModal('${user.user_id}')">
+                                Gestionar Tags
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.viewRelatedAccounts('${user.user_id}')">
+                                Cuentas Relacionadas
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.adjustRiskScore('${user.user_id}')">
+                                Ajustar Riesgo
+                            </button>
+                        </div>
                     </div>
                 `;
                 
@@ -1257,6 +1303,121 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error:', error);
             this.showToast('Error al realizar acción', 'error');
+        }
+    },
+    
+    async openTagsModal(userId) {
+        try {
+            const response = await this.fetchAPI('/api/admin/tags');
+            if (!response.success) {
+                this.showToast('Error al cargar etiquetas', 'error');
+                return;
+            }
+            
+            const tags = response.tags || [];
+            const html = `
+                <div class="tags-modal-content">
+                    <h3>Gestionar Etiquetas</h3>
+                    <p>Selecciona las etiquetas para este usuario:</p>
+                    <div class="tags-checkbox-list">
+                        ${tags.map(tag => `
+                            <label class="tag-checkbox">
+                                <input type="checkbox" value="${tag.id}" data-color="${tag.color}">
+                                <span class="tag-badge" style="background: ${tag.color}">${this.escapeHtml(tag.name)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="document.getElementById('tagsAssignModal').classList.remove('active')">Cancelar</button>
+                        <button class="btn-primary" onclick="AdminPanel.saveUserTags('${userId}')">Guardar</button>
+                    </div>
+                </div>
+            `;
+            
+            let modal = document.getElementById('tagsAssignModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'tagsAssignModal';
+                modal.className = 'modal';
+                modal.innerHTML = `<div class="modal-content">${html}</div>`;
+                document.body.appendChild(modal);
+            } else {
+                modal.querySelector('.modal-content').innerHTML = html;
+            }
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al abrir gestor de etiquetas', 'error');
+        }
+    },
+    
+    async saveUserTags(userId) {
+        const modal = document.getElementById('tagsAssignModal');
+        const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
+        const tagIds = Array.from(checkboxes).map(cb => cb.value);
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/tags`, {
+                method: 'POST',
+                body: JSON.stringify({ tags: tagIds })
+            });
+            
+            if (response.success) {
+                this.showToast('Etiquetas actualizadas', 'success');
+                modal.classList.remove('active');
+            } else {
+                this.showToast(response.error || 'Error al guardar etiquetas', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al guardar etiquetas', 'error');
+        }
+    },
+    
+    async viewRelatedAccounts(userId) {
+        document.getElementById('userDetailModal').classList.remove('active');
+        this.navigateTo('relatedaccounts');
+        setTimeout(() => {
+            RelatedAccountsModule.searchUserId = userId;
+            RelatedAccountsModule.loadRelatedAccounts();
+        }, 100);
+    },
+    
+    async adjustRiskScore(userId) {
+        const adjustment = prompt('Ingresa el ajuste de puntuación de riesgo (-100 a +100):');
+        if (!adjustment) return;
+        
+        const numAdjustment = parseInt(adjustment);
+        if (isNaN(numAdjustment) || numAdjustment < -100 || numAdjustment > 100) {
+            this.showToast('Ajuste inválido. Debe ser entre -100 y +100', 'error');
+            return;
+        }
+        
+        const reason = prompt('Razón del ajuste:');
+        if (!reason) {
+            this.showToast('Debes proporcionar una razón', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/risk-scores/adjust', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    userId: userId, 
+                    adjustment: numAdjustment,
+                    reason: reason
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`Puntuación de riesgo ajustada. Nuevo score: ${response.newScore}`, 'success');
+                this.viewUser(userId);
+            } else {
+                this.showToast(response.error || 'Error al ajustar puntuación', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al ajustar puntuación de riesgo', 'error');
         }
     },
     
@@ -7086,6 +7247,889 @@ function debounce(func, wait) {
     };
 }
 
+const RiskScoreModule = {
+    data: [],
+    
+    async init() {
+        await this.loadData();
+        this.setupFilters();
+    },
+    
+    async loadData() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/risk-scores');
+            if (response.success) {
+                this.data = response.users || [];
+                this.updateStats();
+                this.renderTable();
+            }
+        } catch (error) {
+            console.error('Error loading risk scores:', error);
+        }
+    },
+    
+    async refreshData() {
+        await this.loadData();
+        AdminPanel.showToast('Datos actualizados', 'success');
+    },
+    
+    updateStats() {
+        const counts = { low: 0, medium: 0, high: 0, critical: 0 };
+        this.data.forEach(user => {
+            const level = this.getRiskLevel(user.riskScore);
+            counts[level]++;
+        });
+        
+        document.getElementById('riskLowCount').textContent = counts.low;
+        document.getElementById('riskMediumCount').textContent = counts.medium;
+        document.getElementById('riskHighCount').textContent = counts.high;
+        document.getElementById('riskCriticalCount').textContent = counts.critical;
+    },
+    
+    getRiskLevel(score) {
+        if (score <= 25) return 'low';
+        if (score <= 50) return 'medium';
+        if (score <= 75) return 'high';
+        return 'critical';
+    },
+    
+    getRiskLevelText(level) {
+        const texts = { low: 'Bajo', medium: 'Medio', high: 'Alto', critical: 'Critico' };
+        return texts[level] || level;
+    },
+    
+    renderTable(filteredData = null) {
+        const tbody = document.getElementById('riskScoreTableBody');
+        const data = filteredData || this.data;
+        
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No hay datos de riesgo</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.map(user => {
+            const level = this.getRiskLevel(user.riskScore);
+            const factors = user.riskFactors || [];
+            
+            return `
+                <tr>
+                    <td>
+                        <div class="user-info-cell">
+                            <span class="user-name">${AdminPanel.escapeHtml(user.firstName || '')} ${AdminPanel.escapeHtml(user.lastName || '')}</span>
+                            <span class="user-username">@${AdminPanel.escapeHtml(user.username || 'N/A')}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="risk-score-badge ${level}">${user.riskScore}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge ${level}">${this.getRiskLevelText(level)}</span>
+                    </td>
+                    <td>
+                        <div class="risk-factors-tags">
+                            ${factors.slice(0, 3).map(f => `<span class="risk-factor-tag">${AdminPanel.escapeHtml(f)}</span>`).join('')}
+                            ${factors.length > 3 ? `<span class="risk-factor-tag">+${factors.length - 3}</span>` : ''}
+                        </div>
+                    </td>
+                    <td>${AdminPanel.formatDateTime(user.lastScoreChange)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="action-btn" onclick="RiskScoreModule.viewDetails(${user.telegramId})">Ver</button>
+                            <button class="action-btn" onclick="RiskScoreModule.adjustScore(${user.telegramId})">Ajustar</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+    
+    setupFilters() {
+        const searchInput = document.getElementById('riskUserSearch');
+        const levelFilter = document.getElementById('riskLevelFilter');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(() => this.applyFilters(), 300));
+        }
+        if (levelFilter) {
+            levelFilter.addEventListener('change', () => this.applyFilters());
+        }
+    },
+    
+    applyFilters() {
+        const search = document.getElementById('riskUserSearch')?.value?.toLowerCase() || '';
+        const level = document.getElementById('riskLevelFilter')?.value || '';
+        
+        let filtered = this.data;
+        
+        if (search) {
+            filtered = filtered.filter(u => 
+                (u.username || '').toLowerCase().includes(search) ||
+                (u.firstName || '').toLowerCase().includes(search)
+            );
+        }
+        
+        if (level) {
+            filtered = filtered.filter(u => this.getRiskLevel(u.riskScore) === level);
+        }
+        
+        this.renderTable(filtered);
+    },
+    
+    async viewDetails(telegramId) {
+        AdminPanel.showToast('Cargando detalles de riesgo...', 'info');
+    },
+    
+    async adjustScore(telegramId) {
+        const newScore = prompt('Ingresa el nuevo score de riesgo (0-100):');
+        if (newScore === null) return;
+        
+        const score = parseInt(newScore);
+        if (isNaN(score) || score < 0 || score > 100) {
+            AdminPanel.showToast('Score invalido', 'error');
+            return;
+        }
+        
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/risk-scores/adjust', {
+                method: 'POST',
+                body: JSON.stringify({ telegramId, score })
+            });
+            
+            if (response.success) {
+                AdminPanel.showToast('Score actualizado', 'success');
+                this.loadData();
+            } else {
+                AdminPanel.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error adjusting score:', error);
+            AdminPanel.showToast('Error de conexion', 'error');
+        }
+    },
+    
+    exportData() {
+        const csv = this.data.map(u => 
+            `${u.telegramId},${u.username || ''},${u.firstName || ''},${u.riskScore},${this.getRiskLevel(u.riskScore)}`
+        ).join('\n');
+        
+        const blob = new Blob(['TelegramID,Username,Name,Score,Level\n' + csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'risk_scores_export.csv';
+        a.click();
+    }
+};
+
+const RelatedAccountsModule = {
+    groups: [],
+    
+    async init() {
+        await this.loadGroups();
+        this.setupFilters();
+    },
+    
+    async loadGroups() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/related-accounts');
+            if (response.success) {
+                this.groups = response.groups || [];
+                this.renderGroups();
+                document.getElementById('relatedGroupsCount').textContent = this.groups.length;
+            }
+        } catch (error) {
+            console.error('Error loading related accounts:', error);
+        }
+    },
+    
+    async runScan() {
+        AdminPanel.showToast('Ejecutando escaneo...', 'info');
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/related-accounts/scan', { method: 'POST' });
+            if (response.success) {
+                AdminPanel.showToast('Escaneo completado', 'success');
+                this.loadGroups();
+            }
+        } catch (error) {
+            console.error('Error running scan:', error);
+        }
+    },
+    
+    renderGroups(filteredData = null) {
+        const container = document.getElementById('relatedGroupsList');
+        const data = filteredData || this.groups;
+        
+        if (!data.length) {
+            container.innerHTML = '<div class="empty-state">No se encontraron grupos relacionados</div>';
+            return;
+        }
+        
+        container.innerHTML = data.map((group, index) => `
+            <div class="related-group-item" onclick="RelatedAccountsModule.selectGroup(${index})">
+                <div class="related-group-header">
+                    <span class="related-group-id">Grupo #${group.id || index + 1}</span>
+                    <span class="status-badge ${group.status || 'pending'}">${group.status === 'confirmed' ? 'Confirmado' : group.status === 'false_positive' ? 'Falso Positivo' : 'Pendiente'}</span>
+                </div>
+                <div class="related-group-accounts">${group.accounts?.length || 0} cuentas relacionadas</div>
+                <div class="related-group-reason">${AdminPanel.escapeHtml(group.reason || 'IP/Dispositivo similar')}</div>
+            </div>
+        `).join('');
+    },
+    
+    selectGroup(index) {
+        const group = this.groups[index];
+        if (!group) return;
+        
+        document.querySelectorAll('.related-group-item').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
+        });
+        
+        const detail = document.getElementById('relatedDetailContent');
+        detail.innerHTML = `
+            <div class="group-detail">
+                <h4>Cuentas en este Grupo</h4>
+                <div class="accounts-list">
+                    ${(group.accounts || []).map(acc => `
+                        <div class="account-item">
+                            <div class="account-info">
+                                <span class="account-name">${AdminPanel.escapeHtml(acc.firstName || '')} @${AdminPanel.escapeHtml(acc.username || 'N/A')}</span>
+                                <span class="account-id">ID: ${acc.telegramId}</span>
+                            </div>
+                            <button class="btn-icon" onclick="AdminPanel.showUserDetail(${acc.telegramId})">Ver</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="detection-info">
+                    <h5>Metodo de Deteccion</h5>
+                    <p>${AdminPanel.escapeHtml(group.reason || 'Similitud de IP o dispositivo')}</p>
+                    <p><strong>Confianza:</strong> ${group.confidence || 0}%</p>
+                </div>
+                <div class="group-actions">
+                    <button class="btn-primary" onclick="RelatedAccountsModule.confirmGroup(${index})">Confirmar</button>
+                    <button class="btn-secondary" onclick="RelatedAccountsModule.markFalsePositive(${index})">Falso Positivo</button>
+                </div>
+            </div>
+        `;
+    },
+    
+    setupFilters() {
+        const filter = document.getElementById('relatedStatusFilter');
+        if (filter) {
+            filter.addEventListener('change', () => {
+                const status = filter.value;
+                const filtered = status ? this.groups.filter(g => g.status === status) : this.groups;
+                this.renderGroups(filtered);
+            });
+        }
+    },
+    
+    async confirmGroup(index) {
+        AdminPanel.showToast('Grupo confirmado', 'success');
+        this.groups[index].status = 'confirmed';
+        this.renderGroups();
+    },
+    
+    async markFalsePositive(index) {
+        AdminPanel.showToast('Marcado como falso positivo', 'success');
+        this.groups[index].status = 'false_positive';
+        this.renderGroups();
+    }
+};
+
+const AnomaliesModule = {
+    anomalies: [],
+    
+    async init() {
+        await this.loadData();
+    },
+    
+    async loadData() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/anomalies');
+            if (response.success) {
+                this.anomalies = response.anomalies || [];
+                this.updateStats();
+                this.renderAnomalies();
+            }
+        } catch (error) {
+            console.error('Error loading anomalies:', error);
+        }
+    },
+    
+    async refreshData() {
+        await this.loadData();
+        AdminPanel.showToast('Anomalias actualizadas', 'success');
+    },
+    
+    updateStats() {
+        const today = new Date().toDateString();
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        
+        const todayCount = this.anomalies.filter(a => new Date(a.detectedAt).toDateString() === today).length;
+        const weekCount = this.anomalies.filter(a => new Date(a.detectedAt) >= weekAgo).length;
+        const unresolvedCount = this.anomalies.filter(a => !a.resolved).length;
+        
+        document.getElementById('anomaliesTodayCount').textContent = todayCount;
+        document.getElementById('anomaliesWeekCount').textContent = weekCount;
+        document.getElementById('anomaliesUnresolvedCount').textContent = unresolvedCount;
+        document.getElementById('anomaliesCount').textContent = unresolvedCount;
+    },
+    
+    renderAnomalies(showHistory = false) {
+        const container = document.getElementById('anomaliesList');
+        const data = showHistory ? this.anomalies : this.anomalies.filter(a => !a.resolved);
+        
+        if (!data.length) {
+            container.innerHTML = '<div class="empty-state">No hay anomalias detectadas</div>';
+            return;
+        }
+        
+        container.innerHTML = data.map(anomaly => `
+            <div class="anomaly-item ${anomaly.severity || 'warning'}">
+                <div class="anomaly-icon ${anomaly.severity || 'warning'}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="anomaly-content">
+                    <div class="anomaly-title">${AdminPanel.escapeHtml(anomaly.title)}</div>
+                    <div class="anomaly-description">${AdminPanel.escapeHtml(anomaly.description)}</div>
+                    <div class="anomaly-meta">
+                        <span>Usuario: @${AdminPanel.escapeHtml(anomaly.username || 'N/A')}</span>
+                        <span>${AdminPanel.formatDateTime(anomaly.detectedAt)}</span>
+                    </div>
+                </div>
+                <div class="anomaly-actions">
+                    <button class="btn-icon" onclick="AnomaliesModule.investigate('${anomaly.id}')" title="Investigar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </button>
+                    <button class="btn-icon" onclick="AnomaliesModule.resolve('${anomaly.id}')" title="Resolver">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    configureThresholds() {
+        AdminPanel.showToast('Configuracion de umbrales', 'info');
+    },
+    
+    investigate(id) {
+        AdminPanel.showToast('Abriendo investigacion...', 'info');
+    },
+    
+    async resolve(id) {
+        const anomaly = this.anomalies.find(a => a.id === id);
+        if (anomaly) {
+            anomaly.resolved = true;
+            this.updateStats();
+            this.renderAnomalies();
+            AdminPanel.showToast('Anomalia resuelta', 'success');
+        }
+    }
+};
+
+const TagsModule = {
+    tags: [],
+    selectedTag: null,
+    
+    async init() {
+        await this.loadTags();
+    },
+    
+    async loadTags() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/tags');
+            if (response.success) {
+                this.tags = response.tags || [];
+                this.renderTags();
+            }
+        } catch (error) {
+            console.error('Error loading tags:', error);
+        }
+    },
+    
+    renderTags() {
+        const container = document.getElementById('tagsList');
+        
+        if (!this.tags.length) {
+            container.innerHTML = '<div class="empty-state">No hay etiquetas creadas</div>';
+            return;
+        }
+        
+        container.innerHTML = this.tags.map(tag => `
+            <div class="tag-item" style="background: ${tag.color || '#666'}22; color: ${tag.color || '#666'}" 
+                 onclick="TagsModule.selectTag('${tag.id}')">
+                <span>${AdminPanel.escapeHtml(tag.name)}</span>
+                <span class="tag-count">${tag.usersCount || 0}</span>
+            </div>
+        `).join('');
+    },
+    
+    async selectTag(tagId) {
+        this.selectedTag = this.tags.find(t => t.id === tagId);
+        if (!this.selectedTag) return;
+        
+        document.getElementById('currentTagName').textContent = this.selectedTag.name;
+        
+        try {
+            const response = await AdminPanel.fetchAPI(`/api/admin/tags/${tagId}/users`);
+            if (response.success) {
+                this.renderTagUsers(response.users || []);
+            }
+        } catch (error) {
+            console.error('Error loading tag users:', error);
+        }
+    },
+    
+    renderTagUsers(users) {
+        const container = document.getElementById('tagsUsersList');
+        
+        if (!users.length) {
+            container.innerHTML = '<div class="empty-state">No hay usuarios con esta etiqueta</div>';
+            return;
+        }
+        
+        container.innerHTML = users.map(user => `
+            <div class="user-item">
+                <div class="user-info">
+                    <span class="user-name">${AdminPanel.escapeHtml(user.firstName || '')} @${AdminPanel.escapeHtml(user.username || 'N/A')}</span>
+                </div>
+                <button class="btn-icon" onclick="TagsModule.removeUserTag(${user.telegramId})" title="Quitar etiqueta">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        `).join('');
+    },
+    
+    showCreateModal() {
+        const name = prompt('Nombre de la etiqueta:');
+        if (!name) return;
+        
+        const color = prompt('Color (hex, ej: #ff0000):', '#d4af37');
+        if (!color) return;
+        
+        this.createTag(name, color);
+    },
+    
+    async createTag(name, color) {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/tags', {
+                method: 'POST',
+                body: JSON.stringify({ name, color })
+            });
+            
+            if (response.success) {
+                AdminPanel.showToast('Etiqueta creada', 'success');
+                this.loadTags();
+            }
+        } catch (error) {
+            console.error('Error creating tag:', error);
+        }
+    },
+    
+    async removeUserTag(telegramId) {
+        if (!this.selectedTag) return;
+        
+        try {
+            await AdminPanel.fetchAPI(`/api/admin/tags/${this.selectedTag.id}/users/${telegramId}`, {
+                method: 'DELETE'
+            });
+            AdminPanel.showToast('Etiqueta removida', 'success');
+            this.selectTag(this.selectedTag.id);
+        } catch (error) {
+            console.error('Error removing tag:', error);
+        }
+    }
+};
+
+const VerificationsModule = {
+    verifications: [],
+    
+    async init() {
+        await this.loadData();
+        this.setupFilters();
+    },
+    
+    async loadData() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/verifications');
+            if (response.success) {
+                this.verifications = response.verifications || [];
+                this.updateStats();
+                this.renderQueue();
+            }
+        } catch (error) {
+            console.error('Error loading verifications:', error);
+        }
+    },
+    
+    async refreshData() {
+        await this.loadData();
+        AdminPanel.showToast('Verificaciones actualizadas', 'success');
+    },
+    
+    updateStats() {
+        const pending = this.verifications.filter(v => v.status === 'pending').length;
+        const approved = this.verifications.filter(v => v.status === 'approved').length;
+        const rejected = this.verifications.filter(v => v.status === 'rejected').length;
+        
+        document.getElementById('verifPendingCount').textContent = pending;
+        document.getElementById('verifApprovedCount').textContent = approved;
+        document.getElementById('verifRejectedCount').textContent = rejected;
+        document.getElementById('verificationsCount').textContent = pending;
+    },
+    
+    renderQueue(filteredData = null) {
+        const container = document.getElementById('verificationsQueue');
+        const data = filteredData || this.verifications.filter(v => v.status === 'pending');
+        
+        if (!data.length) {
+            container.innerHTML = '<div class="empty-state">No hay verificaciones pendientes</div>';
+            return;
+        }
+        
+        container.innerHTML = data.map((v, index) => `
+            <div class="verification-item" onclick="VerificationsModule.selectVerification(${index})">
+                <div class="verif-header">
+                    <span class="verif-type">${this.getTypeLabel(v.type)}</span>
+                    <span class="status-badge ${v.status}">${this.getStatusLabel(v.status)}</span>
+                </div>
+                <div class="verif-user">@${AdminPanel.escapeHtml(v.username || 'N/A')}</div>
+                <div class="verif-date">${AdminPanel.formatDateTime(v.createdAt)}</div>
+            </div>
+        `).join('');
+    },
+    
+    getTypeLabel(type) {
+        const labels = { identity: 'Identidad', address: 'Direccion', phone: 'Telefono', payment: 'Pago' };
+        return labels[type] || type;
+    },
+    
+    getStatusLabel(status) {
+        const labels = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
+        return labels[status] || status;
+    },
+    
+    selectVerification(index) {
+        const v = this.verifications[index];
+        if (!v) return;
+        
+        document.querySelectorAll('.verification-item').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
+        });
+        
+        const panel = document.getElementById('verificationDetailPanel');
+        panel.innerHTML = `
+            <div class="verif-detail">
+                <h4>${this.getTypeLabel(v.type)}</h4>
+                <div class="detail-section">
+                    <p><strong>Usuario:</strong> @${AdminPanel.escapeHtml(v.username || 'N/A')}</p>
+                    <p><strong>Telegram ID:</strong> ${v.telegramId}</p>
+                    <p><strong>Fecha:</strong> ${AdminPanel.formatDateTime(v.createdAt)}</p>
+                </div>
+                ${v.documents ? `
+                <div class="detail-section">
+                    <h5>Documentos</h5>
+                    <div class="documents-grid">
+                        ${v.documents.map(doc => `<img src="${doc}" class="doc-preview" onclick="window.open('${doc}')">`).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                <div class="verif-actions">
+                    <button class="btn-primary" onclick="VerificationsModule.approve(${index})">Aprobar</button>
+                    <button class="btn-danger" onclick="VerificationsModule.reject(${index})">Rechazar</button>
+                </div>
+            </div>
+        `;
+    },
+    
+    setupFilters() {
+        const typeFilter = document.getElementById('verifTypeFilter');
+        const statusFilter = document.getElementById('verifStatusFilter');
+        
+        if (typeFilter) {
+            typeFilter.addEventListener('change', () => this.applyFilters());
+        }
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => this.applyFilters());
+        }
+    },
+    
+    applyFilters() {
+        const type = document.getElementById('verifTypeFilter')?.value || '';
+        const status = document.getElementById('verifStatusFilter')?.value || '';
+        
+        let filtered = this.verifications;
+        if (type) filtered = filtered.filter(v => v.type === type);
+        if (status) filtered = filtered.filter(v => v.status === status);
+        
+        this.renderQueue(filtered);
+    },
+    
+    async approve(index) {
+        const v = this.verifications[index];
+        if (v) {
+            v.status = 'approved';
+            this.updateStats();
+            this.renderQueue();
+            AdminPanel.showToast('Verificacion aprobada', 'success');
+        }
+    },
+    
+    async reject(index) {
+        const v = this.verifications[index];
+        if (v) {
+            v.status = 'rejected';
+            this.updateStats();
+            this.renderQueue();
+            AdminPanel.showToast('Verificacion rechazada', 'info');
+        }
+    }
+};
+
+const ShadowModule = {
+    sessions: [],
+    
+    async init() {
+        await this.loadSessions();
+    },
+    
+    async loadSessions() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/shadow-sessions');
+            if (response.success) {
+                this.sessions = response.sessions || [];
+                this.renderSessions();
+            }
+        } catch (error) {
+            console.error('Error loading shadow sessions:', error);
+        }
+    },
+    
+    async searchUser() {
+        const query = document.getElementById('shadowUserSearch')?.value?.trim();
+        if (!query) {
+            AdminPanel.showToast('Ingresa un ID o username', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await AdminPanel.fetchAPI(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
+            if (response.success && response.users?.length) {
+                this.showSearchResults(response.users);
+            } else {
+                AdminPanel.showToast('Usuario no encontrado', 'warning');
+            }
+        } catch (error) {
+            console.error('Error searching user:', error);
+        }
+    },
+    
+    showSearchResults(users) {
+        const container = document.getElementById('shadowSearchResults');
+        container.style.display = 'block';
+        
+        container.innerHTML = users.map(user => `
+            <div class="shadow-result-item">
+                <div class="user-info">
+                    <span class="user-name">${AdminPanel.escapeHtml(user.firstName || '')} @${AdminPanel.escapeHtml(user.username || 'N/A')}</span>
+                    <span class="user-id">ID: ${user.telegramId}</span>
+                </div>
+                <button class="btn-primary" onclick="ShadowModule.startSession(${user.telegramId})">Impersonar</button>
+            </div>
+        `).join('');
+    },
+    
+    async startSession(telegramId) {
+        AdminPanel.showToast('Iniciando sesion shadow...', 'info');
+        
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/shadow-sessions/start', {
+                method: 'POST',
+                body: JSON.stringify({ telegramId })
+            });
+            
+            if (response.success && response.sessionUrl) {
+                window.open(response.sessionUrl, '_blank');
+                this.loadSessions();
+            } else {
+                AdminPanel.showToast(response.error || 'Error al iniciar sesion', 'error');
+            }
+        } catch (error) {
+            console.error('Error starting shadow session:', error);
+        }
+    },
+    
+    renderSessions() {
+        const container = document.getElementById('shadowSessionsList');
+        
+        if (!this.sessions.length) {
+            container.innerHTML = '<div class="empty-state">Sin sesiones recientes</div>';
+            return;
+        }
+        
+        container.innerHTML = this.sessions.map(s => `
+            <div class="session-item">
+                <div class="session-info">
+                    <span class="session-user">@${AdminPanel.escapeHtml(s.username || 'N/A')}</span>
+                    <span class="session-admin">por ${AdminPanel.escapeHtml(s.adminUsername || 'Admin')}</span>
+                </div>
+                <div class="session-time">${AdminPanel.formatDateTime(s.startedAt)}</div>
+            </div>
+        `).join('');
+    }
+};
+
+const MarketplaceModule = {
+    listings: [],
+    sales: [],
+    
+    async init() {
+        await this.loadData();
+        this.setupTabs();
+    },
+    
+    async loadData() {
+        try {
+            const response = await AdminPanel.fetchAPI('/api/admin/marketplace');
+            if (response.success) {
+                this.listings = response.listings || [];
+                this.sales = response.sales || [];
+                this.updateStats();
+                this.renderContent('pending');
+            }
+        } catch (error) {
+            console.error('Error loading marketplace:', error);
+        }
+    },
+    
+    updateStats() {
+        const active = this.listings.filter(l => l.status === 'active').length;
+        const pending = this.listings.filter(l => l.status === 'pending').length;
+        const totalSales = this.sales.length;
+        const revenue = this.sales.reduce((sum, s) => sum + (s.commission || 0), 0);
+        
+        document.getElementById('marketActiveListings').textContent = active;
+        document.getElementById('marketPendingApproval').textContent = pending;
+        document.getElementById('marketTotalSales').textContent = totalSales;
+        document.getElementById('marketRevenue').textContent = revenue.toFixed(4);
+    },
+    
+    setupTabs() {
+        document.querySelectorAll('#section-marketplace .marketplace-tabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#section-marketplace .marketplace-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.renderContent(btn.dataset.tab);
+            });
+        });
+    },
+    
+    renderContent(tab) {
+        const container = document.getElementById('marketplaceContent');
+        
+        if (tab === 'pending') {
+            const pending = this.listings.filter(l => l.status === 'pending');
+            container.innerHTML = this.renderListings(pending, true);
+        } else if (tab === 'active') {
+            const active = this.listings.filter(l => l.status === 'active');
+            container.innerHTML = this.renderListings(active, false);
+        } else if (tab === 'sales') {
+            container.innerHTML = this.renderSales();
+        }
+    },
+    
+    renderListings(listings, showApproval) {
+        if (!listings.length) {
+            return '<div class="empty-state">No hay listings</div>';
+        }
+        
+        return listings.map(l => `
+            <div class="listing-item">
+                <div class="listing-image-placeholder"></div>
+                <div class="listing-info">
+                    <div class="listing-title">${AdminPanel.escapeHtml(l.title || 'Sin titulo')}</div>
+                    <div class="listing-price">${l.price || 0} ${l.currency || 'B3C'}</div>
+                    <div class="listing-seller">@${AdminPanel.escapeHtml(l.sellerUsername || 'N/A')}</div>
+                </div>
+                <div class="listing-actions">
+                    ${showApproval ? `
+                        <button class="btn-primary btn-sm" onclick="MarketplaceModule.approveListing('${l.id}')">Aprobar</button>
+                        <button class="btn-danger btn-sm" onclick="MarketplaceModule.rejectListing('${l.id}')">Rechazar</button>
+                    ` : `
+                        <button class="btn-secondary btn-sm" onclick="MarketplaceModule.viewListing('${l.id}')">Ver</button>
+                    `}
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    renderSales() {
+        if (!this.sales.length) {
+            return '<div class="empty-state">No hay ventas registradas</div>';
+        }
+        
+        return `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Vendedor</th>
+                        <th>Comprador</th>
+                        <th>Monto</th>
+                        <th>Comision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.sales.map(s => `
+                        <tr>
+                            <td>${AdminPanel.formatDateTime(s.createdAt)}</td>
+                            <td>${AdminPanel.escapeHtml(s.productTitle || 'N/A')}</td>
+                            <td>@${AdminPanel.escapeHtml(s.sellerUsername || 'N/A')}</td>
+                            <td>@${AdminPanel.escapeHtml(s.buyerUsername || 'N/A')}</td>
+                            <td>${s.amount || 0} ${s.currency || 'B3C'}</td>
+                            <td>${(s.commission || 0).toFixed(4)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    },
+    
+    async approveListing(id) {
+        const listing = this.listings.find(l => l.id === id);
+        if (listing) {
+            listing.status = 'active';
+            this.updateStats();
+            this.renderContent('pending');
+            AdminPanel.showToast('Listing aprobado', 'success');
+        }
+    },
+    
+    async rejectListing(id) {
+        const listing = this.listings.find(l => l.id === id);
+        if (listing) {
+            listing.status = 'rejected';
+            this.updateStats();
+            this.renderContent('pending');
+            AdminPanel.showToast('Listing rechazado', 'info');
+        }
+    },
+    
+    viewListing(id) {
+        AdminPanel.showToast('Abriendo detalle...', 'info');
+    },
+    
+    configureCommissions() {
+        AdminPanel.showToast('Configuracion de comisiones', 'info');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     AdminPanel.init();
     
@@ -7107,6 +8151,55 @@ document.addEventListener('DOMContentLoaded', () => {
     if (massMessagesNav) {
         massMessagesNav.addEventListener('click', () => {
             setTimeout(() => SupportModule.loadMassMessages(), 100);
+        });
+    }
+    
+    const riskScoreNav = document.querySelector('[data-section="riskscore"]');
+    if (riskScoreNav) {
+        riskScoreNav.addEventListener('click', () => {
+            setTimeout(() => RiskScoreModule.init(), 100);
+        });
+    }
+    
+    const relatedAccountsNav = document.querySelector('[data-section="relatedaccounts"]');
+    if (relatedAccountsNav) {
+        relatedAccountsNav.addEventListener('click', () => {
+            setTimeout(() => RelatedAccountsModule.init(), 100);
+        });
+    }
+    
+    const anomaliesNav = document.querySelector('[data-section="anomalies"]');
+    if (anomaliesNav) {
+        anomaliesNav.addEventListener('click', () => {
+            setTimeout(() => AnomaliesModule.init(), 100);
+        });
+    }
+    
+    const userTagsNav = document.querySelector('[data-section="usertags"]');
+    if (userTagsNav) {
+        userTagsNav.addEventListener('click', () => {
+            setTimeout(() => TagsModule.init(), 100);
+        });
+    }
+    
+    const verificationsNav = document.querySelector('[data-section="verifications"]');
+    if (verificationsNav) {
+        verificationsNav.addEventListener('click', () => {
+            setTimeout(() => VerificationsModule.init(), 100);
+        });
+    }
+    
+    const shadowModeNav = document.querySelector('[data-section="shadowmode"]');
+    if (shadowModeNav) {
+        shadowModeNav.addEventListener('click', () => {
+            setTimeout(() => ShadowModule.init(), 100);
+        });
+    }
+    
+    const marketplaceNav = document.querySelector('[data-section="marketplace"]');
+    if (marketplaceNav) {
+        marketplaceNav.addEventListener('click', () => {
+            setTimeout(() => MarketplaceModule.init(), 100);
         });
     }
 });
