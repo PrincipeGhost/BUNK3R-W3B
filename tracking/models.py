@@ -274,6 +274,93 @@ class SharedPost:
     created_at: Optional[datetime] = None
     id: Optional[int] = None
 
+@dataclass
+class RiskScore:
+    """User risk score model for fraud detection"""
+    user_id: str
+    score: int  # 0-100, higher = more risk
+    risk_level: str  # low, medium, high, critical
+    factors: Optional[dict] = None
+    last_calculated: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    id: Optional[int] = None
+
+@dataclass
+class RiskScoreHistory:
+    """History of risk score changes"""
+    user_id: str
+    old_score: int
+    new_score: int
+    old_level: str
+    new_level: str
+    reason: Optional[str] = None
+    changed_at: Optional[datetime] = None
+    id: Optional[int] = None
+
+@dataclass
+class SupportTicket:
+    """Support ticket model"""
+    user_id: str
+    subject: str
+    message: str
+    status: str = "open"  # open, in_progress, resolved, closed
+    priority: str = "normal"  # low, normal, high, urgent
+    category: Optional[str] = None
+    assigned_to: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    id: Optional[int] = None
+
+@dataclass
+class TicketReply:
+    """Reply to a support ticket"""
+    ticket_id: int
+    user_id: str
+    message: str
+    is_admin: bool = False
+    created_at: Optional[datetime] = None
+    id: Optional[int] = None
+
+@dataclass
+class SystemConfig:
+    """System configuration model"""
+    key: str
+    value: str
+    description: Optional[str] = None
+    category: str = "general"
+    is_public: bool = False
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+    id: Optional[int] = None
+
+@dataclass
+class PrivateMessage:
+    """Private message between users"""
+    sender_id: str
+    receiver_id: str
+    content: str
+    is_read: bool = False
+    created_at: Optional[datetime] = None
+    read_at: Optional[datetime] = None
+    id: Optional[int] = None
+
+@dataclass
+class AnomalyDetection:
+    """Anomaly detection record"""
+    user_id: Optional[str] = None
+    anomaly_type: str = ""  # unusual_login, large_transaction, rapid_transfers, etc.
+    severity: str = "medium"  # low, medium, high, critical
+    description: Optional[str] = None
+    data: Optional[dict] = None
+    is_resolved: bool = False
+    resolved_by: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    action_taken: Optional[str] = None
+    created_at: Optional[datetime] = None
+    id: Optional[int] = None
+
 # SQL para crear las nuevas tablas de red social
 CREATE_SOCIAL_TABLES_SQL = """
 -- ============================================================
@@ -907,47 +994,6 @@ CREATE INDEX IF NOT EXISTS idx_vn_stats_date ON virtual_number_stats(stat_date D
 CREATE INDEX IF NOT EXISTS idx_vn_stats_provider ON virtual_number_stats(provider);
 """
 
-CREATE_AI_CHAT_SQL = """
--- ============================================================
--- SISTEMA DE CHAT CON IA - PERSISTENCIA
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS ai_chat_messages (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL,
-    content TEXT NOT NULL,
-    provider VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_ai_chat_user ON ai_chat_messages(user_id);
-CREATE INDEX IF NOT EXISTS idx_ai_chat_created ON ai_chat_messages(created_at DESC);
-
-CREATE TABLE IF NOT EXISTS ai_chat_sessions (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    title VARCHAR(255),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_ai_sessions_user ON ai_chat_sessions(user_id);
-
-CREATE TABLE IF NOT EXISTS ai_provider_usage (
-    id SERIAL PRIMARY KEY,
-    provider VARCHAR(50) NOT NULL,
-    user_id VARCHAR(255),
-    request_count INTEGER DEFAULT 0,
-    tokens_used INTEGER DEFAULT 0,
-    usage_date DATE DEFAULT CURRENT_DATE,
-    UNIQUE(provider, user_id, usage_date)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ai_usage_provider ON ai_provider_usage(provider);
-CREATE INDEX IF NOT EXISTS idx_ai_usage_date ON ai_provider_usage(usage_date);
-"""
 
 CREATE_ADMIN_TABLES_SQL = """
 -- ============================================================
@@ -1060,4 +1106,133 @@ CREATE TABLE IF NOT EXISTS faqs (
 CREATE INDEX IF NOT EXISTS idx_faqs_category ON faqs(category);
 CREATE INDEX IF NOT EXISTS idx_faqs_published ON faqs(is_published);
 CREATE INDEX IF NOT EXISTS idx_faqs_order ON faqs(display_order);
+"""
+
+CREATE_ADVANCED_ADMIN_TABLES_SQL = """
+-- ============================================================
+-- SISTEMA DE PUNTUACION DE RIESGO
+-- ============================================================
+CREATE TABLE IF NOT EXISTS risk_scores (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    score INTEGER DEFAULT 0 CHECK (score >= 0 AND score <= 100),
+    risk_level VARCHAR(20) DEFAULT 'low',
+    factors JSONB DEFAULT '{}',
+    last_calculated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_risk_scores_user ON risk_scores(user_id);
+CREATE INDEX IF NOT EXISTS idx_risk_scores_level ON risk_scores(risk_level);
+CREATE INDEX IF NOT EXISTS idx_risk_scores_score ON risk_scores(score DESC);
+
+CREATE TABLE IF NOT EXISTS risk_score_history (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    old_score INTEGER,
+    new_score INTEGER,
+    old_level VARCHAR(20),
+    new_level VARCHAR(20),
+    reason TEXT,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_risk_history_user ON risk_score_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_risk_history_date ON risk_score_history(changed_at DESC);
+
+-- ============================================================
+-- CONFIGURACION DEL SISTEMA
+-- ============================================================
+CREATE TABLE IF NOT EXISTS system_config (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(100) UNIQUE NOT NULL,
+    value TEXT,
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'general',
+    is_public BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(255)
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_config_key ON system_config(key);
+CREATE INDEX IF NOT EXISTS idx_system_config_category ON system_config(category);
+
+-- Configuraciones iniciales
+INSERT INTO system_config (key, value, description, category, is_public) VALUES
+    ('maintenance_mode', 'false', 'Modo mantenimiento activo', 'system', false),
+    ('maintenance_message', 'Sistema en mantenimiento', 'Mensaje de mantenimiento', 'system', true),
+    ('max_login_attempts', '5', 'Intentos maximos de login', 'security', false),
+    ('session_timeout_hours', '24', 'Tiempo de expiracion de sesion', 'security', false),
+    ('min_withdrawal_amount', '10', 'Monto minimo de retiro', 'wallet', true),
+    ('max_withdrawal_amount', '10000', 'Monto maximo de retiro', 'wallet', true),
+    ('withdrawal_fee_percent', '2', 'Comision de retiro en porcentaje', 'wallet', true),
+    ('new_user_bonus', '0', 'Bonus para nuevos usuarios', 'rewards', true),
+    ('referral_bonus', '5', 'Bonus por referido', 'rewards', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================================
+-- MENSAJES PRIVADOS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS private_messages (
+    id SERIAL PRIMARY KEY,
+    sender_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    read_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_pm_sender ON private_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_pm_receiver ON private_messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_pm_created ON private_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pm_unread ON private_messages(receiver_id, is_read) WHERE is_read = FALSE;
+
+-- ============================================================
+-- DETECCION DE ANOMALIAS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS anomaly_detections (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+    anomaly_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) DEFAULT 'medium',
+    description TEXT,
+    data JSONB DEFAULT '{}',
+    is_resolved BOOLEAN DEFAULT FALSE,
+    resolved_by VARCHAR(255),
+    resolved_at TIMESTAMP,
+    action_taken TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_anomaly_user ON anomaly_detections(user_id);
+CREATE INDEX IF NOT EXISTS idx_anomaly_type ON anomaly_detections(anomaly_type);
+CREATE INDEX IF NOT EXISTS idx_anomaly_severity ON anomaly_detections(severity);
+CREATE INDEX IF NOT EXISTS idx_anomaly_resolved ON anomaly_detections(is_resolved);
+CREATE INDEX IF NOT EXISTS idx_anomaly_created ON anomaly_detections(created_at DESC);
+
+-- ============================================================
+-- CUENTAS RELACIONADAS (para detector de multi-cuentas)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS related_accounts (
+    id SERIAL PRIMARY KEY,
+    user_id_1 VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    user_id_2 VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    relation_type VARCHAR(50) NOT NULL,
+    confidence DECIMAL(5,2) DEFAULT 0.00,
+    evidence JSONB DEFAULT '{}',
+    is_confirmed BOOLEAN DEFAULT FALSE,
+    is_false_positive BOOLEAN DEFAULT FALSE,
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by VARCHAR(255),
+    reviewed_at TIMESTAMP,
+    UNIQUE(user_id_1, user_id_2, relation_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_related_user1 ON related_accounts(user_id_1);
+CREATE INDEX IF NOT EXISTS idx_related_user2 ON related_accounts(user_id_2);
+CREATE INDEX IF NOT EXISTS idx_related_type ON related_accounts(relation_type);
+CREATE INDEX IF NOT EXISTS idx_related_confirmed ON related_accounts(is_confirmed);
 """

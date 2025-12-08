@@ -754,7 +754,7 @@ const App = {
         
         const lockedSections = ['home', 'marketplace', 'profile'];
         const lockedSidebarItems = ['numeros', 'cuentas', 'metodos', 'planes', 'exchange', 'foro'];
-        const unlockedSections = ['wallet', 'bots', 'ai-chat'];
+        const unlockedSections = ['wallet', 'bots'];
         const unlockedSidebarItems = ['bots', 'settings'];
         
         const lockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
@@ -1335,9 +1335,6 @@ const App = {
             case 'marketplace':
                 this.showPage('marketplace');
                 break;
-            case 'ai-chat':
-                this.showPage('ai-chat');
-                break;
             case 'wallet':
                 this.showPage('wallet');
                 break;
@@ -1356,7 +1353,6 @@ const App = {
         const labels = {
             'home': 'Inicio',
             'marketplace': 'Tienda',
-            'ai-chat': 'Asistente IA',
             'notifications': 'Notificaciones',
             'wallet': 'Billetera',
             'profile': 'Mi perfil'
@@ -1499,11 +1495,6 @@ const App = {
             this.showProfileSkeleton();
         }
         
-        if (pageName === 'ai-chat') {
-            if (typeof AIChat !== 'undefined') {
-                AIChat.init();
-            }
-        }
         
         this.updateFloatingButtonVisibility(pageName);
     },

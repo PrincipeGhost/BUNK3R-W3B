@@ -20,7 +20,7 @@ try:
 except ImportError:
     SPAIN_TZ = None
 
-from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL, CREATE_VIRTUAL_NUMBERS_SQL, CREATE_AI_CHAT_SQL
+from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL, CREATE_VIRTUAL_NUMBERS_SQL
 
 logger = logging.getLogger(__name__)
 
@@ -1986,18 +1986,6 @@ class DatabaseManager:
             logger.error(f"Error initializing B3C tables: {e}")
             return False
     
-    def initialize_ai_tables(self):
-        """Inicializar tablas para sistema de chat con IA"""
-        try:
-            with self.get_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(CREATE_AI_CHAT_SQL)
-                    conn.commit()
-            logger.info("AI chat tables initialized successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Error initializing AI chat tables: {e}")
-            return False
     
     def get_virtual_number_setting(self, key: str, default: str = None) -> str:
         """Obtener configuracion de numeros virtuales"""

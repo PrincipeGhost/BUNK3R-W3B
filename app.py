@@ -286,8 +286,6 @@ try:
     logger.info("Payments tables initialized")
     db_manager.initialize_b3c_tables()
     logger.info("B3C tables initialized")
-    db_manager.initialize_ai_tables()
-    logger.info("AI chat tables initialized")
     vn_manager = VirtualNumbersManager(db_manager)
     logger.info("Virtual numbers manager initialized")
 except Exception as e:
@@ -6226,6 +6224,387 @@ def admin_notify_user(user_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def calculate_user_risk_score(user_id, conn):
+    """Calcula el score de riesgo de un usuario basado en multiples factores."""
+    factors = {}
+    score = 0
+    
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("SELECT * FROM users WHERE id = %s", (str(user_id),))
+        user = cur.fetchone()
+        if not user:
+            return None, None, None
+        
+        if not user.get('is_verified'):
+            factors['no_verificado'] = 15
+            score += 15
+        
+        cur.execute("""
+            SELECT COUNT(DISTINCT ip_address) as ip_count
+            FROM trusted_devices WHERE user_id = %s
+        """, (str(user_id),))
+        ip_count = cur.fetchone()['ip_count'] or 0
+        if ip_count > 5:
+            factors['multiples_ips'] = min(ip_count * 3, 20)
+            score += factors['multiples_ips']
+        
+        cur.execute("""
+            SELECT ip_address, COUNT(DISTINCT user_id) as user_count
+            FROM trusted_devices
+            WHERE ip_address IN (SELECT ip_address FROM trusted_devices WHERE user_id = %s)
+            AND user_id != %s
+            GROUP BY ip_address
+            HAVING COUNT(DISTINCT user_id) > 0
+        """, (str(user_id), str(user_id)))
+        shared_ips = cur.fetchall()
+        if shared_ips:
+            factors['ips_compartidas'] = min(len(shared_ips) * 10, 25)
+            score += factors['ips_compartidas']
+        
+        cur.execute("""
+            SELECT COUNT(*) as alert_count FROM security_alerts
+            WHERE user_id = %s AND resolved = false
+        """, (user.get('id'),))
+        alerts = cur.fetchone()['alert_count'] or 0
+        if alerts > 0:
+            factors['alertas_activas'] = min(alerts * 5, 20)
+            score += factors['alertas_activas']
+        
+        cur.execute("""
+            SELECT COUNT(*) as tx_count FROM wallet_transactions
+            WHERE user_id = %s AND created_at >= NOW() - INTERVAL '1 hour'
+        """, (str(user_id),))
+        recent_tx = cur.fetchone()['tx_count'] or 0
+        if recent_tx > 10:
+            factors['transacciones_rapidas'] = min(recent_tx, 15)
+            score += factors['transacciones_rapidas']
+        
+        cur.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total FROM wallet_transactions
+            WHERE user_id = %s AND transaction_type = 'withdraw' 
+            AND created_at >= NOW() - INTERVAL '24 hours'
+        """, (str(user_id),))
+        withdrawals = float(cur.fetchone()['total'] or 0)
+        if withdrawals > 1000:
+            factors['retiros_altos'] = min(int(withdrawals / 100), 20)
+            score += factors['retiros_altos']
+        
+        account_age_days = 0
+        if user.get('created_at'):
+            account_age_days = (datetime.now() - user['created_at']).days
+        if account_age_days < 7:
+            factors['cuenta_nueva'] = 10
+            score += 10
+        
+        score = min(score, 100)
+        
+        if score >= 75:
+            risk_level = 'critical'
+        elif score >= 50:
+            risk_level = 'high'
+        elif score >= 25:
+            risk_level = 'medium'
+        else:
+            risk_level = 'low'
+    
+    return score, risk_level, factors
+
+
+@app.route('/api/admin/users/<user_id>/risk-score', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_user_risk_score(user_id):
+    """Admin: Obtener score de riesgo de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM risk_scores WHERE user_id = %s
+                """, (str(user_id),))
+                existing = cur.fetchone()
+                
+                if existing:
+                    result = dict(existing)
+                    if result.get('last_calculated'):
+                        result['last_calculated'] = result['last_calculated'].isoformat()
+                    if result.get('created_at'):
+                        result['created_at'] = result['created_at'].isoformat()
+                    if result.get('updated_at'):
+                        result['updated_at'] = result['updated_at'].isoformat()
+                    return jsonify({'success': True, 'risk_score': result})
+                
+                score, risk_level, factors = calculate_user_risk_score(user_id, conn)
+                if score is None:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'risk_score': {
+                        'user_id': user_id,
+                        'score': score,
+                        'risk_level': risk_level,
+                        'factors': factors,
+                        'last_calculated': None,
+                        'note': 'Score calculado en tiempo real, no guardado'
+                    }
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting risk score: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/risk-score/calculate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_calculate_risk_score(user_id):
+    """Admin: Calcular y guardar score de riesgo de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            score, risk_level, factors = calculate_user_risk_score(user_id, conn)
+            if score is None:
+                return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+            
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM risk_scores WHERE user_id = %s", (str(user_id),))
+                existing = cur.fetchone()
+                
+                if existing:
+                    old_score = existing['score']
+                    old_level = existing['risk_level']
+                    
+                    if old_score != score or old_level != risk_level:
+                        cur.execute("""
+                            INSERT INTO risk_score_history (user_id, old_score, new_score, old_level, new_level, reason)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (str(user_id), old_score, score, old_level, risk_level, 'Recalculo automatico'))
+                    
+                    cur.execute("""
+                        UPDATE risk_scores SET score = %s, risk_level = %s, factors = %s,
+                        last_calculated = NOW(), updated_at = NOW()
+                        WHERE user_id = %s
+                    """, (score, risk_level, json.dumps(factors), str(user_id)))
+                else:
+                    cur.execute("""
+                        INSERT INTO risk_scores (user_id, score, risk_level, factors, last_calculated)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, (str(user_id), score, risk_level, json.dumps(factors)))
+                
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'risk_score': {
+                'user_id': user_id,
+                'score': score,
+                'risk_level': risk_level,
+                'factors': factors
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error calculating risk score: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/risk-score/history', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_risk_score_history(user_id):
+    """Admin: Obtener historial de cambios de score de riesgo."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM risk_score_history
+                    WHERE user_id = %s
+                    ORDER BY changed_at DESC
+                    LIMIT 50
+                """, (str(user_id),))
+                history = []
+                for row in cur.fetchall():
+                    r = dict(row)
+                    if r.get('changed_at'):
+                        r['changed_at'] = r['changed_at'].isoformat()
+                    history.append(r)
+        
+        return jsonify({'success': True, 'history': history})
+        
+    except Exception as e:
+        logger.error(f"Error getting risk score history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/related-accounts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_related_accounts(user_id):
+    """Admin: Obtener cuentas relacionadas de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        related = []
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT DISTINCT td2.user_id, u.username, td.ip_address
+                    FROM trusted_devices td
+                    JOIN trusted_devices td2 ON td.ip_address = td2.ip_address AND td.user_id != td2.user_id
+                    JOIN users u ON td2.user_id = u.id
+                    WHERE td.user_id = %s
+                """, (str(user_id),))
+                for row in cur.fetchall():
+                    related.append({
+                        'user_id': row['user_id'],
+                        'username': row['username'],
+                        'relation_type': 'same_ip',
+                        'evidence': {'ip': row['ip_address']}
+                    })
+                
+                cur.execute("""
+                    SELECT DISTINCT td2.user_id, u.username, td.device_fingerprint
+                    FROM trusted_devices td
+                    JOIN trusted_devices td2 ON td.device_fingerprint = td2.device_fingerprint 
+                        AND td.user_id != td2.user_id
+                        AND td.device_fingerprint IS NOT NULL
+                    JOIN users u ON td2.user_id = u.id
+                    WHERE td.user_id = %s
+                """, (str(user_id),))
+                for row in cur.fetchall():
+                    existing = next((r for r in related if r['user_id'] == row['user_id']), None)
+                    if existing:
+                        existing['relation_type'] = 'same_ip_and_device'
+                        existing['evidence']['fingerprint'] = row['device_fingerprint']
+                    else:
+                        related.append({
+                            'user_id': row['user_id'],
+                            'username': row['username'],
+                            'relation_type': 'same_device',
+                            'evidence': {'fingerprint': row['device_fingerprint']}
+                        })
+                
+                cur.execute("""
+                    SELECT DISTINCT u2.id as user_id, u2.username, u1.wallet_address
+                    FROM users u1
+                    JOIN users u2 ON u1.wallet_address = u2.wallet_address AND u1.id != u2.id
+                    WHERE u1.id = %s AND u1.wallet_address IS NOT NULL AND u1.wallet_address != ''
+                """, (str(user_id),))
+                for row in cur.fetchall():
+                    existing = next((r for r in related if r['user_id'] == row['user_id']), None)
+                    if existing:
+                        existing['evidence']['wallet'] = row['wallet_address']
+                    else:
+                        related.append({
+                            'user_id': row['user_id'],
+                            'username': row['username'],
+                            'relation_type': 'same_wallet',
+                            'evidence': {'wallet': row['wallet_address']}
+                        })
+        
+        return jsonify({
+            'success': True,
+            'user_id': user_id,
+            'related_accounts': related,
+            'count': len(related)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting related accounts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/anomalies', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_anomalies():
+    """Admin: Obtener detecciones de anomalias."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        resolved = request.args.get('resolved', 'false').lower() == 'true'
+        severity = request.args.get('severity', None)
+        anomaly_type = request.args.get('type', None)
+        limit = min(int(request.args.get('limit', 50)), 200)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT a.*, u.username FROM anomaly_detections a LEFT JOIN users u ON a.user_id = u.id WHERE 1=1"
+                params = []
+                
+                if not resolved:
+                    query += " AND a.is_resolved = false"
+                if severity:
+                    query += " AND a.severity = %s"
+                    params.append(severity)
+                if anomaly_type:
+                    query += " AND a.anomaly_type = %s"
+                    params.append(anomaly_type)
+                
+                query += " ORDER BY a.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                anomalies = []
+                for row in cur.fetchall():
+                    r = dict(row)
+                    if r.get('created_at'):
+                        r['created_at'] = r['created_at'].isoformat()
+                    if r.get('resolved_at'):
+                        r['resolved_at'] = r['resolved_at'].isoformat()
+                    anomalies.append(r)
+        
+        return jsonify({'success': True, 'anomalies': anomalies, 'count': len(anomalies)})
+        
+    except Exception as e:
+        logger.error(f"Error getting anomalies: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/anomalies/<int:anomaly_id>/resolve', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_resolve_anomaly(anomaly_id):
+    """Admin: Resolver una anomalia detectada."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.get_json() or {}
+        action_taken = data.get('action_taken', '')
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE anomaly_detections 
+                    SET is_resolved = true, resolved_by = %s, resolved_at = NOW(), action_taken = %s
+                    WHERE id = %s
+                """, (admin_id, action_taken, anomaly_id))
+                
+                if cur.rowcount == 0:
+                    return jsonify({'success': False, 'error': 'Anomalia no encontrada'}), 404
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Anomalia resuelta'})
+        
+    except Exception as e:
+        logger.error(f"Error resolving anomaly: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/fraud/multiple-accounts', methods=['GET'])
 @require_telegram_auth
 @require_owner
@@ -6600,6 +6979,254 @@ def admin_get_stats():
             'success': False,
             'error': 'Error al obtener estadisticas'
         }), 500
+
+
+@app.route('/api/admin/stats/overview', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_stats_overview():
+    """Admin: Estadisticas generales detalladas del sistema."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM users")
+                total_users = cur.fetchone()['total'] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= NOW() - INTERVAL '24 hours'")
+                active_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= NOW() - INTERVAL '7 days'")
+                active_7d = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '24 hours'")
+                new_users_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")
+                new_users_7d = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM wallet_transactions")
+                total_transactions = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM wallet_transactions WHERE created_at >= NOW() - INTERVAL '24 hours'")
+                transactions_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions WHERE transaction_type = 'deposit'")
+                total_deposits = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions WHERE transaction_type = 'withdraw'")
+                total_withdrawals = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("SELECT COALESCE(SUM(credits), 0) FROM users")
+                total_b3c_circulation = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("SELECT COUNT(*) FROM posts WHERE is_active = true")
+                total_posts = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM posts WHERE created_at >= NOW() - INTERVAL '24 hours'")
+                posts_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM security_alerts WHERE resolved = false")
+                pending_alerts = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM user_bots WHERE is_active = true")
+                active_bots = cur.fetchone()[0] or 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'users': {
+                    'total': total_users,
+                    'active_24h': active_24h,
+                    'active_7d': active_7d,
+                    'new_24h': new_users_24h,
+                    'new_7d': new_users_7d
+                },
+                'transactions': {
+                    'total': total_transactions,
+                    'last_24h': transactions_24h,
+                    'total_deposits': total_deposits,
+                    'total_withdrawals': total_withdrawals
+                },
+                'economy': {
+                    'b3c_circulation': total_b3c_circulation
+                },
+                'content': {
+                    'total_posts': total_posts,
+                    'posts_24h': posts_24h
+                },
+                'security': {
+                    'pending_alerts': pending_alerts,
+                    'active_bots': active_bots
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting stats overview: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/stats/users', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_stats_users():
+    """Admin: Estadisticas detalladas de usuarios."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM users")
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE is_verified = true")
+                verified = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE is_active = true")
+                active = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE is_active = false")
+                banned = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= NOW() - INTERVAL '1 hour'")
+                online_now = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count 
+                    FROM users 
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at) 
+                    ORDER BY date DESC
+                """)
+                registrations_by_day = [{'date': str(r['date']), 'count': r['count']} for r in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT LOWER(role) as role, COUNT(*) as count 
+                    FROM users 
+                    GROUP BY LOWER(role)
+                """)
+                by_role = {r['role']: r['count'] for r in cur.fetchall()}
+                
+                cur.execute("""
+                    SELECT level, COUNT(*) as count 
+                    FROM users 
+                    GROUP BY level 
+                    ORDER BY level
+                """)
+                by_level = [{'level': r['level'], 'count': r['count']} for r in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT u.id, u.username, u.credits, u.level, u.is_verified, u.last_seen
+                    FROM users u
+                    ORDER BY u.credits DESC
+                    LIMIT 10
+                """)
+                top_users = [dict(r) for r in cur.fetchall()]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'summary': {
+                    'total': total,
+                    'verified': verified,
+                    'active': active,
+                    'banned': banned,
+                    'online_now': online_now
+                },
+                'registrations_by_day': registrations_by_day,
+                'by_role': by_role,
+                'by_level': by_level,
+                'top_users': top_users
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/stats/transactions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_stats_transactions():
+    """Admin: Estadisticas detalladas de transacciones."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM wallet_transactions")
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT transaction_type, COUNT(*) as count, COALESCE(SUM(amount), 0) as total_amount
+                    FROM wallet_transactions
+                    GROUP BY transaction_type
+                """)
+                by_type = {r['transaction_type']: {'count': r['count'], 'amount': float(r['total_amount'])} for r in cur.fetchall()}
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count, COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date DESC
+                """)
+                by_day = [{'date': str(r['date']), 'count': r['count'], 'volume': float(r['volume'])} for r in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM wallet_transactions WHERE created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                count_24h = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) FROM wallet_transactions 
+                    WHERE created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                volume_24h = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("""
+                    SELECT COALESCE(AVG(amount), 0) FROM wallet_transactions
+                """)
+                avg_amount = float(cur.fetchone()[0] or 0)
+                
+                cur.execute("""
+                    SELECT wt.id, wt.user_id, u.username, wt.transaction_type, wt.amount, wt.description, wt.created_at
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON wt.user_id = u.id
+                    ORDER BY wt.created_at DESC
+                    LIMIT 20
+                """)
+                recent = []
+                for r in cur.fetchall():
+                    row = dict(r)
+                    if row.get('created_at'):
+                        row['created_at'] = row['created_at'].isoformat()
+                    recent.append(row)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'summary': {
+                    'total': total,
+                    'count_24h': count_24h,
+                    'volume_24h': volume_24h,
+                    'avg_amount': round(avg_amount, 2)
+                },
+                'by_type': by_type,
+                'by_day': by_day,
+                'recent': recent
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting transaction stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/admin/security/users', methods=['GET'])
@@ -14153,1522 +14780,233 @@ def mark_support_notifications_read():
 # ==================== END SUPPORT SECTION ====================
 
 
-# ==================== AI CHAT SECTION ====================
-from tracking.ai_service import get_ai_service
-from tracking.ai_constructor import AIConstructorService
+# ==================== PRIVATE MESSAGES SECTION ====================
 
-ai_constructor_service = None
-
-def get_ai_constructor():
-    """Get or create AI Constructor Service instance"""
-    global ai_constructor_service
-    if ai_constructor_service is None:
-        if db_manager is None:
-            raise ValueError("Database not available")
-        ai_service = get_ai_service(db_manager)
-        if ai_service is None:
-            raise ValueError("AI service not available")
-        ai_constructor_service = AIConstructorService(ai_service)
-    return ai_constructor_service
-
-
-def sanitize_constructor_response(result):
-    """Sanitize AI Constructor response for JSON serialization"""
-    if not isinstance(result, dict):
-        return result
-    
-    def convert_value(v):
-        if isinstance(v, datetime):
-            return v.isoformat()
-        elif isinstance(v, dict):
-            return {k: convert_value(val) for k, val in v.items()}
-        elif isinstance(v, list):
-            return [convert_value(item) for item in v]
-        elif hasattr(v, 'to_dict'):
-            return convert_value(v.to_dict())
-        elif hasattr(v, 'value'):
-            return v.value
-        return v
-    
-    return {k: convert_value(v) for k, v in result.items()}
-
-@app.route('/api/ai/chat', methods=['POST'])
+@app.route('/api/messages', methods=['POST'])
 @require_telegram_auth
-def ai_chat():
-    """Send message to AI and get response"""
+def send_private_message():
+    """Enviar un mensaje privado a otro usuario."""
     try:
-        user_id = str(request.telegram_user.get('id'))
-        data = request.json
-        message = data.get('message', '').strip()
+        sender_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        receiver_id = str(data.get('receiver_id', '')).strip()
+        content = str(data.get('content', '')).strip()
         
-        if not message:
-            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        if not receiver_id or not content:
+            return jsonify({'success': False, 'error': 'Receptor y contenido son requeridos'}), 400
         
-        ai = get_ai_service(db_manager)
-        result = ai.chat(user_id, message)
+        if len(content) > 2000:
+            return jsonify({'success': False, 'error': 'Mensaje muy largo (max 2000 caracteres)'}), 400
         
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI chat error: {e}")
-        return jsonify({'success': False, 'error': 'Error processing message'}), 500
-
-@app.route('/api/ai/history', methods=['GET'])
-@require_telegram_auth
-def ai_history():
-    """Get AI chat history"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        ai = get_ai_service(db_manager)
-        history = ai.get_conversation_history(user_id)
-        providers = ai.get_available_providers()
+        if sender_id == receiver_id:
+            return jsonify({'success': False, 'error': 'No puedes enviarte mensajes a ti mismo'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        sanitized_content = html.escape(content)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, username FROM users WHERE id = %s", (receiver_id,))
+                receiver = cur.fetchone()
+                if not receiver:
+                    return jsonify({'success': False, 'error': 'Usuario receptor no encontrado'}), 404
+                
+                cur.execute("""
+                    INSERT INTO private_messages (sender_id, receiver_id, content)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, created_at
+                """, (sender_id, receiver_id, sanitized_content))
+                message = cur.fetchone()
+                conn.commit()
+        
+        logger.info(f"Private message sent from {sender_id} to {receiver_id}")
         
         return jsonify({
             'success': True,
-            'history': history,
-            'providers': providers
+            'message': {
+                'id': message['id'],
+                'sender_id': sender_id,
+                'receiver_id': receiver_id,
+                'content': sanitized_content,
+                'created_at': message['created_at'].isoformat() if message.get('created_at') else None
+            }
         })
-    except Exception as e:
-        logger.error(f"AI history error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai/clear', methods=['POST'])
-@require_telegram_auth
-def ai_clear():
-    """Clear AI chat history"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        ai = get_ai_service(db_manager)
-        ai.clear_conversation(user_id)
-        return jsonify({'success': True})
-    except Exception as e:
-        logger.error(f"AI clear error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== CODE BUILDER API ====================
-
-@app.route('/api/ai/code-builder', methods=['POST'])
-@require_telegram_auth
-def ai_code_builder():
-    """AI-powered code generation for web projects"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        data = request.json
-        message = data.get('message', '').strip()
-        current_files = data.get('currentFiles', {})
-        project_name = data.get('projectName', 'Mi Proyecto')
         
-        if not message:
-            return jsonify({'success': False, 'error': 'Message is required'}), 400
-        
-        ai = get_ai_service(db_manager)
-        result = ai.generate_code(user_id, message, current_files, project_name)
-        
-        return jsonify(result)
     except Exception as e:
-        logger.error(f"AI code builder error: {e}")
-        return jsonify({'success': False, 'error': 'Error generating code'}), 500
+        logger.error(f"Error sending private message: {e}")
+        return jsonify({'success': False, 'error': 'Error al enviar mensaje'}), 500
 
-@app.route('/api/code-builder/projects', methods=['GET'])
+
+@app.route('/api/messages/conversations', methods=['GET'])
 @require_telegram_auth
-def get_code_projects():
-    """Get user's saved code projects"""
+def get_conversations():
+    """Obtener lista de conversaciones del usuario."""
     try:
-        user_id = str(request.telegram_user.get('id'))
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT id, name, files, created_at, updated_at
-                    FROM code_builder_projects
-                    WHERE user_id = %s
-                    ORDER BY updated_at DESC
-                    LIMIT 20
-                """, (user_id,))
-                projects = cur.fetchall()
+                    WITH conversations AS (
+                        SELECT 
+                            CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END as other_user_id,
+                            MAX(created_at) as last_message_at,
+                            COUNT(*) FILTER (WHERE receiver_id = %s AND is_read = false) as unread_count
+                        FROM private_messages
+                        WHERE sender_id = %s OR receiver_id = %s
+                        GROUP BY CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END
+                    )
+                    SELECT 
+                        c.other_user_id,
+                        c.last_message_at,
+                        c.unread_count,
+                        u.username,
+                        u.avatar_url,
+                        (SELECT content FROM private_messages pm 
+                         WHERE (pm.sender_id = %s AND pm.receiver_id = c.other_user_id)
+                            OR (pm.sender_id = c.other_user_id AND pm.receiver_id = %s)
+                         ORDER BY pm.created_at DESC LIMIT 1) as last_message
+                    FROM conversations c
+                    JOIN users u ON c.other_user_id = u.id
+                    ORDER BY c.last_message_at DESC
+                    LIMIT 50
+                """, (user_id, user_id, user_id, user_id, user_id, user_id, user_id))
                 
-        return jsonify({'success': True, 'projects': projects})
+                conversations = []
+                for row in cur.fetchall():
+                    conv = dict(row)
+                    if conv.get('last_message_at'):
+                        conv['last_message_at'] = conv['last_message_at'].isoformat()
+                    conversations.append(conv)
+        
+        return jsonify({'success': True, 'conversations': conversations})
+        
     except Exception as e:
-        logger.error(f"Error getting projects: {e}")
+        logger.error(f"Error getting conversations: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/code-builder/projects', methods=['POST'])
+
+@app.route('/api/messages/<other_user_id>', methods=['GET'])
 @require_telegram_auth
-def save_code_project():
-    """Save a code project"""
+def get_messages_with_user(other_user_id):
+    """Obtener mensajes con un usuario especifico."""
     try:
-        user_id = str(request.telegram_user.get('id'))
-        data = request.json
-        project_id = data.get('projectId')
-        name = data.get('name', 'Mi Proyecto')
-        files = data.get('files', {})
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        before_id = request.args.get('before_id', None)
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
         with db_manager.get_connection() as conn:
-            with conn.cursor() as cur:
-                if project_id:
-                    cur.execute("""
-                        UPDATE code_builder_projects
-                        SET name = %s, files = %s, updated_at = NOW()
-                        WHERE id = %s AND user_id = %s
-                        RETURNING id
-                    """, (name, json.dumps(files), project_id, user_id))
-                    result = cur.fetchone()
-                    if not result:
-                        project_id = None
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT pm.*, 
+                        s.username as sender_username,
+                        r.username as receiver_username
+                    FROM private_messages pm
+                    LEFT JOIN users s ON pm.sender_id = s.id
+                    LEFT JOIN users r ON pm.receiver_id = r.id
+                    WHERE ((pm.sender_id = %s AND pm.receiver_id = %s) 
+                        OR (pm.sender_id = %s AND pm.receiver_id = %s))
+                """
+                params = [user_id, other_user_id, other_user_id, user_id]
                 
-                if not project_id:
-                    cur.execute("""
-                        INSERT INTO code_builder_projects (user_id, name, files, created_at, updated_at)
-                        VALUES (%s, %s, %s, NOW(), NOW())
-                        RETURNING id
-                    """, (user_id, name, json.dumps(files)))
-                    project_id = cur.fetchone()[0]
+                if before_id:
+                    query += " AND pm.id < %s"
+                    params.append(before_id)
                 
+                query += " ORDER BY pm.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                messages = []
+                for row in cur.fetchall():
+                    msg = dict(row)
+                    if msg.get('created_at'):
+                        msg['created_at'] = msg['created_at'].isoformat()
+                    if msg.get('read_at'):
+                        msg['read_at'] = msg['read_at'].isoformat()
+                    messages.append(msg)
+                
+                cur.execute("""
+                    UPDATE private_messages
+                    SET is_read = true, read_at = NOW()
+                    WHERE receiver_id = %s AND sender_id = %s AND is_read = false
+                """, (user_id, other_user_id))
                 conn.commit()
         
-        return jsonify({'success': True, 'projectId': project_id})
+        return jsonify({
+            'success': True,
+            'messages': messages[::-1],
+            'count': len(messages)
+        })
+        
     except Exception as e:
-        logger.error(f"Error saving project: {e}")
+        logger.error(f"Error getting messages: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/code-builder/projects/<project_id>', methods=['DELETE'])
+
+@app.route('/api/messages/<int:message_id>/read', methods=['POST'])
 @require_telegram_auth
-def delete_code_project(project_id):
-    """Delete a code project"""
+def mark_message_read(message_id):
+    """Marcar un mensaje como leido."""
     try:
-        user_id = str(request.telegram_user.get('id'))
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    DELETE FROM code_builder_projects
-                    WHERE id = %s AND user_id = %s
-                """, (project_id, user_id))
+                    UPDATE private_messages
+                    SET is_read = true, read_at = NOW()
+                    WHERE id = %s AND receiver_id = %s AND is_read = false
+                """, (message_id, user_id))
+                updated = cur.rowcount
                 conn.commit()
         
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'updated': updated > 0})
+        
     except Exception as e:
-        logger.error(f"Error deleting project: {e}")
+        logger.error(f"Error marking message as read: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== END CODE BUILDER SECTION ====================
 
-
-# ==================== AI CONSTRUCTOR SECTION ====================
-
-@app.route('/api/ai-constructor/process', methods=['POST'])
+@app.route('/api/messages/unread-count', methods=['GET'])
 @require_telegram_auth
-@require_owner
-def ai_constructor_process():
-    """Process message through AI Constructor's 8-phase architecture (OWNER ONLY)"""
+def get_unread_messages_count():
+    """Obtener cantidad de mensajes no leidos."""
     try:
-        user_id = str(request.telegram_user.get('id'))
-        data = request.json
-        message = data.get('message', '').strip()
+        user_id = str(request.telegram_user.get('id', 0))
         
-        if not message:
-            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
-        constructor = get_ai_constructor()
-        result = constructor.process_message(user_id, message)
-        sanitized_result = sanitize_constructor_response(result)
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) FROM private_messages
+                    WHERE receiver_id = %s AND is_read = false
+                """, (user_id,))
+                count = cur.fetchone()[0] or 0
         
-        return jsonify(sanitized_result)
-    except ValueError as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_process')}), 503
+        return jsonify({'success': True, 'unread_count': count})
+        
     except Exception as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_process')}), 500
-
-@app.route('/api/ai-constructor/session', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_session():
-    """Get current AI Constructor session status (OWNER ONLY)"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        constructor = get_ai_constructor()
-        session = constructor.get_session_status(user_id)
-        
-        if session:
-            sanitized_session = sanitize_constructor_response(session)
-            return jsonify({
-                'success': True,
-                'hasSession': True,
-                'session': sanitized_session
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'hasSession': False,
-                'session': None
-            })
-    except ValueError as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_session')}), 503
-    except Exception as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_session')}), 500
-
-@app.route('/api/ai-constructor/reset', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_reset():
-    """Reset AI Constructor session (OWNER ONLY)"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        constructor = get_ai_constructor()
-        constructor.reset_session(user_id)
-        
-        return jsonify({'success': True, 'message': 'Session reset successfully'})
-    except ValueError as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_reset')}), 503
-    except Exception as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_reset')}), 500
-
-@app.route('/api/ai-constructor/files', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_files():
-    """Get files generated by AI Constructor"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        constructor = get_ai_constructor()
-        files = constructor.get_generated_files(user_id)
-        
-        if files:
-            sanitized_files = sanitize_constructor_response({'files': files})
-            return jsonify({
-                'success': True,
-                'hasFiles': True,
-                'files': sanitized_files.get('files', {}),
-                'fileCount': len(files)
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'hasFiles': False,
-                'files': {},
-                'fileCount': 0
-            })
-    except ValueError as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_files')}), 503
-    except Exception as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_files')}), 500
-
-@app.route('/api/ai-constructor/confirm', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_confirm():
-    """Confirm plan and continue execution"""
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        data = request.json
-        confirmed = data.get('confirmed', True)
-        
-        constructor = get_ai_constructor()
-        
-        if confirmed:
-            result = constructor.process_message(user_id, "confirmo el plan")
-            sanitized_result = sanitize_constructor_response(result)
-            return jsonify(sanitized_result)
-        else:
-            constructor.reset_session(user_id)
-            return jsonify({'success': True, 'message': 'Session cancelled'})
-    except ValueError as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_confirm')}), 503
-    except Exception as e:
-        return jsonify({'success': False, 'error': sanitize_error(e, 'ai_constructor_confirm')}), 500
-
-@app.route('/api/ai-constructor/flow', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_flow():
-    """Get AI Constructor flow log for debugging"""
-    try:
-        from tracking.ai_flow_logger import flow_logger
-        user_id = str(request.telegram_user.get('id'))
-        
-        flow = flow_logger.get_session_flow(user_id)
-        if flow:
-            return jsonify({
-                'success': True,
-                'flow': flow,
-                'formatted': flow_logger.format_flow_for_display(user_id)
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'flow': None,
-                'message': 'No hay sesión activa para este usuario'
-            })
-    except Exception as e:
+        logger.error(f"Error getting unread count: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/ai-constructor/flow/all', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_flow_all():
-    """Get all AI Constructor sessions summary (OWNER ONLY)"""
-    try:
-        from tracking.ai_flow_logger import flow_logger
-        
-        sessions = flow_logger.get_all_sessions_summary()
-        recent = flow_logger.get_recent_interactions(50)
-        
-        return jsonify({
-            'success': True,
-            'sessions': sessions,
-            'recent_interactions': recent,
-            'total_sessions': len(sessions)
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/ai-constructor/flow/clear', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_flow_clear():
-    """Clear flow logs (OWNER ONLY)"""
-    try:
-        from tracking.ai_flow_logger import flow_logger
-        user_id = str(request.telegram_user.get('id'))
-        
-        data = request.json or {}
-        clear_all = data.get('clear_all', False)
-        
-        if clear_all:
-            flow_logger.clear_all()
-            return jsonify({'success': True, 'message': 'All flow logs cleared'})
-        else:
-            flow_logger.clear_session(user_id)
-            return jsonify({'success': True, 'message': f'Flow log cleared for user {user_id}'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== AI CONSTRUCTOR DOWNLOAD ZIP ====================
-
-@app.route('/api/ai-constructor/download-zip', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_download_zip():
-    """Download generated project as ZIP file (OWNER ONLY)"""
-    import zipfile
-    import io
-    from flask import send_file
-    
-    try:
-        user_id = str(request.telegram_user.get('id'))
-        
-        if ai_constructor_service is None:
-            return jsonify({'success': False, 'error': 'AI Constructor service not available'}), 500
-        
-        files = ai_constructor_service.get_generated_files(user_id)
-        
-        if not files:
-            return jsonify({'success': False, 'error': 'No hay archivos generados para descargar'}), 404
-        
-        memory_file = io.BytesIO()
-        
-        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for filename, content in files.items():
-                safe_filename = os.path.normpath(filename).lstrip(os.sep)
-                safe_filename = safe_filename.replace('..', '')
-                if not safe_filename:
-                    safe_filename = 'unnamed_file'
-                zf.writestr(safe_filename, content)
-        
-        memory_file.seek(0)
-        
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        zip_filename = f'bunkr_project_{timestamp}.zip'
-        
-        return send_file(
-            memory_file,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name=zip_filename
-        )
-    except Exception as e:
-        logger.error(f"Error creating ZIP: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-constructor/download-disk-zip', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_constructor_download_disk_zip():
-    """Download ai_generated folder as ZIP file (OWNER ONLY)"""
-    import zipfile
-    import io
-    from flask import send_file
-    
-    try:
-        ai_generated_path = os.path.join(os.getcwd(), 'ai_generated')
-        
-        if not os.path.exists(ai_generated_path):
-            return jsonify({'success': False, 'error': 'No hay archivos generados en disco'}), 404
-        
-        memory_file = io.BytesIO()
-        
-        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for root, dirs, files in os.walk(ai_generated_path):
-                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__']]
-                
-                for file in files:
-                    if file.startswith('.'):
-                        continue
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, ai_generated_path)
-                    zf.write(file_path, arcname)
-        
-        memory_file.seek(0)
-        
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        zip_filename = f'bunkr_project_{timestamp}.zip'
-        
-        return send_file(
-            memory_file,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name=zip_filename
-        )
-    except Exception as e:
-        logger.error(f"Error creating disk ZIP: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== END AI CONSTRUCTOR SECTION ====================
+# ==================== END PRIVATE MESSAGES SECTION ====================
 
 
-# ==================== AI TOOLKIT SECTION ====================
-
-@app.route('/api/ai-toolkit/files/read', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_read_file():
-    """Read file content using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIFileToolkit
-        data = request.json
-        path = data.get('path', '')
-        max_lines = data.get('max_lines')
-        
-        if not path:
-            return jsonify({'success': False, 'error': 'Path is required'}), 400
-        
-        toolkit = AIFileToolkit()
-        result = toolkit.read_file(path, max_lines)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit read error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/files/write', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_write_file():
-    """Write file content using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIFileToolkit
-        data = request.json
-        path = data.get('path', '')
-        content = data.get('content', '')
-        
-        if not path:
-            return jsonify({'success': False, 'error': 'Path is required'}), 400
-        
-        toolkit = AIFileToolkit()
-        result = toolkit.write_file(path, content)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit write error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/files/edit', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_edit_file():
-    """Edit file by replacing content using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIFileToolkit
-        data = request.json
-        path = data.get('path', '')
-        old_content = data.get('old_content', '')
-        new_content = data.get('new_content', '')
-        
-        if not path or not old_content:
-            return jsonify({'success': False, 'error': 'Path and old_content are required'}), 400
-        
-        toolkit = AIFileToolkit()
-        result = toolkit.edit_file(path, old_content, new_content)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit edit error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/files/delete', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_delete_file():
-    """Delete file using AI Toolkit (OWNER ONLY) - Requires explicit confirmation"""
-    try:
-        from tracking.ai_toolkit import AIFileToolkit
-        data = request.json
-        path = data.get('path', '')
-        confirm = data.get('confirm', False)
-        confirm_text = data.get('confirm_text', '')
-        
-        if not path:
-            return jsonify({'success': False, 'error': 'Path is required'}), 400
-        
-        if not confirm or confirm_text != 'DELETE':
-            return jsonify({
-                'success': False, 
-                'error': 'Deletion requires confirm=true AND confirm_text="DELETE"',
-                'requires_confirmation': True,
-                'path': path
-            }), 400
-        
-        toolkit = AIFileToolkit()
-        result = toolkit.delete_file(path, confirm=True)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit delete error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/files/list', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_list_directory():
-    """List directory contents using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIFileToolkit
-        data = request.json or {}
-        path = data.get('path', '.')
-        recursive = data.get('recursive', False)
-        max_depth = data.get('max_depth', 3)
-        
-        toolkit = AIFileToolkit()
-        result = toolkit.list_directory(path, recursive, max_depth)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit list error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/files/search', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_search_code():
-    """Search code using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIFileToolkit
-        data = request.json
-        query = data.get('query', '')
-        path = data.get('path', '.')
-        file_pattern = data.get('file_pattern')
-        
-        if not query:
-            return jsonify({'success': False, 'error': 'Query is required'}), 400
-        
-        toolkit = AIFileToolkit()
-        result = toolkit.search_code(query, path, file_pattern)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit search error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/command/run', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_run_command():
-    """Execute command using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AICommandExecutor
-        data = request.json
-        command = data.get('command', '')
-        timeout = data.get('timeout', 30)
-        
-        if not command:
-            return jsonify({'success': False, 'error': 'Command is required'}), 400
-        
-        executor = AICommandExecutor()
-        result = executor.run_command(command, timeout)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit command error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/command/install', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_install_package():
-    """Install package using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AICommandExecutor
-        data = request.json
-        package = data.get('package', '')
-        manager = data.get('manager', 'pip')
-        
-        if not package:
-            return jsonify({'success': False, 'error': 'Package name is required'}), 400
-        
-        executor = AICommandExecutor()
-        result = executor.install_package(package, manager)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit install error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/command/script', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_run_script():
-    """Run a script file using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AICommandExecutor
-        data = request.json
-        script_path = data.get('script_path', '')
-        interpreter = data.get('interpreter', 'python')
-        
-        if not script_path:
-            return jsonify({'success': False, 'error': 'Script path is required'}), 400
-        
-        executor = AICommandExecutor()
-        result = executor.run_script(script_path, interpreter)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit script error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/errors/detect', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_detect_errors():
-    """Detect errors in logs using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIErrorDetector
-        data = request.json
-        logs = data.get('logs', [])
-        language = data.get('language', 'python')
-        
-        if not logs:
-            return jsonify({'success': False, 'error': 'Logs are required'}), 400
-        
-        detector = AIErrorDetector()
-        result = detector.detect_errors(logs, language)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit error detection: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/errors/analyze', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_analyze_error():
-    """Analyze error and suggest fix using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIErrorDetector
-        data = request.json
-        error = data.get('error', {})
-        
-        if not error:
-            return jsonify({'success': False, 'error': 'Error data is required'}), 400
-        
-        detector = AIErrorDetector()
-        analysis = detector.analyze_error(error)
-        fix = detector.suggest_fix(error)
-        
-        return jsonify({
-            'success': True,
-            'analysis': analysis.get('analysis'),
-            'fixes': fix.get('fixes', []),
-            'auto_fixable': fix.get('auto_fixable', False)
-        })
-    except Exception as e:
-        logger.error(f"AI Toolkit error analysis: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-toolkit/project/analyze', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_toolkit_analyze_project():
-    """Analyze project structure using AI Toolkit (OWNER ONLY)"""
-    try:
-        from tracking.ai_toolkit import AIProjectAnalyzer
-        
-        analyzer = AIProjectAnalyzer()
-        result = analyzer.analyze_project()
-        
-        if result['success']:
-            result['context'] = analyzer.generate_context()
-        
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Toolkit project analysis: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== END AI TOOLKIT SECTION ====================
-
-
-# ==================== AI CORE ENGINE SECTION (Phases 34.16-34.23) ====================
-
-@app.route('/api/ai-core/process', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_process_message():
-    """Process user message and determine workflow (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import AICoreOrchestrator
-        
-        data = request.json
-        message = data.get('message', '')
-        
-        if not message:
-            return jsonify({'success': False, 'error': 'Message is required'}), 400
-        
-        orchestrator = AICoreOrchestrator()
-        result = orchestrator.process_user_message(message)
-        
-        return jsonify({'success': True, **result})
-    except Exception as e:
-        logger.error(f"AI Core process: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/intent/classify', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_classify_intent():
-    """Classify user intent from message (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import AIDecisionEngine
-        
-        data = request.json
-        message = data.get('message', '')
-        
-        if not message:
-            return jsonify({'success': False, 'error': 'Message is required'}), 400
-        
-        engine = AIDecisionEngine()
-        intent = engine.classify_intent(message)
-        
-        return jsonify({
-            'success': True,
-            'intent': {
-                'type': intent.type.value,
-                'confidence': intent.confidence,
-                'keywords': intent.keywords,
-                'target_file': intent.target_file,
-                'target_function': intent.target_function,
-            }
-        })
-    except Exception as e:
-        logger.error(f"AI Core intent classify: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/workflow/decide', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_decide_workflow():
-    """Decide workflow based on intent (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import AIDecisionEngine, IntentType, Intent
-        
-        data = request.json
-        intent_type = data.get('intent_type', 'ambiguous')
-        
-        engine = AIDecisionEngine()
-        intent = Intent(
-            type=IntentType(intent_type),
-            confidence=1.0,
-            keywords=[],
-            original_message=''
-        )
-        workflow = engine.decide_workflow(intent)
-        
-        return jsonify({
-            'success': True,
-            'workflow': {
-                'name': workflow.name,
-                'steps': [s.value for s in workflow.steps],
-                'total_steps': len(workflow.steps),
-            }
-        })
-    except Exception as e:
-        logger.error(f"AI Core workflow decide: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/validate', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_validate_action():
-    """Validate action before execution (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import PreExecutionValidator
-        
-        data = request.json
-        action_type = data.get('action_type', 'edit')
-        action_params = data.get('params', {})
-        
-        validator = PreExecutionValidator()
-        result = validator.validate_before_action(action_type, **action_params)
-        
-        return jsonify({
-            'success': True,
-            'valid': result.valid,
-            'checks': result.checks,
-            'errors': result.errors,
-            'warnings': result.warnings
-        })
-    except Exception as e:
-        logger.error(f"AI Core validate: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/checkpoint/create', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_create_checkpoint():
-    """Create a checkpoint before making changes (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import RollbackManager
-        
-        data = request.json
-        files = data.get('files', [])
-        description = data.get('description', '')
-        
-        if not files:
-            return jsonify({'success': False, 'error': 'Files list is required'}), 400
-        
-        manager = RollbackManager()
-        checkpoint_id = manager.create_checkpoint(files, description)
-        
-        if checkpoint_id:
-            return jsonify({
-                'success': True,
-                'checkpoint_id': checkpoint_id,
-                'files_saved': len(files)
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Failed to create checkpoint'}), 500
-    except Exception as e:
-        logger.error(f"AI Core checkpoint create: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/checkpoint/rollback', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_rollback_checkpoint():
-    """Rollback to a checkpoint (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import RollbackManager
-        
-        data = request.json
-        checkpoint_id = data.get('checkpoint_id', '')
-        
-        if not checkpoint_id:
-            return jsonify({'success': False, 'error': 'Checkpoint ID is required'}), 400
-        
-        manager = RollbackManager()
-        result = manager.rollback_to_checkpoint(checkpoint_id)
-        
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"AI Core rollback: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/checkpoint/list', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_core_list_checkpoints():
-    """List available checkpoints (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import RollbackManager
-        
-        manager = RollbackManager()
-        checkpoints = manager.get_checkpoints()
-        
-        return jsonify({
-            'success': True,
-            'checkpoints': checkpoints,
-            'count': len(checkpoints)
-        })
-    except Exception as e:
-        logger.error(f"AI Core list checkpoints: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/impact/analyze', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_analyze_impact():
-    """Analyze impact of changing a file (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import ChangeImpactAnalyzer
-        
-        data = request.json
-        file_path = data.get('file_path', '')
-        change_description = data.get('change_description', '')
-        
-        if not file_path:
-            return jsonify({'success': False, 'error': 'File path is required'}), 400
-        
-        analyzer = ChangeImpactAnalyzer()
-        impact = analyzer.analyze_impact(file_path, change_description)
-        
-        return jsonify({
-            'success': True,
-            'impact': {
-                'importers': impact.importers,
-                'usages': impact.usages,
-                'tests': impact.tests,
-                'breaking_changes': impact.breaking_changes,
-                'risk_level': impact.risk_level
-            }
-        })
-    except Exception as e:
-        logger.error(f"AI Core impact analyze: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/workflow/status', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_core_workflow_status():
-    """Get workflow/server status (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import WorkflowManager
-        
-        name = request.args.get('name', 'main')
-        
-        manager = WorkflowManager()
-        status = manager.get_workflow_status(name)
-        
-        return jsonify({'success': True, **status})
-    except Exception as e:
-        logger.error(f"AI Core workflow status: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/workflow/health', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_core_workflow_health():
-    """Check server health (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import WorkflowManager
-        
-        port = request.args.get('port', 5000, type=int)
-        path = request.args.get('path', '/')
-        
-        manager = WorkflowManager()
-        health = manager.check_server_health(port, path)
-        
-        return jsonify({'success': True, **health})
-    except Exception as e:
-        logger.error(f"AI Core workflow health: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/tasks/create', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def ai_core_create_tasks():
-    """Create a task list (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import TaskManager
-        
-        data = request.json
-        tasks = data.get('tasks', [])
-        
-        if not tasks:
-            return jsonify({'success': False, 'error': 'Tasks list is required'}), 400
-        
-        manager = TaskManager()
-        created_tasks = manager.create_task_list(tasks)
-        
-        return jsonify({
-            'success': True,
-            'session_id': manager.session_id,
-            'tasks_created': len(created_tasks)
-        })
-    except Exception as e:
-        logger.error(f"AI Core create tasks: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/tasks/progress', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_core_tasks_progress():
-    """Get task progress (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import TaskManager
-        
-        manager = TaskManager()
-        progress = manager.show_progress_to_user()
-        
-        return jsonify({'success': True, **progress})
-    except Exception as e:
-        logger.error(f"AI Core tasks progress: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/ai-core/status', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def ai_core_full_status():
-    """Get full AI Core status (OWNER ONLY)"""
-    try:
-        from tracking.ai_core_engine import AICoreOrchestrator
-        
-        orchestrator = AICoreOrchestrator()
-        status = orchestrator.get_full_status()
-        
-        return jsonify({'success': True, **status})
-    except Exception as e:
-        logger.error(f"AI Core full status: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== END AI CORE ENGINE SECTION ====================
-
-
-# ==================== END AI CHAT SECTION ====================
-
-
-# ==================== WORKSPACE SECTION ====================
-
-def validate_workspace_path(file_path):
-    """Validate and secure workspace file path - returns (valid, full_path, error)"""
-    if not file_path:
-        return False, None, 'Path required'
-    
-    blocked_patterns = ['.env', '.git', '__pycache__', 'node_modules', '.replit', 
-                       '.cache', '.upm', '.config', 'venv', '.local', '.nix']
-    
-    for blocked in blocked_patterns:
-        if blocked in file_path.lower():
-            return False, None, f'Access to {blocked} is not allowed'
-    
-    if '..' in file_path or file_path.startswith('/') or file_path.startswith('~'):
-        return False, None, 'Invalid path - directory traversal not allowed'
-    
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    full_path = os.path.abspath(os.path.join(base_path, file_path))
-    
-    if not full_path.startswith(base_path):
-        return False, None, 'Path outside project root not allowed'
-    
-    return True, full_path, None
-
-def check_workspace_auth():
-    """Check if user is authenticated for workspace operations"""
-    demo_header = request.headers.get('X-Demo-Mode') == 'true'
-    
-    if demo_header:
-        demo_session_token = request.headers.get('X-Demo-Session')
-        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        
-        if verify_demo_session(demo_session_token, client_ip):
-            return True, 'demo'
-    
-    init_data = request.headers.get('X-Telegram-Init-Data')
-    if init_data:
-        try:
-            validated_data = validate_telegram_webapp_data(init_data)
-            if validated_data and validated_data.get('user'):
-                return True, 'telegram'
-        except Exception as e:
-            logger.warning(f"Workspace auth: Telegram validation failed: {e}")
-    
-    return False, None
-
-@app.route('/workspace')
-def workspace():
-    """BUNK3R AI Workspace - IDE interface"""
-    return render_template('workspace.html')
-
-@app.route('/api/files/tree', methods=['GET'])
-def get_files_tree():
-    """Get project file tree"""
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        ignored = {'.git', '__pycache__', 'node_modules', '.replit', '.cache', '.upm', '.config', 'venv', '.local'}
-        
-        def scan_directory(path, relative_path=''):
-            items = []
-            try:
-                entries = sorted(os.listdir(path), key=lambda x: (not os.path.isdir(os.path.join(path, x)), x.lower()))
-                for entry in entries:
-                    if entry.startswith('.') and entry not in ['.env']:
-                        continue
-                    if entry in ignored:
-                        continue
-                    
-                    full_path = os.path.join(path, entry)
-                    rel_path = os.path.join(relative_path, entry) if relative_path else entry
-                    
-                    if os.path.isdir(full_path):
-                        children = scan_directory(full_path, rel_path)
-                        items.append({
-                            'name': entry,
-                            'path': rel_path,
-                            'type': 'folder',
-                            'children': children
-                        })
-                    else:
-                        items.append({
-                            'name': entry,
-                            'path': rel_path,
-                            'type': 'file'
-                        })
-            except PermissionError:
-                pass
-            return items
-        
-        tree = scan_directory(base_path)
-        total_files = sum(1 for item in tree if item['type'] == 'file')
-        
-        def count_files(items):
-            count = 0
-            for item in items:
-                if item['type'] == 'file':
-                    count += 1
-                elif item.get('children'):
-                    count += count_files(item['children'])
-            return count
-        
-        total_files = count_files(tree)
-        
-        return jsonify({'tree': tree, 'total_files': total_files})
-    except Exception as e:
-        logger.error(f"Error getting file tree: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/content', methods=['GET'])
-def get_file_content():
-    """Get file content"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        file_path = request.args.get('path', '')
-        valid, full_path, error = validate_workspace_path(file_path)
-        
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        if not os.path.exists(full_path):
-            return jsonify({'error': 'File not found'}), 404
-        
-        if not os.path.isfile(full_path):
-            return jsonify({'error': 'Not a file'}), 400
-        
-        try:
-            with open(full_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            return jsonify({'content': content, 'path': file_path})
-        except UnicodeDecodeError:
-            return jsonify({'error': 'Binary file cannot be displayed'}), 400
-            
-    except Exception as e:
-        logger.error(f"Error reading file: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/save', methods=['POST'])
-def save_file_content():
-    """Save file content"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        file_path = data.get('path', '')
-        content = data.get('content', '')
-        
-        valid, full_path, error = validate_workspace_path(file_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        
-        with open(full_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        logger.info(f"File saved: {file_path} (auth: {auth_type})")
-        return jsonify({'success': True, 'path': file_path})
-    except Exception as e:
-        logger.error(f"Error saving file: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/create', methods=['POST'])
-def create_file():
-    """Create new file"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        file_path = data.get('path', '')
-        content = data.get('content', '')
-        
-        valid, full_path, error = validate_workspace_path(file_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        if os.path.exists(full_path):
-            return jsonify({'error': 'File already exists'}), 400
-        
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        
-        with open(full_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        logger.info(f"File created: {file_path} (auth: {auth_type})")
-        return jsonify({'success': True, 'path': file_path})
-    except Exception as e:
-        logger.error(f"Error creating file: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/folder', methods=['POST'])
-def create_folder():
-    """Create new folder"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        folder_path = data.get('path', '')
-        
-        valid, full_path, error = validate_workspace_path(folder_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        if os.path.exists(full_path):
-            return jsonify({'error': 'Folder already exists'}), 400
-        
-        os.makedirs(full_path, exist_ok=True)
-        
-        logger.info(f"Folder created: {folder_path} (auth: {auth_type})")
-        return jsonify({'success': True, 'path': folder_path})
-    except Exception as e:
-        logger.error(f"Error creating folder: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/delete', methods=['POST'])
-def delete_file():
-    """Delete file or folder"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        file_path = data.get('path', '')
-        confirm = data.get('confirm', False)
-        
-        if not confirm:
-            return jsonify({'error': 'Confirmation required', 'requires_confirm': True}), 400
-        
-        valid, full_path, error = validate_workspace_path(file_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        protected_files = ['app.py', 'requirements.txt', 'run.py', 'init_db.py', 'replit.md']
-        protected_dirs = ['tracking', 'templates', 'static']
-        
-        if file_path in protected_files:
-            return jsonify({'error': 'Cannot delete protected file'}), 400
-        
-        path_parts = file_path.split('/')
-        if len(path_parts) == 1 and path_parts[0] in protected_dirs:
-            return jsonify({'error': 'Cannot delete protected folder'}), 400
-        
-        if not os.path.exists(full_path):
-            return jsonify({'error': 'File not found'}), 404
-        
-        if os.path.isdir(full_path):
-            shutil.rmtree(full_path)
-            logger.info(f"Folder deleted: {file_path} (auth: {auth_type})")
-        else:
-            os.remove(full_path)
-            logger.info(f"File deleted: {file_path} (auth: {auth_type})")
-        
-        return jsonify({'success': True, 'path': file_path})
-    except Exception as e:
-        logger.error(f"Error deleting file: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/rename', methods=['POST'])
-def rename_file():
-    """Rename file or folder"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        old_path = data.get('old_path', '')
-        new_path = data.get('new_path', '')
-        
-        valid_old, full_old_path, error_old = validate_workspace_path(old_path)
-        if not valid_old:
-            return jsonify({'error': f'Old path: {error_old}'}), 400
-        
-        valid_new, full_new_path, error_new = validate_workspace_path(new_path)
-        if not valid_new:
-            return jsonify({'error': f'New path: {error_new}'}), 400
-        
-        if not os.path.exists(full_old_path):
-            return jsonify({'error': 'Source file not found'}), 404
-        
-        if os.path.exists(full_new_path):
-            return jsonify({'error': 'Destination already exists'}), 400
-        
-        os.makedirs(os.path.dirname(full_new_path), exist_ok=True)
-        shutil.move(full_old_path, full_new_path)
-        
-        logger.info(f"File renamed: {old_path} -> {new_path} (auth: {auth_type})")
-        return jsonify({'success': True, 'old_path': old_path, 'new_path': new_path})
-    except Exception as e:
-        logger.error(f"Error renaming file: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/duplicate', methods=['POST'])
-def duplicate_file():
-    """Duplicate file"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        source_path = data.get('path', '')
-        
-        valid, full_source, error = validate_workspace_path(source_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        if not os.path.exists(full_source):
-            return jsonify({'error': 'File not found'}), 404
-        
-        if not os.path.isfile(full_source):
-            return jsonify({'error': 'Can only duplicate files'}), 400
-        
-        name, ext = os.path.splitext(source_path)
-        counter = 1
-        new_path = f"{name}_copy{ext}"
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        while os.path.exists(os.path.join(base_path, new_path)):
-            new_path = f"{name}_copy{counter}{ext}"
-            counter += 1
-        
-        full_dest = os.path.join(base_path, new_path)
-        shutil.copy2(full_source, full_dest)
-        
-        logger.info(f"File duplicated: {source_path} -> {new_path} (auth: {auth_type})")
-        return jsonify({'success': True, 'original': source_path, 'copy': new_path})
-    except Exception as e:
-        logger.error(f"Error duplicating file: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/diff', methods=['POST'])
-def get_file_diff():
-    """Get diff between current file content and proposed changes"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        import difflib
-        
-        data = request.json
-        file_path = data.get('path', '')
-        new_content = data.get('new_content', '')
-        
-        valid, full_path, error = validate_workspace_path(file_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        if os.path.exists(full_path):
-            with open(full_path, 'r', encoding='utf-8') as f:
-                old_content = f.read()
-        else:
-            old_content = ''
-        
-        old_lines = old_content.splitlines(keepends=True)
-        new_lines = new_content.splitlines(keepends=True)
-        
-        diff = list(difflib.unified_diff(
-            old_lines, new_lines, 
-            fromfile=f'a/{file_path}', 
-            tofile=f'b/{file_path}',
-            lineterm=''
-        ))
-        
-        diff_stats = {
-            'additions': sum(1 for line in diff if line.startswith('+') and not line.startswith('+++')),
-            'deletions': sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
-        }
-        
-        return jsonify({
-            'success': True,
-            'path': file_path,
-            'diff': ''.join(diff),
-            'stats': diff_stats,
-            'is_new': not os.path.exists(full_path)
-        })
-    except Exception as e:
-        logger.error(f"Error generating diff: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/apply-diff', methods=['POST'])
-def apply_file_diff():
-    """Apply changes after user confirms the diff"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        file_path = data.get('path', '')
-        new_content = data.get('new_content', '')
-        confirmed = data.get('confirmed', False)
-        
-        if not confirmed:
-            return jsonify({'error': 'Confirmation required', 'requires_confirm': True}), 400
-        
-        valid, full_path, error = validate_workspace_path(file_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        
-        with open(full_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        
-        logger.info(f"Diff applied: {file_path} (auth: {auth_type})")
-        return jsonify({'success': True, 'path': file_path, 'applied': True})
-    except Exception as e:
-        logger.error(f"Error applying diff: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/files/history', methods=['GET'])
-def get_file_history():
-    """Get edit history for a file"""
-    try:
-        is_auth, auth_type = check_workspace_auth()
-        if not is_auth:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        file_path = request.args.get('path', '')
-        
-        valid, full_path, error = validate_workspace_path(file_path)
-        if not valid:
-            return jsonify({'error': error}), 400
-        
-        return jsonify({
-            'success': True,
-            'path': file_path,
-            'history': [],
-            'message': 'History tracking requires version control integration'
-        })
-    except Exception as e:
-        logger.error(f"Error getting file history: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== END WORKSPACE SECTION ====================
 
 
 deposit_scheduler = None

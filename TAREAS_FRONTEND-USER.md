@@ -1,6 +1,6 @@
 # TAREAS AGENTE 🔵 FRONTEND USUARIO
 **Rama Git:** `feature/frontend-user`
-**Archivos asignados:** app.js, publications.js, virtual-numbers.js, utils.js, ai-chat.js, workspace.js, styles.css, ai-chat.css, workspace.css, templates/index.html, templates/virtual_numbers.html, templates/workspace.html
+**Archivos asignados:** app.js, publications.js, virtual-numbers.js, utils.js, styles.css, templates/index.html, templates/virtual_numbers.html
 
 ---
 
@@ -55,14 +55,12 @@
 
 **Archivos afectados:**
 - static/js/app.js (47 instancias)
-- static/js/ai-chat.js (5 instancias)
 - static/js/utils.js (2 instancias)
 - static/js/publications.js (1 instancia)
 
 **Tareas:**
 - [ ] Crear wrapper Logger condicional en utils.js
 - [ ] Reemplazar console.log por Logger en app.js
-- [ ] Reemplazar console.log por Logger en ai-chat.js
 - [ ] Reemplazar console.log por Logger en utils.js
 - [ ] Reemplazar console.log por Logger en publications.js
 
@@ -142,23 +140,6 @@
 
 ---
 
-## SECCIÓN 34: AI CONSTRUCTOR (parte frontend)
-
-### FASE 34.x: FRONTEND AI CONSTRUCTOR ⏳ 🔴 CRÍTICA
-**Tiempo:** 8+ horas
-
-**Objetivo:** Conectar ai-chat.js con ai_constructor.py (8 fases)
-
-**Tareas:**
-- [ ] Cambiar endpoint de /api/ai/code-builder a /api/ai-constructor/process
-- [ ] Implementar visualización de fases en el chat
-- [ ] Mostrar progreso de cada fase en UI
-- [ ] Actualizar preview en tiempo real
-- [ ] Mostrar archivos creados en panel derecho
-- [ ] Implementar streaming de respuestas
-
----
-
 ## RESUMEN DE HORAS ESTIMADAS
 
 | Sección | Horas |
@@ -172,14 +153,13 @@
 | 32.7 Optimización | 2h |
 | 33.1 Chat privado | 3h |
 | 29.x Configuración | 12h |
-| 34.x AI Constructor | 8h |
-| **TOTAL** | **~41 horas** |
+| **TOTAL** | **~33 horas** |
 
 ---
 
 ## ORDEN RECOMENDADO
 
-1. 🔴 **CRÍTICO:** 31.1 → 34.x → 29.1
+1. 🔴 **CRÍTICO:** 31.1 → 29.1
 2. 🟡 **ALTA:** 31.3 → 32.1
 3. 🟠 **MEDIA:** 31.6 → 32.3 → 32.6 → 33.1
 4. 🟢 **BAJA:** 32.7
