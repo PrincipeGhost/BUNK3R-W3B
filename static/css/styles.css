@@ -14593,10 +14593,9 @@ body.dev-mode-active .dev-lock-badge {
 }
 
 .multi-browser-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     padding: 20px;
     margin-top: 60px;
     height: calc(100vh - 60px - 70px);
@@ -14644,9 +14643,11 @@ body.dev-mode-active .dev-lock-badge {
     overflow: hidden;
 }
 
-.phone-browser-right .phone-frame {
-    max-width: 220px;
-    min-height: 400px;
+.phone-browser-right .phone-frame,
+.phone-browser-single .phone-frame {
+    max-width: 280px;
+    min-height: 100%;
+    height: 100%;
 }
 
 .phone-notch {
