@@ -397,11 +397,12 @@
 
 .ai-panel-header {
     padding: 10px 16px;
-    background: rgba(26, 31, 38, 0.9);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: #1a1f26;
+    border-bottom: 1px solid rgba(240, 185, 11, 0.3);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-height: 48px;
 }
 
 .ai-panel-title {
@@ -780,25 +781,27 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 10px;
-    background: transparent;
-    border: none;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    color: #6b7280;
-    font-size: 11px;
+    color: #a0aec0;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .ai-file-tab:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.1);
     color: #EAECEF;
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .ai-file-tab.active {
-    background: rgba(240, 185, 11, 0.15);
+    background: rgba(240, 185, 11, 0.2);
     color: #F0B90B;
+    border-color: rgba(240, 185, 11, 0.5);
 }
 
 .ai-file-tab svg {
