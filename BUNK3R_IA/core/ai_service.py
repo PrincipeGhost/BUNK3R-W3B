@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 logger = logging.getLogger(__name__)
 
 try:
-    from tracking.ai_flow_logger import flow_logger
+    from BUNK3R_IA.core.ai_flow_logger import flow_logger
 except ImportError:
     flow_logger = None
 

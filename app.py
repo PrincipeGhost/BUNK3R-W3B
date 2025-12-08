@@ -14154,8 +14154,8 @@ def mark_support_notifications_read():
 
 
 # ==================== AI CHAT SECTION ====================
-from tracking.ai_service import get_ai_service
-from tracking.ai_constructor import AIConstructorService
+from BUNK3R_IA.core.ai_service import get_ai_service
+from BUNK3R_IA.core.ai_constructor import AIConstructorService
 
 ai_constructor_service = None
 
@@ -14482,7 +14482,7 @@ def ai_constructor_confirm():
 def ai_constructor_flow():
     """Get AI Constructor flow log for debugging"""
     try:
-        from tracking.ai_flow_logger import flow_logger
+        from BUNK3R_IA.core.ai_flow_logger import flow_logger
         user_id = str(request.telegram_user.get('id'))
         
         flow = flow_logger.get_session_flow(user_id)
@@ -14507,7 +14507,7 @@ def ai_constructor_flow():
 def ai_constructor_flow_all():
     """Get all AI Constructor sessions summary (OWNER ONLY)"""
     try:
-        from tracking.ai_flow_logger import flow_logger
+        from BUNK3R_IA.core.ai_flow_logger import flow_logger
         
         sessions = flow_logger.get_all_sessions_summary()
         recent = flow_logger.get_recent_interactions(50)
@@ -14527,7 +14527,7 @@ def ai_constructor_flow_all():
 def ai_constructor_flow_clear():
     """Clear flow logs (OWNER ONLY)"""
     try:
-        from tracking.ai_flow_logger import flow_logger
+        from BUNK3R_IA.core.ai_flow_logger import flow_logger
         user_id = str(request.telegram_user.get('id'))
         
         data = request.json or {}
@@ -14643,7 +14643,7 @@ def ai_constructor_download_disk_zip():
 def ai_toolkit_read_file():
     """Read file content using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIFileToolkit
+        from BUNK3R_IA.core.ai_toolkit import AIFileToolkit
         data = request.json
         path = data.get('path', '')
         max_lines = data.get('max_lines')
@@ -14664,7 +14664,7 @@ def ai_toolkit_read_file():
 def ai_toolkit_write_file():
     """Write file content using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIFileToolkit
+        from BUNK3R_IA.core.ai_toolkit import AIFileToolkit
         data = request.json
         path = data.get('path', '')
         content = data.get('content', '')
@@ -14685,7 +14685,7 @@ def ai_toolkit_write_file():
 def ai_toolkit_edit_file():
     """Edit file by replacing content using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIFileToolkit
+        from BUNK3R_IA.core.ai_toolkit import AIFileToolkit
         data = request.json
         path = data.get('path', '')
         old_content = data.get('old_content', '')
@@ -14707,7 +14707,7 @@ def ai_toolkit_edit_file():
 def ai_toolkit_delete_file():
     """Delete file using AI Toolkit (OWNER ONLY) - Requires explicit confirmation"""
     try:
-        from tracking.ai_toolkit import AIFileToolkit
+        from BUNK3R_IA.core.ai_toolkit import AIFileToolkit
         data = request.json
         path = data.get('path', '')
         confirm = data.get('confirm', False)
@@ -14737,7 +14737,7 @@ def ai_toolkit_delete_file():
 def ai_toolkit_list_directory():
     """List directory contents using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIFileToolkit
+        from BUNK3R_IA.core.ai_toolkit import AIFileToolkit
         data = request.json or {}
         path = data.get('path', '.')
         recursive = data.get('recursive', False)
@@ -14756,7 +14756,7 @@ def ai_toolkit_list_directory():
 def ai_toolkit_search_code():
     """Search code using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIFileToolkit
+        from BUNK3R_IA.core.ai_toolkit import AIFileToolkit
         data = request.json
         query = data.get('query', '')
         path = data.get('path', '.')
@@ -14778,7 +14778,7 @@ def ai_toolkit_search_code():
 def ai_toolkit_run_command():
     """Execute command using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AICommandExecutor
+        from BUNK3R_IA.core.ai_toolkit import AICommandExecutor
         data = request.json
         command = data.get('command', '')
         timeout = data.get('timeout', 30)
@@ -14799,7 +14799,7 @@ def ai_toolkit_run_command():
 def ai_toolkit_install_package():
     """Install package using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AICommandExecutor
+        from BUNK3R_IA.core.ai_toolkit import AICommandExecutor
         data = request.json
         package = data.get('package', '')
         manager = data.get('manager', 'pip')
@@ -14820,7 +14820,7 @@ def ai_toolkit_install_package():
 def ai_toolkit_run_script():
     """Run a script file using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AICommandExecutor
+        from BUNK3R_IA.core.ai_toolkit import AICommandExecutor
         data = request.json
         script_path = data.get('script_path', '')
         interpreter = data.get('interpreter', 'python')
@@ -14841,7 +14841,7 @@ def ai_toolkit_run_script():
 def ai_toolkit_detect_errors():
     """Detect errors in logs using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIErrorDetector
+        from BUNK3R_IA.core.ai_toolkit import AIErrorDetector
         data = request.json
         logs = data.get('logs', [])
         language = data.get('language', 'python')
@@ -14862,7 +14862,7 @@ def ai_toolkit_detect_errors():
 def ai_toolkit_analyze_error():
     """Analyze error and suggest fix using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIErrorDetector
+        from BUNK3R_IA.core.ai_toolkit import AIErrorDetector
         data = request.json
         error = data.get('error', {})
         
@@ -14889,7 +14889,7 @@ def ai_toolkit_analyze_error():
 def ai_toolkit_analyze_project():
     """Analyze project structure using AI Toolkit (OWNER ONLY)"""
     try:
-        from tracking.ai_toolkit import AIProjectAnalyzer
+        from BUNK3R_IA.core.ai_toolkit import AIProjectAnalyzer
         
         analyzer = AIProjectAnalyzer()
         result = analyzer.analyze_project()
@@ -14913,7 +14913,7 @@ def ai_toolkit_analyze_project():
 def ai_core_process_message():
     """Process user message and determine workflow (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import AICoreOrchestrator
+        from BUNK3R_IA.core.ai_core_engine import AICoreOrchestrator
         
         data = request.json
         message = data.get('message', '')
@@ -14935,7 +14935,7 @@ def ai_core_process_message():
 def ai_core_classify_intent():
     """Classify user intent from message (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import AIDecisionEngine
+        from BUNK3R_IA.core.ai_core_engine import AIDecisionEngine
         
         data = request.json
         message = data.get('message', '')
@@ -14966,7 +14966,7 @@ def ai_core_classify_intent():
 def ai_core_decide_workflow():
     """Decide workflow based on intent (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import AIDecisionEngine, IntentType, Intent
+        from BUNK3R_IA.core.ai_core_engine import AIDecisionEngine, IntentType, Intent
         
         data = request.json
         intent_type = data.get('intent_type', 'ambiguous')
@@ -14998,7 +14998,7 @@ def ai_core_decide_workflow():
 def ai_core_validate_action():
     """Validate action before execution (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import PreExecutionValidator
+        from BUNK3R_IA.core.ai_core_engine import PreExecutionValidator
         
         data = request.json
         action_type = data.get('action_type', 'edit')
@@ -15024,7 +15024,7 @@ def ai_core_validate_action():
 def ai_core_create_checkpoint():
     """Create a checkpoint before making changes (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import RollbackManager
+        from BUNK3R_IA.core.ai_core_engine import RollbackManager
         
         data = request.json
         files = data.get('files', [])
@@ -15054,7 +15054,7 @@ def ai_core_create_checkpoint():
 def ai_core_rollback_checkpoint():
     """Rollback to a checkpoint (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import RollbackManager
+        from BUNK3R_IA.core.ai_core_engine import RollbackManager
         
         data = request.json
         checkpoint_id = data.get('checkpoint_id', '')
@@ -15076,7 +15076,7 @@ def ai_core_rollback_checkpoint():
 def ai_core_list_checkpoints():
     """List available checkpoints (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import RollbackManager
+        from BUNK3R_IA.core.ai_core_engine import RollbackManager
         
         manager = RollbackManager()
         checkpoints = manager.get_checkpoints()
@@ -15096,7 +15096,7 @@ def ai_core_list_checkpoints():
 def ai_core_analyze_impact():
     """Analyze impact of changing a file (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import ChangeImpactAnalyzer
+        from BUNK3R_IA.core.ai_core_engine import ChangeImpactAnalyzer
         
         data = request.json
         file_path = data.get('file_path', '')
@@ -15128,7 +15128,7 @@ def ai_core_analyze_impact():
 def ai_core_workflow_status():
     """Get workflow/server status (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import WorkflowManager
+        from BUNK3R_IA.core.ai_core_engine import WorkflowManager
         
         name = request.args.get('name', 'main')
         
@@ -15146,7 +15146,7 @@ def ai_core_workflow_status():
 def ai_core_workflow_health():
     """Check server health (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import WorkflowManager
+        from BUNK3R_IA.core.ai_core_engine import WorkflowManager
         
         port = request.args.get('port', 5000, type=int)
         path = request.args.get('path', '/')
@@ -15165,7 +15165,7 @@ def ai_core_workflow_health():
 def ai_core_create_tasks():
     """Create a task list (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import TaskManager
+        from BUNK3R_IA.core.ai_core_engine import TaskManager
         
         data = request.json
         tasks = data.get('tasks', [])
@@ -15191,7 +15191,7 @@ def ai_core_create_tasks():
 def ai_core_tasks_progress():
     """Get task progress (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import TaskManager
+        from BUNK3R_IA.core.ai_core_engine import TaskManager
         
         manager = TaskManager()
         progress = manager.show_progress_to_user()
@@ -15207,7 +15207,7 @@ def ai_core_tasks_progress():
 def ai_core_full_status():
     """Get full AI Core status (OWNER ONLY)"""
     try:
-        from tracking.ai_core_engine import AICoreOrchestrator
+        from BUNK3R_IA.core.ai_core_engine import AICoreOrchestrator
         
         orchestrator = AICoreOrchestrator()
         status = orchestrator.get_full_status()

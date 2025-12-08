@@ -26,12 +26,12 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 try:
-    from tracking.ai_flow_logger import flow_logger
+    from BUNK3R_IA.core.ai_flow_logger import flow_logger
 except ImportError:
     flow_logger = None
 
 try:
-    from tracking.ai_toolkit import AIFileToolkit, AICommandExecutor, AIErrorDetector, AIProjectAnalyzer
+    from BUNK3R_IA.core.ai_toolkit import AIFileToolkit, AICommandExecutor, AIErrorDetector, AIProjectAnalyzer
     TOOLKIT_AVAILABLE = True
 except ImportError:
     TOOLKIT_AVAILABLE = False
