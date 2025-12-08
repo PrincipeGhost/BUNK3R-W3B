@@ -10258,7 +10258,7 @@ def admin_adjust_risk_score():
 @app.route('/api/admin/related-accounts', methods=['GET'])
 @require_telegram_auth
 @require_owner
-def admin_get_related_accounts():
+def admin_get_related_accounts_groups():
     """Admin: Obtener grupos de cuentas relacionadas."""
     try:
         groups = []
@@ -10317,7 +10317,7 @@ def admin_scan_related_accounts():
 @app.route('/api/admin/anomalies', methods=['GET'])
 @require_telegram_auth
 @require_owner
-def admin_get_anomalies():
+def admin_get_anomalies_list():
     """Admin: Obtener lista de anomalias detectadas."""
     try:
         anomalies = []
