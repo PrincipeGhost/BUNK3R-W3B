@@ -1455,9 +1455,9 @@ Implementar funcionalidad real para botones que actualmente no hacen nada o solo
 #### Tareas:
 
 **31.1.1 - Funciones vacías en app.js:**
-- [ ] `setupAvatarUpload()` (línea ~1979-1982) - Función VACÍA, no implementa subida de avatar
-- [ ] `viewUserProfile(userId)` (línea ~2132-2135) - Solo muestra toast "Navegando al perfil...", no navega realmente
-- [ ] Implementar navegación real a perfil de usuario con datos reales
+- [x] `setupAvatarUpload()` (línea ~1983-2008) - ✅ IMPLEMENTADO con event listeners completos
+- [x] `viewUserProfile(userId)` (línea ~2158-2183) - ✅ IMPLEMENTADO con modal de perfil y API
+- [x] Implementar navegación real a perfil de usuario con datos reales - ✅ showUserProfileModal() implementado
 
 **31.1.2 - Modales de Admin sin funcionalidad completa:**
 - [ ] `showAddBotForm()` - Verificar que el formulario funciona y guarda en BD
@@ -1467,8 +1467,8 @@ Implementar funcionalidad real para botones que actualmente no hacen nada o solo
 - [ ] `loadSystemLogs()` - Verificar que carga logs reales
 
 **31.1.3 - MultiBrowser Module:**
-- [ ] `closeMultiBrowserModule()` - Verificar implementación completa
-- [ ] Revisar toda la funcionalidad del módulo MultiBrowser
+- [x] `closeMultiBrowserModule()` (línea ~3550-3557) - ✅ IMPLEMENTADO correctamente
+- [x] Revisar toda la funcionalidad del módulo MultiBrowser - ✅ initMultiBrowsers() implementado
 
 #### Criterios de éxito:
 - [ ] 0 funciones vacías en el código
@@ -1510,38 +1510,40 @@ El código 2FA se muestra en logs del servidor, lo cual es un riesgo de segurida
 
 ---
 
-### FASE 31.3: NAVEGACIÓN INCONSISTENTE ⏳
+### FASE 31.3: NAVEGACIÓN INCONSISTENTE ✅
 **Prioridad:** 🟡 ALTA  
 **Tiempo:** 3 horas  
 **Agente:** 🔵 FRONTEND USUARIO
+**Completado:** 8 Diciembre 2025
 
 #### Objetivo:
 Corregir la navegación que lleva a páginas inexistentes o mal implementadas.
 
-#### Problemas detectados:
-- `handleBottomNav()` tiene casos que llaman a `showPage()` con páginas que pueden no existir
-- `showPage('marketplace')`, `showPage('bots')`, `showPage('exchange')` - Verificar que existen
+#### Verificación realizada:
+- Todas las páginas llamadas con showPage() existen en index.html
+- showPage() tiene validación que redirige a home si página no existe
 
 #### Tareas:
-- [ ] Auditar función `handleBottomNav()` en app.js (línea ~1311)
-- [ ] Verificar que cada caso del switch tiene su página correspondiente en el HTML
-- [ ] Verificar que `showPage()` valida si la página existe antes de mostrarla
-- [ ] Agregar fallback a página de error o home si la página no existe
-- [ ] Documentar todas las páginas disponibles en la navegación
+- [x] Auditar función `handleBottomNav()` en app.js (línea ~1311) - ✅ Verificado
+- [x] Verificar que cada caso del switch tiene su página correspondiente en el HTML - ✅ Todas existen
+- [x] Verificar que `showPage()` valida si la página existe antes de mostrarla - ✅ Línea 1439-1442
+- [x] Agregar fallback a página de error o home si la página no existe - ✅ Ya implementado goToHome()
+- [x] Documentar todas las páginas disponibles en la navegación - ✅ 9 páginas verificadas
 
-#### Páginas a verificar:
-- [ ] `marketplace` - ¿Existe en index.html?
-- [ ] `bots` - ¿Existe en index.html?
-- [ ] `exchange` - ¿Existe en index.html?
-- [ ] `ai-chat` - ¿Existe en index.html?
-- [ ] `wallet` - ¿Existe en index.html?
-- [ ] `notifications` - ¿Existe en index.html?
-- [ ] `profile` - ¿Existe en index.html?
-- [ ] `home` - ¿Existe en index.html?
+#### Páginas verificadas:
+- [x] `home` - Existe en index.html línea 591
+- [x] `marketplace` - Existe en index.html línea 656
+- [x] `bots` - Existe en index.html línea 678
+- [x] `ai-chat` - Existe en index.html línea 700
+- [x] `exchange` - Existe en index.html línea 841
+- [x] `wallet` - Existe en index.html línea 950
+- [x] `notifications` - Existe en index.html línea 1107
+- [x] `profile` - Existe en index.html línea 1185
+- [x] `settings` - Existe en index.html línea 1425
 
 #### Criterios de éxito:
-- [ ] Todas las navegaciones llevan a páginas que existen
-- [ ] Si una página no existe, se muestra mensaje apropiado
+- [x] Todas las navegaciones llevan a páginas que existen - ✅ Verificado
+- [x] Si una página no existe, se muestra mensaje apropiado - ✅ Redirige a home
 
 ---
 
