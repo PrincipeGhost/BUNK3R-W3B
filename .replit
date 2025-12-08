@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "freetype", "gitFull", "lcms2", "libiconv", "libimagequant", "libjpeg", "libsodium", "libtiff", "libwebp", "libxcrypt", "ollama", "openjpeg", "openssl", "pkg-config", "playwright-driver", "rustc", "tcl", "tk", "zlib", "nspr", "nss", "dbus", "at-spi2-atk", "cups", "libxkbcommon", "at-spi2-core", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXfixes", "mesa", "cairo", "pango", "alsa-lib"]
+packages = ["cargo", "freetype", "gitFull", "lcms2", "libiconv", "libimagequant", "libjpeg", "libsodium", "libtiff", "libwebp", "libxcrypt", "ollama", "openjpeg", "openssl", "pkg-config", "playwright-driver", "rustc", "tcl", "tk", "zlib", "nspr", "nss", "dbus", "at-spi2-atk", "cups", "libxkbcommon", "at-spi2-core", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXfixes", "mesa", "cairo", "pango", "alsa-lib", "chromium", "xorg.libX11", "xorg.libXext", "xorg.libXrandr", "xorg.libxcb", "expat", "libdrm"]
 
 [userenv]
 
