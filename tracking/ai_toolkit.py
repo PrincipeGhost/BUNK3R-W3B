@@ -544,6 +544,19 @@ class AICommandExecutor:
             subcommand = parts[1]
             if subcommand not in allowed:
                 return False, f"Subcommand '{subcommand}' is not allowed for '{base_cmd}'"
+            
+            # Validar paquetes en comandos pip/npm install contra whitelist
+            if subcommand == 'install' and len(parts) > 2:
+                package_name = parts[2].lower()
+                # Remover versión si existe (ej: flask==2.0.0 -> flask)
+                package_name = re.sub(r'[=<>@].*', '', package_name)
+                
+                if base_cmd in ['pip', 'pip3']:
+                    if package_name not in self.SAFE_PYTHON_PACKAGES:
+                        return False, f"Package '{package_name}' not in Python whitelist (use install_package method)"
+                elif base_cmd == 'npm':
+                    if package_name not in self.SAFE_NODE_PACKAGES:
+                        return False, f"Package '{package_name}' not in Node whitelist (use install_package method)"
         
         return True, "OK"
     
@@ -616,9 +629,36 @@ class AICommandExecutor:
             self._log_execution(command, False, error=str(e))
             return {'success': False, 'error': str(e)}
     
-    def install_package(self, package: str, manager: str = 'pip') -> Dict[str, Any]:
-        """Install package using npm or pip"""
-        package = re.sub(r'[;&|`$]', '', package)
+    # Lista blanca de paquetes seguros para instalación automática
+    SAFE_PYTHON_PACKAGES = {
+        'flask', 'requests', 'beautifulsoup4', 'pillow', 'pandas', 'numpy',
+        'matplotlib', 'jinja2', 'werkzeug', 'gunicorn', 'pytest', 'click',
+        'pyyaml', 'python-dotenv', 'sqlalchemy', 'aiohttp', 'httpx', 'fastapi',
+        'uvicorn', 'psycopg2-binary', 'redis', 'celery'
+    }
+    SAFE_NODE_PACKAGES = {
+        'express', 'react', 'vue', 'axios', 'lodash', 'moment', 'dayjs',
+        'tailwindcss', 'postcss', 'autoprefixer', 'vite', 'webpack',
+        'typescript', 'eslint', 'prettier', 'jest', 'nodemon', 'cors'
+    }
+    
+    def install_package(self, package: str, manager: str = 'pip', force_allow: bool = False) -> Dict[str, Any]:
+        """Install package using npm or pip (only whitelisted packages allowed)"""
+        # Sanitizar nombre de paquete
+        package = re.sub(r'[;&|`$<>(){}[\]\'"]', '', package).strip()
+        
+        # Validar solo caracteres alfanuméricos, guiones y puntos
+        if not re.match(r'^[a-zA-Z0-9_\-.]+$', package):
+            return {'success': False, 'error': f'Invalid package name: {package}', 'blocked': True}
+        
+        # Verificar contra lista blanca (a menos que force_allow=True)
+        if not force_allow:
+            if manager == 'npm':
+                if package.lower() not in self.SAFE_NODE_PACKAGES:
+                    return {'success': False, 'error': f'Package not in whitelist: {package}', 'blocked': True, 'requires_manual': True}
+            elif manager in ['pip', 'pip3']:
+                if package.lower() not in self.SAFE_PYTHON_PACKAGES:
+                    return {'success': False, 'error': f'Package not in whitelist: {package}', 'blocked': True, 'requires_manual': True}
         
         if manager == 'npm':
             command = f'npm install {package}'

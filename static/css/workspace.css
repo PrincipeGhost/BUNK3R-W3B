@@ -894,3 +894,238 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+.context-menu {
+    position: fixed;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow), 0 8px 24px rgba(0, 0, 0, 0.5);
+    min-width: 160px;
+    z-index: 10000;
+    overflow: hidden;
+    animation: contextMenuIn 0.15s ease;
+}
+
+@keyframes contextMenuIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.context-menu-item:hover {
+    background: var(--bg-elevated);
+}
+
+.context-menu-item .menu-icon {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+.context-menu-danger {
+    color: var(--accent-danger);
+}
+
+.context-menu-danger:hover {
+    background: rgba(246, 70, 93, 0.15);
+}
+
+.tree-item.selected {
+    background: rgba(240, 185, 11, 0.15);
+    border-color: var(--accent-primary);
+}
+
+.tree-item-folder {
+    font-weight: 500;
+}
+
+.tree-item-new {
+    animation: newFileHighlight 0.5s ease;
+    background: rgba(14, 203, 129, 0.2);
+    border-color: var(--accent-success);
+}
+
+@keyframes newFileHighlight {
+    0% {
+        background: rgba(14, 203, 129, 0.4);
+        transform: scale(1.02);
+    }
+    100% {
+        background: rgba(14, 203, 129, 0.2);
+        transform: scale(1);
+    }
+}
+
+.diff-viewer-container {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.diff-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.diff-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.diff-icon {
+    font-size: 18px;
+}
+
+.diff-stats {
+    display: flex;
+    gap: 12px;
+}
+
+.diff-stat {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'SF Mono', Monaco, monospace;
+}
+
+.diff-additions {
+    background: rgba(14, 203, 129, 0.15);
+    color: var(--accent-success);
+}
+
+.diff-deletions {
+    background: rgba(246, 70, 93, 0.15);
+    color: var(--accent-danger);
+}
+
+.diff-content {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    background: var(--bg-input);
+}
+
+.diff-code {
+    margin: 0;
+    padding: 0;
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre;
+    color: var(--text-primary);
+}
+
+.diff-line {
+    display: block;
+    padding: 2px 8px;
+    margin: 0 -8px;
+}
+
+.diff-line-add {
+    background: rgba(14, 203, 129, 0.2);
+    color: var(--accent-success);
+}
+
+.diff-line-remove {
+    background: rgba(246, 70, 93, 0.2);
+    color: var(--accent-danger);
+}
+
+.diff-line-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-info);
+}
+
+.diff-empty {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.diff-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.diff-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.diff-btn-apply {
+    background: var(--accent-success);
+    color: white;
+}
+
+.diff-btn-apply:hover {
+    background: #0db372;
+}
+
+.diff-btn-cancel {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.diff-btn-cancel:hover {
+    background: var(--bg-input);
+}

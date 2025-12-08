@@ -71,7 +71,9 @@ const AdminPanel = {
             massmessages: 'Mensajes Masivos',
             logs: 'Logs',
             analytics: 'Analíticas',
-            settings: 'Configuración'
+            settings: 'Configuración',
+            maintenance: 'Backup y Mantenimiento',
+            notifications: 'Centro de Notificaciones'
         };
         
         document.getElementById('pageTitle').textContent = titles[section] || section;
@@ -133,6 +135,13 @@ const AdminPanel = {
                 break;
             case 'massmessages':
                 SupportModule.loadMassMessages();
+                break;
+            case 'maintenance':
+                this.loadMaintenance();
+                break;
+            case 'notifications':
+                NotificationsModule.loadNotifications();
+                NotificationsModule.loadTelegramSettings();
                 break;
         }
     },
@@ -1670,22 +1679,50 @@ const AdminPanel = {
     },
     
     async loadSessions() {
+        this.setupSessionsTabs();
+        
         const tbody = document.getElementById('sessionsTableBody');
-        tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando sesiones...</td></tr>';
+        if (tbody) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando sesiones...</td></tr>';
+        }
         
         try {
-            const response = await this.fetchAPI('/api/admin/sessions');
+            const [sessionsRes, blockedRes] = await Promise.all([
+                this.fetchAPI('/api/admin/sessions'),
+                this.fetchAPI('/api/admin/blocked-ips')
+            ]);
             
-            if (response.success && response.sessions) {
-                document.getElementById('totalSessions').textContent = response.total || 0;
-                document.getElementById('uniqueIPs').textContent = response.uniqueIPs || 0;
+            if (blockedRes.success && blockedRes.ips) {
+                const activeBlocked = blockedRes.ips.filter(ip => ip.is_active !== false);
+                const countEl = document.getElementById('blockedIPsCount');
+                if (countEl) countEl.textContent = activeBlocked.length;
+            }
+            
+            if (sessionsRes.success && sessionsRes.sessions) {
+                const sessions = sessionsRes.sessions;
+                const uniqueIPs = [...new Set(sessions.map(s => s.ip || s.ip_address).filter(Boolean))];
                 
-                if (response.sessions.length === 0) {
-                    tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay sesiones activas</td></tr>';
+                const totalSessionsEl = document.getElementById('totalSessions');
+                const uniqueIPsEl = document.getElementById('uniqueIPs');
+                
+                if (totalSessionsEl) totalSessionsEl.textContent = sessions.length;
+                if (uniqueIPsEl) uniqueIPsEl.textContent = uniqueIPs.length;
+                
+                if (!tbody) return;
+                
+                if (sessions.length === 0) {
+                    tbody.innerHTML = '<tr class="loading-row"><td colspan="5">No hay sesiones activas</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = response.sessions.map(s => `
+                const sessionsHtml = sessions.map(s => {
+                    const deviceName = s.device || s.device_name || '-';
+                    const ipAddress = s.ip || s.ip_address || '-';
+                    const userId = s.user_id || '';
+                    const escapedDevice = this.escapeHtml(deviceName);
+                    const escapedIP = this.escapeHtml(ipAddress);
+                    
+                    return `
                     <tr>
                         <td>
                             <div class="user-cell">
@@ -1693,22 +1730,297 @@ const AdminPanel = {
                                 <span>@${this.escapeHtml(s.username || 'N/A')}</span>
                             </div>
                         </td>
-                        <td>${s.ip_address || '-'}</td>
-                        <td>${this.escapeHtml(s.device_info?.slice(0, 30) || '-')}...</td>
+                        <td>${this.escapeHtml(ipAddress)}</td>
+                        <td title="${escapedDevice}">${this.escapeHtml(deviceName.slice(0, 30))}${deviceName.length > 30 ? '...' : ''}</td>
                         <td>${this.timeAgo(s.last_activity)}</td>
-                        <td>${this.formatDuration(s.duration)}</td>
                         <td>
-                            <button class="action-btn danger" onclick="AdminPanel.terminateSession('${s.session_id}')">
-                                Cerrar
-                            </button>
+                            <div class="action-buttons">
+                                <button class="action-btn danger" onclick="AdminPanel.terminateSession('${userId}', '${escapedDevice.replace(/'/g, "\\'")}')">
+                                    Cerrar
+                                </button>
+                                <button class="action-btn warning" onclick="AdminPanel.terminateAllUserSessions('${userId}')">
+                                    Cerrar Todas
+                                </button>
+                                ${ipAddress !== '-' ? `<button class="action-btn secondary" onclick="AdminPanel.blockIPFromSession('${escapedIP}')" title="Bloquear IP">
+                                    Bloquear IP
+                                </button>` : ''}
+                            </div>
                         </td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
+                SafeDOM.setHTML(tbody, sessionsHtml);
             }
         } catch (error) {
             console.error('Error loading sessions:', error);
-            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar sesiones</td></tr>';
+            if (tbody) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Error al cargar sesiones</td></tr>';
+            }
         }
+    },
+    
+    async terminateSession(userId, deviceName) {
+        if (!confirm(`¿Cerrar la sesión del dispositivo "${deviceName}"?`)) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/sessions/terminate', {
+                method: 'POST',
+                body: JSON.stringify({ user_id: userId, device_name: deviceName })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Sesión cerrada', 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesión', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesión', 'error');
+        }
+    },
+    
+    async terminateAllUserSessions(userId) {
+        if (!confirm('¿Cerrar TODAS las sesiones de este usuario?')) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/sessions/terminate-all/${userId}`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Todas las sesiones cerradas', 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesiones', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesiones', 'error');
+        }
+    },
+    
+    async logoutAllUsers() {
+        if (!confirm('¿Cerrar TODAS las sesiones de TODOS los usuarios (excepto admins)?')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/sessions/logout-all', {
+                method: 'POST',
+                body: JSON.stringify({ exclude_admins: true })
+            });
+            
+            if (response.success) {
+                this.showToast(response.message || 'Todas las sesiones cerradas', 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al cerrar sesiones', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al cerrar sesiones', 'error');
+        }
+    },
+    
+    setupSessionsTabs() {
+        document.querySelectorAll('[data-sessions-tab]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-sessions-tab]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const tabName = btn.dataset.sessionsTab;
+                document.getElementById('sessionsTabActive').style.display = tabName === 'active' ? 'block' : 'none';
+                document.getElementById('sessionsTabIPs').style.display = tabName === 'ips' ? 'block' : 'none';
+                
+                if (tabName === 'ips') {
+                    this.loadBlockedIPs();
+                }
+            });
+        });
+    },
+    
+    blockedIPsData: [],
+    
+    async loadBlockedIPs() {
+        const tbody = document.getElementById('blockedIPsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando IPs bloqueadas...</td></tr>';
+        }
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips');
+            
+            if (response.success && response.ips) {
+                this.blockedIPsData = response.ips;
+                this.renderBlockedIPs(response.ips);
+                
+                const countEl = document.getElementById('blockedIPsCount');
+                if (countEl) countEl.textContent = response.ips.filter(ip => ip.is_active !== false).length;
+            }
+        } catch (error) {
+            console.error('Error loading blocked IPs:', error);
+            if (tbody) {
+                tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Error al cargar IPs</td></tr>';
+            }
+        }
+    },
+    
+    renderBlockedIPs(ips) {
+        const tbody = document.getElementById('blockedIPsTableBody');
+        if (!tbody) return;
+        
+        const statusFilter = document.getElementById('ipStatusFilter')?.value || 'active';
+        let filteredIPs = ips;
+        
+        if (statusFilter === 'active') {
+            filteredIPs = ips.filter(ip => ip.is_active !== false);
+        }
+        
+        if (filteredIPs.length === 0) {
+            tbody.innerHTML = '<tr class="loading-row"><td colspan="6">No hay IPs bloqueadas</td></tr>';
+            return;
+        }
+        
+        const html = filteredIPs.map(ip => `
+            <tr data-ip-id="${ip.id}">
+                <td><code>${this.escapeHtml(ip.ip_address)}</code></td>
+                <td>${this.escapeHtml(ip.reason || '-')}</td>
+                <td>${this.escapeHtml(ip.blocked_by || 'Admin')}</td>
+                <td>${this.formatDate(ip.blocked_at || ip.created_at)}</td>
+                <td>
+                    <span class="badge ${ip.is_permanent ? 'badge-danger' : 'badge-warning'}">
+                        ${ip.is_permanent ? 'Sí' : 'No'}
+                    </span>
+                </td>
+                <td>
+                    <button class="action-btn warning" onclick="AdminPanel.unblockIP(${ip.id})" title="Desbloquear">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        SafeDOM.setHTML(tbody, html);
+    },
+    
+    filterBlockedIPs() {
+        const searchTerm = document.getElementById('ipSearchInput')?.value?.toLowerCase() || '';
+        const filtered = this.blockedIPsData.filter(ip => 
+            ip.ip_address?.toLowerCase().includes(searchTerm) ||
+            ip.reason?.toLowerCase().includes(searchTerm)
+        );
+        this.renderBlockedIPs(filtered);
+    },
+    
+    showAddIPModal() {
+        document.getElementById('blockIPAddress').value = '';
+        document.getElementById('blockIPReason').value = '';
+        document.getElementById('blockIPPermanent').checked = false;
+        document.getElementById('addIPModal').classList.add('active');
+    },
+    
+    closeIPModal() {
+        document.getElementById('addIPModal').classList.remove('active');
+    },
+    
+    async blockIP() {
+        const ipAddress = document.getElementById('blockIPAddress')?.value?.trim();
+        const reason = document.getElementById('blockIPReason')?.value?.trim();
+        const isPermanent = document.getElementById('blockIPPermanent')?.checked || false;
+        
+        if (!ipAddress) {
+            this.showToast('Ingresa una dirección IP', 'error');
+            return;
+        }
+        
+        const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        if (!ipRegex.test(ipAddress)) {
+            this.showToast('Formato de IP inválido', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ip_address: ipAddress,
+                    reason: reason || 'Bloqueado manualmente por admin',
+                    is_permanent: isPermanent
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`IP ${ipAddress} bloqueada correctamente`, 'success');
+                this.closeIPModal();
+                this.loadBlockedIPs();
+            } else {
+                this.showToast(response.error || 'Error al bloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al bloquear IP', 'error');
+        }
+    },
+    
+    async unblockIP(ipId) {
+        if (!confirm('¿Desbloquear esta IP?')) return;
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/blocked-ips/${ipId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('IP desbloqueada correctamente', 'success');
+                this.loadBlockedIPs();
+            } else {
+                this.showToast(response.error || 'Error al desbloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al desbloquear IP', 'error');
+        }
+    },
+    
+    async blockIPFromSession(ipAddress) {
+        const reason = prompt('Razón del bloqueo (opcional):') || 'IP sospechosa - bloqueada desde sesiones';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/blocked-ips', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ip_address: ipAddress,
+                    reason: reason,
+                    is_permanent: false
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`IP ${ipAddress} bloqueada`, 'success');
+                this.loadSessions();
+            } else {
+                this.showToast(response.error || 'Error al bloquear IP', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al bloquear IP', 'error');
+        }
+    },
+    
+    formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diff = (now - date) / 1000;
+        
+        if (diff < 60) return 'Hace un momento';
+        if (diff < 3600) return `Hace ${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
+        if (diff < 604800) return `Hace ${Math.floor(diff / 86400)}d`;
+        
+        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
     },
     
     async loadContent() {
@@ -2935,40 +3247,343 @@ const AdminPanel = {
     
     async loadSettings() {
         try {
-            const response = await this.fetchAPI('/api/admin/settings');
+            const [settingsRes, statusRes] = await Promise.all([
+                this.fetchAPI('/api/admin/settings'),
+                this.fetchAPI('/api/admin/system-status')
+            ]);
             
-            if (response.success) {
-                document.getElementById('currentB3CPrice').textContent = `$${response.b3cPrice || 0.10}`;
-                document.getElementById('txCommission').value = response.commission || 5;
-                document.getElementById('minWithdrawal').value = response.minWithdrawal || 10;
-                document.getElementById('maintenanceMode').checked = response.maintenanceMode || false;
-                document.getElementById('maintenanceMessage').value = response.maintenanceMessage || '';
+            if (settingsRes.success) {
+                const s = settingsRes;
+                this.setInputValue('configB3CPrice', s.b3cPriceUSD || 0.10);
+                this.setInputValue('txCommission', s.transactionFeePercent || 5);
+                this.setInputValue('minWithdrawal', s.minWithdrawal || 10);
+                this.setInputValue('minDepositTON', s.minDepositTON || 0.5);
                 
-                if (response.systemStatus) {
-                    document.getElementById('dbStatus').textContent = response.systemStatus.database ? 'Conectada' : 'Error';
-                    document.getElementById('dbStatus').className = `status-indicator ${response.systemStatus.database ? 'ok' : 'error'}`;
-                    
-                    document.getElementById('tonStatus').textContent = response.systemStatus.tonCenter ? 'Conectado' : 'Error';
-                    document.getElementById('tonStatus').className = `status-indicator ${response.systemStatus.tonCenter ? 'ok' : 'error'}`;
-                    
-                    document.getElementById('smsStatus').textContent = response.systemStatus.smsPool ? 'Conectado' : 'Error';
-                    document.getElementById('smsStatus').className = `status-indicator ${response.systemStatus.smsPool ? 'ok' : 'error'}`;
-                }
+                this.setInputValue('vnMinPriceB3C', s.vnMinPriceB3C || 25);
+                this.setInputValue('vnMargin', s.vnMargin || 30);
+                this.setInputValue('smsTimeout', s.smsTimeout || 180);
                 
-                if (response.secrets) {
-                    const secretsList = document.getElementById('secretsList');
-                    secretsList.innerHTML = response.secrets.map(s => `
-                        <div class="secret-item">
-                            <span class="secret-name">${s.name}</span>
-                            <span class="secret-status ${s.configured ? 'configured' : 'missing'}">
-                                ${s.configured ? 'Configurado' : 'No configurado'}
-                            </span>
-                        </div>
-                    `).join('');
+                this.setInputValue('rateLimitPerMin', s.rateLimitPerMin || 60);
+                this.setInputValue('autoBlockAfter', s.autoBlockAfter || 3);
+                this.setInputValue('blockDuration', s.blockDuration || 24);
+                
+                const maintenanceModeEl = document.getElementById('maintenanceMode');
+                const maintenanceMessageEl = document.getElementById('maintenanceMessage');
+                const maintenanceEndTimeEl = document.getElementById('maintenanceEndTime');
+                
+                if (maintenanceModeEl) maintenanceModeEl.checked = s.maintenanceMode || false;
+                if (maintenanceMessageEl) maintenanceMessageEl.value = s.maintenanceMessage || '';
+                if (maintenanceEndTimeEl && s.maintenanceEndTime) {
+                    maintenanceEndTimeEl.value = s.maintenanceEndTime.slice(0, 16);
                 }
             }
+            
+            this.updateSystemStatus(statusRes);
         } catch (error) {
             console.error('Error loading settings:', error);
+        }
+    },
+    
+    setInputValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    },
+    
+    updateSystemStatus(statusRes) {
+        if (!statusRes.success) return;
+        
+        const status = statusRes.status || {};
+        
+        const updateStatusEl = (id, data) => {
+            const el = document.getElementById(id);
+            if (el && data) {
+                el.textContent = data.message || data.status;
+                el.className = `status-indicator ${data.status === 'ok' ? 'ok' : data.status === 'warning' ? 'warning' : 'error'}`;
+            }
+        };
+        
+        updateStatusEl('dbStatus', status.database);
+        updateStatusEl('tonStatus', status.toncenter);
+        updateStatusEl('smsStatus', status.smspool);
+        updateStatusEl('walletPoolStatus', status.walletPool);
+        updateStatusEl('hotWalletStatus', status.hotWallet);
+        
+        const lastCheckEl = document.getElementById('lastStatusCheck');
+        if (lastCheckEl) {
+            lastCheckEl.textContent = new Date().toLocaleTimeString();
+        }
+        
+        if (statusRes.secrets) {
+            const secretsList = document.getElementById('secretsList');
+            if (secretsList) {
+                const secretsHtml = Object.entries(statusRes.secrets).map(([name, configured]) => `
+                    <div class="secret-item">
+                        <span class="secret-name">${this.escapeHtml(name)}</span>
+                        <span class="secret-status ${configured ? 'configured' : 'missing'}">
+                            ${configured ? '✓ Configurado' : '✗ No configurado'}
+                        </span>
+                    </div>
+                `).join('');
+                SafeDOM.setHTML(secretsList, secretsHtml);
+            }
+        }
+    },
+    
+    async refreshSystemStatus() {
+        try {
+            this.showToast('Verificando estado del sistema...', 'info');
+            const statusRes = await this.fetchAPI('/api/admin/system-status?refresh=true');
+            this.updateSystemStatus(statusRes);
+            this.showToast('Estado actualizado', 'success');
+        } catch (error) {
+            console.error('Error refreshing status:', error);
+            this.showToast('Error al actualizar estado', 'error');
+        }
+    },
+    
+    async saveSystemConfig() {
+        try {
+            const data = {
+                b3cPriceUSD: parseFloat(document.getElementById('configB3CPrice')?.value) || 0.10,
+                transactionFeePercent: parseFloat(document.getElementById('txCommission')?.value) || 5,
+                minWithdrawal: parseFloat(document.getElementById('minWithdrawal')?.value) || 10,
+                minDepositTON: parseFloat(document.getElementById('minDepositTON')?.value) || 0.5,
+                
+                vnMinPriceB3C: parseInt(document.getElementById('vnMinPriceB3C')?.value) || 25,
+                vnMargin: parseInt(document.getElementById('vnMargin')?.value) || 30,
+                smsTimeout: parseInt(document.getElementById('smsTimeout')?.value) || 180,
+                
+                rateLimitPerMin: parseInt(document.getElementById('rateLimitPerMin')?.value) || 60,
+                autoBlockAfter: parseInt(document.getElementById('autoBlockAfter')?.value) || 3,
+                blockDuration: parseInt(document.getElementById('blockDuration')?.value) || 24,
+                
+                maintenanceMode: document.getElementById('maintenanceMode')?.checked || false,
+                maintenanceMessage: document.getElementById('maintenanceMessage')?.value || '',
+                maintenanceEndTime: document.getElementById('maintenanceEndTime')?.value || null
+            };
+            
+            const response = await this.fetchAPI('/api/admin/settings', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.success) {
+                this.showToast('Configuración guardada correctamente', 'success');
+            } else {
+                this.showToast(response.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            this.showToast('Error al guardar configuración', 'error');
+        }
+    },
+    
+    async toggleMaintenance() {
+        const isActive = document.getElementById('maintenanceMode')?.checked;
+        const message = document.getElementById('maintenanceMessage')?.value || 'Estamos realizando mantenimiento. Volveremos pronto.';
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({ active: isActive, message })
+            });
+            
+            if (response.success) {
+                this.showToast(isActive ? 'Modo mantenimiento activado' : 'Modo mantenimiento desactivado', isActive ? 'warning' : 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling maintenance:', error);
+            this.showToast('Error al cambiar modo mantenimiento', 'error');
+        }
+    },
+    
+    async saveSettings() {
+        await this.saveSystemConfig();
+    },
+    
+    async loadMaintenance() {
+        try {
+            const response = await this.fetchAPI('/api/admin/server-status');
+            
+            if (response.success) {
+                const s = response;
+                document.getElementById('serverUptime').textContent = s.uptime || '-';
+                
+                const memoryPct = s.memoryPercent || 0;
+                const cpuPct = s.cpuPercent || 0;
+                const diskPct = s.diskPercent || 0;
+                
+                document.getElementById('memoryUsage').textContent = `${memoryPct}%`;
+                document.getElementById('cpuUsage').textContent = `${cpuPct}%`;
+                document.getElementById('diskUsage').textContent = `${diskPct}%`;
+                
+                const memoryBar = document.getElementById('memoryBar');
+                const cpuBar = document.getElementById('cpuBar');
+                const diskBar = document.getElementById('diskBar');
+                
+                if (memoryBar) {
+                    memoryBar.style.width = `${memoryPct}%`;
+                    memoryBar.className = `bar-fill ${memoryPct > 80 ? 'danger' : memoryPct > 60 ? 'warning' : ''}`;
+                }
+                if (cpuBar) {
+                    cpuBar.style.width = `${cpuPct}%`;
+                    cpuBar.className = `bar-fill ${cpuPct > 80 ? 'danger' : cpuPct > 60 ? 'warning' : ''}`;
+                }
+                if (diskBar) {
+                    diskBar.style.width = `${diskPct}%`;
+                    diskBar.className = `bar-fill ${diskPct > 80 ? 'danger' : diskPct > 60 ? 'warning' : ''}`;
+                }
+                
+                document.getElementById('dbConnections').textContent = s.dbConnections || 0;
+                document.getElementById('lastBackupTime').textContent = s.lastBackup || 'No disponible';
+                document.getElementById('dbSize').textContent = s.dbSize || '-';
+                document.getElementById('errorsLast24h').textContent = s.errorsLast24h || 0;
+                document.getElementById('warningsLast24h').textContent = s.warningsLast24h || 0;
+                document.getElementById('logsSize').textContent = s.logsSize || '-';
+            }
+        } catch (error) {
+            console.error('Error loading maintenance:', error);
+        }
+    },
+    
+    async refreshServerStatus() {
+        this.showToast('Actualizando estado del servidor...', 'info');
+        await this.loadMaintenance();
+        this.showToast('Estado actualizado', 'success');
+    },
+    
+    async createBackup() {
+        if (!confirm('¿Crear un backup de la base de datos?')) return;
+        
+        try {
+            this.showToast('Creando backup...', 'info');
+            const response = await this.fetchAPI('/api/admin/backup/create', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast(`Backup creado: ${response.filename || 'OK'}`, 'success');
+                this.loadMaintenance();
+            } else {
+                this.showToast(response.error || 'Error al crear backup', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating backup:', error);
+            this.showToast('Error al crear backup', 'error');
+        }
+    },
+    
+    async showBackupHistory() {
+        try {
+            const response = await this.fetchAPI('/api/admin/backup/history');
+            
+            if (response.success && response.backups) {
+                const html = response.backups.length > 0 
+                    ? response.backups.map(b => `<div class="backup-item">${b.filename} - ${b.date} - ${b.size}</div>`).join('')
+                    : '<p>No hay backups disponibles</p>';
+                
+                alert('Historial de Backups:\n' + (response.backups.map(b => `${b.filename} (${b.size})`).join('\n') || 'No hay backups'));
+            }
+        } catch (error) {
+            console.error('Error loading backup history:', error);
+            this.showToast('Error al cargar historial', 'error');
+        }
+    },
+    
+    async clearCache() {
+        if (!confirm('¿Limpiar la caché del sistema?')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance/clear-cache', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Caché limpiada correctamente', 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing cache:', error);
+            this.showToast('Error al limpiar caché', 'error');
+        }
+    },
+    
+    async optimizeDatabase() {
+        if (!confirm('¿Optimizar la base de datos? Esto puede tomar unos segundos.')) return;
+        
+        try {
+            this.showToast('Optimizando base de datos...', 'info');
+            const response = await this.fetchAPI('/api/admin/maintenance/optimize-db', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Base de datos optimizada', 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error optimizing database:', error);
+            this.showToast('Error al optimizar', 'error');
+        }
+    },
+    
+    async cleanupOldSessions() {
+        if (!confirm('¿Limpiar sesiones inactivas (más de 30 días)?')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance/cleanup-sessions', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast(`${response.deleted || 0} sesiones eliminadas`, 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error cleaning sessions:', error);
+            this.showToast('Error al limpiar sesiones', 'error');
+        }
+    },
+    
+    async cleanupOldData() {
+        if (!confirm('¿Limpiar datos antiguos (logs, notificaciones, etc. de más de 90 días)? Esta acción no se puede deshacer.')) return;
+        
+        try {
+            this.showToast('Limpiando datos antiguos...', 'info');
+            const response = await this.fetchAPI('/api/admin/maintenance/cleanup-old-data', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast(`Datos limpiados: ${response.summary || 'OK'}`, 'success');
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error cleaning old data:', error);
+            this.showToast('Error al limpiar datos', 'error');
+        }
+    },
+    
+    async downloadLogs() {
+        try {
+            window.open('/api/admin/logs/download', '_blank');
+        } catch (error) {
+            console.error('Error downloading logs:', error);
+            this.showToast('Error al descargar logs', 'error');
+        }
+    },
+    
+    async clearLogs() {
+        if (!confirm('¿Limpiar los logs del sistema? Esta acción no se puede deshacer.')) return;
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/maintenance/clear-logs', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Logs limpiados correctamente', 'success');
+                this.loadMaintenance();
+            } else {
+                this.showToast(response.error || 'Error', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing logs:', error);
+            this.showToast('Error al limpiar logs', 'error');
         }
     },
     
@@ -6146,6 +6761,266 @@ const SupportModule = {
             }
         } catch (error) {
             console.error('Error cancelling message:', error);
+        }
+    }
+};
+
+const NotificationsModule = {
+    async loadNotifications() {
+        const typeFilter = document.getElementById('notifTypeFilter')?.value || '';
+        const readFilter = document.getElementById('notifReadFilter')?.value || '';
+        
+        try {
+            let url = '/api/admin/notifications?';
+            if (typeFilter) url += `type=${typeFilter}&`;
+            if (readFilter) url += `is_read=${readFilter === 'read'}&`;
+            
+            const response = await fetch(url, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderNotifications(data.notifications);
+                const unreadCount = data.notifications.filter(n => !n.is_read).length;
+                const countEl = document.getElementById('adminNotifCount');
+                if (countEl) countEl.textContent = unreadCount;
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        }
+    },
+    
+    renderNotifications(notifications) {
+        const container = document.getElementById('adminNotificationsList');
+        if (!container) return;
+        
+        if (!notifications || notifications.length === 0) {
+            container.innerHTML = '<div class="empty-state">Sin notificaciones</div>';
+            return;
+        }
+        
+        const typeIcons = {
+            large_purchase: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+            pending_withdrawal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
+            system_error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+            content_report: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>',
+            user_banned: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>',
+            low_balance: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 10h20"></path></svg>',
+            new_user: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>',
+            new_ticket: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+        };
+        
+        container.innerHTML = notifications.map(notif => `
+            <div class="admin-notif-item ${notif.is_read ? 'read' : 'unread'}" data-id="${notif.id}">
+                <div class="notif-icon ${notif.type}">
+                    ${typeIcons[notif.type] || typeIcons.system_error}
+                </div>
+                <div class="notif-content">
+                    <div class="notif-title">${AdminPanel.escapeHtml(notif.title)}</div>
+                    <div class="notif-message">${AdminPanel.escapeHtml(notif.message)}</div>
+                    <div class="notif-time">${AdminPanel.timeAgo(notif.created_at)}</div>
+                </div>
+                <div class="notif-actions">
+                    ${!notif.is_read ? `<button class="btn-icon" onclick="NotificationsModule.markAsRead(${notif.id})" title="Marcar como leida"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></button>` : ''}
+                    <button class="btn-icon danger" onclick="NotificationsModule.deleteNotification(${notif.id})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    async markAsRead(notifId) {
+        try {
+            const response = await fetch('/api/admin/notifications/mark-read', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notification_id: notifId })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    },
+    
+    async markAllAsRead() {
+        try {
+            const response = await fetch('/api/admin/notifications/mark-read', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ all: true })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadNotifications();
+                AdminPanel.showNotification('Todas las notificaciones marcadas como leidas', 'success');
+            }
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    },
+    
+    async deleteNotification(notifId) {
+        if (!confirm('Eliminar esta notificacion?')) return;
+        
+        try {
+            const response = await fetch('/api/admin/notifications/delete', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notification_id: notifId })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+        }
+    },
+    
+    async loadTelegramSettings() {
+        try {
+            const response = await fetch('/api/admin/telegram/settings', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success && data.settings) {
+                const s = data.settings;
+                document.getElementById('toggleLargePurchase').checked = s.notify_large_purchase !== false;
+                document.getElementById('togglePendingWithdrawal').checked = s.notify_pending_withdrawal !== false;
+                document.getElementById('toggleSystemError').checked = s.notify_system_error !== false;
+                document.getElementById('toggleContentReport').checked = s.notify_content_report !== false;
+                document.getElementById('toggleUserBanned').checked = s.notify_user_banned !== false;
+                document.getElementById('toggleLowBalance').checked = s.notify_low_balance !== false;
+                document.getElementById('toggleNewUser').checked = s.notify_new_user === true;
+                document.getElementById('toggleNewTicket').checked = s.notify_new_ticket !== false;
+                document.getElementById('thresholdLargePurchase').value = s.large_purchase_threshold || 1000;
+                document.getElementById('thresholdLowBalance').value = s.low_balance_threshold || 10;
+            }
+            
+            this.verifyTelegram();
+        } catch (error) {
+            console.error('Error loading telegram settings:', error);
+        }
+    },
+    
+    async saveSettings() {
+        const settings = {
+            notify_large_purchase: document.getElementById('toggleLargePurchase').checked,
+            notify_pending_withdrawal: document.getElementById('togglePendingWithdrawal').checked,
+            notify_system_error: document.getElementById('toggleSystemError').checked,
+            notify_content_report: document.getElementById('toggleContentReport').checked,
+            notify_user_banned: document.getElementById('toggleUserBanned').checked,
+            notify_low_balance: document.getElementById('toggleLowBalance').checked,
+            notify_new_user: document.getElementById('toggleNewUser').checked,
+            notify_new_ticket: document.getElementById('toggleNewTicket').checked,
+            large_purchase_threshold: parseInt(document.getElementById('thresholdLargePurchase').value) || 1000,
+            low_balance_threshold: parseFloat(document.getElementById('thresholdLowBalance').value) || 10
+        };
+        
+        try {
+            const response = await fetch('/api/admin/telegram/settings', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Configuracion guardada', 'success');
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            AdminPanel.showNotification('Error de conexion', 'error');
+        }
+    },
+    
+    async verifyTelegram() {
+        const statusEl = document.getElementById('telegramStatus');
+        const infoEl = document.getElementById('telegramInfo');
+        
+        try {
+            const response = await fetch('/api/admin/telegram/verify', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success && data.connected) {
+                statusEl.innerHTML = '<span class="status-dot connected"></span><span>Conectado</span>';
+                infoEl.innerHTML = `<p><strong>Bot:</strong> @${data.bot_username || 'N/A'}</p><p><strong>Chat ID:</strong> ${data.chat_id || 'Configurado'}</p>`;
+            } else {
+                statusEl.innerHTML = '<span class="status-dot disconnected"></span><span>Desconectado</span>';
+                infoEl.innerHTML = `<p>${data.error || 'Bot no configurado'}</p><p>Configura las variables de entorno:</p><code>TELEGRAM_BOT_TOKEN</code><br><code>TELEGRAM_ADMIN_CHAT_ID</code>`;
+            }
+        } catch (error) {
+            console.error('Error verifying telegram:', error);
+            statusEl.innerHTML = '<span class="status-dot disconnected"></span><span>Error</span>';
+        }
+    },
+    
+    async sendTestMessage() {
+        try {
+            const response = await fetch('/api/admin/telegram/test', {
+                method: 'POST',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Mensaje de prueba enviado a Telegram', 'success');
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al enviar mensaje', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending test message:', error);
+            AdminPanel.showNotification('Error de conexion', 'error');
+        }
+    },
+    
+    async sendCustomMessage() {
+        const message = document.getElementById('customTelegramMessage')?.value?.trim();
+        if (!message) {
+            AdminPanel.showNotification('Escribe un mensaje', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/admin/telegram/send', {
+                method: 'POST',
+                headers: {
+                    ...AdminPanel.getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showNotification('Mensaje enviado', 'success');
+                document.getElementById('customTelegramMessage').value = '';
+            } else {
+                AdminPanel.showNotification(data.error || 'Error al enviar', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending custom message:', error);
+            AdminPanel.showNotification('Error de conexion', 'error');
         }
     }
 };

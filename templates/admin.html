@@ -182,12 +182,29 @@
                         </svg>
                         <span>Analytics</span>
                     </a>
+                    <a href="#notifications" class="nav-item" data-section="notifications">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span>Notificaciones</span>
+                        <span class="nav-badge" id="adminNotifCount">0</span>
+                    </a>
                     <a href="#settings" class="nav-item" data-section="settings">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"></circle>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                         </svg>
                         <span>Configuración</span>
+                    </a>
+                    <a href="#maintenance" class="nav-item" data-section="maintenance">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                        </svg>
+                        <span>Mantenimiento</span>
                     </a>
                 </div>
             </nav>
@@ -530,35 +547,137 @@
                 </section>
                 
                 <section class="admin-section" id="section-sessions">
-                    <div class="sessions-overview">
-                        <div class="session-stat">
-                            <span class="stat-value" id="totalSessions">0</span>
-                            <span class="stat-label">Sesiones Activas</span>
-                        </div>
-                        <div class="session-stat">
-                            <span class="stat-value" id="uniqueIPs">0</span>
-                            <span class="stat-label">IPs Únicas</span>
+                    <div class="section-header">
+                        <h2>Sesiones y Control de Acceso</h2>
+                        <div class="header-actions">
+                            <button class="btn-danger" id="logoutAllUsersBtn" onclick="AdminPanel.logoutAllUsers()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Logout Masivo
+                            </button>
+                            <button class="btn-primary" id="refreshSessionsBtn" onclick="AdminPanel.loadSessions()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
                         </div>
                     </div>
                     
-                    <div class="data-table-container">
-                        <table class="data-table" id="sessionsTable">
-                            <thead>
-                                <tr>
-                                    <th>Usuario</th>
-                                    <th>IP</th>
-                                    <th>Dispositivo</th>
-                                    <th>Última Actividad</th>
-                                    <th>Duración</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sessionsTableBody">
-                                <tr class="loading-row">
-                                    <td colspan="6">Cargando sesiones...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="sessions-tabs">
+                        <button class="tab-btn active" data-sessions-tab="active">Sesiones Activas</button>
+                        <button class="tab-btn" data-sessions-tab="ips">Control de IPs</button>
+                    </div>
+                    
+                    <div class="sessions-tab-content active" id="sessionsTabActive">
+                        <div class="sessions-overview">
+                            <div class="session-stat">
+                                <span class="stat-value" id="totalSessions">0</span>
+                                <span class="stat-label">Sesiones Activas</span>
+                            </div>
+                            <div class="session-stat">
+                                <span class="stat-value" id="uniqueIPs">0</span>
+                                <span class="stat-label">IPs Únicas</span>
+                            </div>
+                            <div class="session-stat warning">
+                                <span class="stat-value" id="blockedIPsCount">0</span>
+                                <span class="stat-label">IPs Bloqueadas</span>
+                            </div>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="sessionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>IP</th>
+                                        <th>Dispositivo</th>
+                                        <th>Última Actividad</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionsTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="5">Cargando sesiones...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="sessions-tab-content" id="sessionsTabIPs" style="display: none;">
+                        <div class="ip-control-header">
+                            <h3>IPs Bloqueadas</h3>
+                            <button class="btn-primary" id="addBlockedIPBtn" onclick="AdminPanel.showAddIPModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Bloquear IP
+                            </button>
+                        </div>
+                        
+                        <div class="ip-filters">
+                            <input type="text" id="ipSearchInput" class="form-control" placeholder="Buscar IP..." oninput="AdminPanel.filterBlockedIPs()">
+                            <select id="ipStatusFilter" class="form-select" onchange="AdminPanel.loadBlockedIPs()">
+                                <option value="active">Activas</option>
+                                <option value="all">Todas</option>
+                            </select>
+                        </div>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table" id="blockedIPsTable">
+                                <thead>
+                                    <tr>
+                                        <th>IP</th>
+                                        <th>Razón</th>
+                                        <th>Bloqueada por</th>
+                                        <th>Fecha</th>
+                                        <th>Permanente</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blockedIPsTableBody">
+                                    <tr class="loading-row">
+                                        <td colspan="6">Cargando IPs bloqueadas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="modal" id="addIPModal">
+                        <div class="modal-overlay" onclick="AdminPanel.closeIPModal()"></div>
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>Bloquear IP</h3>
+                                <button class="modal-close" onclick="AdminPanel.closeIPModal()">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="blockIPAddress">Dirección IP</label>
+                                    <input type="text" id="blockIPAddress" class="form-control" placeholder="ej: 192.168.1.1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="blockIPReason">Razón del bloqueo</label>
+                                    <textarea id="blockIPReason" class="form-control" rows="3" placeholder="Describe la razón del bloqueo..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="blockIPPermanent">
+                                        <span>Bloqueo permanente</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn-secondary" onclick="AdminPanel.closeIPModal()">Cancelar</button>
+                                <button class="btn-danger" onclick="AdminPanel.blockIP()">Bloquear IP</button>
+                            </div>
+                        </div>
                     </div>
                 </section>
                 
@@ -2059,12 +2178,40 @@
                 </section>
                 
                 <section class="admin-section" id="section-settings">
+                    <div class="section-header">
+                        <h2>Configuración del Sistema</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="AdminPanel.refreshSystemStatus()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar Estado
+                            </button>
+                            <button class="btn-primary" onclick="AdminPanel.saveSystemConfig()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                </svg>
+                                Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="settings-grid">
                         <div class="settings-card">
-                            <h3>Precios y Comisiones</h3>
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                Precios y Comisiones
+                            </h3>
                             <div class="setting-row">
                                 <label>Precio B3C (USD)</label>
-                                <div class="setting-value" id="currentB3CPrice">$0.10</div>
+                                <input type="number" id="configB3CPrice" value="0.10" min="0.01" step="0.01">
+                                <span class="setting-unit">USD</span>
                             </div>
                             <div class="setting-row">
                                 <label>Comisión por transacción</label>
@@ -2076,10 +2223,45 @@
                                 <input type="number" id="minWithdrawal" value="10" min="1">
                                 <span class="setting-unit">B3C</span>
                             </div>
+                            <div class="setting-row">
+                                <label>Monto mínimo depósito TON</label>
+                                <input type="number" id="minDepositTON" value="0.5" min="0.1" step="0.1">
+                                <span class="setting-unit">TON</span>
+                            </div>
                         </div>
                         
                         <div class="settings-card">
-                            <h3>Estado del Sistema</h3>
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                Números Virtuales
+                            </h3>
+                            <div class="setting-row">
+                                <label>Precio mínimo VN (B3C)</label>
+                                <input type="number" id="vnMinPriceB3C" value="25" min="1">
+                                <span class="setting-unit">B3C</span>
+                            </div>
+                            <div class="setting-row">
+                                <label>Margen sobre SMSPool</label>
+                                <input type="number" id="vnMargin" value="30" min="0" max="200" step="5">
+                                <span class="setting-unit">%</span>
+                            </div>
+                            <div class="setting-row">
+                                <label>Tiempo espera SMS</label>
+                                <input type="number" id="smsTimeout" value="180" min="60" max="600">
+                                <span class="setting-unit">seg</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                                </svg>
+                                Estado del Sistema
+                            </h3>
                             <div class="system-status">
                                 <div class="status-row">
                                     <span>Base de Datos</span>
@@ -2093,27 +2275,435 @@
                                     <span>SMSPool API</span>
                                     <span class="status-indicator" id="smsStatus">Verificando...</span>
                                 </div>
+                                <div class="status-row">
+                                    <span>Wallet Pool</span>
+                                    <span class="status-indicator" id="walletPoolStatus">Verificando...</span>
+                                </div>
+                                <div class="status-row">
+                                    <span>Hot Wallet</span>
+                                    <span class="status-indicator" id="hotWalletStatus">Verificando...</span>
+                                </div>
+                            </div>
+                            <div class="status-last-check">
+                                Última verificación: <span id="lastStatusCheck">-</span>
                             </div>
                         </div>
                         
                         <div class="settings-card">
-                            <h3>Modo Mantenimiento</h3>
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                Modo Mantenimiento
+                            </h3>
                             <div class="maintenance-toggle">
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="maintenanceMode">
+                                    <input type="checkbox" id="maintenanceMode" onchange="AdminPanel.toggleMaintenance()">
                                     <span class="toggle-slider"></span>
                                 </label>
                                 <span>Activar modo mantenimiento</span>
                             </div>
-                            <textarea id="maintenanceMessage" placeholder="Mensaje para usuarios..."></textarea>
+                            <textarea id="maintenanceMessage" placeholder="Mensaje para usuarios durante el mantenimiento..." rows="3"></textarea>
+                            <div class="maintenance-schedule">
+                                <label>Programar fin de mantenimiento:</label>
+                                <input type="datetime-local" id="maintenanceEndTime">
+                            </div>
                         </div>
                         
                         <div class="settings-card">
-                            <h3>Secrets Configurados</h3>
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                Rate Limiting
+                            </h3>
+                            <div class="setting-row">
+                                <label>Límite peticiones/min</label>
+                                <input type="number" id="rateLimitPerMin" value="60" min="10" max="1000">
+                                <span class="setting-unit">req</span>
+                            </div>
+                            <div class="setting-row">
+                                <label>Bloqueo automático tras</label>
+                                <input type="number" id="autoBlockAfter" value="3" min="1" max="10">
+                                <span class="setting-unit">violaciones</span>
+                            </div>
+                            <div class="setting-row">
+                                <label>Duración bloqueo</label>
+                                <input type="number" id="blockDuration" value="24" min="1" max="168">
+                                <span class="setting-unit">horas</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                                </svg>
+                                Secrets Configurados
+                            </h3>
                             <div class="secrets-list" id="secretsList">
                                 Cargando...
                             </div>
                             <p class="settings-note">Los valores de los secrets se gestionan desde el panel de Replit</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- BACKUP Y MANTENIMIENTO SECTION -->
+                <section class="admin-section" id="section-maintenance">
+                    <div class="section-header">
+                        <h2>Backup y Mantenimiento</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="AdminPanel.refreshServerStatus()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="maintenance-grid">
+                        <div class="maintenance-card">
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                                </svg>
+                                Estado del Servidor
+                            </h3>
+                            <div class="server-metrics">
+                                <div class="metric-row">
+                                    <span class="metric-label">Tiempo activo</span>
+                                    <span class="metric-value" id="serverUptime">-</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Memoria RAM</span>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" id="memoryBar" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value" id="memoryUsage">0%</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">CPU</span>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" id="cpuBar" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value" id="cpuUsage">0%</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Disco</span>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" id="diskBar" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value" id="diskUsage">0%</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Conexiones DB</span>
+                                    <span class="metric-value" id="dbConnections">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="maintenance-card">
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                                Backups
+                            </h3>
+                            <div class="backup-info">
+                                <div class="backup-row">
+                                    <span>Último backup</span>
+                                    <span id="lastBackupTime">No disponible</span>
+                                </div>
+                                <div class="backup-row">
+                                    <span>Tamaño DB</span>
+                                    <span id="dbSize">-</span>
+                                </div>
+                                <div class="backup-row">
+                                    <span>Backups automáticos</span>
+                                    <span class="status-badge active" id="autoBackupStatus">Activo</span>
+                                </div>
+                            </div>
+                            <div class="backup-actions">
+                                <button class="btn-primary" onclick="AdminPanel.createBackup()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Crear Backup
+                                </button>
+                                <button class="btn-secondary" onclick="AdminPanel.showBackupHistory()">
+                                    Historial
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="maintenance-card">
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                Acciones de Mantenimiento
+                            </h3>
+                            <div class="maintenance-actions">
+                                <button class="maintenance-action-btn" onclick="AdminPanel.clearCache()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                    Limpiar Caché
+                                </button>
+                                <button class="maintenance-action-btn" onclick="AdminPanel.optimizeDatabase()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                                    </svg>
+                                    Optimizar DB
+                                </button>
+                                <button class="maintenance-action-btn" onclick="AdminPanel.cleanupOldSessions()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    Limpiar Sesiones Antiguas
+                                </button>
+                                <button class="maintenance-action-btn warning" onclick="AdminPanel.cleanupOldData()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                    Limpiar Datos Antiguos
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="maintenance-card">
+                            <h3>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                                Logs del Sistema
+                            </h3>
+                            <div class="system-logs-summary">
+                                <div class="log-stat">
+                                    <span class="log-stat-label">Errores (24h)</span>
+                                    <span class="log-stat-value danger" id="errorsLast24h">0</span>
+                                </div>
+                                <div class="log-stat">
+                                    <span class="log-stat-label">Advertencias (24h)</span>
+                                    <span class="log-stat-value warning" id="warningsLast24h">0</span>
+                                </div>
+                                <div class="log-stat">
+                                    <span class="log-stat-label">Tamaño logs</span>
+                                    <span class="log-stat-value" id="logsSize">-</span>
+                                </div>
+                            </div>
+                            <div class="logs-actions">
+                                <button class="btn-secondary" onclick="AdminPanel.downloadLogs()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Descargar Logs
+                                </button>
+                                <button class="btn-danger-outline" onclick="AdminPanel.clearLogs()">
+                                    Limpiar Logs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- NOTIFICACIONES ADMIN SECTION -->
+                <section class="admin-section" id="section-notifications">
+                    <div class="section-header">
+                        <h2>Centro de Notificaciones</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" onclick="NotificationsModule.loadNotifications()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="notifications-admin-grid">
+                        <div class="notifications-list-panel">
+                            <div class="panel-header">
+                                <h3>Notificaciones Recientes</h3>
+                                <button class="btn-sm btn-secondary" onclick="NotificationsModule.markAllAsRead()">Marcar todas leidas</button>
+                            </div>
+                            <div class="notifications-filters">
+                                <select id="notifTypeFilter" class="form-select" onchange="NotificationsModule.loadNotifications()">
+                                    <option value="">Todos los tipos</option>
+                                    <option value="large_purchase">Compras grandes</option>
+                                    <option value="pending_withdrawal">Retiros pendientes</option>
+                                    <option value="system_error">Errores sistema</option>
+                                    <option value="content_report">Reportes contenido</option>
+                                    <option value="user_banned">Usuarios baneados</option>
+                                    <option value="low_balance">Balance bajo</option>
+                                    <option value="new_user">Nuevos usuarios</option>
+                                    <option value="new_ticket">Nuevos tickets</option>
+                                </select>
+                                <select id="notifReadFilter" class="form-select" onchange="NotificationsModule.loadNotifications()">
+                                    <option value="">Todas</option>
+                                    <option value="unread">No leidas</option>
+                                    <option value="read">Leidas</option>
+                                </select>
+                            </div>
+                            <div class="notifications-admin-list" id="adminNotificationsList">
+                                <div class="loading-placeholder">Cargando notificaciones...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="telegram-settings-panel">
+                            <div class="panel-header">
+                                <h3>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                    Telegram Bot
+                                </h3>
+                                <div class="telegram-status" id="telegramStatus">
+                                    <span class="status-dot disconnected"></span>
+                                    <span>Desconectado</span>
+                                </div>
+                            </div>
+                            
+                            <div class="telegram-config">
+                                <div class="config-section">
+                                    <h4>Estado de Conexion</h4>
+                                    <div class="telegram-info" id="telegramInfo">
+                                        <p>Configura las variables de entorno:</p>
+                                        <code>TELEGRAM_BOT_TOKEN</code><br>
+                                        <code>TELEGRAM_ADMIN_CHAT_ID</code>
+                                    </div>
+                                    <div class="telegram-actions">
+                                        <button class="btn-primary" onclick="NotificationsModule.verifyTelegram()">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                            Verificar Bot
+                                        </button>
+                                        <button class="btn-secondary" onclick="NotificationsModule.sendTestMessage()">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                            </svg>
+                                            Mensaje Prueba
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-section">
+                                    <h4>Tipos de Notificaciones</h4>
+                                    <div class="notification-toggles">
+                                        <label class="toggle-row">
+                                            <span>Compras grandes</span>
+                                            <input type="checkbox" id="toggleLargePurchase" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Retiros pendientes</span>
+                                            <input type="checkbox" id="togglePendingWithdrawal" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Errores sistema</span>
+                                            <input type="checkbox" id="toggleSystemError" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Reportes contenido</span>
+                                            <input type="checkbox" id="toggleContentReport" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Usuarios baneados</span>
+                                            <input type="checkbox" id="toggleUserBanned" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Balance bajo hot wallet</span>
+                                            <input type="checkbox" id="toggleLowBalance" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Nuevos usuarios</span>
+                                            <input type="checkbox" id="toggleNewUser">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label class="toggle-row">
+                                            <span>Nuevos tickets</span>
+                                            <input type="checkbox" id="toggleNewTicket" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-section">
+                                    <h4>Umbrales</h4>
+                                    <div class="threshold-inputs">
+                                        <div class="threshold-row">
+                                            <label>Compra grande (B3C)</label>
+                                            <input type="number" id="thresholdLargePurchase" value="1000" min="100">
+                                        </div>
+                                        <div class="threshold-row">
+                                            <label>Balance bajo (TON)</label>
+                                            <input type="number" id="thresholdLowBalance" value="10" min="1" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-actions">
+                                    <button class="btn-primary" onclick="NotificationsModule.saveSettings()">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                            <polyline points="7 3 7 8 15 8"></polyline>
+                                        </svg>
+                                        Guardar Configuracion
+                                    </button>
+                                </div>
+                                
+                                <div class="config-section">
+                                    <h4>Enviar Mensaje Personalizado</h4>
+                                    <div class="custom-message-form">
+                                        <textarea id="customTelegramMessage" class="form-control" placeholder="Escribe tu mensaje..."></textarea>
+                                        <button class="btn-secondary" onclick="NotificationsModule.sendCustomMessage()">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                            </svg>
+                                            Enviar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
