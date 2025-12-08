@@ -1124,19 +1124,37 @@ const AdminPanel = {
                         ` : '<div class="empty-state" style="margin-top: 16px;">Sin notas</div>'}
                     </div>
                     
-                    <div class="user-actions">
-                        <button class="btn-secondary" onclick="AdminPanel.adjustBalance('${user.user_id}')">
-                            Ajustar Balance
-                        </button>
-                        <button class="btn-secondary" onclick="AdminPanel.sendNotification('${user.user_id}')">
-                            Enviar Notificación
-                        </button>
-                        <button class="btn-warning" onclick="AdminPanel.logoutUser('${user.user_id}')">
-                            Cerrar Sesiones
-                        </button>
-                        <button class="btn-danger" onclick="AdminPanel.banUser('${user.user_id}', ${!user.is_banned})">
-                            ${user.is_banned ? 'Desbanear' : 'Banear Usuario'}
-                        </button>
+                    <div class="user-actions-grid">
+                        <div class="actions-group">
+                            <h4>Acciones Básicas</h4>
+                            <button class="btn-secondary" onclick="AdminPanel.adjustBalance('${user.user_id}')">
+                                Ajustar Balance
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.sendNotification('${user.user_id}')">
+                                Enviar Notificación
+                            </button>
+                            <button class="btn-warning" onclick="AdminPanel.logoutUser('${user.user_id}')">
+                                Cerrar Sesiones
+                            </button>
+                            <button class="btn-danger" onclick="AdminPanel.banUser('${user.user_id}', ${!user.is_banned})">
+                                ${user.is_banned ? 'Desbanear' : 'Banear Usuario'}
+                            </button>
+                        </div>
+                        <div class="actions-group">
+                            <h4>Acciones Avanzadas</h4>
+                            <button class="btn-secondary" onclick="ShadowModule.startSession('${user.user_id}')">
+                                Modo Shadow
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.openTagsModal('${user.user_id}')">
+                                Gestionar Tags
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.viewRelatedAccounts('${user.user_id}')">
+                                Cuentas Relacionadas
+                            </button>
+                            <button class="btn-secondary" onclick="AdminPanel.adjustRiskScore('${user.user_id}')">
+                                Ajustar Riesgo
+                            </button>
+                        </div>
                     </div>
                 `;
                 
@@ -1285,6 +1303,121 @@ const AdminPanel = {
         } catch (error) {
             console.error('Error:', error);
             this.showToast('Error al realizar acción', 'error');
+        }
+    },
+    
+    async openTagsModal(userId) {
+        try {
+            const response = await this.fetchAPI('/api/admin/tags');
+            if (!response.success) {
+                this.showToast('Error al cargar etiquetas', 'error');
+                return;
+            }
+            
+            const tags = response.tags || [];
+            const html = `
+                <div class="tags-modal-content">
+                    <h3>Gestionar Etiquetas</h3>
+                    <p>Selecciona las etiquetas para este usuario:</p>
+                    <div class="tags-checkbox-list">
+                        ${tags.map(tag => `
+                            <label class="tag-checkbox">
+                                <input type="checkbox" value="${tag.id}" data-color="${tag.color}">
+                                <span class="tag-badge" style="background: ${tag.color}">${this.escapeHtml(tag.name)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="document.getElementById('tagsAssignModal').classList.remove('active')">Cancelar</button>
+                        <button class="btn-primary" onclick="AdminPanel.saveUserTags('${userId}')">Guardar</button>
+                    </div>
+                </div>
+            `;
+            
+            let modal = document.getElementById('tagsAssignModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'tagsAssignModal';
+                modal.className = 'modal';
+                modal.innerHTML = `<div class="modal-content">${html}</div>`;
+                document.body.appendChild(modal);
+            } else {
+                modal.querySelector('.modal-content').innerHTML = html;
+            }
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al abrir gestor de etiquetas', 'error');
+        }
+    },
+    
+    async saveUserTags(userId) {
+        const modal = document.getElementById('tagsAssignModal');
+        const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
+        const tagIds = Array.from(checkboxes).map(cb => cb.value);
+        
+        try {
+            const response = await this.fetchAPI(`/api/admin/users/${userId}/tags`, {
+                method: 'POST',
+                body: JSON.stringify({ tags: tagIds })
+            });
+            
+            if (response.success) {
+                this.showToast('Etiquetas actualizadas', 'success');
+                modal.classList.remove('active');
+            } else {
+                this.showToast(response.error || 'Error al guardar etiquetas', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al guardar etiquetas', 'error');
+        }
+    },
+    
+    async viewRelatedAccounts(userId) {
+        document.getElementById('userDetailModal').classList.remove('active');
+        this.navigateTo('relatedaccounts');
+        setTimeout(() => {
+            RelatedAccountsModule.searchUserId = userId;
+            RelatedAccountsModule.loadRelatedAccounts();
+        }, 100);
+    },
+    
+    async adjustRiskScore(userId) {
+        const adjustment = prompt('Ingresa el ajuste de puntuación de riesgo (-100 a +100):');
+        if (!adjustment) return;
+        
+        const numAdjustment = parseInt(adjustment);
+        if (isNaN(numAdjustment) || numAdjustment < -100 || numAdjustment > 100) {
+            this.showToast('Ajuste inválido. Debe ser entre -100 y +100', 'error');
+            return;
+        }
+        
+        const reason = prompt('Razón del ajuste:');
+        if (!reason) {
+            this.showToast('Debes proporcionar una razón', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.fetchAPI('/api/admin/risk-scores/adjust', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    userId: userId, 
+                    adjustment: numAdjustment,
+                    reason: reason
+                })
+            });
+            
+            if (response.success) {
+                this.showToast(`Puntuación de riesgo ajustada. Nuevo score: ${response.newScore}`, 'success');
+                this.viewUser(userId);
+            } else {
+                this.showToast(response.error || 'Error al ajustar puntuación', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error al ajustar puntuación de riesgo', 'error');
         }
     },
     

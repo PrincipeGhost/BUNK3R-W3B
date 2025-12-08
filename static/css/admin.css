@@ -2665,6 +2665,75 @@
     flex-wrap: wrap;
 }
 
+.user-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.user-actions-grid .actions-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.user-actions-grid .actions-group h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.user-actions-grid button {
+    width: 100%;
+    text-align: center;
+}
+
+.tags-modal-content {
+    padding: 20px;
+}
+
+.tags-modal-content h3 {
+    margin: 0 0 10px 0;
+}
+
+.tags-checkbox-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.tag-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.tag-checkbox input {
+    width: 18px;
+    height: 18px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 500px) {
+    .user-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .btn-warning {
     background: rgba(241, 196, 15, 0.2);
     color: #f1c40f;

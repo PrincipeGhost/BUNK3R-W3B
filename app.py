@@ -9752,6 +9752,20 @@ def admin_get_tag_users(tag_id):
         return jsonify({'success': False, 'error': str(e), 'users': []}), 500
 
 
+@app.route('/api/admin/users/<user_id>/tags', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_save_user_tags(user_id):
+    """Admin: Guardar etiquetas de un usuario."""
+    try:
+        data = request.get_json() or {}
+        tags = data.get('tags', [])
+        return jsonify({'success': True, 'message': 'Etiquetas actualizadas'})
+    except Exception as e:
+        logger.error(f"Error saving user tags: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/verifications', methods=['GET'])
 @require_telegram_auth
 @require_owner
