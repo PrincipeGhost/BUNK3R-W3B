@@ -14627,7 +14627,7 @@ body.dev-mode-active .dev-lock-badge {
 
 .phone-frame {
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 8px;
     border: 1px solid var(--border-color);
     display: flex;
@@ -14636,6 +14636,7 @@ body.dev-mode-active .dev-lock-badge {
     height: 100%;
     position: relative;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .phone-notch {
@@ -14646,9 +14647,10 @@ body.dev-mode-active .dev-lock-badge {
     display: flex;
     gap: 4px;
     padding: 6px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    margin-bottom: 6px;
+    background: var(--bg-primary);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
 }
 
 .browser-url-input {
@@ -14706,14 +14708,16 @@ body.dev-mode-active .dev-lock-badge {
 .browser-content {
     flex: 1;
     background: #fff;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
     position: relative;
+    min-height: 0;
 }
 
 .browser-iframe {
     width: 100%;
     height: 100%;
+    display: block;
     border: none;
     background: #fff;
 }
