@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["alsa-lib", "at-spi2-atk", "at-spi2-core", "cairo", "cargo", "chromium", "cups", "dbus", "expat", "freetype", "gitFull", "lcms2", "libdrm", "libiconv", "libimagequant", "libjpeg", "libsodium", "libtiff", "libwebp", "libxcrypt", "libxkbcommon", "mesa", "nspr", "nss", "ollama", "openjpeg", "openssl", "pango", "pkg-config", "playwright-driver", "rustc", "tcl", "tigervnc", "tk", "x11vnc", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb", "xvfb-run", "zlib"]
+packages = ["alsa-lib", "at-spi2-atk", "at-spi2-core", "cairo", "cargo", "chromium", "cups", "dbus", "expat", "freetype", "gitFull", "lcms2", "libdrm", "libiconv", "libimagequant", "libjpeg", "libsodium", "libtiff", "libwebp", "libxcrypt", "libxkbcommon", "mesa", "nspr", "nss", "ollama", "openjpeg", "openssl", "pango", "pkg-config", "playwright-driver", "rustc", "tcl", "tigervnc", "tk", "x11vnc", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb", "xvfb-run", "zlib", "xdotool"]
 
 [userenv]
 

@@ -1123,6 +1123,78 @@ def mobile_screenshot():
 
 
 # ============================================================
+# ENDPOINTS PARA NAVEGADOR INTERACTIVO (noVNC)
+# ============================================================
+
+@app.route('/api/interactive-browser/create', methods=['POST'])
+def create_interactive_browser():
+    """Crear una nueva sesión de navegador interactivo con noVNC."""
+    try:
+        data = request.get_json() or {}
+        url = data.get('url', 'https://www.google.com')
+        
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        
+        from novnc_service import create_interactive_session
+        result = create_interactive_session(url)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Interactive browser create error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/interactive-browser/stop', methods=['POST'])
+def stop_interactive_browser():
+    """Detener una sesión de navegador interactivo."""
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({'success': False, 'error': 'session_id requerido'}), 400
+        
+        from novnc_service import stop_interactive_session
+        success = stop_interactive_session(session_id)
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Interactive browser stop error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/interactive-browser/session/<session_id>')
+def get_interactive_browser_session(session_id):
+    """Obtener información de una sesión de navegador."""
+    try:
+        from novnc_service import get_interactive_session
+        session = get_interactive_session(session_id)
+        
+        if session:
+            return jsonify({'success': True, **session})
+        else:
+            return jsonify({'success': False, 'error': 'Sesión no encontrada'}), 404
+        
+    except Exception as e:
+        logger.error(f"Interactive browser session error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/interactive-browser/list')
+def list_interactive_browsers():
+    """Listar todas las sesiones de navegador activas."""
+    try:
+        from novnc_service import list_interactive_sessions
+        sessions = list_interactive_sessions()
+        return jsonify({'success': True, 'sessions': sessions})
+        
+    except Exception as e:
+        logger.error(f"Interactive browser list error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
 # ENDPOINTS PARA 2FA (Two-Factor Authentication)
 # ============================================================
 

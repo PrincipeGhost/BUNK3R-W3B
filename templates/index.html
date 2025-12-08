@@ -1870,20 +1870,31 @@
 
             <!-- MULTI BROWSER MODULE -->
             <div id="multi-browser-module" class="module-screen hidden">
+                <div class="multi-browser-header">
+                    <button class="back-btn" onclick="App.closeMultiBrowserModule()">← Volver</button>
+                    <h2>Navegador Interactivo</h2>
+                </div>
                 <div class="multi-browser-container">
                     <div class="phone-browser" data-browser="1">
                         <div class="phone-frame">
                             <div class="browser-toolbar">
                                 <input type="text" class="browser-url-input" placeholder="Ingresa URL...">
-                                <button class="browser-go-btn">→</button>
-                                <button class="browser-refresh-btn">↻</button>
+                                <button class="browser-go-btn" title="Ir">→</button>
+                                <button class="browser-stop-btn hidden" title="Cerrar">✕</button>
                             </div>
                             <div class="browser-content">
-                                <div class="browser-screenshot-wrapper">
-                                    <div class="browser-loading hidden">Cargando...</div>
-                                    <img class="browser-screenshot" src="" alt="Vista movil">
-                                    <div class="browser-placeholder">Ingresa una URL para ver la pagina</div>
+                                <div class="browser-vnc-wrapper">
+                                    <div class="browser-loading hidden">
+                                        <div class="loading-spinner"></div>
+                                        <span>Iniciando navegador...</span>
+                                    </div>
+                                    <div class="browser-vnc-container"></div>
+                                    <div class="browser-placeholder">Ingresa una URL para navegar</div>
                                 </div>
+                            </div>
+                            <div class="browser-status">
+                                <span class="status-indicator offline"></span>
+                                <span class="status-text">Desconectado</span>
                             </div>
                         </div>
                     </div>
@@ -1891,15 +1902,22 @@
                         <div class="phone-frame">
                             <div class="browser-toolbar">
                                 <input type="text" class="browser-url-input" placeholder="Ingresa URL...">
-                                <button class="browser-go-btn">→</button>
-                                <button class="browser-refresh-btn">↻</button>
+                                <button class="browser-go-btn" title="Ir">→</button>
+                                <button class="browser-stop-btn hidden" title="Cerrar">✕</button>
                             </div>
                             <div class="browser-content">
-                                <div class="browser-screenshot-wrapper">
-                                    <div class="browser-loading hidden">Cargando...</div>
-                                    <img class="browser-screenshot" src="" alt="Vista movil">
-                                    <div class="browser-placeholder">Ingresa una URL para ver la pagina</div>
+                                <div class="browser-vnc-wrapper">
+                                    <div class="browser-loading hidden">
+                                        <div class="loading-spinner"></div>
+                                        <span>Iniciando navegador...</span>
+                                    </div>
+                                    <div class="browser-vnc-container"></div>
+                                    <div class="browser-placeholder">Ingresa una URL para navegar</div>
                                 </div>
+                            </div>
+                            <div class="browser-status">
+                                <span class="status-indicator offline"></span>
+                                <span class="status-text">Desconectado</span>
                             </div>
                         </div>
                     </div>
@@ -1907,15 +1925,22 @@
                         <div class="phone-frame">
                             <div class="browser-toolbar">
                                 <input type="text" class="browser-url-input" placeholder="Ingresa URL...">
-                                <button class="browser-go-btn">→</button>
-                                <button class="browser-refresh-btn">↻</button>
+                                <button class="browser-go-btn" title="Ir">→</button>
+                                <button class="browser-stop-btn hidden" title="Cerrar">✕</button>
                             </div>
                             <div class="browser-content">
-                                <div class="browser-screenshot-wrapper">
-                                    <div class="browser-loading hidden">Cargando...</div>
-                                    <img class="browser-screenshot" src="" alt="Vista movil">
-                                    <div class="browser-placeholder">Ingresa una URL para ver la pagina</div>
+                                <div class="browser-vnc-wrapper">
+                                    <div class="browser-loading hidden">
+                                        <div class="loading-spinner"></div>
+                                        <span>Iniciando navegador...</span>
+                                    </div>
+                                    <div class="browser-vnc-container"></div>
+                                    <div class="browser-placeholder">Ingresa una URL para navegar</div>
                                 </div>
+                            </div>
+                            <div class="browser-status">
+                                <span class="status-indicator offline"></span>
+                                <span class="status-text">Desconectado</span>
                             </div>
                         </div>
                     </div>
@@ -1923,15 +1948,22 @@
                         <div class="phone-frame">
                             <div class="browser-toolbar">
                                 <input type="text" class="browser-url-input" placeholder="Ingresa URL...">
-                                <button class="browser-go-btn">→</button>
-                                <button class="browser-refresh-btn">↻</button>
+                                <button class="browser-go-btn" title="Ir">→</button>
+                                <button class="browser-stop-btn hidden" title="Cerrar">✕</button>
                             </div>
                             <div class="browser-content">
-                                <div class="browser-screenshot-wrapper">
-                                    <div class="browser-loading hidden">Cargando...</div>
-                                    <img class="browser-screenshot" src="" alt="Vista movil">
-                                    <div class="browser-placeholder">Ingresa una URL para ver la pagina</div>
+                                <div class="browser-vnc-wrapper">
+                                    <div class="browser-loading hidden">
+                                        <div class="loading-spinner"></div>
+                                        <span>Iniciando navegador...</span>
+                                    </div>
+                                    <div class="browser-vnc-container"></div>
+                                    <div class="browser-placeholder">Ingresa una URL para navegar</div>
                                 </div>
+                            </div>
+                            <div class="browser-status">
+                                <span class="status-indicator offline"></span>
+                                <span class="status-text">Desconectado</span>
                             </div>
                         </div>
                     </div>

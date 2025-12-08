@@ -3564,8 +3564,9 @@ const App = {
     },
     
     multiBrowserInitialized: false,
+    activeBrowserSessions: {},
     
-    initMultiBrowsers() {
+    async initMultiBrowsers() {
         if (this.multiBrowserInitialized) {
             return;
         }
@@ -3573,46 +3574,116 @@ const App = {
         const browsers = document.querySelectorAll('.phone-browser');
         
         browsers.forEach((browser, index) => {
-            const screenshotImg = browser.querySelector('.browser-screenshot');
             const urlInput = browser.querySelector('.browser-url-input');
             const goBtn = browser.querySelector('.browser-go-btn');
-            const refreshBtn = browser.querySelector('.browser-refresh-btn');
+            const stopBtn = browser.querySelector('.browser-stop-btn');
             const loading = browser.querySelector('.browser-loading');
             const placeholder = browser.querySelector('.browser-placeholder');
-            const sessionId = 'browser_' + (index + 1);
+            const vncContainer = browser.querySelector('.browser-vnc-container');
+            const statusIndicator = browser.querySelector('.status-indicator');
+            const statusText = browser.querySelector('.status-text');
+            const browserIndex = index + 1;
             
+            browser._sessionId = null;
+            browser._wsPort = null;
             browser._currentUrl = '';
             
-            const loadScreenshot = async (url) => {
+            const updateStatus = (connected) => {
+                if (connected) {
+                    statusIndicator.classList.remove('offline');
+                    statusIndicator.classList.add('online');
+                    statusText.textContent = 'Conectado';
+                    goBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                } else {
+                    statusIndicator.classList.remove('online');
+                    statusIndicator.classList.add('offline');
+                    statusText.textContent = 'Desconectado';
+                    goBtn.classList.remove('hidden');
+                    stopBtn.classList.add('hidden');
+                }
+            };
+            
+            const connectVNC = async (url) => {
                 if (!url) return;
                 
                 loading.classList.remove('hidden');
-                screenshotImg.classList.remove('loaded');
                 if (placeholder) placeholder.style.display = 'none';
+                vncContainer.innerHTML = '';
                 
                 try {
-                    const response = await fetch('/api/mobile-screenshot?url=' + encodeURIComponent(url) + '&session=' + sessionId);
+                    const response = await fetch('/api/interactive-browser/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url })
+                    });
                     const data = await response.json();
                     
-                    if (data.success && data.screenshot) {
-                        screenshotImg.src = 'data:image/png;base64,' + data.screenshot;
-                        screenshotImg.classList.add('loaded');
+                    if (data.success) {
+                        browser._sessionId = data.session_id;
+                        browser._wsPort = data.ws_port;
+                        browser._token = data.token;
+                        browser._currentUrl = url;
+                        
+                        this.activeBrowserSessions[browserIndex] = data.session_id;
+                        
+                        const iframe = document.createElement('iframe');
+                        const host = window.location.hostname;
+                        const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+                        iframe.src = `${protocol}://${host}:${data.ws_port}/vnc.html?autoconnect=true&resize=scale&quality=6&path=websockify?token=${data.token}`;
+                        iframe.style.width = '100%';
+                        iframe.style.height = '100%';
+                        iframe.style.border = 'none';
+                        iframe.style.borderRadius = '8px';
+                        iframe.setAttribute('allowfullscreen', 'true');
+                        
+                        vncContainer.appendChild(iframe);
+                        updateStatus(true);
+                        
+                        this.devLog('VNC session started:', data);
                     } else {
-                        console.error('Screenshot error:', data.error);
+                        console.error('VNC session error:', data.error);
                         if (placeholder) {
-                            placeholder.textContent = 'Error: ' + (data.error || 'No se pudo cargar');
+                            placeholder.textContent = 'Error: ' + (data.error || 'No se pudo iniciar');
                             placeholder.style.display = 'block';
                         }
+                        updateStatus(false);
                     }
                 } catch (error) {
-                    console.error('Fetch error:', error);
+                    console.error('VNC connection error:', error);
                     if (placeholder) {
                         placeholder.textContent = 'Error de conexion';
                         placeholder.style.display = 'block';
                     }
+                    updateStatus(false);
                 } finally {
                     loading.classList.add('hidden');
                 }
+            };
+            
+            const disconnectVNC = async () => {
+                if (browser._sessionId) {
+                    try {
+                        await fetch('/api/interactive-browser/stop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ session_id: browser._sessionId })
+                        });
+                    } catch (e) {
+                        console.error('Stop session error:', e);
+                    }
+                    delete this.activeBrowserSessions[browserIndex];
+                }
+                
+                browser._sessionId = null;
+                browser._wsPort = null;
+                browser._currentUrl = '';
+                vncContainer.innerHTML = '';
+                if (placeholder) {
+                    placeholder.textContent = 'Ingresa una URL para navegar';
+                    placeholder.style.display = 'block';
+                }
+                updateStatus(false);
             };
             
             const goHandler = () => {
@@ -3623,9 +3694,8 @@ const App = {
                     url = 'https://' + url;
                 }
                 
-                browser._currentUrl = url;
                 urlInput.value = url;
-                loadScreenshot(url);
+                connectVNC(url);
             };
             
             const keypressHandler = (e) => {
@@ -3634,18 +3704,31 @@ const App = {
                 }
             };
             
-            const refreshHandler = () => {
-                if (browser._currentUrl) {
-                    loadScreenshot(browser._currentUrl);
-                }
+            const stopHandler = () => {
+                disconnectVNC();
             };
             
             this.registerEventListener(goBtn, 'click', goHandler);
             this.registerEventListener(urlInput, 'keypress', keypressHandler);
-            this.registerEventListener(refreshBtn, 'click', refreshHandler);
+            this.registerEventListener(stopBtn, 'click', stopHandler);
         });
         
         this.multiBrowserInitialized = true;
+    },
+    
+    async cleanupBrowserSessions() {
+        for (const [index, sessionId] of Object.entries(this.activeBrowserSessions)) {
+            try {
+                await fetch('/api/interactive-browser/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+            } catch (e) {
+                console.error('Cleanup session error:', e);
+            }
+        }
+        this.activeBrowserSessions = {};
     },
     
     closeMultiBrowserModule() {
