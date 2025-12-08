@@ -55,6 +55,30 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 - **TON Connect SDK:** For wallet connection and transaction signing.
 - **tonsdk (Python library):** For generating unique TON wallets.
 
+## Sistema de Gestion de Tareas (007.md)
+
+El proyecto utiliza un sistema de gestion de tareas basado en agentes especializados:
+
+**Comando:** `start 007.md`
+
+| Comando | Agente | Rama Git | Archivos |
+|---------|--------|----------|----------|
+| 1 | Crear Tareas | - | Distribuye tareas al agente correcto |
+| 2 | Backend-API | `feature/backend-api` | app.py, tracking/*.py, models, database |
+| 3 | Blockchain-Services | `feature/blockchain-services` | wallet, b3c, encryption, smspool |
+| 4 | Frontend-Admin | `feature/frontend-admin` | admin.js, admin.css, admin.html |
+| 5 | Frontend-User | `feature/frontend-user` | app.js, styles.css, index.html |
+
+**Archivos de tareas:** `WORK/TAREAS_*.md`
+
+**Flujo obligatorio:**
+1. Conectarse a la rama correspondiente
+2. Esperar confirmacion del usuario
+3. Ejecutar tareas
+4. Dar comandos git al finalizar cada tarea
+
+---
+
 ## Recent Changes (December 2024)
 - **Wallet Pool Optimizations:** Added rotation algorithm, low balance alerts, automated cleanup of old consolidated wallets, and pool maintenance routine.
 - **Transaction Auditing:** Implemented `blockchain_audit_log` table with JSONB storage for comprehensive transaction tracking.
