@@ -1064,20 +1064,14 @@ def browser_proxy():
         if 'text/html' in content_type:
             content = resp.text
             base_url = f"{parsed.scheme}://{parsed.netloc}"
+            
+            import re
+            content = re.sub(r'<meta[^>]*name=["\']viewport["\'][^>]*>', '', content, flags=re.IGNORECASE)
+            
             base_tag = f'<base href="{base_url}/">'
             viewport_tag = '<meta name="viewport" content="width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
-            mobile_style = '<style>html,body{max-width:375px!important;overflow-x:hidden!important;}</style>'
-            mobile_script = '''<script>
-Object.defineProperty(window, 'innerWidth', {get: function() { return 375; }});
-Object.defineProperty(window, 'innerHeight', {get: function() { return 667; }});
-Object.defineProperty(window.screen, 'width', {get: function() { return 375; }});
-Object.defineProperty(window.screen, 'height', {get: function() { return 667; }});
-Object.defineProperty(window.screen, 'availWidth', {get: function() { return 375; }});
-Object.defineProperty(window.screen, 'availHeight', {get: function() { return 667; }});
-Object.defineProperty(navigator, 'maxTouchPoints', {get: function() { return 5; }});
-window.ontouchstart = function() {};
-</script>'''
-            inject_tags = f'{mobile_script}{base_tag}{viewport_tag}{mobile_style}'
+            mobile_style = '<style>html,body{max-width:375px!important;overflow-x:hidden!important;width:375px!important;}</style>'
+            inject_tags = f'{base_tag}{viewport_tag}{mobile_style}'
             if '<head>' in content:
                 content = content.replace('<head>', f'<head>{inject_tags}', 1)
             elif '<HEAD>' in content:
