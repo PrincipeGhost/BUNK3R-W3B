@@ -4,13 +4,23 @@
 - app.py (solo inicializacion y registro de blueprints)
 - routes/__init__.py
 - routes/auth_routes.py (endpoints de autenticacion y 2FA)
+- routes/blockchain_routes.py (endpoints de blockchain y wallets)
 - tracking/__init__.py, tracking/database.py, tracking/models.py
 - tracking/email_service.py, tracking/security.py, tracking/telegram_service.py
 - init_db.py, seed_data.py, run.py, runtime.txt, requirements.txt
 
 ---
 
-## SECCION 0: ESTRUCTURA DE BLUEPRINTS - COMPLETADO
+## PROGRESO GLOBAL DE MIGRACION
+
+**Estado actual (8 Diciembre 2025):**
+- Endpoints en app.py: 341 → 317 (24 migrados/eliminados)
+- Lineas de codigo: 15,352 → 14,633 (719 lineas reducidas)
+- Blueprints activos: auth, blockchain, admin, user
+
+---
+
+## SECCION 0: ESTRUCTURA DE BLUEPRINTS - EN PROGRESO
 
 ### FASE 0.1: PREPARACION E INTEGRACION DE BLUEPRINTS - COMPLETADO
 **Tiempo:** 2 horas
@@ -22,16 +32,83 @@
 - [x] Blueprints registrados en app.py (linea 161-168)
 - [x] Modulo de utilidades compartidas creado (tracking/utils.py)
 - [x] Endpoints /health activos y verificados en cada blueprint
-- [ ] Migracion gradual de endpoints desde app.py (pendiente para futuras iteraciones)
+- [x] Servicios compartidos en tracking/services.py (get_db_manager, get_security_manager)
+- [x] Decoradores compartidos en tracking/decorators.py
 
 **Archivos creados/modificados:**
 - routes/__init__.py - Exporta todos los blueprints
-- routes/auth_routes.py - Blueprint de autenticacion (/api/auth/*)
-- routes/blockchain_routes.py - Blueprint de blockchain (/api/blockchain/*)
+- routes/auth_routes.py - Blueprint de autenticacion (/api/auth/*, /api/demo/2fa/*, /api/2fa/*, /api/validate)
+- routes/blockchain_routes.py - Blueprint de blockchain (/api/exchange/*, /api/wallet/*, /api/b3c/*, /api/ton/*)
 - routes/admin_routes.py - Blueprint de admin (/api/admin/*)
 - routes/user_routes.py - Blueprint de usuario (/api/user/*)
-- tracking/utils.py - Utilidades compartidas (InputValidator, RateLimiter)
+- tracking/utils.py - Utilidades compartidas (InputValidator, RateLimiter, sanitize_error)
+- tracking/services.py - Servicios centralizados (DI para blueprints)
+- tracking/decorators.py - Decoradores compartidos (require_telegram_user, require_owner)
 - app.py - Registro de blueprints (lineas 161-168)
+
+### FASE 0.2: MIGRACION AUTH - COMPLETADO
+**Fecha:** 8 Diciembre 2025
+**Endpoints migrados:** 9
+
+- [x] POST /api/demo/2fa/setup
+- [x] POST /api/demo/2fa/verify
+- [x] POST /api/demo/2fa/validate
+- [x] POST /api/2fa/setup
+- [x] POST /api/2fa/verify
+- [x] POST /api/2fa/validate
+- [x] POST /api/2fa/disable
+- [x] POST /api/2fa/status
+- [x] POST /api/validate
+
+### FASE 0.3: MIGRACION BLOCKCHAIN - EN PROGRESO
+**Fecha:** 8 Diciembre 2025
+**Endpoints migrados:** 18
+
+**Exchange (ChangeNow):**
+- [x] GET /api/exchange/currencies
+- [x] GET /api/exchange/min-amount
+- [x] GET /api/exchange/estimate
+- [x] POST /api/exchange/create
+- [x] GET /api/exchange/status/<tx_id>
+
+**TON Payments:**
+- [x] POST /api/ton/payment/create
+- [x] GET /api/ton/wallet-info
+
+**Wallet:**
+- [x] GET /api/wallet/merchant
+- [x] GET /api/wallet/balance
+- [x] POST /api/wallet/connect
+- [x] GET /api/wallet/address
+
+**B3C Token:**
+- [x] GET /api/b3c/price
+- [x] POST /api/b3c/calculate/buy
+- [x] POST /api/b3c/calculate/sell
+- [x] GET /api/b3c/balance
+- [x] GET /api/b3c/config
+- [x] GET /api/b3c/network
+- [x] GET /api/b3c/testnet/guide
+
+**Pendientes de migrar (~17 endpoints B3C avanzados):**
+- [ ] POST /api/b3c/buy/create
+- [ ] POST /api/b3c/buy/<purchase_id>/verify
+- [ ] GET /api/b3c/transactions
+- [ ] POST /api/b3c/transfer
+- [ ] POST /api/b3c/sell
+- [ ] POST /api/b3c/withdraw
+- [ ] GET /api/b3c/withdraw/<id>/status
+- [ ] GET /api/b3c/deposit/address
+- [ ] GET /api/b3c/commissions
+- [ ] GET /api/b3c/scheduler/status
+- [ ] GET /api/b3c/wallet-pool/stats
+- [ ] POST /api/b3c/wallet-pool/fill
+- [ ] POST /api/b3c/wallet-pool/consolidate
+- [ ] POST /api/b3c/admin/force-verify/<id>
+- [ ] POST /api/b3c/deposits/check
+- [ ] GET /api/b3c/deposits/history
+- [ ] GET /api/b3c/deposits/pending
+- [ ] GET /api/b3c/last-purchase
 
 **Endpoints de verificacion:**
 - GET /api/auth/health - 200 OK
@@ -40,8 +117,8 @@
 - GET /api/user/health - 200 OK
 
 **NOTA:**
-Los endpoints principales siguen en app.py para evitar romper funcionalidad.
-La migracion completa se realizara de forma gradual en futuras iteraciones.
+La migracion continua de forma gradual. Los endpoints migrados estan funcionando
+desde los blueprints sin afectar la funcionalidad existente.
 
 ---
 
