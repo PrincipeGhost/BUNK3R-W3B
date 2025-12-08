@@ -102,6 +102,69 @@ Located in `tracking/ai_toolkit.py`, provides secure tools for AI Constructor to
 - Script execution validates: file exists, is a file, has allowed extension (.py/.js/.ts)
 - Command blacklist: rm -rf, sudo, chmod 777, eval, python -c, node -e, curl|bash, etc.
 - Delete requires double confirmation (confirm=true AND confirm_text="DELETE")
+- **Package Whitelist (Triple Protection):** Only approved packages can be installed automatically:
+  - Python: flask, requests, beautifulsoup4, pillow, pandas, numpy, matplotlib, jinja2, werkzeug, gunicorn, pytest, click, pyyaml, python-dotenv, sqlalchemy, aiohttp, httpx, fastapi, uvicorn, psycopg2-binary, redis, celery
+  - Node: express, react, vue, axios, lodash, moment, dayjs, tailwindcss, postcss, autoprefixer, vite, webpack, typescript, eslint, prettier, jest, nodemon, cors
+  - Whitelist enforced at 3 levels: AIConstructor, install_package(), and run_command()
+
+## AIToolkit-Constructor Integration (Updated - Dec 7, 2025)
+The AI Constructor now uses AIToolkit for real file operations during code generation.
+
+**Phase 1 Enhancement:**
+- Automatically analyzes project structure using AIProjectAnalyzer
+- Adds project context (language, framework, dependencies) to intent for better code generation
+
+**Phase 6.1 - Real File Writing:**
+- Generated files are saved to `ai_generated/` directory using AIFileToolkit
+- Path traversal protection: uses os.path.basename() + os.path.abspath() validation
+- Extension whitelist: .html, .css, .js, .jsx, .ts, .tsx, .json, .py, .md, .txt, .svg, .vue
+- Filename sanitization: only alphanumeric, underscore, hyphen, dot allowed
+
+**Phase 6.2 - Dependency Detection:**
+- Detects Python imports and Node.js require/imports in generated code
+- Filters standard library packages
+- Auto-installs only whitelisted packages (max 3 per manager)
+- Non-whitelisted packages reported for manual installation
+
+**Phase 7 Enhancement:**
+- Uses AIErrorDetector to scan generated files for syntax errors
+- Displays detected errors in verification message
+- Language-aware detection (Python, JavaScript, HTML, CSS)
+
+## AI Workspace Module (NEW - Dec 7, 2025)
+Located at `/workspace`, provides a 3-column IDE-like interface for AI Constructor.
+
+**Frontend Components (workspace.js, workspace.css):**
+1. **Chat Panel** - Left panel for user-AI interaction with 8-phase process visualization
+2. **Preview Panel** - Center panel with live iframe preview, auto-refresh on file generation
+3. **Files Panel** - Right panel with project file tree, context menus, file operations
+
+**File Management API Endpoints:**
+- `/api/files/tree` - Get project file tree structure
+- `/api/files/content` - Read file content (requires auth)
+- `/api/files/save` - Save file content (requires auth)
+- `/api/files/create` - Create new file (requires auth)
+- `/api/files/folder` - Create new folder (requires auth)
+- `/api/files/delete` - Delete file/folder with confirmation (requires auth)
+- `/api/files/rename` - Rename file/folder (requires auth)
+- `/api/files/duplicate` - Duplicate file (requires auth)
+- `/api/files/diff` - Generate diff between versions (requires auth)
+- `/api/files/apply-diff` - Apply changes after confirmation (requires auth)
+- `/api/files/history` - Get file edit history (requires auth)
+
+**Security Features:**
+- `validate_workspace_path()` - Prevents path traversal with os.path.abspath() check
+- `check_workspace_auth()` - Validates demo sessions via verify_demo_session() OR Telegram init data via validate_telegram_webapp_data()
+- Blocked paths: .env, .git, __pycache__, node_modules, .replit, .cache, .upm, .config, venv, .local, .nix
+- Protected files: app.py, requirements.txt, run.py, init_db.py, replit.md
+- Protected directories: tracking, templates, static (at root level)
+- Frontend handles 401 errors with auth redirect
+
+**UI Features:**
+- Context menu (right-click): Open, Rename, Duplicate, Delete
+- File highlighting animation for newly generated files
+- Auto-expand folders to show generated files
+- Diff viewer with syntax highlighting (green/red for add/remove)
 
 ## External Dependencies
 - **PostgreSQL:** Primary database.

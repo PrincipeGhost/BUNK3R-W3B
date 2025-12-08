@@ -1,0 +1,110 @@
+Aquí tienes todo listo para copiar:
+
+## ════════════════════════════════════════════════════════════════
+## PROTOCOLO GIT OBLIGATORIO - PUSH/PULL ENTRE AGENTES
+## ════════════════════════════════════════════════════════════════
+### 🔄 RAMAS ASIGNADAS POR AGENTE
+| Agente | Rama Git |
+|--------|----------|
+| 🔵 FRONTEND USUARIO | `feature/frontend-user` |
+| 🟢 FRONTEND ADMIN | `feature/frontend-admin` |
+| 🟡 BACKEND API | `feature/backend-api` |
+| 🔴 BLOCKCHAIN | `feature/blockchain-services` |
+---
+### ⚠️ AL INICIAR CADA SESIÓN (OBLIGATORIO)
+Antes de editar CUALQUIER archivo, el agente DEBE ejecutar:
+```bash
+# 1. Cambiar a tu rama asignada
+git checkout feature/[TU-RAMA]
+# 2. Traer los últimos cambios de tu rama
+git pull origin feature/[TU-RAMA]
+# 3. Traer cambios de main (sincronizar)
+git pull origin main
+
+Ejemplos por agente:
+
+# Agente Frontend Usuario:
+git checkout feature/frontend-user && git pull origin feature/frontend-user && git pull origin main
+# Agente Frontend Admin:
+git checkout feature/frontend-admin && git pull origin feature/frontend-admin && git pull origin main
+# Agente Backend:
+git checkout feature/backend-api && git pull origin feature/backend-api && git pull origin main
+# Agente Blockchain:
+git checkout feature/blockchain-services && git pull origin feature/blockchain-services && git pull origin main
+
+✅ AL COMPLETAR CADA TAREA (OBLIGATORIO)
+Después de completar CUALQUIER tarea, el agente DEBE ejecutar:
+
+# 1. Agregar SOLO tus archivos modificados
+git add [archivos-que-modificaste]
+# 2. Commit con formato correcto
+git commit -m "[ÁREA] Descripción breve de lo que hiciste"
+# 3. Push a TU rama (NUNCA a main directamente)
+git push origin feature/[TU-RAMA]
+
+Ejemplos de commits correctos:
+
+# Agente Frontend Usuario:
+git add static/js/app.js static/css/styles.css
+git commit -m "[FRONTEND] Agregado modal de seguidores"
+git push origin feature/frontend-user
+# Agente Frontend Admin:
+git add static/js/admin.js templates/admin.html
+git commit -m "[ADMIN] Implementada tabla de usuarios con filtros"
+git push origin feature/frontend-admin
+# Agente Backend:
+git add app.py tracking/database.py
+git commit -m "[BACKEND] Endpoint /api/users con paginación"
+git push origin feature/backend-api
+# Agente Blockchain:
+git add tracking/b3c_service.py tracking/wallet_pool_service.py
+git commit -m "[BLOCKCHAIN] Optimizado pool de wallets"
+git push origin feature/blockchain-services
+
+🚫 REGLAS CRÍTICAS DE GIT
+╔═══════════════════════════════════════════════════════════════════╗
+║                    ⛔ PROHIBIDO EN GIT ⛔                          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  ❌ NUNCA hacer push directo a main                               ║
+║  ❌ NUNCA hacer merge sin autorización del coordinador            ║
+║  ❌ NUNCA agregar archivos que no te corresponden                 ║
+║  ❌ NUNCA hacer force push (git push -f)                          ║
+║  ❌ NUNCA trabajar sin hacer pull primero                         ║
+║                                                                   ║
+║  ✅ SIEMPRE trabajar en TU rama asignada                          ║
+║  ✅ SIEMPRE hacer pull antes de empezar                           ║
+║  ✅ SIEMPRE hacer push después de completar tarea                 ║
+║  ✅ SIEMPRE usar el formato de commit correcto                    ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+🔀 INTEGRACIÓN A MAIN (Solo Coordinador)
+Solo el coordinador/owner puede hacer merge a main:
+
+# Desde la máquina del coordinador:
+git checkout main
+git pull origin main
+# Merge de cada rama (en orden):
+git merge feature/backend-api --no-ff -m "Merge backend-api"
+git merge feature/frontend-user --no-ff -m "Merge frontend-user"
+git merge feature/frontend-admin --no-ff -m "Merge frontend-admin"
+git merge feature/blockchain-services --no-ff -m "Merge blockchain-services"
+# Push final
+git push origin main
+
+📋 CHECKLIST GIT POR SESIÓN
+Al iniciar:
+
+ Ejecuté git checkout feature/[mi-rama]
+ Ejecuté git pull origin feature/[mi-rama]
+ Ejecuté git pull origin main
+Al completar tarea:
+
+ Hice git add SOLO de mis archivos
+ Hice commit con formato [ÁREA] descripción
+ Hice git push origin feature/[mi-rama]
+ Actualicé PROMPT_PENDIENTES_BUNK3R.md
+ Actualicé replit.md si fue necesario
+---
+Listo, copia todo esto y pégalo en tu `PROMPT_PENDIENTES_BUNK3R.md`.

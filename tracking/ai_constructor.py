@@ -30,6 +30,16 @@ try:
 except ImportError:
     flow_logger = None
 
+try:
+    from tracking.ai_toolkit import AIFileToolkit, AICommandExecutor, AIErrorDetector, AIProjectAnalyzer
+    TOOLKIT_AVAILABLE = True
+except ImportError:
+    TOOLKIT_AVAILABLE = False
+    AIFileToolkit = None
+    AICommandExecutor = None
+    AIErrorDetector = None
+    AIProjectAnalyzer = None
+
 
 class TaskType(Enum):
     """Tipos de tareas que BUNK3R puede manejar - 30+ tipos de intenciones"""
@@ -117,6 +127,221 @@ class ProjectStyle(Enum):
     NEOBANCO = "neobanco"
 
 
+class ProgrammingLanguage(Enum):
+    """Lenguajes de programación soportados"""
+    HTML_CSS_JS = "html_css_js"
+    PYTHON_FLASK = "python_flask"
+    PYTHON_FASTAPI = "python_fastapi"
+    PYTHON_GENERAL = "python_general"
+    NODEJS_EXPRESS = "nodejs_express"
+    NODEJS_GENERAL = "nodejs_general"
+    REACT = "react"
+    VUE = "vue"
+    SQL = "sql"
+    DOCKER = "docker"
+    SHELL = "shell"
+    MIXED = "mixed"
+
+
+LANGUAGE_TEMPLATES = {
+    ProgrammingLanguage.PYTHON_FLASK: {
+        "name": "Python Flask",
+        "extension": ".py",
+        "files": ["app.py", "requirements.txt", "templates/index.html", "static/css/styles.css"],
+        "boilerplate": '''from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+''',
+        "requirements": "flask==3.0.0\ngunicorn==21.2.0\n",
+        "import_style": "from module import Class",
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.PYTHON_FASTAPI: {
+        "name": "Python FastAPI",
+        "extension": ".py",
+        "files": ["main.py", "requirements.txt", "models.py", "schemas.py"],
+        "boilerplate": '''from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+''',
+        "requirements": "fastapi==0.109.0\nuvicorn==0.27.0\npydantic==2.5.0\n",
+        "import_style": "from module import Class",
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.PYTHON_GENERAL: {
+        "name": "Python General",
+        "extension": ".py",
+        "files": ["main.py", "requirements.txt"],
+        "boilerplate": '''#!/usr/bin/env python3
+"""
+Main module
+"""
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+''',
+        "requirements": "",
+        "import_style": "import module",
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.NODEJS_EXPRESS: {
+        "name": "Node.js Express",
+        "extension": ".js",
+        "files": ["server.js", "package.json", "routes/index.js"],
+        "boilerplate": '''const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.static('public'));
+
+app.get('/', (req, res) => {
+    res.send('Hello World!');
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'healthy' });
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+''',
+        "package_json": '''{
+  "name": "app",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+''',
+        "import_style": "const module = require('module');",
+        "comment_style": "//",
+    },
+    ProgrammingLanguage.REACT: {
+        "name": "React",
+        "extension": ".jsx",
+        "files": ["src/App.jsx", "src/index.jsx", "src/components/Component.jsx"],
+        "boilerplate": '''import React, { useState, useEffect } from 'react';
+import './App.css';
+
+function App() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    // Fetch data here
+  }, []);
+
+  return (
+    <div className="App">
+      <h1>Hello React</h1>
+    </div>
+  );
+}
+
+export default App;
+''',
+        "import_style": "import Component from './Component';",
+        "comment_style": "//",
+    },
+    ProgrammingLanguage.SQL: {
+        "name": "SQL",
+        "extension": ".sql",
+        "files": ["schema.sql", "queries.sql", "migrations/001_initial.sql"],
+        "boilerplate": '''-- Database Schema
+-- Created: {date}
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON users(email);
+''',
+        "comment_style": "--",
+    },
+    ProgrammingLanguage.DOCKER: {
+        "name": "Docker",
+        "extension": "",
+        "files": ["Dockerfile", "docker-compose.yml", ".dockerignore"],
+        "dockerfile": '''FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+''',
+        "docker_compose": '''version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - .:/app
+''',
+        "comment_style": "#",
+    },
+    ProgrammingLanguage.HTML_CSS_JS: {
+        "name": "HTML/CSS/JavaScript",
+        "extension": ".html",
+        "files": ["index.html", "styles.css", "script.js"],
+        "boilerplate": '''<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Título</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main>
+        <h1>Hola Mundo</h1>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
+''',
+        "comment_style": "<!-- -->",
+    },
+}
+
+
 @dataclass
 class IntentAnalysis:
     """Resultado del análisis de intención"""
@@ -129,6 +354,7 @@ class IntentAnalysis:
     keywords: List[str]
     idioma: str
     urgencia: str  # "alta", "media", "baja"
+    lenguaje_programacion: ProgrammingLanguage = ProgrammingLanguage.HTML_CSS_JS
     
     def to_dict(self) -> Dict:
         return {
@@ -140,7 +366,8 @@ class IntentAnalysis:
             "nivel_detalle": self.nivel_detalle,
             "keywords": self.keywords,
             "idioma": self.idioma,
-            "urgencia": self.urgencia
+            "urgencia": self.urgencia,
+            "lenguaje_programacion": self.lenguaje_programacion.value
         }
 
 
@@ -431,6 +658,38 @@ class IntentParser:
         "negocio": ["negocio", "empresa", "comercio", "servicio", "startup", "compañía"]
     }
     
+    LANGUAGE_PATTERNS = {
+        ProgrammingLanguage.PYTHON_FLASK: [
+            r"flask", r"python\s*web", r"jinja", r"render_template", r"app\.py"
+        ],
+        ProgrammingLanguage.PYTHON_FASTAPI: [
+            r"fastapi", r"fast\s*api", r"pydantic", r"uvicorn", r"async\s*api"
+        ],
+        ProgrammingLanguage.PYTHON_GENERAL: [
+            r"python", r"\.py\b", r"pip\s*install", r"script\s*python", r"automatizar"
+        ],
+        ProgrammingLanguage.NODEJS_EXPRESS: [
+            r"express", r"node\.?js", r"npm", r"package\.json", r"servidor\s*node"
+        ],
+        ProgrammingLanguage.REACT: [
+            r"react", r"jsx", r"componente\s*react", r"hooks?", r"useState", r"useEffect"
+        ],
+        ProgrammingLanguage.VUE: [
+            r"vue", r"vuejs", r"vue\.js", r"nuxt"
+        ],
+        ProgrammingLanguage.SQL: [
+            r"\bsql\b", r"base\s*de\s*datos", r"consulta\s*sql", r"tabla\s*sql", 
+            r"create\s*table", r"select\s*from", r"postgresql", r"mysql", r"sqlite"
+        ],
+        ProgrammingLanguage.DOCKER: [
+            r"docker", r"dockerfile", r"container", r"contenedor", r"docker-compose"
+        ],
+        ProgrammingLanguage.HTML_CSS_JS: [
+            r"html", r"css", r"javascript", r"página\s*web", r"sitio\s*web", 
+            r"landing", r"website", r"frontend"
+        ],
+    }
+    
     def analyze(self, message: str) -> IntentAnalysis:
         """Analiza el mensaje del usuario y extrae la intención"""
         message_lower = message.lower().strip()
@@ -456,6 +715,9 @@ class IntentParser:
         # Detectar urgencia
         urgencia = self._detect_urgency(message_lower)
         
+        # Detectar lenguaje de programación
+        lenguaje_programacion = self._detect_programming_language(message_lower, tipo_tarea)
+        
         # Decidir si necesita investigación o clarificación
         requiere_investigacion = self._needs_research(tipo_tarea, nivel_detalle, specs)
         requiere_clarificacion = self._needs_clarification(tipo_tarea, nivel_detalle, specs)
@@ -469,7 +731,8 @@ class IntentParser:
             nivel_detalle=nivel_detalle,
             keywords=keywords,
             idioma=idioma,
-            urgencia=urgencia
+            urgencia=urgencia,
+            lenguaje_programacion=lenguaje_programacion
         )
     
     def _detect_task_type(self, message: str) -> TaskType:
@@ -619,6 +882,50 @@ class IntentParser:
         if any(w in message for w in urgent_words):
             return "alta"
         return "media"
+    
+    def _detect_programming_language(self, message: str, task_type: TaskType) -> ProgrammingLanguage:
+        """Detecta el lenguaje de programación basándose en el mensaje y tipo de tarea"""
+        language_scores = {}
+        
+        # Analizar patrones de lenguaje
+        for lang, patterns in self.LANGUAGE_PATTERNS.items():
+            score = 0
+            for pattern in patterns:
+                if re.search(pattern, message, re.IGNORECASE):
+                    score += 1
+            if score > 0:
+                language_scores[lang] = score
+        
+        # Si hay coincidencias, retornar la de mayor puntuación
+        if language_scores:
+            return max(language_scores.keys(), key=lambda x: language_scores[x])
+        
+        # Inferir por tipo de tarea si no hay coincidencia directa
+        task_language_mapping = {
+            TaskType.CREAR_API: ProgrammingLanguage.PYTHON_FLASK,
+            TaskType.CREAR_MODELO: ProgrammingLanguage.SQL,
+            TaskType.CREAR_MIGRACION: ProgrammingLanguage.SQL,
+            TaskType.CONSULTA_BD: ProgrammingLanguage.SQL,
+            TaskType.MODIFICAR_ESQUEMA: ProgrammingLanguage.SQL,
+            TaskType.CREAR_FUNCION: ProgrammingLanguage.PYTHON_GENERAL,
+            TaskType.CREAR_CLASE: ProgrammingLanguage.PYTHON_GENERAL,
+            TaskType.EJECUTAR_COMANDO: ProgrammingLanguage.SHELL,
+            TaskType.INSTALAR_DEPENDENCIA: ProgrammingLanguage.SHELL,
+        }
+        
+        if task_type in task_language_mapping:
+            return task_language_mapping[task_type]
+        
+        # Default para tareas web
+        web_tasks = {
+            TaskType.CREAR_WEB, TaskType.CREAR_LANDING, TaskType.CREAR_DASHBOARD,
+            TaskType.CREAR_FORMULARIO, TaskType.CREAR_COMPONENTE, TaskType.CREAR_PAGINA,
+            TaskType.CREAR_MODAL, TaskType.CREAR_TABLA
+        }
+        if task_type in web_tasks:
+            return ProgrammingLanguage.HTML_CSS_JS
+        
+        return ProgrammingLanguage.HTML_CSS_JS
     
     def _needs_research(self, task_type: TaskType, detail_level: str, specs: Dict) -> bool:
         """Decide si necesita investigación"""
@@ -877,7 +1184,7 @@ class PromptBuilder:
     
     def build(self, intent: IntentAnalysis, research: Optional[ResearchResult], 
               clarification: Optional[ClarificationResult]) -> str:
-        """Construye el prompt maestro optimizado"""
+        """Construye el prompt maestro optimizado con soporte multi-lenguaje"""
         
         # Determinar contexto y objetivo
         contexto = intent.contexto
@@ -901,7 +1208,12 @@ class PromptBuilder:
         if not secciones and research:
             secciones = research.elementos_recomendados[:5]
         
-        # Construir el prompt
+        # Obtener información del lenguaje
+        lang = intent.lenguaje_programacion
+        lang_info = LANGUAGE_TEMPLATES.get(lang, {})
+        lang_name = lang_info.get("name", "HTML/CSS/JavaScript")
+        
+        # Construir el prompt con sección de lenguaje
         prompt = f"""[PROMPT MAESTRO - GENERACIÓN DE CÓDIGO]
 
 ═══════════════════════════════════════════════════════════════
@@ -911,6 +1223,13 @@ CONTEXTO DEL PROYECTO
 - Contexto: {contexto}
 - Objetivo principal: {objetivo}
 - Idioma del usuario: {intent.idioma}
+
+═══════════════════════════════════════════════════════════════
+LENGUAJE DE PROGRAMACIÓN
+═══════════════════════════════════════════════════════════════
+- Lenguaje principal: {lang_name}
+- Tipo de stack: {lang.value}
+- Archivos a generar: {', '.join(lang_info.get('files', ['index.html', 'styles.css', 'script.js']))}
 
 ═══════════════════════════════════════════════════════════════
 ESPECIFICACIONES DE DISEÑO
@@ -935,29 +1254,79 @@ MEJORES PRÁCTICAS A APLICAR
             for practica in research.mejores_practicas[:5]:
                 prompt += f"• {practica}\n"
         
+        # Requisitos técnicos según lenguaje
+        requisitos_por_lenguaje = {
+            ProgrammingLanguage.PYTHON_FLASK: [
+                "Flask best practices con blueprints si es necesario",
+                "Jinja2 templates con herencia",
+                "Rutas RESTful y manejo de errores",
+                "Validación de inputs del usuario",
+                "Configuración segura con variables de entorno"
+            ],
+            ProgrammingLanguage.PYTHON_FASTAPI: [
+                "Async/await para operaciones IO",
+                "Modelos Pydantic con validación",
+                "Documentación automática OpenAPI",
+                "Manejo de excepciones HTTP",
+                "Dependency injection cuando sea apropiado"
+            ],
+            ProgrammingLanguage.NODEJS_EXPRESS: [
+                "Middleware pattern para cross-cutting concerns",
+                "Rutas modulares con Router",
+                "Manejo de errores centralizado",
+                "Validación de datos de entrada",
+                "Async/await para operaciones asíncronas"
+            ],
+            ProgrammingLanguage.REACT: [
+                "Componentes funcionales con hooks",
+                "Estado manejado correctamente (useState/useReducer)",
+                "Efectos secundarios en useEffect",
+                "Props tipadas y validadas",
+                "CSS modular o styled-components"
+            ],
+            ProgrammingLanguage.SQL: [
+                "Normalización apropiada (3NF mínimo)",
+                "Constraints de integridad (PK, FK, UNIQUE)",
+                "Índices para queries frecuentes",
+                "Tipos de datos apropiados",
+                "Comentarios descriptivos"
+            ]
+        }
+        
+        requisitos = requisitos_por_lenguaje.get(lang, [
+            "Mobile-first y 100% responsive",
+            "HTML5 semántico con accesibilidad",
+            "CSS moderno con variables",
+            "JavaScript ES6+ para interactividad",
+            "Optimizado para carga rápida",
+            "Sin dependencias externas innecesarias"
+        ])
+        
         prompt += f"""
 ═══════════════════════════════════════════════════════════════
-REQUISITOS TÉCNICOS OBLIGATORIOS
+REQUISITOS TÉCNICOS OBLIGATORIOS ({lang_name})
 ═══════════════════════════════════════════════════════════════
-1. Mobile-first y 100% responsive
-2. HTML5 semántico con accesibilidad
-3. CSS moderno con variables
-4. JavaScript ES6+ para interactividad
-5. Optimizado para carga rápida
-6. Sin dependencias externas innecesarias
+"""
+        for i, req in enumerate(requisitos, 1):
+            prompt += f"{i}. {req}\n"
+        
+        prompt += """
+NOTAS ADICIONALES:
+- Código limpio y bien comentado
+- Manejo de errores robusto
+- Seguir convenciones del lenguaje
 
 ═══════════════════════════════════════════════════════════════
 FORMATO DE SALIDA
 ═══════════════════════════════════════════════════════════════
 Genera el código completo en formato JSON:
-{{
-    "files": {{
-        "index.html": "<!DOCTYPE html>...",
-        "styles.css": "/* CSS completo */",
-        "script.js": "// JS si es necesario"
-    }},
+{
+    "files": {
+        "<archivo1>": "<contenido completo>",
+        "<archivo2>": "<contenido completo>"
+    },
     "message": "Explicación de lo creado y sugerencias"
-}}
+}
 """
         
         return prompt
@@ -970,12 +1339,85 @@ class TaskOrchestrator:
     """
     
     def create_plan(self, intent: IntentAnalysis, research: Optional[ResearchResult]) -> ExecutionPlan:
-        """Crea el plan de ejecución basado en el análisis"""
+        """Crea el plan de ejecución basado en el análisis y lenguaje detectado"""
         tareas = []
         archivos = []
+        dependencias = []
         
-        # Determinar tareas según el tipo
-        if intent.tipo_tarea in [TaskType.CREAR_WEB, TaskType.CREAR_LANDING, TaskType.CREAR_DASHBOARD]:
+        lang = intent.lenguaje_programacion
+        
+        # Obtener archivos del template de lenguaje si existe
+        if lang in LANGUAGE_TEMPLATES:
+            archivos = LANGUAGE_TEMPLATES[lang].get("files", [])[:]
+        
+        # Determinar tareas según el lenguaje y tipo de tarea
+        if lang == ProgrammingLanguage.PYTHON_FLASK:
+            tareas = [
+                TaskItem(1, "Crear aplicación Flask principal", "pendiente", "app.py"),
+                TaskItem(2, "Configurar rutas y endpoints", "pendiente", "app.py"),
+                TaskItem(3, "Crear templates HTML con Jinja2", "pendiente", "templates/"),
+                TaskItem(4, "Agregar estilos CSS", "pendiente", "static/css/styles.css"),
+                TaskItem(5, "Generar requirements.txt", "pendiente", "requirements.txt"),
+            ]
+            dependencias = ["flask", "gunicorn"]
+            
+        elif lang == ProgrammingLanguage.PYTHON_FASTAPI:
+            tareas = [
+                TaskItem(1, "Crear aplicación FastAPI", "pendiente", "main.py"),
+                TaskItem(2, "Definir modelos Pydantic", "pendiente", "schemas.py"),
+                TaskItem(3, "Implementar endpoints API", "pendiente", "main.py"),
+                TaskItem(4, "Configurar validaciones", "pendiente"),
+                TaskItem(5, "Generar requirements.txt", "pendiente", "requirements.txt"),
+            ]
+            dependencias = ["fastapi", "uvicorn", "pydantic"]
+            
+        elif lang == ProgrammingLanguage.PYTHON_GENERAL:
+            tareas = [
+                TaskItem(1, "Crear módulo principal", "pendiente", "main.py"),
+                TaskItem(2, "Implementar funciones/clases", "pendiente"),
+                TaskItem(3, "Agregar documentación", "pendiente"),
+                TaskItem(4, "Generar requirements.txt si hay dependencias", "pendiente"),
+            ]
+            archivos = ["main.py", "requirements.txt"]
+            
+        elif lang == ProgrammingLanguage.NODEJS_EXPRESS:
+            tareas = [
+                TaskItem(1, "Crear servidor Express", "pendiente", "server.js"),
+                TaskItem(2, "Configurar rutas API", "pendiente", "routes/index.js"),
+                TaskItem(3, "Agregar middlewares", "pendiente"),
+                TaskItem(4, "Generar package.json", "pendiente", "package.json"),
+            ]
+            dependencias = ["express"]
+            archivos = ["server.js", "package.json", "routes/index.js"]
+            
+        elif lang == ProgrammingLanguage.REACT:
+            tareas = [
+                TaskItem(1, "Crear componente principal App", "pendiente", "src/App.jsx"),
+                TaskItem(2, "Crear componentes adicionales", "pendiente", "src/components/"),
+                TaskItem(3, "Agregar estilos CSS", "pendiente", "src/App.css"),
+                TaskItem(4, "Configurar estado y hooks", "pendiente"),
+            ]
+            dependencias = ["react", "react-dom"]
+            archivos = ["src/App.jsx", "src/App.css", "src/index.jsx"]
+            
+        elif lang == ProgrammingLanguage.SQL:
+            tareas = [
+                TaskItem(1, "Diseñar esquema de base de datos", "pendiente", "schema.sql"),
+                TaskItem(2, "Crear tablas con constraints", "pendiente"),
+                TaskItem(3, "Agregar índices de rendimiento", "pendiente"),
+                TaskItem(4, "Crear queries de ejemplo", "pendiente", "queries.sql"),
+            ]
+            archivos = ["schema.sql", "queries.sql"]
+            
+        elif lang == ProgrammingLanguage.DOCKER:
+            tareas = [
+                TaskItem(1, "Crear Dockerfile", "pendiente", "Dockerfile"),
+                TaskItem(2, "Configurar docker-compose.yml", "pendiente", "docker-compose.yml"),
+                TaskItem(3, "Agregar .dockerignore", "pendiente", ".dockerignore"),
+            ]
+            archivos = ["Dockerfile", "docker-compose.yml", ".dockerignore"]
+            
+        elif intent.tipo_tarea in [TaskType.CREAR_WEB, TaskType.CREAR_LANDING, TaskType.CREAR_DASHBOARD]:
             tareas = [
                 TaskItem(1, "Crear estructura HTML con secciones", "pendiente", "index.html"),
                 TaskItem(2, "Diseñar estilos CSS responsivos", "pendiente", "styles.css"),
@@ -984,6 +1426,7 @@ class TaskOrchestrator:
                 TaskItem(5, "Verificar accesibilidad y SEO básico", "pendiente"),
             ]
             archivos = ["index.html", "styles.css", "script.js"]
+            
         elif intent.tipo_tarea == TaskType.CREAR_FORMULARIO:
             tareas = [
                 TaskItem(1, "Crear formulario HTML con validación", "pendiente", "index.html"),
@@ -991,6 +1434,7 @@ class TaskOrchestrator:
                 TaskItem(3, "Validación JavaScript", "pendiente", "script.js"),
             ]
             archivos = ["index.html", "styles.css", "script.js"]
+            
         else:
             tareas = [
                 TaskItem(1, "Analizar requerimiento", "pendiente"),
@@ -1013,7 +1457,7 @@ class TaskOrchestrator:
             tiempo_estimado=tiempo,
             riesgos=riesgos if riesgos else ["Ninguno identificado"],
             archivos_a_crear=archivos,
-            dependencias=[]
+            dependencias=dependencias
         )
     
     def format_plan_message(self, plan: ExecutionPlan) -> str:
@@ -1150,14 +1594,18 @@ class AIConstructorService:
     """
     Servicio Principal del Constructor de IA
     Orquesta todas las fases y mantiene el estado de las sesiones
+    
+    Ahora con AIToolkit integrado para operaciones reales de archivos,
+    ejecución de comandos, detección de errores y análisis de proyecto.
     """
     
-    def __init__(self, ai_service=None, db_manager=None):
+    def __init__(self, ai_service=None, db_manager=None, project_root: Optional[str] = None):
         self.ai_service = ai_service
         self.db_manager = db_manager
         self.sessions: Dict[str, ConstructorSession] = {}
+        self.project_root = project_root or os.getcwd()
         
-        # Inicializar componentes
+        # Inicializar componentes de fases
         self.intent_parser = IntentParser()
         self.research_engine = ResearchEngine()
         self.clarification_manager = ClarificationManager()
@@ -1165,7 +1613,23 @@ class AIConstructorService:
         self.task_orchestrator = TaskOrchestrator()
         self.output_verifier = OutputVerifier()
         
-        logger.info("AIConstructorService initialized with all components")
+        # Inicializar AIToolkit para operaciones reales
+        self.toolkit_enabled = TOOLKIT_AVAILABLE
+        self.file_toolkit: Optional[Any] = None
+        self.command_executor: Optional[Any] = None
+        self.error_detector: Optional[Any] = None
+        self.project_analyzer: Optional[Any] = None
+        
+        if TOOLKIT_AVAILABLE and AIFileToolkit and AICommandExecutor and AIErrorDetector and AIProjectAnalyzer:
+            self.file_toolkit = AIFileToolkit(self.project_root)
+            self.command_executor = AICommandExecutor(self.project_root)
+            self.error_detector = AIErrorDetector()
+            self.project_analyzer = AIProjectAnalyzer(self.project_root)
+            logger.info("AIConstructorService initialized with AIToolkit (full capabilities)")
+        else:
+            logger.warning("AIConstructorService initialized WITHOUT AIToolkit (limited capabilities)")
+        
+        logger.info(f"AIConstructorService initialized - Toolkit: {self.toolkit_enabled}")
     
     def get_or_create_session(self, user_id: str) -> ConstructorSession:
         """Obtiene o crea una sesión para el usuario"""
@@ -1218,24 +1682,53 @@ class AIConstructorService:
             flow_logger.start_session(session.session_id, session.user_id, message)
         
         # ═══════════════════════════════════════════════════════════════
-        # FASE 1: ANÁLISIS INICIAL
+        # FASE 1: ANÁLISIS INICIAL + CONTEXTO DEL PROYECTO
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 1
         if flow_logger:
             flow_logger.start_fase(session.user_id, 1, "Análisis de Intención", {"mensaje": message})
         
+        # Analizar el proyecto para obtener contexto (si toolkit disponible)
+        project_context = None
+        if self.toolkit_enabled and self.project_analyzer:
+            try:
+                analysis_result = self.project_analyzer.analyze_project()
+                if analysis_result.get("success"):
+                    project_context = analysis_result.get("analysis")
+                    logger.info(f"[FASE 1] Proyecto analizado: {project_context.get('language', 'unknown')}, framework: {project_context.get('framework', 'none')}")
+            except Exception as e:
+                logger.warning(f"[FASE 1] No se pudo analizar el proyecto: {e}")
+        
         intent = self.intent_parser.analyze(message)
         session.intent = intent
+        
+        # Agregar contexto del proyecto al intent si está disponible
+        if project_context:
+            intent.especificaciones_usuario["project_context"] = project_context
         
         if flow_logger:
             flow_logger.end_fase(session.user_id, 1, {
                 "tipo_tarea": intent.tipo_tarea.value,
                 "contexto": intent.contexto,
                 "nivel_detalle": intent.nivel_detalle,
-                "requiere_clarificacion": intent.requiere_clarificacion
+                "requiere_clarificacion": intent.requiere_clarificacion,
+                "project_analyzed": project_context is not None
             })
         
         logger.info(f"[FASE 1] Intent analizado: {intent.tipo_tarea.value}, contexto: {intent.contexto}")
+        
+        # ═══════════════════════════════════════════════════════════════
+        # ACCIONES INMEDIATAS: Operaciones que no requieren plan
+        # ═══════════════════════════════════════════════════════════════
+        immediate_actions = {
+            TaskType.LEER_ARCHIVO, TaskType.LISTAR_ARCHIVOS, TaskType.VER_ESTRUCTURA,
+            TaskType.VER_LOGS, TaskType.BUSCAR_CODIGO, TaskType.ANALIZAR_PROYECTO,
+            TaskType.EJECUTAR_COMANDO, TaskType.INSTALAR_DEPENDENCIA, TaskType.EXPLICAR,
+            TaskType.CONSULTA_GENERAL
+        }
+        
+        if intent.tipo_tarea in immediate_actions:
+            return self._execute_immediate_action(session, message, intent)
         
         # ═══════════════════════════════════════════════════════════════
         # FASE 2: INVESTIGACIÓN (si es necesaria)
@@ -1322,6 +1815,17 @@ class AIConstructorService:
                 "tiene_clarificacion": session.clarification is not None
             })
         
+        if not session.intent:
+            session.esperando_confirmacion = False
+            session.esperando_clarificacion = False
+            return {
+                "success": False,
+                "error": "No se pudo analizar la intención del mensaje. Por favor, intenta reformular tu solicitud.",
+                "fase": session.fase_actual,
+                "recoverable": True,
+                "session": session.to_dict()
+            }
+        
         prompt_maestro = self.prompt_builder.build(
             session.intent, session.research, session.clarification
         )
@@ -1344,7 +1848,7 @@ class AIConstructorService:
                 "tipo_tarea": session.intent.tipo_tarea.value if session.intent else None
             })
         
-        plan = self.task_orchestrator.create_plan(session.intent, session.research)
+        plan = self.task_orchestrator.create_plan(session.intent, session.research)  # session.intent ya validado arriba
         session.plan = plan
         session.esperando_confirmacion = True
         
@@ -1408,8 +1912,9 @@ class AIConstructorService:
         session.fase_actual = 6
         
         # Marcar tareas como en progreso
-        for tarea in session.plan.tareas:
-            tarea.estado = "en_progreso"
+        if session.plan and session.plan.tareas:
+            for tarea in session.plan.tareas:
+                tarea.estado = "en_progreso"
         
         # Usar el AI Service para generar el código
         if not self.ai_service:
@@ -1459,29 +1964,207 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         
         session.archivos_generados = files
         
-        # Marcar tareas como completadas
-        for tarea in session.plan.tareas:
-            tarea.estado = "completada"
+        # ═════════════════════════════════════════════════════════════════════
+        # FASE 6.1: GUARDAR ARCHIVOS EN DISCO REAL (usando AIToolkit)
+        # ═════════════════════════════════════════════════════════════════════
+        files_saved_to_disk = []
+        disk_save_errors = []
         
-        logger.info(f"[FASE 6] Generación completada: {list(files.keys())}")
+        # Extensiones de archivo permitidas para guardar
+        ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.jsx', '.ts', '.tsx', '.json', '.py', '.md', '.txt', '.svg', '.vue'}
+        
+        if self.toolkit_enabled and self.file_toolkit and files:
+            logger.info("[FASE 6.1] Guardando archivos en disco real...")
+            base_path = "ai_generated"
+            
+            for filename, content in files.items():
+                try:
+                    # Paso 1: Sanitizar nombre (solo caracteres permitidos)
+                    safe_filename = re.sub(r'[^a-zA-Z0-9_\-.]', '_', os.path.basename(filename))
+                    
+                    # Paso 2: Validar extensión
+                    file_ext = os.path.splitext(safe_filename)[1].lower()
+                    if file_ext not in ALLOWED_EXTENSIONS:
+                        disk_save_errors.append({"file": filename, "error": f"Extensión {file_ext} no permitida"})
+                        logger.warning(f"[FASE 6.1] Extensión no permitida: {filename}")
+                        continue
+                    
+                    # Paso 3: Construir ruta final y validar con resolve()
+                    file_path = f"{base_path}/{safe_filename}"
+                    full_resolved = os.path.abspath(os.path.join(self.project_root, file_path))
+                    base_resolved = os.path.abspath(os.path.join(self.project_root, base_path))
+                    
+                    # Verificar que la ruta final está dentro del directorio base
+                    if not full_resolved.startswith(base_resolved):
+                        disk_save_errors.append({"file": filename, "error": "Path traversal detectado - archivo bloqueado"})
+                        logger.warning(f"[FASE 6.1] Path traversal bloqueado después de resolve: {filename}")
+                        continue
+                    
+                    result = self.file_toolkit.write_file(file_path, content)
+                    if result.get("success"):
+                        files_saved_to_disk.append(file_path)
+                        logger.info(f"[FASE 6.1] Archivo guardado: {file_path}")
+                    else:
+                        disk_save_errors.append({"file": filename, "error": result.get("error")})
+                        logger.warning(f"[FASE 6.1] Error guardando {filename}: {result.get('error')}")
+                except Exception as e:
+                    disk_save_errors.append({"file": filename, "error": str(e)})
+                    logger.error(f"[FASE 6.1] Excepción guardando {filename}: {e}")
+        
+        # ═════════════════════════════════════════════════════════════════════
+        # FASE 6.2: DETECTAR DEPENDENCIAS (instalación manual requerida)
+        # ═════════════════════════════════════════════════════════════════════
+        dependencies_installed = []
+        dependencies_detected = []
+        dependency_errors = []
+        
+        # Lista blanca de paquetes seguros que se pueden instalar automáticamente
+        SAFE_PYTHON_PACKAGES = {
+            'flask', 'requests', 'beautifulsoup4', 'pillow', 'pandas', 'numpy',
+            'matplotlib', 'jinja2', 'werkzeug', 'gunicorn', 'pytest', 'click',
+            'pyyaml', 'python-dotenv', 'sqlalchemy', 'aiohttp', 'httpx'
+        }
+        SAFE_NODE_PACKAGES = {
+            'express', 'react', 'vue', 'axios', 'lodash', 'moment', 'dayjs',
+            'tailwindcss', 'postcss', 'autoprefixer', 'vite', 'webpack',
+            'typescript', 'eslint', 'prettier', 'jest', 'nodemon'
+        }
+        
+        if self.toolkit_enabled and self.command_executor:
+            # Detectar dependencias en el código generado
+            all_code = "\n".join(files.values())
+            
+            # Detectar imports de Python
+            python_imports = re.findall(r'^(?:from|import)\s+([a-zA-Z_][a-zA-Z0-9_]*)', all_code, re.MULTILINE)
+            # Detectar requires de Node.js
+            node_requires = re.findall(r"require\(['\"]([^'\"]+)['\"]\)", all_code)
+            node_imports = re.findall(r"from\s+['\"]([^'\"]+)['\"]", all_code)
+            
+            # Filtrar dependencias estándar de Python
+            python_std_libs = {'os', 'sys', 'json', 're', 'typing', 'datetime', 'collections', 'math', 
+                              'random', 'functools', 'itertools', 'pathlib', 'logging', 'time', 'io',
+                              'dataclasses', 'enum', 'abc', 'copy', 'operator', 'html', 'urllib'}
+            external_python = [pkg for pkg in set(python_imports) if pkg.lower() not in python_std_libs]
+            
+            # Detectar paquetes Node.js externos (no rutas relativas)
+            external_node = [pkg for pkg in set(node_requires + node_imports) 
+                            if not pkg.startswith('.') and not pkg.startswith('/')]
+            
+            logger.info(f"[FASE 6.2] Dependencias detectadas - Python: {external_python}, Node: {external_node}")
+            
+            # Solo instalar paquetes de la lista blanca (máximo 3 por seguridad)
+            safe_python_to_install = [pkg for pkg in external_python if pkg.lower() in SAFE_PYTHON_PACKAGES][:3]
+            safe_node_to_install = [pkg for pkg in external_node if pkg.lower() in SAFE_NODE_PACKAGES][:3]
+            
+            # Registrar paquetes detectados pero no instalados
+            for pkg in external_python:
+                if pkg.lower() not in SAFE_PYTHON_PACKAGES:
+                    dependencies_detected.append(f"pip:{pkg} (requiere instalación manual)")
+            for pkg in external_node:
+                if pkg.lower() not in SAFE_NODE_PACKAGES:
+                    dependencies_detected.append(f"npm:{pkg} (requiere instalación manual)")
+            
+            # Instalar dependencias seguras de Python
+            for pkg in safe_python_to_install:
+                try:
+                    install_result = self.command_executor.install_package(pkg, "pip")
+                    if install_result.get("success"):
+                        dependencies_installed.append(f"pip:{pkg}")
+                        logger.info(f"[FASE 6.2] Instalado pip: {pkg}")
+                    else:
+                        dependency_errors.append({"package": pkg, "manager": "pip", "error": install_result.get("error")})
+                except Exception as e:
+                    dependency_errors.append({"package": pkg, "manager": "pip", "error": str(e)})
+            
+            # Instalar dependencias seguras de Node
+            for pkg in safe_node_to_install:
+                try:
+                    install_result = self.command_executor.install_package(pkg, "npm")
+                    if install_result.get("success"):
+                        dependencies_installed.append(f"npm:{pkg}")
+                        logger.info(f"[FASE 6.2] Instalado npm: {pkg}")
+                    else:
+                        dependency_errors.append({"package": pkg, "manager": "npm", "error": install_result.get("error")})
+                except Exception as e:
+                    dependency_errors.append({"package": pkg, "manager": "npm", "error": str(e)})
+        
+        # Marcar tareas como completadas
+        if session.plan and session.plan.tareas:
+            for tarea in session.plan.tareas:
+                tarea.estado = "completada"
+        
+        logger.info(f"[FASE 6] Generación completada: {list(files.keys())}, guardados: {len(files_saved_to_disk)}, deps: {len(dependencies_installed)}")
         
         # ═══════════════════════════════════════════════════════════════
-        # FASE 7: VERIFICACIÓN AUTOMÁTICA
+        # FASE 7: VERIFICACIÓN AUTOMÁTICA + DETECCIÓN DE ERRORES
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 7
+        
+        if not session.intent or not session.plan:
+            logger.error("[FASE 7] Estado inconsistente: intent o plan no disponible")
+            return {
+                "success": False,
+                "error": "Error interno: estado de sesión inconsistente. Por favor, reinicia el proceso.",
+                "fase": session.fase_actual,
+                "files": files,
+                "session": session.to_dict()
+            }
+        
+        # Verificación tradicional
         verification = self.output_verifier.verify(files, session.intent, session.plan)
         session.verification = verification
-        
         verification_msg = self.output_verifier.format_verification_message(verification)
         
-        logger.info(f"[FASE 7] Verificación: {verification.puntuacion}/100")
+        # Detección de errores con AIToolkit
+        detected_errors = []
+        if self.toolkit_enabled and self.error_detector and files:
+            for filename, content in files.items():
+                # Determinar lenguaje del archivo
+                lang = "python"
+                if filename.endswith(('.js', '.jsx', '.ts', '.tsx')):
+                    lang = "javascript"
+                elif filename.endswith('.html'):
+                    lang = "html"
+                elif filename.endswith('.css'):
+                    lang = "css"
+                
+                # Detectar errores en el código
+                try:
+                    error_result = self.error_detector.detect_errors([content], lang)
+                    if error_result.get("success") and error_result.get("errors"):
+                        for err in error_result["errors"]:
+                            detected_errors.append({
+                                "file": filename,
+                                "type": err.get("type"),
+                                "message": err.get("message"),
+                                "line": err.get("line")
+                            })
+                except Exception as e:
+                    logger.warning(f"[FASE 7] Error detectando errores en {filename}: {e}")
+        
+        if detected_errors:
+            verification_msg += f"\n\n🔍 **Errores detectados automáticamente:** {len(detected_errors)}\n"
+            for err in detected_errors[:5]:  # Mostrar máximo 5
+                verification_msg += f"  • {err['file']}: {err['message']}\n"
+        
+        logger.info(f"[FASE 7] Verificación: {verification.puntuacion}/100, Errores detectados: {len(detected_errors)}")
         
         # ═══════════════════════════════════════════════════════════════
         # FASE 8: ENTREGA FINAL
         # ═══════════════════════════════════════════════════════════════
         session.fase_actual = 8
         
-        delivery_message = self._format_delivery(session, verification_msg, parse_message)
+        # Información adicional de toolkit
+        toolkit_info = {
+            "files_saved": files_saved_to_disk,
+            "disk_errors": disk_save_errors,
+            "dependencies_installed": dependencies_installed,
+            "dependencies_detected": dependencies_detected,
+            "dependency_errors": dependency_errors,
+            "detected_errors": detected_errors
+        }
+        
+        delivery_message = self._format_delivery(session, verification_msg, parse_message, toolkit_info)
         
         return {
             "success": True,
@@ -1489,6 +2172,9 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
             "fase": session.fase_actual,
             "fase_nombre": "Entrega Final",
             "files": files,
+            "files_saved_to_disk": files_saved_to_disk,
+            "dependencies_installed": dependencies_installed,
+            "detected_errors": detected_errors,
             "verification": verification.to_dict(),
             "session": session.to_dict()
         }
@@ -1541,8 +2227,8 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         return files, message
     
     def _format_delivery(self, session: ConstructorSession, verification_msg: str, 
-                         ai_message: str) -> str:
-        """Formatea el mensaje de entrega final"""
+                         ai_message: str, toolkit_info: Optional[Dict] = None) -> str:
+        """Formatea el mensaje de entrega final con información del toolkit"""
         message = "✨ **ENTREGA COMPLETADA**\n\n"
         
         # Resumen de lo creado
@@ -1550,6 +2236,34 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
             message += "📁 **Archivos creados:**\n"
             for filename in session.archivos_generados.keys():
                 message += f"  • {filename}\n"
+            message += "\n"
+        
+        # Información de archivos guardados en disco (si toolkit disponible)
+        if toolkit_info and toolkit_info.get("files_saved"):
+            message += "💾 **Guardados en disco:**\n"
+            for path in toolkit_info["files_saved"]:
+                message += f"  • {path}\n"
+            message += "\n"
+        
+        # Dependencias instaladas
+        if toolkit_info and toolkit_info.get("dependencies_installed"):
+            message += "📦 **Dependencias instaladas:**\n"
+            for dep in toolkit_info["dependencies_installed"]:
+                message += f"  • {dep}\n"
+            message += "\n"
+        
+        # Dependencias detectadas pero no instaladas automáticamente
+        if toolkit_info and toolkit_info.get("dependencies_detected"):
+            message += "📋 **Dependencias detectadas (instalación manual):**\n"
+            for dep in toolkit_info["dependencies_detected"][:5]:
+                message += f"  • {dep}\n"
+            message += "\n"
+        
+        # Errores de dependencias (si hay)
+        if toolkit_info and toolkit_info.get("dependency_errors"):
+            message += "⚠️ **Advertencias de dependencias:**\n"
+            for err in toolkit_info["dependency_errors"][:3]:
+                message += f"  • {err.get('package')}: {err.get('error', 'error desconocido')[:50]}\n"
             message += "\n"
         
         # Secciones implementadas
@@ -1580,3 +2294,564 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ant
         if user_id in self.sessions:
             return self.sessions[user_id].archivos_generados
         return None
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # MÉTODOS DE TOOLKIT - Operaciones reales de archivos y comandos
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def read_project_file(self, path: str, max_lines: Optional[int] = None) -> Dict[str, Any]:
+        """Lee un archivo del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.read_file(path, max_lines)
+    
+    def write_project_file(self, path: str, content: str) -> Dict[str, Any]:
+        """Escribe un archivo en el proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.write_file(path, content)
+    
+    def edit_project_file(self, path: str, old_content: str, new_content: str) -> Dict[str, Any]:
+        """Edita un archivo del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.edit_file(path, old_content, new_content)
+    
+    def list_project_files(self, path: str = ".", recursive: bool = False) -> Dict[str, Any]:
+        """Lista archivos del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.list_directory(path, recursive)
+    
+    def search_in_code(self, query: str, path: str = ".") -> Dict[str, Any]:
+        """Busca en el código del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.file_toolkit.search_code(query, path)
+    
+    def run_command(self, command: str, timeout: int = 30) -> Dict[str, Any]:
+        """Ejecuta un comando usando AIToolkit (solo comandos seguros)"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.command_executor.run_command(command, timeout)
+    
+    def install_package(self, package: str, manager: str = "pip") -> Dict[str, Any]:
+        """Instala un paquete usando AIToolkit"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.command_executor.install_package(package, manager)
+    
+    def detect_errors_in_logs(self, logs: List[str], language: str = "python") -> Dict[str, Any]:
+        """Detecta errores en logs usando AIToolkit"""
+        if not self.toolkit_enabled or not self.error_detector:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.error_detector.detect_errors(logs, language)
+    
+    def analyze_project_structure(self) -> Dict[str, Any]:
+        """Analiza la estructura del proyecto usando AIToolkit"""
+        if not self.toolkit_enabled or not self.project_analyzer:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        return self.project_analyzer.analyze_project()
+    
+    def get_project_context(self) -> str:
+        """Obtiene contexto del proyecto para incluir en prompts"""
+        if not self.toolkit_enabled or not self.project_analyzer:
+            return "Proyecto no analizado - AIToolkit no disponible"
+        return self.project_analyzer.generate_context()
+    
+    def save_generated_files_to_disk(self, user_id: str, base_path: str = "ai_generated") -> Dict[str, Any]:
+        """Guarda los archivos generados en disco real"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "error": "AIToolkit no disponible"}
+        
+        files = self.get_generated_files(user_id)
+        if not files:
+            return {"success": False, "error": "No hay archivos generados"}
+        
+        saved = []
+        errors = []
+        
+        for filename, content in files.items():
+            path = f"{base_path}/{filename}"
+            result = self.file_toolkit.write_file(path, content)
+            if result.get("success"):
+                saved.append(path)
+            else:
+                errors.append({"file": filename, "error": result.get("error")})
+        
+        return {
+            "success": len(errors) == 0,
+            "saved_files": saved,
+            "errors": errors,
+            "total": len(files)
+        }
+    
+    def get_toolkit_status(self) -> Dict[str, Any]:
+        """Devuelve el estado del toolkit"""
+        return {
+            "enabled": self.toolkit_enabled,
+            "file_toolkit": self.file_toolkit is not None,
+            "command_executor": self.command_executor is not None,
+            "error_detector": self.error_detector is not None,
+            "project_analyzer": self.project_analyzer is not None,
+            "project_root": self.project_root
+        }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # ACCIONES INMEDIATAS - Sin necesidad de plan/confirmación
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def _execute_immediate_action(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Ejecuta acciones inmediatas que no requieren planificación"""
+        
+        session.fase_actual = 6  # Fase de ejecución directa
+        task_type = intent.tipo_tarea
+        
+        if flow_logger:
+            flow_logger.start_fase(session.user_id, 6, f"Acción Inmediata: {task_type.value}", {"mensaje": message})
+        
+        result = {"success": False, "response": "Acción no implementada", "fase": 6}
+        
+        try:
+            # === LEER ARCHIVO ===
+            if task_type == TaskType.LEER_ARCHIVO:
+                result = self._action_read_file(session, message, intent)
+            
+            # === LISTAR ARCHIVOS / VER ESTRUCTURA ===
+            elif task_type in [TaskType.LISTAR_ARCHIVOS, TaskType.VER_ESTRUCTURA]:
+                result = self._action_list_files(session, message, intent)
+            
+            # === BUSCAR EN CÓDIGO ===
+            elif task_type == TaskType.BUSCAR_CODIGO:
+                result = self._action_search_code(session, message, intent)
+            
+            # === ANALIZAR PROYECTO ===
+            elif task_type == TaskType.ANALIZAR_PROYECTO:
+                result = self._action_analyze_project(session)
+            
+            # === EJECUTAR COMANDO ===
+            elif task_type == TaskType.EJECUTAR_COMANDO:
+                result = self._action_run_command(session, message, intent)
+            
+            # === INSTALAR DEPENDENCIA ===
+            elif task_type == TaskType.INSTALAR_DEPENDENCIA:
+                result = self._action_install_package(session, message, intent)
+            
+            # === VER LOGS ===
+            elif task_type == TaskType.VER_LOGS:
+                result = self._action_view_logs(session)
+            
+            # === EXPLICAR / CONSULTA GENERAL ===
+            elif task_type in [TaskType.EXPLICAR, TaskType.CONSULTA_GENERAL]:
+                result = self._action_explain_or_consult(session, message, intent)
+            
+            else:
+                result = {
+                    "success": True,
+                    "response": f"La acción '{task_type.value}' aún no está completamente implementada. ¿Puedo ayudarte con algo más específico?",
+                    "fase": 6
+                }
+        
+        except Exception as e:
+            logger.error(f"[ACCIÓN INMEDIATA] Error ejecutando {task_type.value}: {e}")
+            result = {
+                "success": False,
+                "error": f"Error ejecutando la acción: {str(e)}",
+                "fase": 6
+            }
+        
+        if flow_logger:
+            flow_logger.end_fase(session.user_id, 6, {"resultado": result.get("success"), "tipo": task_type.value})
+        
+        result["session"] = session.to_dict()
+        result["fase_nombre"] = "Acción Inmediata"
+        return result
+    
+    def _action_read_file(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Lee un archivo del proyecto"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "response": "El toolkit de archivos no está disponible.", "fase": 6}
+        
+        # Extraer ruta del archivo del mensaje
+        file_path = self._extract_file_path(message)
+        if not file_path:
+            # Listar archivos disponibles para ayudar al usuario
+            files_result = self.file_toolkit.list_directory(".", recursive=True)
+            if files_result.get("success"):
+                available = [f["path"] for f in files_result.get("items", [])[:20] if f["type"] == "file"]
+                return {
+                    "success": True,
+                    "response": f"No pude identificar qué archivo quieres ver. Archivos disponibles:\n" + "\n".join([f"• {f}" for f in available]),
+                    "fase": 6,
+                    "needs_clarification": True
+                }
+            return {"success": False, "response": "No pude identificar qué archivo quieres leer. Por favor especifica la ruta.", "fase": 6}
+        
+        # Leer el archivo
+        read_result = self.file_toolkit.read_file(file_path, max_lines=200)
+        
+        if not read_result.get("success"):
+            return {
+                "success": False,
+                "response": f"No pude leer el archivo '{file_path}': {read_result.get('error')}",
+                "fase": 6
+            }
+        
+        content = read_result.get("content", "")
+        lines = read_result.get("lines", 0)
+        truncated = read_result.get("truncated", False)
+        
+        response = f"📄 **Archivo: {file_path}** ({lines} líneas)\n\n```\n{content}\n```"
+        if truncated:
+            response += f"\n\n⚠️ Archivo truncado (mostrando primeras 200 líneas)"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "file_content": content,
+            "file_path": file_path
+        }
+    
+    def _action_list_files(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Lista archivos del proyecto"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "response": "El toolkit de archivos no está disponible.", "fase": 6}
+        
+        # Extraer ruta del mensaje o usar raíz
+        path = self._extract_file_path(message) or "."
+        
+        list_result = self.file_toolkit.list_directory(path, recursive=True, max_depth=3)
+        
+        if not list_result.get("success"):
+            return {
+                "success": False,
+                "response": f"No pude listar archivos en '{path}': {list_result.get('error')}",
+                "fase": 6
+            }
+        
+        items = list_result.get("items", [])
+        
+        # Formatear como árbol
+        response = f"📁 **Estructura del proyecto** ({len(items)} elementos)\n\n"
+        dirs = [i for i in items if i["type"] == "directory"][:15]
+        files = [i for i in items if i["type"] == "file"][:25]
+        
+        if dirs:
+            response += "**Carpetas:**\n"
+            for d in dirs:
+                response += f"  📁 {d['path']}/\n"
+        
+        if files:
+            response += "\n**Archivos:**\n"
+            for f in files:
+                size = f.get("size", 0)
+                size_str = f"{size} bytes" if size < 1024 else f"{size//1024} KB"
+                response += f"  📄 {f['path']} ({size_str})\n"
+        
+        if len(items) > 40:
+            response += f"\n... y {len(items) - 40} elementos más"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "items": items
+        }
+    
+    def _action_search_code(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Busca texto en el código"""
+        if not self.toolkit_enabled or not self.file_toolkit:
+            return {"success": False, "response": "El toolkit de búsqueda no está disponible.", "fase": 6}
+        
+        # Extraer término de búsqueda
+        search_term = self._extract_search_term(message)
+        if not search_term:
+            return {
+                "success": True,
+                "response": "¿Qué término deseas buscar en el código? Por ejemplo: 'busca la función login' o 'busca import flask'",
+                "fase": 6,
+                "needs_clarification": True
+            }
+        
+        search_result = self.file_toolkit.search_code(search_term)
+        
+        if not search_result.get("success"):
+            return {
+                "success": False,
+                "response": f"Error en la búsqueda: {search_result.get('error')}",
+                "fase": 6
+            }
+        
+        matches = search_result.get("matches", [])
+        
+        if not matches:
+            return {
+                "success": True,
+                "response": f"🔍 No se encontraron resultados para: **{search_term}**",
+                "fase": 6
+            }
+        
+        response = f"🔍 **Resultados de búsqueda: '{search_term}'** ({len(matches)} coincidencias)\n\n"
+        for match in matches[:15]:
+            response += f"📄 **{match['file']}** (línea {match['line']}):\n"
+            response += f"```\n{match['content'][:150]}\n```\n\n"
+        
+        if len(matches) > 15:
+            response += f"... y {len(matches) - 15} coincidencias más"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "matches": matches
+        }
+    
+    def _action_analyze_project(self, session: ConstructorSession) -> Dict[str, Any]:
+        """Analiza la estructura del proyecto"""
+        if not self.toolkit_enabled or not self.project_analyzer:
+            return {"success": False, "response": "El analizador de proyecto no está disponible.", "fase": 6}
+        
+        analysis = self.project_analyzer.analyze_project()
+        
+        if not analysis.get("success"):
+            return {
+                "success": False,
+                "response": f"Error analizando el proyecto: {analysis.get('error')}",
+                "fase": 6
+            }
+        
+        data = analysis.get("analysis", {})
+        
+        response = "📊 **Análisis del Proyecto**\n\n"
+        response += f"**Lenguaje principal:** {data.get('language', 'No detectado')}\n"
+        response += f"**Framework:** {data.get('framework', 'Ninguno detectado')}\n"
+        response += f"**Total de archivos:** {data.get('total_files', 0)}\n"
+        
+        if data.get("dependencies"):
+            response += f"\n**Dependencias ({len(data['dependencies'])}):**\n"
+            for dep in list(data["dependencies"])[:10]:
+                response += f"  • {dep}\n"
+        
+        if data.get("entry_points"):
+            response += f"\n**Puntos de entrada:**\n"
+            for ep in data["entry_points"][:5]:
+                response += f"  • {ep}\n"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "analysis": data
+        }
+    
+    def _action_run_command(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Ejecuta un comando del sistema"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "response": "El ejecutor de comandos no está disponible.", "fase": 6}
+        
+        # Extraer comando del mensaje
+        command = self._extract_command(message)
+        if not command:
+            return {
+                "success": True,
+                "response": "¿Qué comando deseas ejecutar? Por ejemplo: 'ejecuta pip list' o 'corre npm install'",
+                "fase": 6,
+                "needs_clarification": True
+            }
+        
+        # Verificar que el comando esté permitido
+        cmd_result = self.command_executor.run_command(command, timeout=60)
+        
+        if not cmd_result.get("success"):
+            error = cmd_result.get("error", "Error desconocido")
+            if "not allowed" in error.lower() or "blocked" in error.lower():
+                return {
+                    "success": False,
+                    "response": f"⚠️ El comando '{command}' no está permitido por seguridad.\n\nComandos permitidos: pip, npm, ls, cat, grep, git status, etc.",
+                    "fase": 6
+                }
+            return {
+                "success": False,
+                "response": f"Error ejecutando comando: {error}",
+                "fase": 6
+            }
+        
+        stdout = cmd_result.get("stdout", "")
+        stderr = cmd_result.get("stderr", "")
+        exit_code = cmd_result.get("exit_code", 0)
+        
+        response = f"⚡ **Comando ejecutado:** `{command}`\n\n"
+        if exit_code == 0:
+            response += "✅ **Éxito**\n\n"
+        else:
+            response += f"⚠️ **Código de salida:** {exit_code}\n\n"
+        
+        if stdout:
+            output = stdout[:2000]
+            response += f"**Salida:**\n```\n{output}\n```\n"
+            if len(stdout) > 2000:
+                response += "(salida truncada...)\n"
+        
+        if stderr:
+            response += f"\n**Errores/Advertencias:**\n```\n{stderr[:500]}\n```"
+        
+        return {
+            "success": True,
+            "response": response,
+            "fase": 6,
+            "command": command,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": exit_code
+        }
+    
+    def _action_install_package(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Instala un paquete"""
+        if not self.toolkit_enabled or not self.command_executor:
+            return {"success": False, "response": "El instalador de paquetes no está disponible.", "fase": 6}
+        
+        # Extraer nombre del paquete y manager
+        package, manager = self._extract_package_info(message)
+        if not package:
+            return {
+                "success": True,
+                "response": "¿Qué paquete deseas instalar? Por ejemplo: 'instala flask' o 'npm install express'",
+                "fase": 6,
+                "needs_clarification": True
+            }
+        
+        install_result = self.command_executor.install_package(package, manager)
+        
+        if not install_result.get("success"):
+            error = install_result.get("error", "Error desconocido")
+            return {
+                "success": False,
+                "response": f"❌ No pude instalar **{package}**: {error}",
+                "fase": 6
+            }
+        
+        return {
+            "success": True,
+            "response": f"✅ **Paquete instalado:** {package} ({manager})\n\n{install_result.get('stdout', '')}",
+            "fase": 6,
+            "package": package,
+            "manager": manager
+        }
+    
+    def _action_view_logs(self, session: ConstructorSession) -> Dict[str, Any]:
+        """Muestra logs recientes del servidor"""
+        # Por ahora retornamos un mensaje indicando dónde ver los logs
+        return {
+            "success": True,
+            "response": "📋 **Logs del sistema**\n\nPuedes ver los logs en tiempo real en la consola del servidor.\n\nPara ver errores específicos, puedo buscar patrones en el código con 'busca ERROR' o 'busca Exception'.",
+            "fase": 6
+        }
+    
+    def _action_explain_or_consult(self, session: ConstructorSession, message: str, intent: 'IntentAnalysis') -> Dict[str, Any]:
+        """Responde preguntas generales o explica código"""
+        if not self.ai_service:
+            return {"success": False, "response": "El servicio de IA no está disponible.", "fase": 6}
+        
+        # Para explicaciones, usamos el AI service directamente
+        prompt = f"""Eres BUNK3R Assistant, un asistente experto en programación.
+        
+El usuario pregunta: {message}
+
+Responde de forma clara, concisa y útil. Si es sobre código, da ejemplos prácticos.
+Si necesitas ver un archivo específico para ayudar mejor, indícalo."""
+
+        result = self.ai_service.chat(
+            user_id=f"constructor_{session.user_id}",
+            message=prompt,
+            enable_auto_rectify=False
+        )
+        
+        if not result.get("success"):
+            return {
+                "success": False,
+                "response": "No pude procesar tu consulta. ¿Podrías reformularla?",
+                "fase": 6
+            }
+        
+        return {
+            "success": True,
+            "response": result.get("response", ""),
+            "fase": 6,
+            "is_explanation": True
+        }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # HELPERS PARA EXTRAER INFORMACIÓN DE MENSAJES
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def _extract_file_path(self, message: str) -> Optional[str]:
+        """Extrae una ruta de archivo del mensaje"""
+        # Patrones comunes para detectar rutas de archivo
+        patterns = [
+            r'(?:archivo|file|ver|lee|leer|muestra|mostrar|abre|open)\s+["\']?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)["\']?',
+            r'["\']([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)["\']',
+            r'(?:en|in)\s+([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)',
+            r'([a-zA-Z0-9_\-]+\.(?:py|js|ts|html|css|json|md|txt|jsx|tsx|vue|sql|yaml|yml))'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return None
+    
+    def _extract_search_term(self, message: str) -> Optional[str]:
+        """Extrae un término de búsqueda del mensaje"""
+        patterns = [
+            r'(?:busca|buscar|encuentra|find|search|grep)\s+["\']([^"\']+)["\']',
+            r'(?:busca|buscar|encuentra|find|search|grep)\s+(.+?)(?:\s+en|\s+in|$)',
+            r'["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                term = match.group(1).strip()
+                if len(term) >= 2:
+                    return term
+        
+        return None
+    
+    def _extract_command(self, message: str) -> Optional[str]:
+        """Extrae un comando del mensaje"""
+        patterns = [
+            r'(?:ejecuta|run|corre|lanza)\s+["`]([^"`]+)["`]',
+            r'(?:ejecuta|run|corre|lanza)\s+(.+?)$',
+            r'["`]([^"`]+)["`]'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                cmd = match.group(1).strip()
+                if len(cmd) >= 2:
+                    return cmd
+        
+        return None
+    
+    def _extract_package_info(self, message: str) -> Tuple[Optional[str], str]:
+        """Extrae información del paquete a instalar"""
+        # Detectar manager
+        manager = "pip"  # Default
+        if "npm" in message.lower() or "node" in message.lower():
+            manager = "npm"
+        
+        # Extraer nombre del paquete
+        patterns = [
+            r'(?:instala|install)\s+([a-zA-Z0-9_\-@/]+)',
+            r'(?:pip|npm)\s+install\s+([a-zA-Z0-9_\-@/]+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                return match.group(1).strip(), manager
+        
+        return None, manager

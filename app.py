@@ -40,8 +40,78 @@ from tracking.security import SecurityManager
 from tracking.encryption import encryption_manager
 from tracking.cloudinary_service import cloudinary_service
 from tracking.smspool_service import SMSPoolService, VirtualNumbersManager
+from tracking.telegram_service import telegram_service
 
-logging.basicConfig(level=logging.INFO)
+from logging.handlers import RotatingFileHandler
+from flask import g
+
+LOGS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+os.makedirs(LOGS_FOLDER, exist_ok=True)
+
+class RequestContextFilter(logging.Filter):
+    """Inyecta request_id, user_id e ip en cada log record."""
+    def filter(self, record):
+        try:
+            from flask import request, has_request_context
+            if has_request_context():
+                record.request_id = getattr(request, 'request_id', '-')
+                record.client_ip = getattr(request, 'client_ip', request.headers.get('X-Forwarded-For', request.remote_addr))
+                record.user_id = getattr(request, 'telegram_user', {}).get('id', '-') if hasattr(request, 'telegram_user') else '-'
+            else:
+                record.request_id = '-'
+                record.client_ip = '-'
+                record.user_id = '-'
+        except Exception:
+            record.request_id = '-'
+            record.client_ip = '-'
+            record.user_id = '-'
+        return True
+
+class JSONFormatter(logging.Formatter):
+    """Formato JSON estructurado para logs."""
+    def format(self, record):
+        log_obj = {
+            'time': datetime.now().isoformat(),
+            'level': record.levelname,
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno,
+            'message': record.getMessage(),
+            'request_id': getattr(record, 'request_id', '-'),
+            'ip': getattr(record, 'client_ip', '-'),
+            'user_id': str(getattr(record, 'user_id', '-'))
+        }
+        if record.exc_info:
+            log_obj['exception'] = self.formatException(record.exc_info)
+        return json.dumps(log_obj, ensure_ascii=False)
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+context_filter = RequestContextFilter()
+
+file_handler = RotatingFileHandler(
+    os.path.join(LOGS_FOLDER, 'app.log'),
+    maxBytes=10 * 1024 * 1024,
+    backupCount=5,
+    encoding='utf-8'
+)
+file_handler.setFormatter(JSONFormatter())
+file_handler.setLevel(logging.INFO)
+file_handler.addFilter(context_filter)
+root_logger.addHandler(file_handler)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+))
+console_handler.setLevel(logging.INFO)
+console_handler.addFilter(context_filter)
+root_logger.addHandler(console_handler)
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -833,6 +903,13 @@ CSRF_EXEMPT_ENDPOINTS = {
 
 
 @app.before_request
+def add_request_id():
+    """Añade un request_id único a cada petición para trazabilidad."""
+    request.request_id = str(uuid.uuid4())[:8]
+    request.client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+
+@app.before_request
 def csrf_middleware():
     """Middleware global para verificación CSRF en métodos que modifican datos."""
     if request.method not in ['POST', 'PUT', 'DELETE', 'PATCH']:
@@ -1041,6 +1118,25 @@ def verify_demo_2fa():
             
     except Exception as e:
         logger.error(f"Error verifying demo 2FA: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@app.route('/api/demo/2fa/logout', methods=['POST'])
+def demo_2fa_logout():
+    """Cerrar sesión del modo demo 2FA."""
+    if IS_PRODUCTION:
+        return jsonify({'error': 'Not available in production'}), 403
+    
+    try:
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        invalidate_demo_session()
+        logger.info(f"🚪 Demo session logged out from IP: {client_ip}")
+        return jsonify({
+            'success': True,
+            'message': 'Sesión cerrada correctamente'
+        })
+    except Exception as e:
+        logger.error(f"Error during demo logout: {e}")
         return jsonify({'success': False, 'error': 'Error interno'}), 500
 
 
@@ -6263,6 +6359,115 @@ def admin_get_sessions():
         return jsonify({'success': True, 'sessions': []})
 
 
+@app.route('/api/admin/sessions/terminate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_terminate_session():
+    """Admin: Terminar sesion especifica de un dispositivo."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        data = request.json or {}
+        user_id = data.get('user_id')
+        device_name = data.get('device_name')
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'user_id requerido'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if device_name:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id = %s AND device_name = %s
+                    """, (user_id, device_name))
+                else:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id = %s
+                    """, (user_id,))
+                
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'{deleted} sesion(es) terminada(s)',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error terminating session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/sessions/terminate-all/<user_id>', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_terminate_all_user_sessions(user_id):
+    """Admin: Terminar todas las sesiones de un usuario."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM trusted_devices WHERE user_id = %s
+                """, (user_id,))
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Todas las sesiones de usuario {user_id} terminadas ({deleted})',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error terminating all user sessions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/sessions/logout-all', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_logout_all_users():
+    """Admin: Cerrar todas las sesiones de todos los usuarios (excepto admins)."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        data = request.json or {}
+        exclude_admins = data.get('exclude_admins', True)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if exclude_admins:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id NOT IN (
+                            SELECT id FROM users WHERE LOWER(role) IN ('owner', 'admin')
+                        )
+                    """)
+                else:
+                    cur.execute("DELETE FROM trusted_devices")
+                
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Todas las sesiones cerradas ({deleted} dispositivos)',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error logging out all users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ENDPOINTS DE ADMIN - SEGURIDAD
 # ============================================================
@@ -8235,6 +8440,68 @@ def admin_get_products():
         return jsonify({'success': True, 'products': []})
 
 
+@app.route('/api/admin/products', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_create_product():
+    """Admin: Crear nuevo producto."""
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        price = float(data.get('price', 0))
+        category = data.get('category', 'general').strip()
+        stock = int(data.get('stock', 1))
+        icon = data.get('icon', '')
+        
+        if not title:
+            return jsonify({'success': False, 'error': 'El titulo es requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        user_id = get_user_id()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO products (user_id, title, description, price, category, stock, image_url, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+                    RETURNING id
+                """, (user_id, title, description, price, category, stock, icon))
+                product_id = cur.fetchone()[0]
+                conn.commit()
+        
+        logger.info(f"Product created: {title} (ID: {product_id})")
+        return jsonify({'success': True, 'product_id': product_id, 'message': 'Producto creado correctamente'})
+        
+    except Exception as e:
+        logger.error(f"Error creating product: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/products/<int:product_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_product(product_id):
+    """Admin: Eliminar producto."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM products WHERE id = %s", (product_id,))
+                conn.commit()
+        
+        logger.info(f"Product deleted: ID {product_id}")
+        return jsonify({'success': True, 'message': 'Producto eliminado'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting product: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/transactions', methods=['GET'])
 @require_telegram_auth
 @require_owner
@@ -8791,24 +9058,420 @@ def admin_unlock_user():
 def admin_system_settings():
     """Admin: Configuracion del sistema."""
     try:
-        if request.method == 'GET':
-            return jsonify({
-                'success': True,
-                'maintenanceMode': False,
-                'registrationOpen': True,
-                'merchantWallet': os.environ.get('TON_WALLET_ADDRESS', 'No configurada'),
-                'minDeposit': 1,
-                'emailAlerts': True,
-                'telegramAlerts': True
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'message': 'Configuracion guardada'
-            })
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if request.method == 'GET':
+                    cur.execute("SELECT key, value, category FROM system_settings")
+                    rows = cur.fetchall()
+                    settings = {row['key']: row['value'] for row in rows}
+                    
+                    return jsonify({
+                        'success': True,
+                        'maintenanceMode': settings.get('maintenance_mode', 'false') == 'true',
+                        'maintenanceMessage': settings.get('maintenance_message', ''),
+                        'registrationOpen': settings.get('registration_open', 'true') == 'true',
+                        'merchantWallet': os.environ.get('TON_WALLET_ADDRESS', 'No configurada'),
+                        'minDeposit': float(settings.get('min_deposit', '1')),
+                        'minWithdrawal': float(settings.get('min_withdrawal', '0.5')),
+                        'withdrawalFee': float(settings.get('withdrawal_fee', '0.05')),
+                        'transactionFeePercent': float(settings.get('transaction_fee_percent', '2')),
+                        'emailAlerts': settings.get('email_alerts', 'true') == 'true',
+                        'telegramAlerts': settings.get('telegram_alerts', 'true') == 'true',
+                        'largeTransactionThreshold': float(settings.get('large_transaction_threshold', '100'))
+                    })
+                else:
+                    data = request.json or {}
+                    updates = []
+                    
+                    setting_mappings = {
+                        'maintenanceMode': ('maintenance_mode', lambda v: 'true' if v else 'false'),
+                        'maintenanceMessage': ('maintenance_message', str),
+                        'registrationOpen': ('registration_open', lambda v: 'true' if v else 'false'),
+                        'minDeposit': ('min_deposit', str),
+                        'minWithdrawal': ('min_withdrawal', str),
+                        'withdrawalFee': ('withdrawal_fee', str),
+                        'transactionFeePercent': ('transaction_fee_percent', str),
+                        'emailAlerts': ('email_alerts', lambda v: 'true' if v else 'false'),
+                        'telegramAlerts': ('telegram_alerts', lambda v: 'true' if v else 'false'),
+                        'largeTransactionThreshold': ('large_transaction_threshold', str)
+                    }
+                    
+                    for key, value in data.items():
+                        if key in setting_mappings:
+                            db_key, transform = setting_mappings[key]
+                            cur.execute("""
+                                INSERT INTO system_settings (key, value, updated_at)
+                                VALUES (%s, %s, NOW())
+                                ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                            """, (db_key, transform(value), transform(value)))
+                            updates.append(db_key)
+                    
+                    conn.commit()
+                    return jsonify({
+                        'success': True,
+                        'message': 'Configuracion guardada',
+                        'updated': updates
+                    })
         
     except Exception as e:
         logger.error(f"Error with settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_notifications():
+    """Admin: Obtener notificaciones del panel."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, type, title, message, data, is_read, created_at
+                    FROM admin_notifications
+                    ORDER BY created_at DESC
+                    LIMIT 100
+                """)
+                notifications = cur.fetchall()
+                
+                cur.execute("SELECT COUNT(*) FROM admin_notifications WHERE is_read = false")
+                unread_count = cur.fetchone()['count']
+                
+                for n in notifications:
+                    if n.get('created_at'):
+                        n['created_at'] = n['created_at'].isoformat()
+                    if n.get('data'):
+                        try:
+                            n['data'] = json.loads(n['data']) if isinstance(n['data'], str) else n['data']
+                        except:
+                            pass
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': notifications,
+                    'unread_count': unread_count
+                })
+    except Exception as e:
+        logger.error(f"Error getting notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/mark-read', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_mark_notification_read():
+    """Admin: Marcar notificacion como leida."""
+    try:
+        data = request.get_json() or {}
+        notification_id = data.get('id')
+        mark_all = data.get('all', False)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if mark_all:
+                    cur.execute("UPDATE admin_notifications SET is_read = true WHERE is_read = false")
+                elif notification_id:
+                    cur.execute("UPDATE admin_notifications SET is_read = true WHERE id = %s", (notification_id,))
+                conn.commit()
+                
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error marking notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/delete', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_delete_notification():
+    """Admin: Eliminar notificacion."""
+    try:
+        data = request.get_json() or {}
+        notification_id = data.get('id')
+        delete_all = data.get('all', False)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if delete_all:
+                    cur.execute("DELETE FROM admin_notifications")
+                elif notification_id:
+                    cur.execute("DELETE FROM admin_notifications WHERE id = %s", (notification_id,))
+                conn.commit()
+                
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/settings', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_telegram_settings():
+    """Admin: Obtener configuracion de Telegram."""
+    try:
+        settings = telegram_service.get_settings()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT key, value FROM system_settings WHERE key LIKE 'telegram_%'")
+                db_settings = {row['key']: row['value'] for row in cur.fetchall()}
+        
+        for key in settings['notification_types']:
+            db_key = f"telegram_{key}_enabled"
+            if db_key in db_settings:
+                settings['notification_types'][key]['enabled'] = db_settings[db_key] == 'true'
+            
+            threshold_key = f"telegram_{key}_threshold"
+            if threshold_key in db_settings:
+                try:
+                    settings['notification_types'][key]['threshold'] = float(db_settings[threshold_key])
+                except:
+                    pass
+        
+        if 'telegram_enabled' in db_settings:
+            settings['enabled'] = db_settings['telegram_enabled'] == 'true'
+        
+        return jsonify({
+            'success': True,
+            **settings
+        })
+    except Exception as e:
+        logger.error(f"Error getting telegram settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/settings', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_update_telegram_settings():
+    """Admin: Actualizar configuracion de Telegram."""
+    try:
+        data = request.get_json() or {}
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if 'enabled' in data:
+                    cur.execute("""
+                        INSERT INTO system_settings (key, value, updated_at)
+                        VALUES ('telegram_enabled', %s, NOW())
+                        ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                    """, ('true' if data['enabled'] else 'false', 'true' if data['enabled'] else 'false'))
+                
+                if 'notification_types' in data:
+                    for key, settings in data['notification_types'].items():
+                        if isinstance(settings, dict):
+                            if 'enabled' in settings:
+                                db_key = f"telegram_{key}_enabled"
+                                val = 'true' if settings['enabled'] else 'false'
+                                cur.execute("""
+                                    INSERT INTO system_settings (key, value, updated_at)
+                                    VALUES (%s, %s, NOW())
+                                    ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                                """, (db_key, val, val))
+                            
+                            if 'threshold' in settings:
+                                threshold_key = f"telegram_{key}_threshold"
+                                cur.execute("""
+                                    INSERT INTO system_settings (key, value, updated_at)
+                                    VALUES (%s, %s, NOW())
+                                    ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                                """, (threshold_key, str(settings['threshold']), str(settings['threshold'])))
+                
+                conn.commit()
+        
+        telegram_service.update_settings(data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Configuracion guardada'
+        })
+    except Exception as e:
+        logger.error(f"Error updating telegram settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/test', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_test_telegram():
+    """Admin: Enviar mensaje de prueba por Telegram."""
+    try:
+        result = telegram_service.send_test_message()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error testing telegram: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/verify', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_verify_telegram():
+    """Admin: Verificar conexion del bot de Telegram."""
+    try:
+        result = telegram_service.verify_bot()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error verifying telegram: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/telegram/send', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_send_telegram():
+    """Admin: Enviar mensaje personalizado por Telegram."""
+    try:
+        data = request.get_json() or {}
+        message = data.get('message', '')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Mensaje requerido'}), 400
+        
+        result = telegram_service.send_custom_message(message)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error sending telegram: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/system-status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_system_status():
+    """Admin: Estado del sistema y APIs externas."""
+    try:
+        status = {
+            'database': {'status': 'unknown', 'message': ''},
+            'toncenter': {'status': 'unknown', 'message': ''},
+            'smspool': {'status': 'unknown', 'message': ''},
+            'cloudinary': {'status': 'unknown', 'message': ''}
+        }
+        
+        try:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    status['database'] = {'status': 'ok', 'message': 'Conectada'}
+        except Exception as e:
+            status['database'] = {'status': 'error', 'message': str(e)}
+        
+        toncenter_key = os.environ.get('TONCENTER_API_KEY', '')
+        if toncenter_key:
+            status['toncenter'] = {'status': 'ok', 'message': 'API Key configurada'}
+        else:
+            status['toncenter'] = {'status': 'warning', 'message': 'API Key no configurada'}
+        
+        smspool_key = os.environ.get('SMSPOOL_API_KEY', '')
+        if smspool_key:
+            status['smspool'] = {'status': 'ok', 'message': 'API Key configurada'}
+        else:
+            status['smspool'] = {'status': 'warning', 'message': 'API Key no configurada'}
+        
+        cloudinary_url = os.environ.get('CLOUDINARY_URL', '')
+        if cloudinary_url:
+            status['cloudinary'] = {'status': 'ok', 'message': 'Configurado'}
+        else:
+            status['cloudinary'] = {'status': 'warning', 'message': 'No configurado'}
+        
+        secrets_status = {
+            'DATABASE_URL': bool(os.environ.get('DATABASE_URL')),
+            'TONCENTER_API_KEY': bool(os.environ.get('TONCENTER_API_KEY')),
+            'SMSPOOL_API_KEY': bool(os.environ.get('SMSPOOL_API_KEY')),
+            'CLOUDINARY_URL': bool(os.environ.get('CLOUDINARY_URL')),
+            'TON_WALLET_ADDRESS': bool(os.environ.get('TON_WALLET_ADDRESS')),
+            'GROQ_API_KEY': bool(os.environ.get('GROQ_API_KEY')),
+            'GEMINI_API_KEY': bool(os.environ.get('GEMINI_API_KEY'))
+        }
+        
+        return jsonify({
+            'success': True,
+            'status': status,
+            'secrets': secrets_status,
+            'uptime': 'Running'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_admin_notifications():
+    """Admin: Obtener notificaciones del panel."""
+    try:
+        unread_only = request.args.get('unread', 'false') == 'true'
+        limit = min(int(request.args.get('limit', 50)), 100)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clause = "WHERE is_read = false" if unread_only else ""
+                cur.execute(f"""
+                    SELECT * FROM admin_notifications
+                    {where_clause}
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """, (limit,))
+                notifications = cur.fetchall()
+                
+                cur.execute("SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = false")
+                unread_count = cur.fetchone()['count']
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': [dict(n) for n in notifications],
+                    'unreadCount': unread_count
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting admin notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/<int:notification_id>/read', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def mark_notification_read(notification_id):
+    """Admin: Marcar notificacion como leida."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE admin_notifications
+                    SET is_read = true, read_at = NOW()
+                    WHERE id = %s
+                """, (notification_id,))
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error marking notification read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/notifications/read-all', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_mark_all_notifications_read():
+    """Admin: Marcar todas las notificaciones como leidas."""
+    try:
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE admin_notifications
+                    SET is_read = true, read_at = NOW()
+                    WHERE is_read = false
+                """)
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error marking all notifications read: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -13764,6 +14427,96 @@ def ai_constructor_flow_clear():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== AI CONSTRUCTOR DOWNLOAD ZIP ====================
+
+@app.route('/api/ai-constructor/download-zip', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_constructor_download_zip():
+    """Download generated project as ZIP file (OWNER ONLY)"""
+    import zipfile
+    import io
+    from flask import send_file
+    
+    try:
+        user_id = str(request.telegram_user.get('id'))
+        
+        if ai_constructor_service is None:
+            return jsonify({'success': False, 'error': 'AI Constructor service not available'}), 500
+        
+        files = ai_constructor_service.get_generated_files(user_id)
+        
+        if not files:
+            return jsonify({'success': False, 'error': 'No hay archivos generados para descargar'}), 404
+        
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for filename, content in files.items():
+                safe_filename = os.path.normpath(filename).lstrip(os.sep)
+                safe_filename = safe_filename.replace('..', '')
+                if not safe_filename:
+                    safe_filename = 'unnamed_file'
+                zf.writestr(safe_filename, content)
+        
+        memory_file.seek(0)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f'bunkr_project_{timestamp}.zip'
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+    except Exception as e:
+        logger.error(f"Error creating ZIP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-constructor/download-disk-zip', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_constructor_download_disk_zip():
+    """Download ai_generated folder as ZIP file (OWNER ONLY)"""
+    import zipfile
+    import io
+    from flask import send_file
+    
+    try:
+        ai_generated_path = os.path.join(os.getcwd(), 'ai_generated')
+        
+        if not os.path.exists(ai_generated_path):
+            return jsonify({'success': False, 'error': 'No hay archivos generados en disco'}), 404
+        
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(ai_generated_path):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__']]
+                
+                for file in files:
+                    if file.startswith('.'):
+                        continue
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, ai_generated_path)
+                    zf.write(file_path, arcname)
+        
+        memory_file.seek(0)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f'bunkr_project_{timestamp}.zip'
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+    except Exception as e:
+        logger.error(f"Error creating disk ZIP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== END AI CONSTRUCTOR SECTION ====================
 
 
@@ -14037,10 +14790,370 @@ def ai_toolkit_analyze_project():
 # ==================== END AI TOOLKIT SECTION ====================
 
 
+# ==================== AI CORE ENGINE SECTION (Phases 34.16-34.23) ====================
+
+@app.route('/api/ai-core/process', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_process_message():
+    """Process user message and determine workflow (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AICoreOrchestrator
+        
+        data = request.json
+        message = data.get('message', '')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        orchestrator = AICoreOrchestrator()
+        result = orchestrator.process_user_message(message)
+        
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"AI Core process: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/intent/classify', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_classify_intent():
+    """Classify user intent from message (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AIDecisionEngine
+        
+        data = request.json
+        message = data.get('message', '')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        engine = AIDecisionEngine()
+        intent = engine.classify_intent(message)
+        
+        return jsonify({
+            'success': True,
+            'intent': {
+                'type': intent.type.value,
+                'confidence': intent.confidence,
+                'keywords': intent.keywords,
+                'target_file': intent.target_file,
+                'target_function': intent.target_function,
+            }
+        })
+    except Exception as e:
+        logger.error(f"AI Core intent classify: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/workflow/decide', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_decide_workflow():
+    """Decide workflow based on intent (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AIDecisionEngine, IntentType, Intent
+        
+        data = request.json
+        intent_type = data.get('intent_type', 'ambiguous')
+        
+        engine = AIDecisionEngine()
+        intent = Intent(
+            type=IntentType(intent_type),
+            confidence=1.0,
+            keywords=[],
+            original_message=''
+        )
+        workflow = engine.decide_workflow(intent)
+        
+        return jsonify({
+            'success': True,
+            'workflow': {
+                'name': workflow.name,
+                'steps': [s.value for s in workflow.steps],
+                'total_steps': len(workflow.steps),
+            }
+        })
+    except Exception as e:
+        logger.error(f"AI Core workflow decide: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/validate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_validate_action():
+    """Validate action before execution (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import PreExecutionValidator
+        
+        data = request.json
+        action_type = data.get('action_type', 'edit')
+        action_params = data.get('params', {})
+        
+        validator = PreExecutionValidator()
+        result = validator.validate_before_action(action_type, **action_params)
+        
+        return jsonify({
+            'success': True,
+            'valid': result.valid,
+            'checks': result.checks,
+            'errors': result.errors,
+            'warnings': result.warnings
+        })
+    except Exception as e:
+        logger.error(f"AI Core validate: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/checkpoint/create', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_create_checkpoint():
+    """Create a checkpoint before making changes (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import RollbackManager
+        
+        data = request.json
+        files = data.get('files', [])
+        description = data.get('description', '')
+        
+        if not files:
+            return jsonify({'success': False, 'error': 'Files list is required'}), 400
+        
+        manager = RollbackManager()
+        checkpoint_id = manager.create_checkpoint(files, description)
+        
+        if checkpoint_id:
+            return jsonify({
+                'success': True,
+                'checkpoint_id': checkpoint_id,
+                'files_saved': len(files)
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to create checkpoint'}), 500
+    except Exception as e:
+        logger.error(f"AI Core checkpoint create: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/checkpoint/rollback', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_rollback_checkpoint():
+    """Rollback to a checkpoint (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import RollbackManager
+        
+        data = request.json
+        checkpoint_id = data.get('checkpoint_id', '')
+        
+        if not checkpoint_id:
+            return jsonify({'success': False, 'error': 'Checkpoint ID is required'}), 400
+        
+        manager = RollbackManager()
+        result = manager.rollback_to_checkpoint(checkpoint_id)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"AI Core rollback: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/checkpoint/list', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_list_checkpoints():
+    """List available checkpoints (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import RollbackManager
+        
+        manager = RollbackManager()
+        checkpoints = manager.get_checkpoints()
+        
+        return jsonify({
+            'success': True,
+            'checkpoints': checkpoints,
+            'count': len(checkpoints)
+        })
+    except Exception as e:
+        logger.error(f"AI Core list checkpoints: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/impact/analyze', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_analyze_impact():
+    """Analyze impact of changing a file (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import ChangeImpactAnalyzer
+        
+        data = request.json
+        file_path = data.get('file_path', '')
+        change_description = data.get('change_description', '')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'File path is required'}), 400
+        
+        analyzer = ChangeImpactAnalyzer()
+        impact = analyzer.analyze_impact(file_path, change_description)
+        
+        return jsonify({
+            'success': True,
+            'impact': {
+                'importers': impact.importers,
+                'usages': impact.usages,
+                'tests': impact.tests,
+                'breaking_changes': impact.breaking_changes,
+                'risk_level': impact.risk_level
+            }
+        })
+    except Exception as e:
+        logger.error(f"AI Core impact analyze: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/workflow/status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_workflow_status():
+    """Get workflow/server status (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import WorkflowManager
+        
+        name = request.args.get('name', 'main')
+        
+        manager = WorkflowManager()
+        status = manager.get_workflow_status(name)
+        
+        return jsonify({'success': True, **status})
+    except Exception as e:
+        logger.error(f"AI Core workflow status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/workflow/health', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_workflow_health():
+    """Check server health (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import WorkflowManager
+        
+        port = request.args.get('port', 5000, type=int)
+        path = request.args.get('path', '/')
+        
+        manager = WorkflowManager()
+        health = manager.check_server_health(port, path)
+        
+        return jsonify({'success': True, **health})
+    except Exception as e:
+        logger.error(f"AI Core workflow health: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/tasks/create', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def ai_core_create_tasks():
+    """Create a task list (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import TaskManager
+        
+        data = request.json
+        tasks = data.get('tasks', [])
+        
+        if not tasks:
+            return jsonify({'success': False, 'error': 'Tasks list is required'}), 400
+        
+        manager = TaskManager()
+        created_tasks = manager.create_task_list(tasks)
+        
+        return jsonify({
+            'success': True,
+            'session_id': manager.session_id,
+            'tasks_created': len(created_tasks)
+        })
+    except Exception as e:
+        logger.error(f"AI Core create tasks: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/tasks/progress', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_tasks_progress():
+    """Get task progress (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import TaskManager
+        
+        manager = TaskManager()
+        progress = manager.show_progress_to_user()
+        
+        return jsonify({'success': True, **progress})
+    except Exception as e:
+        logger.error(f"AI Core tasks progress: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-core/status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def ai_core_full_status():
+    """Get full AI Core status (OWNER ONLY)"""
+    try:
+        from tracking.ai_core_engine import AICoreOrchestrator
+        
+        orchestrator = AICoreOrchestrator()
+        status = orchestrator.get_full_status()
+        
+        return jsonify({'success': True, **status})
+    except Exception as e:
+        logger.error(f"AI Core full status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== END AI CORE ENGINE SECTION ====================
+
+
 # ==================== END AI CHAT SECTION ====================
 
 
 # ==================== WORKSPACE SECTION ====================
+
+def validate_workspace_path(file_path):
+    """Validate and secure workspace file path - returns (valid, full_path, error)"""
+    if not file_path:
+        return False, None, 'Path required'
+    
+    blocked_patterns = ['.env', '.git', '__pycache__', 'node_modules', '.replit', 
+                       '.cache', '.upm', '.config', 'venv', '.local', '.nix']
+    
+    for blocked in blocked_patterns:
+        if blocked in file_path.lower():
+            return False, None, f'Access to {blocked} is not allowed'
+    
+    if '..' in file_path or file_path.startswith('/') or file_path.startswith('~'):
+        return False, None, 'Invalid path - directory traversal not allowed'
+    
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    full_path = os.path.abspath(os.path.join(base_path, file_path))
+    
+    if not full_path.startswith(base_path):
+        return False, None, 'Path outside project root not allowed'
+    
+    return True, full_path, None
+
+def check_workspace_auth():
+    """Check if user is authenticated for workspace operations"""
+    demo_header = request.headers.get('X-Demo-Mode') == 'true'
+    
+    if demo_header:
+        demo_session_token = request.headers.get('X-Demo-Session')
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        
+        if verify_demo_session(demo_session_token, client_ip):
+            return True, 'demo'
+    
+    init_data = request.headers.get('X-Telegram-Init-Data')
+    if init_data:
+        try:
+            validated_data = validate_telegram_webapp_data(init_data)
+            if validated_data and validated_data.get('user'):
+                return True, 'telegram'
+        except Exception as e:
+            logger.warning(f"Workspace auth: Telegram validation failed: {e}")
+    
+    return False, None
 
 @app.route('/workspace')
 def workspace():
@@ -14108,15 +15221,15 @@ def get_files_tree():
 def get_file_content():
     """Get file content"""
     try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
         file_path = request.args.get('path', '')
-        if not file_path:
-            return jsonify({'error': 'Path required'}), 400
+        valid, full_path, error = validate_workspace_path(file_path)
         
-        if '..' in file_path or file_path.startswith('/'):
-            return jsonify({'error': 'Invalid path'}), 400
-        
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        full_path = os.path.join(base_path, file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
         
         if not os.path.exists(full_path):
             return jsonify({'error': 'File not found'}), 404
@@ -14139,25 +15252,305 @@ def get_file_content():
 def save_file_content():
     """Save file content"""
     try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
         data = request.json
         file_path = data.get('path', '')
         content = data.get('content', '')
         
-        if not file_path:
-            return jsonify({'error': 'Path required'}), 400
+        valid, full_path, error = validate_workspace_path(file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
         
-        if '..' in file_path or file_path.startswith('/'):
-            return jsonify({'error': 'Invalid path'}), 400
-        
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        full_path = os.path.join(base_path, file_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
         with open(full_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
+        logger.info(f"File saved: {file_path} (auth: {auth_type})")
         return jsonify({'success': True, 'path': file_path})
     except Exception as e:
         logger.error(f"Error saving file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/create', methods=['POST'])
+def create_file():
+    """Create new file"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        file_path = data.get('path', '')
+        content = data.get('content', '')
+        
+        valid, full_path, error = validate_workspace_path(file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        if os.path.exists(full_path):
+            return jsonify({'error': 'File already exists'}), 400
+        
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        logger.info(f"File created: {file_path} (auth: {auth_type})")
+        return jsonify({'success': True, 'path': file_path})
+    except Exception as e:
+        logger.error(f"Error creating file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/folder', methods=['POST'])
+def create_folder():
+    """Create new folder"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        folder_path = data.get('path', '')
+        
+        valid, full_path, error = validate_workspace_path(folder_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        if os.path.exists(full_path):
+            return jsonify({'error': 'Folder already exists'}), 400
+        
+        os.makedirs(full_path, exist_ok=True)
+        
+        logger.info(f"Folder created: {folder_path} (auth: {auth_type})")
+        return jsonify({'success': True, 'path': folder_path})
+    except Exception as e:
+        logger.error(f"Error creating folder: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/delete', methods=['POST'])
+def delete_file():
+    """Delete file or folder"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        file_path = data.get('path', '')
+        confirm = data.get('confirm', False)
+        
+        if not confirm:
+            return jsonify({'error': 'Confirmation required', 'requires_confirm': True}), 400
+        
+        valid, full_path, error = validate_workspace_path(file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        protected_files = ['app.py', 'requirements.txt', 'run.py', 'init_db.py', 'replit.md']
+        protected_dirs = ['tracking', 'templates', 'static']
+        
+        if file_path in protected_files:
+            return jsonify({'error': 'Cannot delete protected file'}), 400
+        
+        path_parts = file_path.split('/')
+        if len(path_parts) == 1 and path_parts[0] in protected_dirs:
+            return jsonify({'error': 'Cannot delete protected folder'}), 400
+        
+        if not os.path.exists(full_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        if os.path.isdir(full_path):
+            shutil.rmtree(full_path)
+            logger.info(f"Folder deleted: {file_path} (auth: {auth_type})")
+        else:
+            os.remove(full_path)
+            logger.info(f"File deleted: {file_path} (auth: {auth_type})")
+        
+        return jsonify({'success': True, 'path': file_path})
+    except Exception as e:
+        logger.error(f"Error deleting file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/rename', methods=['POST'])
+def rename_file():
+    """Rename file or folder"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        old_path = data.get('old_path', '')
+        new_path = data.get('new_path', '')
+        
+        valid_old, full_old_path, error_old = validate_workspace_path(old_path)
+        if not valid_old:
+            return jsonify({'error': f'Old path: {error_old}'}), 400
+        
+        valid_new, full_new_path, error_new = validate_workspace_path(new_path)
+        if not valid_new:
+            return jsonify({'error': f'New path: {error_new}'}), 400
+        
+        if not os.path.exists(full_old_path):
+            return jsonify({'error': 'Source file not found'}), 404
+        
+        if os.path.exists(full_new_path):
+            return jsonify({'error': 'Destination already exists'}), 400
+        
+        os.makedirs(os.path.dirname(full_new_path), exist_ok=True)
+        shutil.move(full_old_path, full_new_path)
+        
+        logger.info(f"File renamed: {old_path} -> {new_path} (auth: {auth_type})")
+        return jsonify({'success': True, 'old_path': old_path, 'new_path': new_path})
+    except Exception as e:
+        logger.error(f"Error renaming file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/duplicate', methods=['POST'])
+def duplicate_file():
+    """Duplicate file"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        source_path = data.get('path', '')
+        
+        valid, full_source, error = validate_workspace_path(source_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        if not os.path.exists(full_source):
+            return jsonify({'error': 'File not found'}), 404
+        
+        if not os.path.isfile(full_source):
+            return jsonify({'error': 'Can only duplicate files'}), 400
+        
+        name, ext = os.path.splitext(source_path)
+        counter = 1
+        new_path = f"{name}_copy{ext}"
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        while os.path.exists(os.path.join(base_path, new_path)):
+            new_path = f"{name}_copy{counter}{ext}"
+            counter += 1
+        
+        full_dest = os.path.join(base_path, new_path)
+        shutil.copy2(full_source, full_dest)
+        
+        logger.info(f"File duplicated: {source_path} -> {new_path} (auth: {auth_type})")
+        return jsonify({'success': True, 'original': source_path, 'copy': new_path})
+    except Exception as e:
+        logger.error(f"Error duplicating file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/diff', methods=['POST'])
+def get_file_diff():
+    """Get diff between current file content and proposed changes"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        import difflib
+        
+        data = request.json
+        file_path = data.get('path', '')
+        new_content = data.get('new_content', '')
+        
+        valid, full_path, error = validate_workspace_path(file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        if os.path.exists(full_path):
+            with open(full_path, 'r', encoding='utf-8') as f:
+                old_content = f.read()
+        else:
+            old_content = ''
+        
+        old_lines = old_content.splitlines(keepends=True)
+        new_lines = new_content.splitlines(keepends=True)
+        
+        diff = list(difflib.unified_diff(
+            old_lines, new_lines, 
+            fromfile=f'a/{file_path}', 
+            tofile=f'b/{file_path}',
+            lineterm=''
+        ))
+        
+        diff_stats = {
+            'additions': sum(1 for line in diff if line.startswith('+') and not line.startswith('+++')),
+            'deletions': sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
+        }
+        
+        return jsonify({
+            'success': True,
+            'path': file_path,
+            'diff': ''.join(diff),
+            'stats': diff_stats,
+            'is_new': not os.path.exists(full_path)
+        })
+    except Exception as e:
+        logger.error(f"Error generating diff: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/apply-diff', methods=['POST'])
+def apply_file_diff():
+    """Apply changes after user confirms the diff"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        file_path = data.get('path', '')
+        new_content = data.get('new_content', '')
+        confirmed = data.get('confirmed', False)
+        
+        if not confirmed:
+            return jsonify({'error': 'Confirmation required', 'requires_confirm': True}), 400
+        
+        valid, full_path, error = validate_workspace_path(file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        logger.info(f"Diff applied: {file_path} (auth: {auth_type})")
+        return jsonify({'success': True, 'path': file_path, 'applied': True})
+    except Exception as e:
+        logger.error(f"Error applying diff: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/history', methods=['GET'])
+def get_file_history():
+    """Get edit history for a file"""
+    try:
+        is_auth, auth_type = check_workspace_auth()
+        if not is_auth:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        file_path = request.args.get('path', '')
+        
+        valid, full_path, error = validate_workspace_path(file_path)
+        if not valid:
+            return jsonify({'error': error}), 400
+        
+        return jsonify({
+            'success': True,
+            'path': file_path,
+            'history': [],
+            'message': 'History tracking requires version control integration'
+        })
+    except Exception as e:
+        logger.error(f"Error getting file history: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ==================== END WORKSPACE SECTION ====================

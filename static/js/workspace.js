@@ -219,11 +219,85 @@ const Workspace = {
         this.state.isProcessing = false;
     },
 
-    handleGeneratedFiles(files) {
+    async handleGeneratedFiles(files) {
+        const generatedPaths = [];
+        
         for (const [filename, content] of Object.entries(files)) {
-            this.addMessage(`Archivo generado: ${filename}`, 'assistant');
+            try {
+                const response = await fetch('/api/files/save', {
+                    method: 'POST',
+                    headers: this.getApiHeaders(),
+                    body: JSON.stringify({ path: filename, content: content })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.addMessage(`Archivo generado: ${filename}`, 'assistant');
+                    generatedPaths.push(filename);
+                } else {
+                    this.addMessage(`Error guardando ${filename}: ${data.error}`, 'assistant');
+                }
+            } catch (error) {
+                this.addMessage(`Error guardando ${filename}`, 'assistant');
+            }
         }
-        this.loadFiles();
+        
+        await this.loadFiles();
+        
+        if (generatedPaths.length > 0) {
+            this.highlightGeneratedFiles(generatedPaths);
+            this.autoExpandToFile(generatedPaths[0]);
+            
+            const htmlFiles = generatedPaths.filter(p => p.endsWith('.html'));
+            if (htmlFiles.length > 0) {
+                this.updatePreviewWithFile(htmlFiles[0]);
+            }
+        }
+    },
+    
+    highlightGeneratedFiles(paths) {
+        paths.forEach(path => {
+            const item = document.querySelector(`[data-path="${path}"]`);
+            if (item) {
+                item.classList.add('tree-item-new');
+                setTimeout(() => item.classList.remove('tree-item-new'), 3000);
+            }
+        });
+    },
+    
+    autoExpandToFile(path) {
+        const parts = path.split('/');
+        let currentPath = '';
+        
+        parts.forEach((part, index) => {
+            if (index < parts.length - 1) {
+                currentPath = currentPath ? `${currentPath}/${part}` : part;
+                const folderItem = document.querySelector(`[data-path="${currentPath}"]`);
+                if (folderItem) {
+                    const children = folderItem.nextElementSibling;
+                    if (children && children.classList.contains('tree-children')) {
+                        children.classList.remove('collapsed');
+                        const toggle = folderItem.querySelector('.tree-toggle');
+                        if (toggle) toggle.classList.add('expanded');
+                    }
+                }
+            }
+        });
+        
+        const fileItem = document.querySelector(`[data-path="${path}"]`);
+        if (fileItem) {
+            fileItem.classList.add('selected');
+            fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    },
+    
+    updatePreviewWithFile(htmlPath) {
+        const urlInput = document.getElementById('preview-url');
+        if (urlInput) {
+            urlInput.value = '/' + htmlPath;
+        }
+        this.refreshPreview();
     },
 
     addMessage(text, type) {
@@ -342,6 +416,8 @@ const Workspace = {
                 itemDiv.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.toggleFolder(itemDiv, item);
+                    document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('selected'));
+                    itemDiv.classList.add('selected');
                 });
             } else {
                 itemDiv.innerHTML = `
@@ -354,6 +430,10 @@ const Workspace = {
                     this.openFile(item);
                 });
             }
+            
+            itemDiv.addEventListener('contextmenu', (e) => {
+                this.showContextMenu(e, item);
+            });
 
             container.appendChild(itemDiv);
 
@@ -467,17 +547,348 @@ const Workspace = {
         window.open(url, '_blank');
     },
 
-    createNewFile() {
-        const name = prompt('Nombre del archivo:');
-        if (name) {
-            this.addMessage(`Creando archivo: ${name}`, 'assistant');
+    handleApiError(response, data) {
+        if (response.status === 401) {
+            this.addMessage('Sesion expirada. Por favor verifica tu autenticacion.', 'assistant');
+            window.location.href = '/';
+            return true;
+        }
+        if (!data.success && data.error) {
+            this.addMessage(`Error: ${data.error}`, 'assistant');
+            return true;
+        }
+        return false;
+    },
+
+    async createNewFile() {
+        const name = prompt('Nombre del archivo (ej: mi_archivo.py):');
+        if (!name) return;
+        
+        const path = this.getSelectedFolderPath() + '/' + name;
+        const cleanPath = path.replace(/^\/+/, '');
+        
+        try {
+            const response = await fetch('/api/files/create', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ path: cleanPath, content: '' })
+            });
+            
+            const data = await response.json();
+            
+            if (this.handleApiError(response, data)) return;
+            
+            if (data.success) {
+                this.addMessage(`Archivo creado: ${cleanPath}`, 'assistant');
+                this.loadFiles();
+                this.openFileByPath(cleanPath);
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion al crear archivo', 'assistant');
         }
     },
 
-    createNewFolder() {
+    async createNewFolder() {
         const name = prompt('Nombre de la carpeta:');
-        if (name) {
-            this.addMessage(`Creando carpeta: ${name}`, 'assistant');
+        if (!name) return;
+        
+        const path = this.getSelectedFolderPath() + '/' + name;
+        const cleanPath = path.replace(/^\/+/, '');
+        
+        try {
+            const response = await fetch('/api/files/folder', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ path: cleanPath })
+            });
+            
+            const data = await response.json();
+            
+            if (this.handleApiError(response, data)) return;
+            
+            if (data.success) {
+                this.addMessage(`Carpeta creada: ${cleanPath}`, 'assistant');
+                this.loadFiles();
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion al crear carpeta', 'assistant');
+        }
+    },
+
+    getSelectedFolderPath() {
+        const selected = document.querySelector('.tree-item.selected');
+        if (selected) {
+            const path = selected.dataset.path;
+            if (selected.classList.contains('tree-item-folder')) {
+                return path;
+            }
+            const parts = path.split('/');
+            parts.pop();
+            return parts.join('/');
+        }
+        return '';
+    },
+
+    async openFileByPath(path) {
+        try {
+            const response = await fetch(`/api/files/content?path=${encodeURIComponent(path)}`);
+            const data = await response.json();
+            
+            if (data.content !== undefined) {
+                this.state.currentFile = path;
+                const name = path.split('/').pop();
+                document.getElementById('file-modal-title').textContent = name;
+                document.getElementById('editor-file-path').textContent = path;
+                document.getElementById('file-content').value = data.content;
+                document.getElementById('file-modal').classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error opening file:', error);
+        }
+    },
+
+    async deleteFile(path) {
+        const isFolder = document.querySelector(`[data-path="${path}"]`)?.classList.contains('tree-item-folder');
+        const type = isFolder ? 'carpeta' : 'archivo';
+        
+        if (!confirm(`Eliminar ${type}: ${path}?`)) return;
+        
+        try {
+            const response = await fetch('/api/files/delete', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ path: path, confirm: true })
+            });
+            
+            const data = await response.json();
+            
+            if (this.handleApiError(response, data)) return;
+            
+            if (data.success) {
+                this.addMessage(`${type.charAt(0).toUpperCase() + type.slice(1)} eliminado: ${path}`, 'assistant');
+                this.loadFiles();
+                document.getElementById('file-modal').classList.add('hidden');
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion al eliminar', 'assistant');
+        }
+    },
+
+    async renameFile(oldPath) {
+        const oldName = oldPath.split('/').pop();
+        const newName = prompt('Nuevo nombre:', oldName);
+        if (!newName || newName === oldName) return;
+        
+        const pathParts = oldPath.split('/');
+        pathParts.pop();
+        const newPath = pathParts.length > 0 ? pathParts.join('/') + '/' + newName : newName;
+        
+        try {
+            const response = await fetch('/api/files/rename', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ old_path: oldPath, new_path: newPath })
+            });
+            
+            const data = await response.json();
+            
+            if (this.handleApiError(response, data)) return;
+            
+            if (data.success) {
+                this.addMessage(`Renombrado: ${oldPath} -> ${newPath}`, 'assistant');
+                this.loadFiles();
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion al renombrar', 'assistant');
+        }
+    },
+
+    async duplicateFile(path) {
+        try {
+            const response = await fetch('/api/files/duplicate', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ path: path })
+            });
+            
+            const data = await response.json();
+            
+            if (this.handleApiError(response, data)) return;
+            
+            if (data.success) {
+                this.addMessage(`Archivo duplicado: ${data.copy}`, 'assistant');
+                this.loadFiles();
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion al duplicar', 'assistant');
+        }
+    },
+
+    showContextMenu(event, item) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        this.hideContextMenu();
+        
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.id = 'file-context-menu';
+        
+        const isFolder = item.type === 'folder';
+        
+        menu.innerHTML = `
+            ${!isFolder ? `<div class="context-menu-item" data-action="open"><span class="menu-icon">📂</span> Abrir</div>` : ''}
+            <div class="context-menu-item" data-action="rename"><span class="menu-icon">✏️</span> Renombrar</div>
+            ${!isFolder ? `<div class="context-menu-item" data-action="duplicate"><span class="menu-icon">📋</span> Duplicar</div>` : ''}
+            <div class="context-menu-divider"></div>
+            <div class="context-menu-item context-menu-danger" data-action="delete"><span class="menu-icon">🗑️</span> Eliminar</div>
+        `;
+        
+        document.body.appendChild(menu);
+        
+        const x = Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 10);
+        const y = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 10);
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+        
+        menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
+            menuItem.addEventListener('click', () => {
+                const action = menuItem.dataset.action;
+                switch (action) {
+                    case 'open':
+                        this.openFile(item);
+                        break;
+                    case 'rename':
+                        this.renameFile(item.path);
+                        break;
+                    case 'duplicate':
+                        this.duplicateFile(item.path);
+                        break;
+                    case 'delete':
+                        this.deleteFile(item.path);
+                        break;
+                }
+                this.hideContextMenu();
+            });
+        });
+        
+        document.addEventListener('click', () => this.hideContextMenu(), { once: true });
+    },
+
+    hideContextMenu() {
+        const existing = document.getElementById('file-context-menu');
+        if (existing) existing.remove();
+    },
+
+    async showDiffViewer(path, newContent) {
+        try {
+            const response = await fetch('/api/files/diff', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ path: path, new_content: newContent })
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                this.addMessage(`Error generando diff: ${data.error}`, 'assistant');
+                return;
+            }
+            
+            const modal = document.createElement('div');
+            modal.id = 'diff-viewer-modal';
+            modal.className = 'modal-overlay';
+            
+            const formattedDiff = this.formatDiffOutput(data.diff);
+            
+            modal.innerHTML = `
+                <div class="diff-viewer-container">
+                    <div class="diff-header">
+                        <div class="diff-title">
+                            <span class="diff-icon">📝</span>
+                            <span>${data.is_new ? 'Nuevo archivo' : 'Cambios en'}: ${path}</span>
+                        </div>
+                        <div class="diff-stats">
+                            <span class="diff-stat diff-additions">+${data.stats.additions}</span>
+                            <span class="diff-stat diff-deletions">-${data.stats.deletions}</span>
+                        </div>
+                    </div>
+                    <div class="diff-content">
+                        <pre class="diff-code">${formattedDiff}</pre>
+                    </div>
+                    <div class="diff-actions">
+                        <button class="diff-btn diff-btn-apply" id="apply-diff-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Aplicar cambios
+                        </button>
+                        <button class="diff-btn diff-btn-cancel" id="cancel-diff-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            document.getElementById('apply-diff-btn').addEventListener('click', async () => {
+                await this.applyDiff(path, newContent);
+                modal.remove();
+            });
+            
+            document.getElementById('cancel-diff-btn').addEventListener('click', () => {
+                modal.remove();
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+            
+        } catch (error) {
+            console.error('Error showing diff:', error);
+            this.addMessage('Error mostrando diferencias', 'assistant');
+        }
+    },
+    
+    formatDiffOutput(diffText) {
+        if (!diffText) return '<span class="diff-empty">No hay cambios</span>';
+        
+        return diffText.split('\n').map(line => {
+            let className = 'diff-line';
+            if (line.startsWith('+')) {
+                className += ' diff-line-add';
+            } else if (line.startsWith('-')) {
+                className += ' diff-line-remove';
+            } else if (line.startsWith('@@')) {
+                className += ' diff-line-info';
+            }
+            return `<span class="${className}">${this.escapeHtml(line)}</span>`;
+        }).join('\n');
+    },
+    
+    async applyDiff(path, newContent) {
+        try {
+            const response = await fetch('/api/files/apply-diff', {
+                method: 'POST',
+                headers: this.getApiHeaders(),
+                body: JSON.stringify({ path: path, new_content: newContent, confirmed: true })
+            });
+            
+            const data = await response.json();
+            
+            if (this.handleApiError(response, data)) return;
+            
+            if (data.success) {
+                this.addMessage(`Cambios aplicados: ${path}`, 'assistant');
+                this.loadFiles();
+            }
+        } catch (error) {
+            this.addMessage('Error de conexion al aplicar cambios', 'assistant');
         }
     },
 

@@ -1845,14 +1845,28 @@ const App = {
     
     updateProfilePage() {
         const username = document.getElementById('profile-page-username');
-        const name = document.getElementById('profile-page-name');
+        const atUsername = document.getElementById('profile-at-username');
+        const displayName = document.getElementById('profile-display-name');
+        const bioText = document.getElementById('profile-bio-text');
         const verifiedBadge = document.getElementById('profile-verified-badge');
+        const userBadge = document.getElementById('profile-user-badge');
+        const walletBalance = document.getElementById('profile-wallet-balance');
         
-        if (username && this.user) {
-            username.textContent = this.user.username ? `@${this.user.username}` : '@demo_user';
+        const userUsername = this.user?.username || 'demo_user';
+        const userName = this.user?.firstName || this.user?.first_name || 'Usuario';
+        const userBio = this.user?.bio || 'Sin biografia';
+        
+        if (username) {
+            username.textContent = `@${userUsername}`;
         }
-        if (name && this.user) {
-            name.textContent = this.user.firstName || 'Demo';
+        if (atUsername) {
+            atUsername.textContent = `@${userUsername}`;
+        }
+        if (displayName) {
+            displayName.textContent = userName;
+        }
+        if (bioText) {
+            bioText.textContent = userBio;
         }
         
         if (verifiedBadge) {
@@ -1863,8 +1877,62 @@ const App = {
             }
         }
         
+        if (userBadge) {
+            if (this.isOwner) {
+                userBadge.textContent = 'Owner';
+                userBadge.style.background = 'rgba(246, 70, 93, 0.15)';
+                userBadge.style.color = '#F6465D';
+            } else if (this.user?.isPremium || this.user?.is_premium) {
+                userBadge.textContent = 'Premium';
+                userBadge.style.background = 'rgba(179, 136, 255, 0.15)';
+                userBadge.style.color = '#B388FF';
+            } else {
+                userBadge.textContent = 'Miembro';
+                userBadge.style.background = 'rgba(240, 185, 11, 0.15)';
+                userBadge.style.color = '#F0B90B';
+            }
+        }
+        
+        if (walletBalance && this.walletBalance !== undefined) {
+            walletBalance.textContent = parseFloat(this.walletBalance || 0).toFixed(2);
+        }
+        
         this.updateAllAvatars();
         this.loadProfileGallery();
+        this.loadProfileStats();
+        this.setupNewProfileListeners();
+    },
+    
+    setupNewProfileListeners() {
+        if (this._newProfileListenersSetup) return;
+        this._newProfileListenersSetup = true;
+        
+        const backBtn = document.getElementById('profile-back-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => this.goToHome());
+        }
+        
+        const walletCard = document.getElementById('profile-wallet-card');
+        if (walletCard) {
+            walletCard.addEventListener('click', () => this.showPage('wallet'));
+        }
+        
+        const settingsBtn = document.getElementById('profile-settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.showSettingsScreen());
+        }
+        
+        const statsElements = document.querySelectorAll('.profile-page-stat[data-action]');
+        statsElements.forEach(stat => {
+            stat.addEventListener('click', () => {
+                const action = stat.dataset.action;
+                if (action === 'followers') {
+                    this.showFollowersModal();
+                } else if (action === 'following') {
+                    this.showFollowingModal();
+                }
+            });
+        });
     },
     
     async loadProfileGallery() {
@@ -8319,12 +8387,15 @@ const App = {
                 
                 listEl.innerHTML = response.products.map(product => `
                     <div class="admin-product-card">
-                        <div class="admin-product-image">${this.escapeHtml(product.icon || '📦')}</div>
+                        <div class="admin-product-image">${this.escapeHtml(product.image_url || product.icon || '')}</div>
                         <div class="admin-product-info">
-                            <div class="admin-product-name">${this.escapeHtml(product.name)}</div>
+                            <div class="admin-product-name">${this.escapeHtml(product.title || product.name || 'Sin titulo')}</div>
                             <div class="admin-product-category">${this.escapeHtml(product.category || 'Sin categoria')}</div>
-                            <div class="admin-product-price">${parseInt(product.price) || 0} creditos</div>
-                            <div class="admin-product-stock">Stock: ${this.escapeHtml(product.stock || 'Ilimitado')}</div>
+                            <div class="admin-product-price">${parseFloat(product.price) || 0} creditos</div>
+                            <div class="admin-product-stock">Stock: ${product.stock !== null ? product.stock : 'Ilimitado'}</div>
+                        </div>
+                        <div class="admin-product-actions">
+                            <button class="delete-btn" onclick="App.deleteProduct(${parseInt(product.id)})">Eliminar</button>
                         </div>
                     </div>
                 `).join('');
@@ -8335,7 +8406,94 @@ const App = {
     },
 
     showAddProductForm() {
-        this.showToast('Funcion en desarrollo', 'info');
+        const content = `
+            <div class="modal-header">
+                <span class="modal-title">Nuevo Producto</span>
+                <button class="modal-close" onclick="App.closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Titulo del Producto</label>
+                    <input type="text" id="new-product-title" placeholder="Ej: Pack Premium">
+                </div>
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="new-product-category">
+                        <option value="digital">Digital</option>
+                        <option value="subscription">Suscripcion</option>
+                        <option value="service">Servicio</option>
+                        <option value="physical">Fisico</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descripcion</label>
+                    <textarea id="new-product-desc" placeholder="Descripcion del producto..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Precio (creditos)</label>
+                    <input type="number" id="new-product-price" value="100" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Stock</label>
+                    <input type="number" id="new-product-stock" value="1" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Icono (emoji)</label>
+                    <input type="text" id="new-product-icon" value="" maxlength="2">
+                </div>
+                <button class="btn btn-primary" onclick="App.createProduct()" style="width: 100%; margin-top: 16px;">Crear Producto</button>
+            </div>
+        `;
+        this.showModal(content);
+    },
+
+    async createProduct() {
+        const title = document.getElementById('new-product-title').value;
+        const category = document.getElementById('new-product-category').value;
+        const description = document.getElementById('new-product-desc').value;
+        const price = document.getElementById('new-product-price').value;
+        const stock = document.getElementById('new-product-stock').value;
+        const icon = document.getElementById('new-product-icon').value;
+        
+        if (!title) {
+            this.showToast('Ingresa un titulo para el producto', 'error');
+            return;
+        }
+        
+        try {
+            const response = await this.apiRequest('/api/admin/products', {
+                method: 'POST',
+                body: JSON.stringify({ title, category, description, price: parseFloat(price), stock: parseInt(stock), icon })
+            });
+            
+            if (response.success) {
+                this.showToast('Producto creado correctamente', 'success');
+                this.closeModal();
+                this.loadAdminProducts();
+            } else {
+                this.showToast(response.error || 'Error al crear producto', 'error');
+            }
+        } catch (error) {
+            this.showToast('Error al crear producto', 'error');
+        }
+    },
+
+    async deleteProduct(productId) {
+        if (!confirm('Estas seguro de eliminar este producto?')) return;
+        
+        try {
+            const response = await this.apiRequest(`/api/admin/products/${productId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                this.showToast('Producto eliminado', 'success');
+                this.loadAdminProducts();
+            }
+        } catch (error) {
+            this.showToast('Error al eliminar producto', 'error');
+        }
     },
 
     async loadAdminTransactions() {
