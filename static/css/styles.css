@@ -14597,9 +14597,11 @@ body.dev-mode-active .dev-lock-badge {
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 16px;
-    padding: 70px 20px 90px 20px;
-    height: 100vh;
+    padding: 20px;
+    margin-top: 60px;
+    height: calc(100vh - 60px - 70px);
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .phone-browser {
