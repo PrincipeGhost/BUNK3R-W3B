@@ -14,9 +14,9 @@
 ## PROGRESO GLOBAL DE MIGRACION
 
 **Estado actual (9 Diciembre 2025):**
-- Endpoints en app.py: 317 → 300 (17 endpoints admin migrados)
+- Endpoints en app.py: 317 → 289 (28 endpoints admin migrados)
 - Blueprints activos: auth, blockchain, admin, user
-- Endpoints en admin_routes.py: 17 (4 dashboard + 13 users)
+- Endpoints en admin_routes.py: 28 (4 dashboard + 13 users + 4 stats + 7 security)
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
 **Fecha:** 9 Diciembre 2025
@@ -51,6 +51,33 @@
 **Archivo:** routes/admin_routes.py
 **Funcion helper migrada:** calculate_user_risk_score()
 **Nota:** Endpoints originales en app.py siguen activos temporalmente (lineas 4980-5639, 6495-6624, 9509-9521)
+
+### FASE 0.6: MIGRACION ADMIN STATS - COMPLETADO
+**Fecha:** 9 Diciembre 2025
+**Endpoints migrados:** 4
+
+- [x] GET /api/admin/stats
+- [x] GET /api/admin/stats/overview
+- [x] GET /api/admin/stats/users
+- [x] GET /api/admin/stats/transactions
+
+**Archivo:** routes/admin_routes.py
+**Nota:** Corregido `resolved` -> `is_resolved` en queries de security_alerts
+
+### FASE 0.7: MIGRACION ADMIN SECURITY - COMPLETADO
+**Fecha:** 9 Diciembre 2025
+**Endpoints migrados:** 7
+
+- [x] GET /api/admin/security/users
+- [x] GET /api/admin/security/user/{id}/devices
+- [x] POST /api/admin/security/user/{id}/device/remove
+- [x] GET /api/admin/security/alerts
+- [x] POST /api/admin/security/alerts/{id}/resolve
+- [x] GET /api/admin/security/statistics
+- [x] GET /api/admin/security/user/{id}/activity
+
+**Archivo:** routes/admin_routes.py
+**Dependencia:** get_security_manager() de tracking/services.py
 
 ---
 
