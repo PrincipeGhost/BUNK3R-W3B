@@ -13,10 +13,44 @@
 
 ## PROGRESO GLOBAL DE MIGRACION
 
-**Estado actual (8 Diciembre 2025):**
-- Endpoints en app.py: 341 → 317 (24 migrados/eliminados)
-- Lineas de codigo: 15,352 → 14,633 (719 lineas reducidas)
+**Estado actual (9 Diciembre 2025):**
+- Endpoints en app.py: 317 → 300 (17 endpoints admin migrados)
 - Blueprints activos: auth, blockchain, admin, user
+- Endpoints en admin_routes.py: 17 (4 dashboard + 13 users)
+
+### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
+**Fecha:** 9 Diciembre 2025
+**Endpoints migrados:** 4
+
+- [x] GET /api/admin/dashboard/stats
+- [x] GET /api/admin/dashboard/activity  
+- [x] GET /api/admin/dashboard/alerts
+- [x] GET /api/admin/dashboard/charts
+
+**Archivo:** routes/admin_routes.py
+**Endpoints en app.py comentados:** Lineas 4957-4967
+
+### FASE 0.5: MIGRACION ADMIN USERS - COMPLETADO
+**Fecha:** 9 Diciembre 2025
+**Endpoints migrados:** 13
+
+- [x] POST /api/admin/users/{id}/ban
+- [x] GET /api/admin/users/{id}/detail
+- [x] POST /api/admin/users/{id}/balance
+- [x] POST /api/admin/users/{id}/note
+- [x] POST /api/admin/users/{id}/logout
+- [x] POST /api/admin/users/{id}/notify
+- [x] GET /api/admin/users/{id}/risk-score
+- [x] POST /api/admin/users/{id}/risk-score/calculate
+- [x] GET /api/admin/users/{id}/risk-score/history
+- [x] GET /api/admin/users/{id}/related-accounts
+- [x] GET /api/admin/users
+- [x] GET /api/admin/users/export
+- [x] POST /api/admin/users/{id}/tags
+
+**Archivo:** routes/admin_routes.py
+**Funcion helper migrada:** calculate_user_risk_score()
+**Nota:** Endpoints originales en app.py siguen activos temporalmente (lineas 4980-5639, 6495-6624, 9509-9521)
 
 ---
 
