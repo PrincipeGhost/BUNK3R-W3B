@@ -432,7 +432,7 @@ def calculate_user_risk_score(user_id, conn):
         try:
             cur.execute("""
                 SELECT COUNT(*) as alert_count FROM security_alerts
-                WHERE user_id = %s AND resolved = false
+                WHERE user_id = %s AND is_resolved = false
             """, (user.get('id'),))
             alerts = cur.fetchone()['alert_count'] or 0
             if alerts > 0:
