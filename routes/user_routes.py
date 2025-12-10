@@ -23,10 +23,31 @@ from werkzeug.utils import secure_filename
 import psycopg2.extras
 
 from tracking.decorators import require_telegram_auth, require_telegram_user
-from tracking.services import get_db_manager
+from tracking.services import get_db_manager, get_security_manager
 from tracking.utils import rate_limit
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def validate_ton_address(address):
+    """Validate TON wallet address format server-side."""
+    if not address or not isinstance(address, str):
+        return False, 'Direccion de wallet requerida'
+    
+    address = address.strip()
+    
+    if len(address) != 48:
+        return False, 'La direccion debe tener 48 caracteres'
+    
+    prefix = address[:2]
+    if prefix not in ['EQ', 'UQ']:
+        return False, 'Direccion invalida. Debe empezar con EQ o UQ'
+    
+    if not re.match(r'^[A-Za-z0-9_-]+$', address):
+        return False, 'La direccion contiene caracteres invalidos'
+    
+    return True, None
 
 user_bp = Blueprint('user', __name__, url_prefix='/api')
 
