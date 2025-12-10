@@ -2446,3 +2446,628 @@ def check_user_lockout():
     except Exception as e:
         logger.error(f"Error checking lockout: {e}")
         return jsonify({'success': True, 'isLocked': False})
+
+
+# ============================================================
+# STORIES ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@user_bp.route('/stories/create', methods=['POST'])
+@require_telegram_user
+def create_story():
+    """Create a new story (24h expiry)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'Archivo requerido'}), 400
+        
+        file = request.files['file']
+        file_data = file.read()
+        
+        try:
+            from tracking.cloudinary_service import cloudinary_service
+            upload_result = cloudinary_service.upload_story_media(
+                file_data=file_data,
+                content_type=file.content_type
+            )
+            
+            if not upload_result['success']:
+                return jsonify({'success': False, 'error': upload_result.get('error')}), 500
+            
+            story_id = db_manager.create_story(
+                user_id=user_id,
+                media_type=upload_result['resource_type'],
+                media_url=upload_result['url'],
+                encrypted_url=upload_result['url'],
+                encryption_key=upload_result['encryption_key'],
+                encryption_iv=upload_result['encryption_iv']
+            )
+            
+            return jsonify({
+                'success': story_id is not None,
+                'story_id': story_id
+            })
+        except ImportError:
+            return jsonify({'success': False, 'error': 'Cloudinary service not available'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error creating story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/stories/feed', methods=['GET'])
+@require_telegram_user
+def get_stories_feed():
+    """Get stories from followed users"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'stories': []})
+        
+        stories = db_manager.get_stories_feed(user_id)
+        
+        return jsonify({
+            'success': True,
+            'stories': stories
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting stories feed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/stories/user/<target_user_id>', methods=['GET'])
+@require_telegram_user
+def get_user_stories(target_user_id):
+    """Get all stories from a specific user"""
+    try:
+        viewer_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'stories': []})
+        
+        stories = db_manager.get_user_stories(target_user_id, viewer_id)
+        
+        return jsonify({
+            'success': True,
+            'stories': stories
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user stories: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/stories/<int:story_id>/view', methods=['POST'])
+@require_telegram_user
+def view_story(story_id):
+    """Mark a story as viewed"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.view_story(story_id, user_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error viewing story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/stories/<int:story_id>/viewers', methods=['GET'])
+@require_telegram_user
+def get_story_viewers(story_id):
+    """Get list of users who viewed a story (owner only)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'viewers': []})
+        
+        viewers = db_manager.get_story_viewers(story_id, user_id)
+        
+        return jsonify({
+            'success': True,
+            'viewers': viewers
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting story viewers: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/stories/<int:story_id>', methods=['DELETE'])
+@require_telegram_user
+def delete_story(story_id):
+    """Delete a story (owner only)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.delete_story(story_id, user_id)
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar la historia'}), 400
+        
+        return jsonify({'success': True, 'message': 'Historia eliminada'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/stories/<int:story_id>/react', methods=['POST'])
+@require_telegram_user
+def react_to_story(story_id):
+    """React to a story with an emoji"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        reaction = data.get('reaction', '❤️')
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.react_to_story(story_id, user_id, reaction)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error reacting to story: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# EXPLORE & SEARCH ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@user_bp.route('/explore', methods=['GET'])
+@require_telegram_user
+def explore_posts():
+    """Get trending/popular posts for explore page"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'posts': [], 'has_more': False})
+        
+        posts = db_manager.get_explore_posts(user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting explore posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/search/posts', methods=['GET'])
+@require_telegram_user
+def search_posts():
+    """Search posts by caption text"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        db_manager = get_db_manager()
+        
+        if not query:
+            return jsonify({'success': True, 'posts': []})
+        
+        if not db_manager:
+            return jsonify({'success': True, 'posts': [], 'has_more': False})
+        
+        posts = db_manager.search_posts(query, user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/search/users', methods=['GET'])
+@require_telegram_user
+def search_users():
+    """Search users by username or name"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 20))
+        db_manager = get_db_manager()
+        
+        if not query:
+            return jsonify({'success': True, 'users': []})
+        
+        if not db_manager:
+            return jsonify({'success': True, 'users': []})
+        
+        users = db_manager.search_users(query, user_id, limit)
+        
+        return jsonify({
+            'success': True,
+            'users': users
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/hashtag/<hashtag>', methods=['GET'])
+@require_telegram_user
+def get_hashtag_posts(hashtag):
+    """Get posts by hashtag"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'hashtag': hashtag, 'posts': [], 'has_more': False})
+        
+        posts = db_manager.get_posts_by_hashtag(hashtag, user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'hashtag': hashtag,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting hashtag posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/trending/hashtags', methods=['GET'])
+@require_telegram_user
+def get_trending_hashtags():
+    """Get trending hashtags"""
+    try:
+        limit = int(request.args.get('limit', 10))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'hashtags': []})
+        
+        hashtags = db_manager.get_trending_hashtags(limit)
+        
+        return jsonify({
+            'success': True,
+            'hashtags': hashtags
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting trending hashtags: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/suggested/users', methods=['GET'])
+@require_telegram_user
+def get_suggested_users():
+    """Get suggested users to follow"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 10))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'users': []})
+        
+        users = db_manager.get_suggested_users(user_id, limit)
+        
+        return jsonify({
+            'success': True,
+            'users': users
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting suggested users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# NOTIFICATIONS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@user_bp.route('/notifications', methods=['GET'])
+@require_telegram_user
+def get_notifications():
+    """Get user notifications"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+        filter_type = request.args.get('filter', 'all')
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'notifications': []})
+        
+        notifications = db_manager.get_notifications(
+            user_id, limit, offset, unread_only, filter_type
+        )
+        
+        return jsonify({
+            'success': True,
+            'notifications': notifications
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/count', methods=['GET'])
+@require_telegram_user
+def get_notifications_count():
+    """Get unread notifications count"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'count': 0})
+        
+        count = db_manager.get_unread_notifications_count(user_id)
+        
+        return jsonify({
+            'success': True,
+            'count': count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting notifications count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/read', methods=['POST'])
+@require_telegram_user
+def mark_notifications_read():
+    """Mark notifications as read"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        notification_ids = data.get('ids')
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.mark_notifications_read(user_id, notification_ids)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error marking notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/unread-count', methods=['GET'])
+@require_telegram_user
+def get_unread_notifications_count():
+    """Get unread notifications count (alias)"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'count': 0})
+        
+        count = db_manager.get_unread_notifications_count(user_id)
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        logger.error(f"Error getting unread count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/mark-all-read', methods=['POST'])
+@require_telegram_user
+def mark_all_notifications_read():
+    """Mark all notifications as read"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.mark_notifications_read(user_id, None)
+        return jsonify({'success': success})
+    except Exception as e:
+        logger.error(f"Error marking all notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/<int:notification_id>/read', methods=['POST'])
+@require_telegram_user
+def mark_single_notification_read(notification_id):
+    """Mark single notification as read"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.mark_notifications_read(user_id, [notification_id])
+        return jsonify({'success': success})
+    except Exception as e:
+        logger.error(f"Error marking notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/preferences', methods=['GET'])
+@require_telegram_user
+def get_notification_preferences():
+    """Get user notification preferences"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'preferences': {}})
+        
+        preferences = db_manager.get_notification_preferences(user_id)
+        return jsonify({'success': True, 'preferences': preferences})
+    except Exception as e:
+        logger.error(f"Error getting notification preferences: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/notifications/preferences', methods=['POST'])
+@require_telegram_user
+def update_notification_preferences():
+    """Update user notification preferences"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        preferences = data.get('preferences', {})
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        valid_keys = ['likes', 'comments', 'follows', 'mentions', 'transactions', 'stories', 'push_enabled']
+        clean_prefs = {k: bool(v) for k, v in preferences.items() if k in valid_keys}
+        
+        success = db_manager.update_notification_preferences(user_id, clean_prefs)
+        return jsonify({'success': success})
+    except Exception as e:
+        logger.error(f"Error updating notification preferences: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# BLOCK & REPORT ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@user_bp.route('/users/<blocked_user_id>/block', methods=['POST'])
+@require_telegram_user
+def block_user(blocked_user_id):
+    """Block a user"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if user_id == blocked_user_id:
+            return jsonify({'success': False, 'error': 'No puedes bloquearte a ti mismo'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.block_user(user_id, blocked_user_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error blocking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/users/<blocked_user_id>/unblock', methods=['POST'])
+@require_telegram_user
+def unblock_user(blocked_user_id):
+    """Unblock a user"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.unblock_user(user_id, blocked_user_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error unblocking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/users/blocked', methods=['GET'])
+@require_telegram_user
+def get_blocked_users():
+    """Get list of blocked users"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        db_manager = get_db_manager()
+        
+        if not db_manager:
+            return jsonify({'success': True, 'blocked_users': []})
+        
+        blocked = db_manager.get_blocked_users(user_id)
+        
+        return jsonify({
+            'success': True,
+            'blocked_users': blocked
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting blocked users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/report', methods=['POST'])
+@require_telegram_user
+def create_report():
+    """Create a content report"""
+    try:
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        db_manager = get_db_manager()
+        
+        content_type = data.get('content_type')
+        content_id = data.get('content_id')
+        reason = data.get('reason')
+        description = data.get('description')
+        
+        if not all([content_type, content_id, reason]):
+            return jsonify({'success': False, 'error': 'Datos incompletos'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        report_id = db_manager.create_report(
+            user_id, content_type, content_id, reason, description
+        )
+        
+        return jsonify({
+            'success': report_id is not None,
+            'report_id': report_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

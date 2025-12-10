@@ -13,14 +13,14 @@
 
 ## PROGRESO GLOBAL DE MIGRACION
 
-**Estado actual (10 Diciembre 2025 - Sesion 3):**
-- Endpoints en app.py: 315 → ~190 (126 endpoints migrados en total)
+**Estado actual (10 Diciembre 2025 - Sesion 4):**
+- Endpoints en app.py: 315 → ~154 (162 endpoints migrados en total)
 - Blueprints activos: auth, blockchain, admin, user
-- Endpoints en admin_routes.py: 88 (dashboard, users, stats, security, logs, config, blocked-ips, wallet-pool, fraud, sessions, products, transactions, purchases, activity, lockouts, settings, notifications)
-- Endpoints en user_routes.py: 68 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments + 18 security/devices)
+- Endpoints en admin_routes.py: 99 (dashboard, users, stats, security, logs, config, blocked-ips, wallet-pool, fraud, sessions, products, transactions, purchases, activity, lockouts, settings, notifications, financial, content)
+- Endpoints en user_routes.py: 93 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments + 18 security/devices + 7 stories + 6 explore/search + 8 notifications extras + 4 block users)
 - Endpoints en auth_routes.py: 10
 - Endpoints en blockchain_routes.py: 37
-- **Total en blueprints: 203 endpoints**
+- **Total en blueprints: 239 endpoints**
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
 **Fecha:** 9 Diciembre 2025
@@ -279,6 +279,83 @@
 - [x] POST /api/admin/notifications/mark-read
 - [x] POST /api/admin/notifications/delete
 - [x] GET /api/admin/system-status
+
+**Archivo:** routes/admin_routes.py
+
+### FASE 0.20: MIGRACION STORIES - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 4)
+**Endpoints migrados:** 7
+
+- [x] POST /api/stories/create
+- [x] GET /api/stories/feed
+- [x] GET /api/stories/user/{target_user_id}
+- [x] POST /api/stories/{story_id}/view
+- [x] GET /api/stories/{story_id}/viewers
+- [x] DELETE /api/stories/{story_id}
+- [x] POST /api/stories/{story_id}/react
+
+**Archivo:** routes/user_routes.py
+
+### FASE 0.21: MIGRACION EXPLORE/SEARCH - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 4)
+**Endpoints migrados:** 6
+
+- [x] GET /api/explore
+- [x] GET /api/search/posts
+- [x] GET /api/search/users
+- [x] GET /api/hashtag/{hashtag}
+- [x] GET /api/trending/hashtags
+- [x] GET /api/suggested/users
+
+**Archivo:** routes/user_routes.py
+
+### FASE 0.22: MIGRACION NOTIFICATIONS EXTRAS - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 4)
+**Endpoints migrados:** 8
+
+- [x] GET /api/notifications
+- [x] GET /api/notifications/count
+- [x] POST /api/notifications/read
+- [x] GET /api/notifications/unread-count
+- [x] POST /api/notifications/mark-all-read
+- [x] POST /api/notifications/{notification_id}/read
+- [x] GET /api/notifications/preferences
+- [x] POST /api/notifications/preferences
+
+**Archivo:** routes/user_routes.py
+
+### FASE 0.23: MIGRACION BLOCK/REPORT - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 4)
+**Endpoints migrados:** 4
+
+- [x] POST /api/users/{blocked_user_id}/block
+- [x] POST /api/users/{blocked_user_id}/unblock
+- [x] GET /api/users/blocked
+- [x] POST /api/report
+
+**Archivo:** routes/user_routes.py
+
+### FASE 0.24: MIGRACION ADMIN FINANCIAL - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 4)
+**Endpoints migrados:** 3
+
+- [x] GET /api/admin/financial/stats
+- [x] GET /api/admin/financial/period-stats
+- [x] GET /api/admin/financial/period-stats/export
+
+**Archivo:** routes/admin_routes.py
+
+### FASE 0.25: MIGRACION ADMIN CONTENT - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 4)
+**Endpoints migrados:** 8
+
+- [x] GET /api/admin/content/stats
+- [x] GET /api/admin/content/posts
+- [x] DELETE /api/admin/content/posts/{post_id}
+- [x] GET /api/admin/content/posts/{post_id}
+- [x] POST /api/admin/content/posts/{post_id}/warn
+- [x] POST /api/admin/content/posts/{post_id}/ban-author
+- [x] GET /api/admin/content/reported
 
 **Archivo:** routes/admin_routes.py
 

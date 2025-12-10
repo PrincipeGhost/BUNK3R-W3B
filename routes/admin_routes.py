@@ -5079,3 +5079,718 @@ def admin_system_status():
     except Exception as e:
         logger.error(f"Error checking system status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN FINANCIAL ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@admin_bp.route('/financial/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_financial_stats():
+    """Admin: Dashboard financiero con metricas de B3C, TON y comisiones."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'totalB3CSold': 0,
+                    'totalTONReceived': 0,
+                    'totalCommissions': 0,
+                    'monthVolume': 0,
+                    'lastMonthVolume': 0,
+                    'volumeChange': 0,
+                    'pendingWithdrawals': 0,
+                    'pendingWithdrawalsAmount': 0,
+                    'dailyRevenue': [],
+                    'dailyVolume': []
+                }
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE 0 END), 0) as total_b3c_sold,
+                           COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount * 0.1 ELSE 0 END), 0) as total_ton_received,
+                           COALESCE(SUM(CASE WHEN transaction_type IN ('deposit', 'withdrawal') THEN amount * 0.02 ELSE 0 END), 0) as total_commissions
+                    FROM wallet_transactions
+                """)
+                totals = cur.fetchone()
+                total_b3c_sold = float(totals['total_b3c_sold']) if totals else 0
+                total_ton_received = float(totals['total_ton_received']) if totals else 0
+                total_commissions = float(totals['total_commissions']) if totals else 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as month_volume
+                    FROM wallet_transactions
+                    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                month_vol = cur.fetchone()
+                month_volume = float(month_vol['month_volume']) if month_vol else 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as last_month_volume
+                    FROM wallet_transactions
+                    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+                    AND created_at < DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                last_month_vol = cur.fetchone()
+                last_month_volume = float(last_month_vol['last_month_volume']) if last_month_vol else 0
+                
+                volume_change = 0
+                if last_month_volume > 0:
+                    volume_change = round(((month_volume - last_month_volume) / last_month_volume) * 100, 1)
+                
+                try:
+                    cur.execute("""
+                        SELECT COUNT(*) as count, COALESCE(SUM(amount_ton), 0) as total
+                        FROM b3c_withdrawals
+                        WHERE status = 'pending'
+                    """)
+                    pending = cur.fetchone()
+                    pending_withdrawals = int(pending['count']) if pending else 0
+                    pending_withdrawals_amount = float(pending['total']) if pending else 0
+                except Exception:
+                    pending_withdrawals = 0
+                    pending_withdrawals_amount = 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, 
+                           COALESCE(SUM(amount * 0.02), 0) as revenue
+                    FROM wallet_transactions
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                revenue_data = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, 
+                           COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                volume_data = cur.fetchall()
+        
+        daily_revenue = []
+        daily_volume = []
+        revenue_dict = {row['date'].isoformat(): float(row['revenue']) for row in revenue_data} if revenue_data else {}
+        volume_dict = {row['date'].isoformat(): float(row['volume']) for row in volume_data} if volume_data else {}
+        
+        for i in range(30):
+            date = (datetime.now() - timedelta(days=29-i)).date()
+            date_str = date.isoformat()
+            daily_revenue.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'amount': revenue_dict.get(date_str, 0)
+            })
+            daily_volume.append({
+                'date': date_str,
+                'label': date.strftime('%d/%m'),
+                'amount': volume_dict.get(date_str, 0)
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalB3CSold': total_b3c_sold,
+                'totalTONReceived': total_ton_received,
+                'totalCommissions': total_commissions,
+                'monthVolume': month_volume,
+                'lastMonthVolume': last_month_volume,
+                'volumeChange': volume_change,
+                'pendingWithdrawals': pending_withdrawals,
+                'pendingWithdrawalsAmount': pending_withdrawals_amount,
+                'dailyRevenue': daily_revenue,
+                'dailyVolume': daily_volume
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting financial stats: {e}")
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalB3CSold': 0,
+                'totalTONReceived': 0,
+                'totalCommissions': 0,
+                'monthVolume': 0,
+                'lastMonthVolume': 0,
+                'volumeChange': 0,
+                'pendingWithdrawals': 0,
+                'pendingWithdrawalsAmount': 0,
+                'dailyRevenue': [],
+                'dailyVolume': []
+            }
+        })
+
+
+@admin_bp.route('/financial/period-stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_financial_period_stats():
+    """Admin: Estadisticas financieras por periodo personalizado."""
+    try:
+        date_from = request.args.get('from')
+        date_to = request.args.get('to')
+        
+        if not date_from or not date_to:
+            return jsonify({'success': False, 'error': 'Fechas requeridas'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'txCount': 0,
+                    'b3cVolume': 0,
+                    'purchases': {'count': 0, 'tonAmount': 0, 'b3cAmount': 0},
+                    'withdrawals': {'count': 0, 'b3cAmount': 0},
+                    'transfers': {'count': 0, 'b3cAmount': 0},
+                    'commissions': 0,
+                    'dailyVolume': [],
+                    'typeBreakdown': {'purchases': 0, 'withdrawals': 0, 'transfers': 0}
+                }
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                tx_totals = cur.fetchone()
+                tx_count = int(tx_totals['count']) if tx_totals else 0
+                b3c_volume = float(tx_totals['volume']) if tx_totals else 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, 
+                           COALESCE(SUM(amount), 0) as b3c_amount,
+                           COALESCE(SUM(amount * 0.1), 0) as ton_amount
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'deposit' 
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                purchases = cur.fetchone()
+                purchases_count = int(purchases['count']) if purchases else 0
+                purchases_b3c = float(purchases['b3c_amount']) if purchases else 0
+                purchases_ton = float(purchases['ton_amount']) if purchases else 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as b3c_amount
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'withdrawal' 
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                withdrawals = cur.fetchone()
+                withdrawals_count = int(withdrawals['count']) if withdrawals else 0
+                withdrawals_b3c = float(withdrawals['b3c_amount']) if withdrawals else 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as b3c_amount
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'transfer' 
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                transfers = cur.fetchone()
+                transfers_count = int(transfers['count']) if transfers else 0
+                transfers_b3c = float(transfers['b3c_amount']) if transfers else 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount * 0.02), 0) as commissions
+                    FROM wallet_transactions
+                    WHERE transaction_type IN ('deposit', 'withdrawal')
+                    AND created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                """, (date_from, date_to))
+                comm = cur.fetchone()
+                commissions = float(comm['commissions']) if comm else 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COALESCE(SUM(amount), 0) as volume
+                    FROM wallet_transactions
+                    WHERE created_at >= %s AND created_at <= %s::date + INTERVAL '1 day'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """, (date_from, date_to))
+                daily_data = cur.fetchall()
+        
+        daily_volume = []
+        if daily_data:
+            for row in daily_data:
+                daily_volume.append({
+                    'date': row['date'].isoformat(),
+                    'label': row['date'].strftime('%d/%m'),
+                    'amount': float(row['volume'])
+                })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'txCount': tx_count,
+                'b3cVolume': b3c_volume,
+                'purchases': {
+                    'count': purchases_count,
+                    'tonAmount': purchases_ton,
+                    'b3cAmount': purchases_b3c
+                },
+                'withdrawals': {
+                    'count': withdrawals_count,
+                    'b3cAmount': withdrawals_b3c
+                },
+                'transfers': {
+                    'count': transfers_count,
+                    'b3cAmount': transfers_b3c
+                },
+                'commissions': commissions,
+                'dailyVolume': daily_volume,
+                'typeBreakdown': {
+                    'purchases': purchases_count,
+                    'withdrawals': withdrawals_count,
+                    'transfers': transfers_count
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting period stats: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener estadisticas'}), 500
+
+
+@admin_bp.route('/financial/period-stats/export', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_financial_period_stats_export():
+    """Admin: Exportar estadisticas por periodo a CSV."""
+    try:
+        date_from = request.args.get('from')
+        date_to = request.args.get('to')
+        
+        if not date_from or not date_to:
+            return jsonify({'success': False, 'error': 'Fechas requeridas'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'csv': 'No hay datos disponibles'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT wt.id, u.telegram_id, u.username, u.first_name,
+                           wt.transaction_type, wt.amount, wt.status, wt.tx_hash, wt.created_at
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON wt.user_id = u.id
+                    WHERE wt.created_at >= %s AND wt.created_at <= %s::date + INTERVAL '1 day'
+                    ORDER BY wt.created_at DESC
+                """, (date_from, date_to))
+                transactions = cur.fetchall()
+        
+        csv_lines = ['ID,Telegram ID,Username,Nombre,Tipo,Monto,Estado,TX Hash,Fecha']
+        for tx in transactions:
+            csv_lines.append(','.join([
+                str(tx.get('id', '')),
+                str(tx.get('telegram_id', '')),
+                str(tx.get('username', '') or ''),
+                str(tx.get('first_name', '') or ''),
+                str(tx.get('transaction_type', '')),
+                str(tx.get('amount', 0)),
+                str(tx.get('status', '')),
+                str(tx.get('tx_hash', '') or ''),
+                str(tx.get('created_at', '') or '')
+            ]))
+        
+        return jsonify({
+            'success': True,
+            'csv': '\n'.join(csv_lines),
+            'filename': f'estadisticas_{date_from}_{date_to}.csv'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error exporting period stats: {e}")
+        return jsonify({'success': False, 'error': 'Error al exportar'}), 500
+
+
+# ============================================================
+# ADMIN CONTENT ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@admin_bp.route('/content/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_content_stats():
+    """Admin: Estadisticas de contenido."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'totalPosts': 0,
+                'postsToday': 0,
+                'totalMedia': 0,
+                'totalStories': 0,
+                'reportedPosts': 0
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM posts WHERE is_active = true")
+                total_posts = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM posts 
+                    WHERE is_active = true AND created_at >= NOW() - INTERVAL '24 hours'
+                """)
+                posts_today = cur.fetchone()[0] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) FROM posts 
+                    WHERE is_active = true AND content_type IN ('image', 'video')
+                """)
+                total_media = cur.fetchone()[0] or 0
+                
+                total_stories = 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(*) FROM stories 
+                        WHERE is_active = true AND expires_at > NOW()
+                    """)
+                    total_stories = cur.fetchone()[0] or 0
+                except Exception:
+                    pass
+                
+                reported_posts = 0
+                try:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT post_id) FROM reports 
+                        WHERE status = 'pending' AND post_id IS NOT NULL
+                    """)
+                    reported_posts = cur.fetchone()[0] or 0
+                except Exception:
+                    pass
+        
+        return jsonify({
+            'success': True,
+            'totalPosts': total_posts,
+            'postsToday': posts_today,
+            'totalMedia': total_media,
+            'totalStories': total_stories,
+            'reportedPosts': reported_posts
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting content stats: {e}")
+        return jsonify({
+            'success': True,
+            'totalPosts': 0,
+            'postsToday': 0,
+            'totalMedia': 0,
+            'totalStories': 0,
+            'reportedPosts': 0
+        })
+
+
+@admin_bp.route('/content/posts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_content_posts():
+    """Admin: Listar publicaciones para moderacion con filtros."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'posts': [], 'total': 0})
+        
+        limit = request.args.get('limit', 50, type=int)
+        search = request.args.get('search', '').strip()
+        content_type = request.args.get('content_type', '').strip()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT p.id, p.user_id, p.content_type, p.caption, p.content_url,
+                           p.likes_count, p.comments_count, p.shares_count,
+                           p.is_active, p.created_at,
+                           u.username, u.first_name
+                    FROM posts p
+                    LEFT JOIN users u ON p.user_id = u.telegram_id::text
+                    WHERE 1=1
+                """
+                params = []
+                
+                if search:
+                    query += " AND (LOWER(p.caption) LIKE LOWER(%s) OR LOWER(u.username) LIKE LOWER(%s))"
+                    search_pattern = f"%{search}%"
+                    params.extend([search_pattern, search_pattern])
+                
+                if content_type:
+                    query += " AND p.content_type = %s"
+                    params.append(content_type)
+                
+                query += " ORDER BY p.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                posts = cur.fetchall()
+                
+                count_query = "SELECT COUNT(*) as total FROM posts p LEFT JOIN users u ON p.user_id = u.telegram_id::text WHERE 1=1"
+                count_params = []
+                
+                if search:
+                    count_query += " AND (LOWER(p.caption) LIKE LOWER(%s) OR LOWER(u.username) LIKE LOWER(%s))"
+                    count_params.extend([f"%{search}%", f"%{search}%"])
+                
+                if content_type:
+                    count_query += " AND p.content_type = %s"
+                    count_params.append(content_type)
+                
+                cur.execute(count_query, count_params)
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
+        
+        result = []
+        for p in posts:
+            p_dict = dict(p)
+            if p_dict.get('created_at'):
+                p_dict['created_at'] = p_dict['created_at'].isoformat()
+            result.append(p_dict)
+        
+        return jsonify({
+            'success': True,
+            'posts': result,
+            'total': total
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting content posts: {e}")
+        return jsonify({'success': True, 'posts': [], 'total': 0})
+
+
+@admin_bp.route('/content/posts/<int:post_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_post(post_id):
+    """Admin: Eliminar una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE posts SET is_active = false WHERE id = %s", (post_id,))
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Publicacion eliminada'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/content/posts/<int:post_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_post_detail(post_id):
+    """Admin: Obtener detalle de una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT p.*, u.username, u.first_name, u.last_name, u.avatar_url,
+                           u.is_banned as user_banned
+                    FROM posts p
+                    LEFT JOIN users u ON p.user_id = u.telegram_id::text
+                    WHERE p.id = %s
+                """, (post_id,))
+                post = cur.fetchone()
+                
+                if not post:
+                    return jsonify({'success': False, 'error': 'Publicacion no encontrada'}), 404
+                
+                report_count = 0
+                reports = []
+                try:
+                    cur.execute("""
+                        SELECT COUNT(*) as report_count FROM content_reports 
+                        WHERE content_type = 'post' AND content_id = %s
+                    """, (post_id,))
+                    report_count = cur.fetchone()['report_count'] or 0
+                    
+                    cur.execute("""
+                        SELECT id, reporter_id, reason, description, status, created_at 
+                        FROM content_reports 
+                        WHERE content_type = 'post' AND content_id = %s
+                        ORDER BY created_at DESC
+                    """, (post_id,))
+                    reports = cur.fetchall()
+                except Exception:
+                    pass
+        
+        post_data = dict(post)
+        post_data['report_count'] = report_count
+        post_data['reports'] = [dict(r) for r in reports]
+        
+        if post_data.get('created_at'):
+            post_data['created_at'] = post_data['created_at'].isoformat()
+        
+        return jsonify({'success': True, 'post': post_data})
+        
+    except Exception as e:
+        logger.error(f"Error getting post detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/content/posts/<int:post_id>/warn', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_warn_post_author(post_id):
+    """Admin: Advertir al autor de una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Contenido inapropiado')
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                post = cur.fetchone()
+                
+                if not post:
+                    return jsonify({'success': False, 'error': 'Publicacion no encontrada'}), 404
+                
+                user_id = post['user_id']
+                
+                try:
+                    cur.execute("""
+                        INSERT INTO admin_warnings (user_id, admin_id, reason, post_id, created_at)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, (user_id, admin_id, reason, post_id))
+                except Exception:
+                    pass
+                
+                try:
+                    cur.execute("""
+                        INSERT INTO admin_logs (admin_id, action, target_type, target_id, details, created_at)
+                        VALUES (%s, 'warn_user', 'post', %s, %s, NOW())
+                    """, (admin_id, str(post_id), reason))
+                except Exception:
+                    pass
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Advertencia enviada al usuario'})
+        
+    except Exception as e:
+        logger.error(f"Error warning post author: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/content/posts/<int:post_id>/ban-author', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_ban_post_author(post_id):
+    """Admin: Banear al autor de una publicacion por contenido inapropiado."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Contenido inapropiado')
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+                post = cur.fetchone()
+                
+                if not post:
+                    return jsonify({'success': False, 'error': 'Publicacion no encontrada'}), 404
+                
+                user_id = post['user_id']
+                
+                cur.execute("""
+                    UPDATE users SET is_banned = true, ban_reason = %s, banned_at = NOW()
+                    WHERE telegram_id::text = %s
+                """, (reason, user_id))
+                
+                cur.execute("""
+                    UPDATE posts SET is_active = false WHERE user_id = %s
+                """, (user_id,))
+                
+                try:
+                    cur.execute("""
+                        INSERT INTO admin_logs (admin_id, action, target_type, target_id, details, created_at)
+                        VALUES (%s, 'ban_user_content', 'user', %s, %s, NOW())
+                    """, (admin_id, user_id, reason))
+                except Exception:
+                    pass
+                
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Usuario baneado y contenido eliminado'})
+        
+    except Exception as e:
+        logger.error(f"Error banning post author: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/content/reported', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_reported_content():
+    """Admin: Obtener publicaciones reportadas con prioridad."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'posts': []})
+        
+        limit = request.args.get('limit', 50, type=int)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                try:
+                    cur.execute("""
+                        SELECT p.id, p.user_id, p.content_type, p.caption, p.content_url,
+                               p.likes_count, p.comments_count, p.is_active, p.created_at,
+                               u.username, u.first_name,
+                               COUNT(cr.id) as report_count,
+                               ARRAY_AGG(DISTINCT cr.reason) as report_reasons
+                        FROM posts p
+                        LEFT JOIN users u ON p.user_id = u.telegram_id::text
+                        INNER JOIN content_reports cr ON cr.content_type = 'post' AND cr.content_id = p.id
+                        WHERE p.is_active = true AND cr.status = 'pending'
+                        GROUP BY p.id, p.user_id, p.content_type, p.caption, p.content_url,
+                                 p.likes_count, p.comments_count, p.is_active, p.created_at,
+                                 u.username, u.first_name
+                        ORDER BY report_count DESC, p.created_at DESC
+                        LIMIT %s
+                    """, (limit,))
+                    posts = cur.fetchall()
+                except Exception:
+                    posts = []
+        
+        result = []
+        for p in posts:
+            post_dict = dict(p)
+            if post_dict.get('created_at'):
+                post_dict['created_at'] = post_dict['created_at'].isoformat()
+            result.append(post_dict)
+        
+        return jsonify({'success': True, 'posts': result})
+        
+    except Exception as e:
+        logger.error(f"Error getting reported content: {e}")
+        return jsonify({'success': True, 'posts': []})
