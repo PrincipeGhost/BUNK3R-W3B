@@ -5794,3 +5794,2046 @@ def admin_get_reported_content():
     except Exception as e:
         logger.error(f"Error getting reported content: {e}")
         return jsonify({'success': True, 'posts': []})
+
+
+# ============================================================
+# ADMIN LOGS ENDPOINTS (Migrados 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+def log_admin_action(admin_id, admin_name, action_type, target_type=None, target_id=None, description=None, metadata=None):
+    """Helper function to log admin actions."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return
+        ip_address = request.remote_addr if request else None
+        user_agent = request.headers.get('User-Agent', '')[:500] if request else None
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO admin_logs (admin_id, admin_name, action_type, target_type, target_id, description, ip_address, user_agent, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (admin_id, admin_name, action_type, target_type, target_id, description, ip_address, user_agent, json.dumps(metadata) if metadata else None))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error logging admin action: {e}")
+
+
+def log_system_error(error_level, endpoint, error_message, stack_trace=None, user_id=None, metadata=None):
+    """Helper function to log system errors."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return
+        ip_address = request.remote_addr if request else None
+        user_agent = request.headers.get('User-Agent', '')[:500] if request else None
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO system_errors (error_level, endpoint, error_message, stack_trace, user_id, ip_address, user_agent, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (error_level, endpoint, error_message, stack_trace, user_id, ip_address, user_agent, json.dumps(metadata) if metadata else None))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error logging system error: {e}")
+
+
+def log_config_change(config_key, old_value, new_value, changed_by_id, changed_by_name, description=None):
+    """Helper function to log configuration changes."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return
+        ip_address = request.remote_addr if request else None
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO config_history (config_key, old_value, new_value, changed_by_id, changed_by_name, ip_address, description)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (config_key, str(old_value) if old_value is not None else None, str(new_value), changed_by_id, changed_by_name, ip_address, description))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error logging config change: {e}")
+
+
+@admin_bp.route('/logs/admin', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_admin_logs():
+    """Admin: Obtener logs de acciones de administradores."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0, 'actionTypes': []})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', request.args.get('limit', 50))), 100)
+        action_type = request.args.get('action_type', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM admin_logs WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM admin_logs WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if action_type:
+                    query += " AND action_type = %s"
+                    count_query += " AND action_type = %s"
+                    params.append(action_type)
+                    count_params.append(action_type)
+                
+                if search:
+                    query += " AND (admin_name ILIKE %s OR description ILIKE %s OR target_id::text ILIKE %s)"
+                    count_query += " AND (admin_name ILIKE %s OR description ILIKE %s OR target_id::text ILIKE %s)"
+                    search_pattern = f'%{search}%'
+                    params.extend([search_pattern, search_pattern, search_pattern])
+                    count_params.extend([search_pattern, search_pattern, search_pattern])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                    count_query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = cur.fetchall()
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                cur.execute("""
+                    SELECT action_type, COUNT(*) as count
+                    FROM admin_logs
+                    GROUP BY action_type
+                    ORDER BY count DESC
+                """)
+                action_types = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'actionTypes': action_types
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting admin logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0, 'actionTypes': []})
+
+
+@admin_bp.route('/logs/security', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_security_logs():
+    """Admin: Obtener logs de seguridad (intentos de login, actividad sospechosa)."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        activity_type = request.args.get('activity_type', '')
+        user_id = request.args.get('user_id', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM security_activity_log WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM security_activity_log WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if activity_type:
+                    query += " AND activity_type = %s"
+                    count_query += " AND activity_type = %s"
+                    params.append(activity_type)
+                    count_params.append(activity_type)
+                
+                if user_id:
+                    query += " AND user_id = %s"
+                    count_query += " AND user_id = %s"
+                    params.append(user_id)
+                    count_params.append(user_id)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT activity_type, COUNT(*) as count
+                    FROM security_activity_log
+                    GROUP BY activity_type
+                    ORDER BY count DESC
+                """)
+                activity_types = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'activityTypes': activity_types
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting security logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+@admin_bp.route('/logs/export', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_export_logs():
+    """Admin: Exportar logs a CSV o JSON."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        log_type = request.args.get('type', 'admin')
+        export_format = request.args.get('format', 'csv')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        days = int(request.args.get('days', 30))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if log_type == 'admin':
+                    query = """
+                        SELECT id, admin_id, admin_name, action_type, target_type, 
+                               target_id, description, ip_address, created_at
+                        FROM admin_logs WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'security':
+                    query = """
+                        SELECT id, user_id, activity_type, description, 
+                               device_id, ip_address, created_at
+                        FROM security_activity_log WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'client':
+                    query = """
+                        SELECT id, user_id, log_type, action, is_mobile, 
+                               is_telegram, ip, created_at
+                        FROM client_logs WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'errors':
+                    query = """
+                        SELECT id, error_level, endpoint, error_message, 
+                               user_id, ip_address, is_resolved, created_at
+                        FROM system_errors WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'logins':
+                    query = """
+                        SELECT id, user_id, activity_type, description, 
+                               device_id, ip_address, created_at
+                        FROM security_activity_log 
+                        WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED') 
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                elif log_type == 'config':
+                    query = """
+                        SELECT id, config_key, old_value, new_value, 
+                               changed_by_name, ip_address, description, created_at
+                        FROM config_history WHERE 1=1
+                    """
+                    params = []
+                    if date_from:
+                        query += " AND created_at >= %s"
+                        params.append(date_from)
+                    if date_to:
+                        query += " AND created_at <= %s::date + INTERVAL '1 day'"
+                        params.append(date_to)
+                    if not date_from and not date_to:
+                        query += " AND created_at >= NOW() - INTERVAL '%s days'"
+                        params.append(days)
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, params)
+                else:
+                    return jsonify({'success': False, 'error': 'Tipo de log invalido'}), 400
+                
+                logs = [dict(row) for row in cur.fetchall()]
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                if export_format == 'json':
+                    return Response(
+                        json.dumps(logs, indent=2, ensure_ascii=False),
+                        mimetype='application/json',
+                        headers={'Content-Disposition': f'attachment; filename={log_type}_logs.json'}
+                    )
+                else:
+                    if not logs:
+                        return Response(
+                            '',
+                            mimetype='text/csv',
+                            headers={'Content-Disposition': f'attachment; filename={log_type}_logs.csv'}
+                        )
+                    
+                    output = io.StringIO()
+                    headers = list(logs[0].keys())
+                    output.write(','.join(headers) + '\n')
+                    
+                    for log in logs:
+                        row_values = []
+                        for h in headers:
+                            value = log.get(h, '')
+                            if isinstance(value, str) and (',' in value or '"' in value or '\n' in value):
+                                value = '"' + value.replace('"', '""') + '"'
+                            row_values.append(str(value) if value is not None else '')
+                        output.write(','.join(row_values) + '\n')
+                    
+                    return Response(
+                        output.getvalue(),
+                        mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename={log_type}_logs.csv'}
+                    )
+    
+    except Exception as e:
+        logger.error(f"Error exporting logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/logs/errors', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_error_logs():
+    """Admin: Obtener logs de errores del sistema."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', 50)), 100)
+        error_level = request.args.get('level', '')
+        is_resolved = request.args.get('resolved', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM system_errors WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM system_errors WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if error_level:
+                    query += " AND error_level = %s"
+                    count_query += " AND error_level = %s"
+                    params.append(error_level)
+                    count_params.append(error_level)
+                
+                if is_resolved != '':
+                    resolved_bool = is_resolved.lower() == 'true'
+                    query += " AND is_resolved = %s"
+                    count_query += " AND is_resolved = %s"
+                    params.append(resolved_bool)
+                    count_params.append(resolved_bool)
+                
+                if search:
+                    query += " AND (error_message ILIKE %s OR endpoint ILIKE %s)"
+                    count_query += " AND (error_message ILIKE %s OR endpoint ILIKE %s)"
+                    search_param = f'%{search}%'
+                    params.extend([search_param, search_param])
+                    count_params.extend([search_param, search_param])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + interval '1 day'"
+                    count_query += " AND created_at <= %s::date + interval '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    if log_entry.get('resolved_at'):
+                        log_entry['resolved_at'] = log_entry['resolved_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT error_level, COUNT(*) as count
+                    FROM system_errors
+                    GROUP BY error_level
+                    ORDER BY count DESC
+                """)
+                error_levels = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("SELECT COUNT(*) FROM system_errors WHERE is_resolved = FALSE")
+                unresolved_count = cur.fetchone()['count']
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'errorLevels': error_levels,
+                    'unresolvedCount': unresolved_count
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting error logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+@admin_bp.route('/logs/errors/<int:error_id>/resolve', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_resolve_error(error_id):
+    """Admin: Marcar error como resuelto."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 503
+        
+        user_id = getattr(request, 'user_id', '0')
+        user_data = getattr(request, 'user_data', {})
+        admin_name = user_data.get('first_name', 'Admin')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE system_errors
+                    SET is_resolved = TRUE, resolved_by = %s, resolved_at = NOW()
+                    WHERE id = %s
+                """, (admin_name, error_id))
+            conn.commit()
+        
+        log_admin_action(user_id, admin_name, 'error_resolve', 'system_error', str(error_id), 'Marked error as resolved')
+        
+        return jsonify({'success': True, 'message': 'Error marcado como resuelto'})
+    
+    except Exception as e:
+        logger.error(f"Error resolving system error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/logs/logins', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_login_logs():
+    """Admin: Obtener logs de intentos de login."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', 50)), 100)
+        status = request.args.get('status', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """SELECT * FROM security_activity_log 
+                           WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'WALLET_ACCESS', 
+                                                   'WALLET_FAILED_ATTEMPT', 'WALLET_LOCKOUT', 'IP_BLOCKED')"""
+                count_query = """SELECT COUNT(*) FROM security_activity_log 
+                                WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'WALLET_ACCESS', 
+                                                        'WALLET_FAILED_ATTEMPT', 'WALLET_LOCKOUT', 'IP_BLOCKED')"""
+                params = []
+                count_params = []
+                
+                if status == 'success':
+                    query += " AND activity_type IN ('LOGIN_SUCCESS', 'WALLET_ACCESS')"
+                    count_query += " AND activity_type IN ('LOGIN_SUCCESS', 'WALLET_ACCESS')"
+                elif status == 'failed':
+                    query += " AND activity_type IN ('LOGIN_FAILED', 'WALLET_FAILED_ATTEMPT')"
+                    count_query += " AND activity_type IN ('LOGIN_FAILED', 'WALLET_FAILED_ATTEMPT')"
+                elif status == 'blocked':
+                    query += " AND activity_type IN ('WALLET_LOCKOUT', 'IP_BLOCKED')"
+                    count_query += " AND activity_type IN ('WALLET_LOCKOUT', 'IP_BLOCKED')"
+                
+                if search:
+                    query += " AND (user_id ILIKE %s OR ip_address ILIKE %s)"
+                    count_query += " AND (user_id ILIKE %s OR ip_address ILIKE %s)"
+                    search_param = f'%{search}%'
+                    params.extend([search_param, search_param])
+                    count_params.extend([search_param, search_param])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + interval '1 day'"
+                    count_query += " AND created_at <= %s::date + interval '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT activity_type, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE activity_type IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'WALLET_ACCESS', 
+                                           'WALLET_FAILED_ATTEMPT', 'WALLET_LOCKOUT', 'IP_BLOCKED')
+                    GROUP BY activity_type
+                    ORDER BY count DESC
+                """)
+                login_stats = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT ip_address, COUNT(*) as attempts
+                    FROM security_activity_log
+                    WHERE activity_type IN ('LOGIN_FAILED', 'WALLET_FAILED_ATTEMPT')
+                    AND created_at >= NOW() - INTERVAL '24 hours'
+                    GROUP BY ip_address
+                    HAVING COUNT(*) >= 5
+                    ORDER BY attempts DESC
+                    LIMIT 10
+                """)
+                suspicious_ips = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'loginStats': login_stats,
+                    'suspiciousIPs': suspicious_ips
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting login logs: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+@admin_bp.route('/logs/config-history', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_config_history():
+    """Admin: Obtener historial de cambios de configuracion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'logs': [], 'total': 0})
+        
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('per_page', 50)), 100)
+        config_key = request.args.get('key', '')
+        search = request.args.get('search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM config_history WHERE 1=1"
+                count_query = "SELECT COUNT(*) FROM config_history WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if config_key:
+                    query += " AND config_key = %s"
+                    count_query += " AND config_key = %s"
+                    params.append(config_key)
+                    count_params.append(config_key)
+                
+                if search:
+                    query += " AND (config_key ILIKE %s OR changed_by_name ILIKE %s)"
+                    count_query += " AND (config_key ILIKE %s OR changed_by_name ILIKE %s)"
+                    search_param = f'%{search}%'
+                    params.extend([search_param, search_param])
+                    count_params.extend([search_param, search_param])
+                
+                if date_from:
+                    query += " AND created_at >= %s"
+                    count_query += " AND created_at >= %s"
+                    params.append(date_from)
+                    count_params.append(date_from)
+                
+                if date_to:
+                    query += " AND created_at <= %s::date + interval '1 day'"
+                    count_query += " AND created_at <= %s::date + interval '1 day'"
+                    params.append(date_to)
+                    count_params.append(date_to)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()['count']
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                logs = []
+                
+                for row in cur.fetchall():
+                    log_entry = dict(row)
+                    if log_entry.get('created_at'):
+                        log_entry['created_at'] = log_entry['created_at'].isoformat()
+                    logs.append(log_entry)
+                
+                cur.execute("""
+                    SELECT config_key, COUNT(*) as count
+                    FROM config_history
+                    GROUP BY config_key
+                    ORDER BY count DESC
+                """)
+                config_keys = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'total': total,
+                    'page': page,
+                    'pages': (total + limit - 1) // limit if total > 0 else 1,
+                    'configKeys': config_keys
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting config history: {e}")
+        return jsonify({'success': True, 'logs': [], 'total': 0})
+
+
+# ============================================================
+# ADMIN WALLETS ENDPOINTS (Migrados 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+@admin_bp.route('/wallets/hot', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_hot_wallet():
+    """Admin: Obtener informacion del hot wallet."""
+    try:
+        import os
+        hot_wallet_address = os.environ.get('TON_WALLET_ADDRESS', '')
+        
+        balance = 0
+        if hot_wallet_address:
+            try:
+                from tracking.wallet_pool_service import get_wallet_pool_service
+                db_manager = get_db_manager()
+                wallet_svc = get_wallet_pool_service(db_manager)
+                if wallet_svc:
+                    balance = wallet_svc.get_wallet_balance(hot_wallet_address)
+            except Exception as e:
+                logger.warning(f"Could not get hot wallet balance: {e}")
+        
+        use_testnet = os.environ.get('TON_NETWORK', 'testnet').lower() == 'testnet'
+        explorer_url = 'https://testnet.tonscan.org' if use_testnet else 'https://tonscan.org'
+        
+        return jsonify({
+            'success': True,
+            'address': hot_wallet_address,
+            'balance': balance,
+            'status': 'ok' if balance > 0.1 else 'low',
+            'explorerUrl': explorer_url
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting hot wallet info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/wallets/deposits', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_deposit_wallets():
+    """Admin: Obtener lista de wallets de deposito."""
+    try:
+        import os
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        status_filter = request.args.get('status', '')
+        offset = (page - 1) * limit
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = "SELECT * FROM deposit_wallets WHERE 1=1"
+                params = []
+                
+                if status_filter:
+                    query += " AND status = %s"
+                    params.append(status_filter)
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                wallets = cur.fetchall()
+                
+                count_query = "SELECT COUNT(*) as total FROM deposit_wallets WHERE 1=1"
+                if status_filter:
+                    cur.execute(count_query + " AND status = %s", (status_filter,))
+                else:
+                    cur.execute(count_query)
+                total = cur.fetchone()['total']
+        
+        use_testnet = os.environ.get('TON_NETWORK', 'testnet').lower() == 'testnet'
+        explorer_url = 'https://testnet.tonscan.org' if use_testnet else 'https://tonscan.org'
+        
+        return jsonify({
+            'success': True,
+            'explorerUrl': explorer_url,
+            'wallets': [{
+                'id': w['id'],
+                'wallet_address': w.get('wallet_address', ''),
+                'status': w.get('status', 'unknown'),
+                'assigned_to_user_id': w.get('assigned_to_user_id'),
+                'deposit_amount': float(w.get('deposit_amount', 0) or 0),
+                'created_at': str(w.get('created_at', '')),
+                'consolidated_at': str(w.get('consolidated_at', '')) if w.get('consolidated_at') else None
+            } for w in wallets],
+            'total': total,
+            'page': page,
+            'pages': (total + limit - 1) // limit
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting deposit wallets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/wallets/fill-pool', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_fill_wallet_pool():
+    """Admin: Llenar el pool de wallets."""
+    try:
+        data = request.get_json() or {}
+        count = min(int(data.get('count', 10)), 50)
+        
+        try:
+            from tracking.wallet_pool_service import get_wallet_pool_service
+            db_manager = get_db_manager()
+            wallet_svc = get_wallet_pool_service(db_manager)
+            if wallet_svc:
+                created = wallet_svc.fill_pool(count)
+                
+                user_id = getattr(request, 'user_id', '0')
+                log_admin_action(user_id, 'Admin', 'fill_wallet_pool', 'deposit_wallets', 
+                               None, f"Created {created} new deposit wallets")
+                
+                return jsonify({
+                    'success': True,
+                    'created': created,
+                    'message': f'{created} wallets creadas'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Wallet pool service no disponible'}), 500
+        except Exception as e:
+            logger.error(f"Error filling wallet pool: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    except Exception as e:
+        logger.error(f"Error in fill wallet pool: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/wallets/consolidate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_consolidate_wallets():
+    """Admin: Consolidar fondos de wallets de deposito al hot wallet."""
+    try:
+        try:
+            from tracking.wallet_pool_service import get_wallet_pool_service
+            db_manager = get_db_manager()
+            wallet_svc = get_wallet_pool_service(db_manager)
+            if wallet_svc:
+                result = wallet_svc.consolidate_all_balances()
+                
+                user_id = getattr(request, 'user_id', '0')
+                log_admin_action(user_id, 'Admin', 'consolidate_wallets', 'deposit_wallets', 
+                               None, f"Consolidated {result.get('count', 0)} wallets, total: {result.get('total', 0)} TON")
+                
+                return jsonify({
+                    'success': True,
+                    'consolidated': result.get('count', 0),
+                    'totalAmount': result.get('total', 0),
+                    'message': f"Consolidados {result.get('count', 0)} wallets"
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Wallet pool service no disponible'}), 500
+        except Exception as e:
+            logger.error(f"Error consolidating wallets: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    except Exception as e:
+        logger.error(f"Error in consolidate wallets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/blockchain/history', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_blockchain_history():
+    """Admin: Obtener historial de transacciones blockchain."""
+    try:
+        import os
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        tx_type = request.args.get('type', '')
+        limit = min(int(request.args.get('limit', 50)), 200)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                transactions = []
+                
+                if tx_type in ['', 'deposits', 'all']:
+                    cur.execute("""
+                        SELECT 'deposit' as tx_type, dw.deposit_tx_hash as tx_hash, 
+                               dw.deposit_amount as amount, dw.wallet_address as from_address,
+                               (SELECT wallet_address FROM deposit_wallets WHERE status = 'hot_wallet' LIMIT 1) as to_address,
+                               dw.deposit_detected_at as created_at, 'confirmed' as status,
+                               u.username
+                        FROM deposit_wallets dw
+                        LEFT JOIN users u ON dw.assigned_to_user_id = u.id
+                        WHERE dw.deposit_tx_hash IS NOT NULL
+                        ORDER BY dw.deposit_detected_at DESC
+                        LIMIT %s
+                    """, (limit,))
+                    deposits = cur.fetchall()
+                    transactions.extend(deposits)
+                
+                if tx_type in ['', 'consolidations', 'all']:
+                    cur.execute("""
+                        SELECT 'consolidation' as tx_type, consolidation_tx_hash as tx_hash,
+                               deposit_amount as amount, wallet_address as from_address,
+                               %s as to_address, consolidated_at as created_at, 'confirmed' as status,
+                               NULL as username
+                        FROM deposit_wallets
+                        WHERE consolidation_tx_hash IS NOT NULL
+                        ORDER BY consolidated_at DESC
+                        LIMIT %s
+                    """, (os.environ.get('TON_WALLET_ADDRESS', ''), limit))
+                    consolidations = cur.fetchall()
+                    transactions.extend(consolidations)
+                
+                if tx_type in ['', 'withdrawals', 'all']:
+                    cur.execute("""
+                        SELECT 'withdrawal' as tx_type, tx_hash, amount_ton as amount,
+                               %s as from_address, wallet_address as to_address,
+                               processed_at as created_at, status, u.username
+                        FROM b3c_withdrawals w
+                        LEFT JOIN users u ON w.user_id = u.id
+                        WHERE tx_hash IS NOT NULL
+                        ORDER BY processed_at DESC
+                        LIMIT %s
+                    """, (os.environ.get('TON_WALLET_ADDRESS', ''), limit))
+                    withdrawals = cur.fetchall()
+                    transactions.extend(withdrawals)
+                
+                transactions.sort(key=lambda x: x['created_at'] or datetime.min, reverse=True)
+                transactions = transactions[:limit]
+        
+        use_testnet = os.environ.get('TON_NETWORK', 'testnet').lower() == 'testnet'
+        explorer_url = 'https://testnet.tonscan.org' if use_testnet else 'https://tonscan.org'
+        
+        return jsonify({
+            'success': True,
+            'explorerUrl': explorer_url,
+            'transactions': [{
+                'tx_type': tx['tx_type'],
+                'tx_hash': tx.get('tx_hash', ''),
+                'amount': float(tx.get('amount', 0) or 0),
+                'from_address': tx.get('from_address', '')[:20] + '...' if tx.get('from_address') else '-',
+                'to_address': tx.get('to_address', '')[:20] + '...' if tx.get('to_address') else '-',
+                'created_at': str(tx.get('created_at', '')),
+                'status': tx.get('status', 'unknown'),
+                'username': tx.get('username', '')
+            } for tx in transactions],
+            'total': len(transactions)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting blockchain history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/wallets/pool-config', methods=['GET', 'POST'])
+@require_telegram_auth
+@require_owner
+def admin_pool_config():
+    """Admin: Obtener o guardar configuracion del pool de wallets."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS system_config (
+                        config_key VARCHAR(100) PRIMARY KEY,
+                        config_value TEXT,
+                        config_type VARCHAR(50),
+                        description TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_by VARCHAR(100)
+                    )
+                """)
+                conn.commit()
+                
+                if request.method == 'GET':
+                    cur.execute("SELECT config_key, config_value FROM system_config WHERE config_key LIKE 'pool_%' OR config_key LIKE 'wallet_%'")
+                    rows = cur.fetchall()
+                    config = {row['config_key']: row['config_value'] for row in rows}
+                    
+                    return jsonify({
+                        'success': True,
+                        'config': {
+                            'minPoolSize': int(config.get('pool_min_size', 10)),
+                            'autoFillThreshold': int(config.get('pool_auto_fill_threshold', 5)),
+                            'lowBalanceThreshold': float(config.get('wallet_low_balance_threshold', 1.0))
+                        }
+                    })
+                
+                else:
+                    data = request.get_json() or {}
+                    
+                    min_pool_size = int(data.get('minPoolSize', 10))
+                    auto_fill_threshold = int(data.get('autoFillThreshold', 5))
+                    low_balance_threshold = float(data.get('lowBalanceThreshold', 1.0))
+                    
+                    if min_pool_size < 1 or min_pool_size > 1000:
+                        return jsonify({'success': False, 'error': 'Tamano minimo del pool debe ser entre 1 y 1000'}), 400
+                    if auto_fill_threshold < 0 or auto_fill_threshold > min_pool_size:
+                        return jsonify({'success': False, 'error': 'Umbral de auto-rellenado debe ser entre 0 y el tamano minimo'}), 400
+                    if low_balance_threshold < 0 or low_balance_threshold > 100:
+                        return jsonify({'success': False, 'error': 'Umbral de balance bajo debe ser entre 0 y 100'}), 400
+                    
+                    configs = [
+                        ('pool_min_size', str(min_pool_size)),
+                        ('pool_auto_fill_threshold', str(auto_fill_threshold)),
+                        ('wallet_low_balance_threshold', str(low_balance_threshold))
+                    ]
+                    
+                    for key, value in configs:
+                        cur.execute("""
+                            INSERT INTO system_config (config_key, config_value, updated_at) 
+                            VALUES (%s, %s, CURRENT_TIMESTAMP)
+                            ON CONFLICT (config_key) DO UPDATE SET config_value = %s, updated_at = CURRENT_TIMESTAMP
+                        """, (key, value, value))
+                    
+                    conn.commit()
+                    
+                    try:
+                        from tracking.wallet_pool_service import get_wallet_pool_service
+                        wallet_svc = get_wallet_pool_service(db_manager)
+                        if wallet_svc:
+                            wallet_svc.reload_config()
+                    except Exception as reload_err:
+                        logger.warning(f"Could not reload wallet pool config: {reload_err}")
+                    
+                    user_id = getattr(request, 'user_id', '0')
+                    log_admin_action(user_id, 'Admin', 'update_pool_config', 'system_config', 
+                                   None, f"Updated pool config: {data}")
+                    
+                    return jsonify({'success': True, 'message': 'Configuracion guardada y aplicada'})
+    
+    except Exception as e:
+        logger.error(f"Error with pool config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/wallets/<int:wallet_id>/consolidate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_consolidate_single_wallet(wallet_id):
+    """Admin: Consolidar una wallet individual."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        try:
+            from tracking.wallet_pool_service import get_wallet_pool_service
+            wallet_svc = get_wallet_pool_service(db_manager)
+            if wallet_svc:
+                with db_manager.get_connection() as conn:
+                    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                        cur.execute("SELECT * FROM deposit_wallets WHERE id = %s", (wallet_id,))
+                        wallet = cur.fetchone()
+                        
+                        if not wallet:
+                            return jsonify({'success': False, 'error': 'Wallet no encontrada'}), 404
+                        
+                        if wallet.get('consolidated_at'):
+                            return jsonify({'success': False, 'error': 'Wallet ya consolidada'}), 400
+                
+                result = wallet_svc.consolidate_wallet(wallet_id)
+                
+                if result.get('success'):
+                    user_id = getattr(request, 'user_id', '0')
+                    log_admin_action(user_id, 'Admin', 'consolidate_single_wallet', 'deposit_wallets', 
+                                   str(wallet_id), f"Consolidated wallet {wallet_id}")
+                    
+                    return jsonify({
+                        'success': True,
+                        'amount': result.get('amount', 0),
+                        'tx_hash': result.get('tx_hash', ''),
+                        'message': 'Wallet consolidada exitosamente'
+                    })
+                else:
+                    return jsonify({'success': False, 'error': result.get('error', 'Error desconocido')})
+            else:
+                return jsonify({'success': False, 'error': 'Wallet pool service no disponible'}), 500
+        except Exception as e:
+            logger.error(f"Error consolidating single wallet: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    except Exception as e:
+        logger.error(f"Error in consolidate single wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN ANALYTICS ENDPOINTS (Migrados 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+@admin_bp.route('/analytics/users', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_analytics_users():
+    """Admin: Estadisticas de usuarios para analytics."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count 
+                    FROM security_activity_log 
+                    WHERE created_at >= CURRENT_DATE
+                """)
+                active_today = cur.fetchone()['count'] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count 
+                    FROM security_activity_log 
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                """)
+                active_week = cur.fetchone()['count'] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count 
+                    FROM security_activity_log 
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                """)
+                active_month = cur.fetchone()['count'] or 0
+                
+                cur.execute("SELECT COUNT(*) as count FROM users")
+                total_users = cur.fetchone()['count'] or 0
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM users
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                new_users_chart = [{'date': row['date'].isoformat(), 'count': row['count']} for row in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                    AND user_id IN (
+                        SELECT DISTINCT user_id FROM security_activity_log
+                        WHERE created_at < CURRENT_DATE - INTERVAL '7 days'
+                        AND created_at >= CURRENT_DATE - INTERVAL '14 days'
+                    )
+                """)
+                returning_users = cur.fetchone()['count'] or 0
+                retention_rate = round((returning_users / max(active_week, 1)) * 100, 1)
+                
+                users_by_country = [{'country': 'No disponible', 'count': total_users}]
+                
+                cur.execute("""
+                    SELECT 
+                        CASE 
+                            WHEN user_agent ILIKE '%android%' THEN 'Android'
+                            WHEN user_agent ILIKE '%iphone%' OR user_agent ILIKE '%ipad%' THEN 'iOS'
+                            WHEN user_agent ILIKE '%windows%' THEN 'Windows'
+                            WHEN user_agent ILIKE '%macintosh%' THEN 'Mac'
+                            WHEN user_agent ILIKE '%linux%' THEN 'Linux'
+                            ELSE 'Otro'
+                        END as device,
+                        COUNT(DISTINCT user_id) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY device
+                    ORDER BY count DESC
+                """)
+                users_by_device = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'activeToday': active_today,
+                    'activeWeek': active_week,
+                    'activeMonth': active_month,
+                    'totalUsers': total_users,
+                    'newUsersChart': new_users_chart,
+                    'retentionRate': retention_rate,
+                    'returningUsers': returning_users,
+                    'usersByCountry': users_by_country,
+                    'usersByDevice': users_by_device
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting user analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/analytics/usage', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_analytics_usage():
+    """Admin: Estadisticas de uso de la app."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT activity_type as section, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY activity_type
+                    ORDER BY count DESC
+                    LIMIT 10
+                """)
+                top_sections = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT EXTRACT(HOUR FROM created_at)::int as hour, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                    GROUP BY hour
+                    ORDER BY hour ASC
+                """)
+                hourly_activity = [{'hour': row['hour'], 'count': row['count']} for row in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT TO_CHAR(created_at, 'Day') as day_name, 
+                           EXTRACT(DOW FROM created_at)::int as day_num,
+                           COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY day_name, day_num
+                    ORDER BY day_num ASC
+                """)
+                daily_activity = [{'day': row['day_name'].strip(), 'count': row['count']} for row in cur.fetchall()]
+                
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM security_activity_log
+                    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC
+                """)
+                activity_chart = [{'date': row['date'].isoformat(), 'count': row['count']} for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'topSections': top_sections,
+                    'hourlyActivity': hourly_activity,
+                    'dailyActivity': daily_activity,
+                    'activityChart': activity_chart
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting usage analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/analytics/conversion', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_analytics_conversion():
+    """Admin: Metricas de conversion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as count FROM users")
+                total_users = cur.fetchone()['count'] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM b3c_purchases
+                    WHERE status = 'completed'
+                """)
+                users_purchased_b3c = cur.fetchone()['count'] or 0
+                
+                try:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT user_id) as count
+                        FROM virtual_number_orders
+                    """)
+                    users_used_vn = cur.fetchone()['count'] or 0
+                except Exception:
+                    users_used_vn = 0
+                
+                try:
+                    cur.execute("""
+                        SELECT COUNT(DISTINCT user_id) as count
+                        FROM posts
+                        WHERE is_hidden = false
+                    """)
+                    users_published = cur.fetchone()['count'] or 0
+                except Exception:
+                    users_published = 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as count
+                    FROM users
+                    WHERE wallet_address IS NOT NULL AND wallet_address != ''
+                """)
+                users_with_wallet = cur.fetchone()['count'] or 0
+                
+                b3c_rate = round((users_purchased_b3c / max(total_users, 1)) * 100, 1)
+                vn_rate = round((users_used_vn / max(total_users, 1)) * 100, 1)
+                publish_rate = round((users_published / max(total_users, 1)) * 100, 1)
+                wallet_rate = round((users_with_wallet / max(total_users, 1)) * 100, 1)
+                
+                funnel = [
+                    {'stage': 'Registrados', 'count': total_users, 'rate': 100},
+                    {'stage': 'Wallet conectada', 'count': users_with_wallet, 'rate': wallet_rate},
+                    {'stage': 'Compraron B3C', 'count': users_purchased_b3c, 'rate': b3c_rate},
+                    {'stage': 'Publicaron contenido', 'count': users_published, 'rate': publish_rate},
+                    {'stage': 'Usaron VN', 'count': users_used_vn, 'rate': vn_rate}
+                ]
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount_ton), 0) as total_ton
+                    FROM b3c_purchases
+                    WHERE status = 'completed'
+                """)
+                total_revenue_ton = float(cur.fetchone()['total_ton'] or 0)
+                
+                return jsonify({
+                    'success': True,
+                    'totalUsers': total_users,
+                    'usersPurchasedB3C': users_purchased_b3c,
+                    'usersUsedVN': users_used_vn,
+                    'usersPublished': users_published,
+                    'usersWithWallet': users_with_wallet,
+                    'b3cConversionRate': b3c_rate,
+                    'vnConversionRate': vn_rate,
+                    'publishRate': publish_rate,
+                    'walletRate': wallet_rate,
+                    'funnel': funnel,
+                    'totalRevenueTON': total_revenue_ton
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting conversion analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN SUPPORT TICKETS ENDPOINTS (Migrados 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+@admin_bp.route('/support/tickets', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_support_tickets():
+    """Get all support tickets with filters and pagination"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'tickets': [],
+                'total': 0,
+                'page': 1,
+                'per_page': 20,
+                'pages': 0,
+                'stats': {'new_count': 0, 'in_progress_count': 0, 'resolved_count': 0, 'urgent_count': 0}
+            })
+        
+        status = request.args.get('status', '')
+        priority = request.args.get('priority', '')
+        search = request.args.get('search', '')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clauses = []
+                params = []
+                
+                if status:
+                    where_clauses.append("t.status = %s")
+                    params.append(status)
+                
+                if priority:
+                    where_clauses.append("t.priority = %s")
+                    params.append(priority)
+                
+                if search:
+                    where_clauses.append("(t.subject ILIKE %s OR u.username ILIKE %s)")
+                    params.extend([f'%{search}%', f'%{search}%'])
+                
+                where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+                
+                cur.execute(f"""
+                    SELECT t.*, u.username, u.first_name, u.last_name,
+                           (SELECT COUNT(*) FROM ticket_messages WHERE ticket_id = t.id) as message_count
+                    FROM support_tickets t
+                    LEFT JOIN users u ON t.user_id = u.id
+                    WHERE {where_sql}
+                    ORDER BY 
+                        CASE t.priority 
+                            WHEN 'urgent' THEN 1 
+                            WHEN 'high' THEN 2 
+                            WHEN 'medium' THEN 3 
+                            ELSE 4 
+                        END,
+                        t.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, params + [per_page, offset])
+                tickets = cur.fetchall()
+                
+                cur.execute(f"""
+                    SELECT COUNT(*) as total FROM support_tickets t
+                    LEFT JOIN users u ON t.user_id = u.id
+                    WHERE {where_sql}
+                """, params)
+                total = cur.fetchone()['total']
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) FILTER (WHERE status = 'new') as new_count,
+                        COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
+                        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
+                        COUNT(*) FILTER (WHERE priority = 'urgent' AND status NOT IN ('closed', 'resolved')) as urgent_count
+                    FROM support_tickets
+                """)
+                stats = cur.fetchone()
+                
+                return jsonify({
+                    'success': True,
+                    'tickets': [dict(t) for t in tickets],
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page,
+                    'pages': (total + per_page - 1) // per_page,
+                    'stats': dict(stats)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting support tickets: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/support/tickets/<int:ticket_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_ticket_detail(ticket_id):
+    """Get single ticket with messages"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT t.*, u.username, u.first_name, u.last_name, u.telegram_id
+                    FROM support_tickets t
+                    LEFT JOIN users u ON t.user_id = u.id
+                    WHERE t.id = %s
+                """, (ticket_id,))
+                ticket = cur.fetchone()
+                
+                if not ticket:
+                    return jsonify({'success': False, 'error': 'Ticket not found'}), 404
+                
+                cur.execute("""
+                    SELECT tm.*, 
+                           CASE WHEN tm.is_admin THEN 'Admin' ELSE u.username END as sender_name
+                    FROM ticket_messages tm
+                    LEFT JOIN users u ON tm.sender_id = u.id
+                    WHERE tm.ticket_id = %s
+                    ORDER BY tm.created_at ASC
+                """, (ticket_id,))
+                messages = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'ticket': dict(ticket),
+                    'messages': [dict(m) for m in messages]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting ticket detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/support/tickets/<int:ticket_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def update_ticket(ticket_id):
+    """Update ticket status or priority"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.json
+        status = data.get('status')
+        priority = data.get('priority')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                updates = []
+                params = []
+                
+                if status:
+                    updates.append("status = %s")
+                    params.append(status)
+                    if status == 'closed':
+                        updates.append("closed_at = NOW()")
+                
+                if priority:
+                    updates.append("priority = %s")
+                    params.append(priority)
+                
+                updates.append("updated_at = NOW()")
+                params.append(ticket_id)
+                
+                cur.execute(f"""
+                    UPDATE support_tickets
+                    SET {', '.join(updates)}
+                    WHERE id = %s
+                    RETURNING *
+                """, params)
+                ticket = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'ticket': dict(ticket)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error updating ticket: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/support/tickets/<int:ticket_id>/reply', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def reply_to_ticket(ticket_id):
+    """Send reply to ticket"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.json
+        message = data.get('message', '').strip()
+        attachment_url = data.get('attachment_url')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        admin_id = session.get('admin_id', 0)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO ticket_messages (ticket_id, sender_id, message, is_admin, attachment_url)
+                    VALUES (%s, %s, %s, true, %s)
+                    RETURNING *
+                """, (ticket_id, admin_id, message, attachment_url))
+                new_message = cur.fetchone()
+                
+                cur.execute("""
+                    UPDATE support_tickets
+                    SET status = CASE WHEN status = 'new' THEN 'in_progress' ELSE status END,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (ticket_id,))
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': dict(new_message)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error replying to ticket: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/support/templates', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_response_templates():
+    """Get response templates"""
+    try:
+        db_manager = get_db_manager()
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM response_templates
+                    WHERE is_active = true
+                    ORDER BY name ASC
+                """)
+                templates = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'templates': [dict(t) for t in templates]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting templates: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/support/templates', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def create_response_template():
+    """Create new response template"""
+    try:
+        db_manager = get_db_manager()
+        data = request.json
+        name = data.get('name', '').strip()
+        content = data.get('content', '').strip()
+        
+        if not name or not content:
+            return jsonify({'success': False, 'error': 'Name and content are required'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO response_templates (name, content)
+                    VALUES (%s, %s)
+                    RETURNING *
+                """, (name, content))
+                template = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'template': dict(template)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error creating template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN FAQ ENDPOINTS (Migrados 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+@admin_bp.route('/faq', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_faqs():
+    """Get all FAQs with filters"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'faqs': []})
+        
+        category = request.args.get('category', '')
+        status = request.args.get('status', '')
+        search = request.args.get('search', '')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clauses = []
+                params = []
+                
+                if category:
+                    where_clauses.append("category = %s")
+                    params.append(category)
+                
+                if status == 'published':
+                    where_clauses.append("is_published = true")
+                elif status == 'draft':
+                    where_clauses.append("is_published = false")
+                
+                if search:
+                    where_clauses.append("(question ILIKE %s OR answer ILIKE %s)")
+                    params.extend([f'%{search}%', f'%{search}%'])
+                
+                where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+                
+                cur.execute(f"""
+                    SELECT * FROM faqs
+                    WHERE {where_sql}
+                    ORDER BY display_order ASC, created_at DESC
+                """, params)
+                faqs = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'faqs': [dict(f) for f in faqs]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting FAQs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/faq', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def create_faq():
+    """Create new FAQ"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.json
+        question = data.get('question', '').strip()
+        answer = data.get('answer', '').strip()
+        category = data.get('category', 'general')
+        display_order = data.get('display_order', 0)
+        is_published = data.get('is_published', True)
+        
+        if not question or not answer:
+            return jsonify({'success': False, 'error': 'Question and answer are required'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO faqs (question, answer, category, display_order, is_published)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING *
+                """, (question, answer, category, display_order, is_published))
+                faq = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'faq': dict(faq)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error creating FAQ: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/faq/<int:faq_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def update_faq(faq_id):
+    """Update FAQ"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.json
+        question = data.get('question', '').strip()
+        answer = data.get('answer', '').strip()
+        category = data.get('category', 'general')
+        display_order = data.get('display_order', 0)
+        is_published = data.get('is_published', True)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    UPDATE faqs
+                    SET question = %s, answer = %s, category = %s, 
+                        display_order = %s, is_published = %s, updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING *
+                """, (question, answer, category, display_order, is_published, faq_id))
+                faq = cur.fetchone()
+                conn.commit()
+                
+                if not faq:
+                    return jsonify({'success': False, 'error': 'FAQ not found'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'faq': dict(faq)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error updating FAQ: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/faq/<int:faq_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def delete_faq(faq_id):
+    """Delete FAQ"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM faqs WHERE id = %s", (faq_id,))
+                conn.commit()
+                
+                return jsonify({'success': True})
+                
+    except Exception as e:
+        logger.error(f"Error deleting FAQ: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN MASS MESSAGES ENDPOINTS (Migrados 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+@admin_bp.route('/messages', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_mass_messages():
+    """Get mass messages history"""
+    try:
+        db_manager = get_db_manager()
+        status = request.args.get('status', '')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clause = ""
+                
+                if status == 'sent':
+                    where_clause = "WHERE status = 'sent'"
+                elif status == 'scheduled':
+                    where_clause = "WHERE status = 'scheduled'"
+                elif status == 'draft':
+                    where_clause = "WHERE status = 'draft'"
+                
+                cur.execute(f"""
+                    SELECT m.*,
+                           (SELECT COUNT(*) FROM mass_message_recipients WHERE message_id = m.id) as recipient_count,
+                           (SELECT COUNT(*) FROM mass_message_recipients WHERE message_id = m.id AND is_delivered = true) as delivered_count
+                    FROM mass_messages m
+                    {where_clause}
+                    ORDER BY m.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, [per_page, offset])
+                messages = cur.fetchall()
+                
+                cur.execute(f"SELECT COUNT(*) as total FROM mass_messages {where_clause}")
+                total = cur.fetchone()['total']
+                
+                return jsonify({
+                    'success': True,
+                    'messages': [dict(m) for m in messages],
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting mass messages: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/messages', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def send_mass_message():
+    """Create and send mass message"""
+    try:
+        db_manager = get_db_manager()
+        data = request.json
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        recipient_type = data.get('recipient_type', 'all')
+        specific_users = data.get('specific_users', '')
+        send_type = data.get('send_type', 'now')
+        scheduled_at = data.get('scheduled_at')
+        msg_type = data.get('msg_type', 'info')
+        
+        if not title or not content:
+            return jsonify({'success': False, 'error': 'Title and content are required'}), 400
+        
+        admin_id = session.get('admin_id', 0)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                status = 'scheduled' if send_type == 'scheduled' else 'sent'
+                
+                cur.execute(f"""
+                    INSERT INTO mass_messages (title, content, message_type, recipient_filter, 
+                                               status, scheduled_at, sent_at, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, {'NOW()' if send_type == 'now' else 'NULL'}, %s)
+                    RETURNING *
+                """, (title, content, msg_type, recipient_type, status, 
+                      scheduled_at if send_type == 'scheduled' else None, admin_id))
+                message = cur.fetchone()
+                message_id = message['id']
+                
+                user_ids = []
+                if send_type == 'now':
+                    if recipient_type == 'all':
+                        cur.execute("SELECT id FROM users WHERE is_banned = false")
+                        user_ids = [row['id'] for row in cur.fetchall()]
+                    elif recipient_type == 'active':
+                        cur.execute("""
+                            SELECT id FROM users 
+                            WHERE is_banned = false AND last_active > NOW() - INTERVAL '7 days'
+                        """)
+                        user_ids = [row['id'] for row in cur.fetchall()]
+                    elif recipient_type == 'premium':
+                        cur.execute("""
+                            SELECT id FROM users 
+                            WHERE is_banned = false AND is_premium = true
+                        """)
+                        user_ids = [row['id'] for row in cur.fetchall()]
+                    elif recipient_type == 'specific' and specific_users:
+                        specific_ids = [int(x.strip()) for x in specific_users.split(',') if x.strip().isdigit()]
+                        if specific_ids:
+                            cur.execute("""
+                                SELECT id FROM users WHERE id = ANY(%s) AND is_banned = false
+                            """, (specific_ids,))
+                            user_ids = [row['id'] for row in cur.fetchall()]
+                    
+                    for user_id in user_ids:
+                        cur.execute("""
+                            INSERT INTO mass_message_recipients (message_id, user_id, is_delivered)
+                            VALUES (%s, %s, true)
+                        """, (message_id, user_id))
+                        
+                        cur.execute("""
+                            INSERT INTO user_notifications (user_id, title, message, notification_type, is_read)
+                            VALUES (%s, %s, %s, %s, false)
+                        """, (user_id, title, content, msg_type))
+                    
+                    cur.execute("""
+                        UPDATE mass_messages SET recipients_count = %s WHERE id = %s
+                    """, (len(user_ids), message_id))
+                
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': dict(message),
+                    'recipients_count': len(user_ids)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error sending mass message: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/messages/scheduled', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_scheduled_messages():
+    """Get scheduled messages"""
+    try:
+        db_manager = get_db_manager()
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM mass_messages
+                    WHERE status = 'scheduled' AND scheduled_at > NOW()
+                    ORDER BY scheduled_at ASC
+                """)
+                messages = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'messages': [dict(m) for m in messages]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting scheduled messages: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/messages/<int:message_id>/cancel', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def cancel_scheduled_message(message_id):
+    """Cancel scheduled message"""
+    try:
+        db_manager = get_db_manager()
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    UPDATE mass_messages
+                    SET status = 'cancelled'
+                    WHERE id = %s AND status = 'scheduled'
+                    RETURNING *
+                """, (message_id,))
+                message = cur.fetchone()
+                conn.commit()
+                
+                if not message:
+                    return jsonify({'success': False, 'error': 'Message not found or already sent'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'message': dict(message)
+                })
+                
+    except Exception as e:
+        logger.error(f"Error cancelling message: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

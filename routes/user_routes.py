@@ -3071,3 +3071,41 @@ def create_report():
     except Exception as e:
         logger.error(f"Error creating report: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# PUBLIC FAQ ENDPOINT (Migrado 10 Diciembre 2025 - Sesion 5)
+# ============================================================
+
+
+@user_bp.route('/faq', methods=['GET'])
+def get_public_faqs():
+    """Get published FAQs for users"""
+    try:
+        db_manager = get_db_manager()
+        category = request.args.get('category', '')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                where_clause = "is_published = true"
+                params = []
+                
+                if category:
+                    where_clause += " AND category = %s"
+                    params.append(category)
+                
+                cur.execute(f"""
+                    SELECT id, question, answer, category FROM faqs
+                    WHERE {where_clause}
+                    ORDER BY display_order ASC
+                """, params)
+                faqs = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'faqs': [dict(f) for f in faqs]
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting public FAQs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
