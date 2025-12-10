@@ -14,10 +14,10 @@
 ## PROGRESO GLOBAL DE MIGRACION
 
 **Estado actual (10 Diciembre 2025):**
-- Endpoints en app.py: 317 → 268 (49 endpoints migrados en total)
+- Endpoints en app.py: 317 → 239 (78 endpoints migrados en total)
 - Blueprints activos: auth, blockchain, admin, user
-- Endpoints en admin_routes.py: 28 (4 dashboard + 13 users + 4 stats + 7 security)
-- Endpoints en user_routes.py: 21 (14 perfil + 5 mensajes + 2 notificaciones)
+- Endpoints en admin_routes.py: 32 (4 dashboard + 13 users + 4 stats + 7 security + 4 extra)
+- Endpoints en user_routes.py: 50 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments)
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
 **Fecha:** 9 Diciembre 2025
@@ -123,6 +123,59 @@
 
 **Archivo:** routes/user_routes.py
 **Endpoints originales comentados en app.py:** Lineas 14137-14200
+
+### FASE 0.11: MIGRACION POSTS - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 6
+
+- [x] POST /api/posts
+- [x] GET /api/posts
+- [x] GET /api/posts/{id}
+- [x] DELETE /api/posts/{id}
+- [x] POST /api/posts/{id}/like
+- [x] DELETE /api/posts/{id}/like
+
+**Archivo:** routes/user_routes.py
+**Endpoints originales comentados en app.py:** Lineas 1828-2050
+
+### FASE 0.12: MIGRACION PUBLICATIONS - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 14
+
+- [x] GET /api/publications/feed
+- [x] GET /api/publications/check-new
+- [x] GET /api/publications/{id}
+- [x] PUT /api/publications/{id}
+- [x] DELETE /api/publications/{id}
+- [x] GET /api/publications/gallery/{user_id}
+- [x] POST /api/publications/{id}/react
+- [x] POST /api/publications/{id}/unreact
+- [x] POST /api/publications/{id}/save
+- [x] POST /api/publications/{id}/unsave
+- [x] GET /api/publications/saved
+- [x] POST /api/publications/{id}/share
+- [x] POST /api/publications/{id}/share-count
+- [x] POST /api/publications/{id}/pin-comment
+
+**Archivo:** routes/user_routes.py
+**Nota:** /api/publications/create permanece en app.py por dependencias de cloudinary y encryption
+
+### FASE 0.13: MIGRACION COMMENTS - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 9
+
+- [x] GET /api/publications/{id}/comments
+- [x] POST /api/publications/{id}/comments
+- [x] POST /api/comments/{id}/like
+- [x] POST /api/comments/{id}/unlike
+- [x] GET /api/comments/{id}
+- [x] PUT /api/comments/{id}
+- [x] POST /api/comments/{id}/react
+- [x] DELETE /api/comments/{id}/react
+- [x] GET /api/comments/{id}/reactions
+
+**Archivo:** routes/user_routes.py
+**Endpoints originales comentados en app.py:** Lineas 10377-10583
 
 ---
 

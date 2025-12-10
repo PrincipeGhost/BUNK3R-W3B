@@ -1823,12 +1823,13 @@ def get_statuses():
 
 # ============================================================
 # ENDPOINTS DE RED SOCIAL - POSTS
+# MIGRADO A routes/user_routes.py - 10 Diciembre 2025
 # ============================================================
 
-@app.route('/api/posts', methods=['POST'])
-@require_telegram_user
-@rate_limit('posts_create')
-def create_post():
+# @app.route('/api/posts', methods=['POST'])
+# @require_telegram_user
+# @rate_limit('posts_create')
+def _old_create_post():
     """Crear una nueva publicación."""
     try:
         if not db_manager:
@@ -1885,9 +1886,9 @@ def create_post():
         return jsonify({'error': sanitize_error(e, 'create_post')}), 500
 
 
-@app.route('/api/posts', methods=['GET'])
-@require_telegram_user
-def get_posts_feed():
+# @app.route('/api/posts', methods=['GET'])
+# @require_telegram_user
+def _old_get_posts_feed():
     """Obtener feed de publicaciones."""
     try:
         if not db_manager:
@@ -1931,9 +1932,9 @@ def get_posts_feed():
         return jsonify({'error': sanitize_error(e, 'get_posts_feed')}), 500
 
 
-@app.route('/api/posts/<int:post_id>', methods=['GET'])
-@require_telegram_user
-def get_post_detail(post_id):
+# @app.route('/api/posts/<int:post_id>', methods=['GET'])
+# @require_telegram_user
+def _old_get_post_detail(post_id):
     """Obtener detalles de una publicación."""
     try:
         if not db_manager:
@@ -1967,9 +1968,9 @@ def get_post_detail(post_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
-@require_telegram_user
-def delete_post(post_id):
+# @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+# @require_telegram_user
+def _old_delete_post(post_id):
     """Eliminar una publicación."""
     try:
         if not db_manager:
@@ -1993,10 +1994,10 @@ def delete_post(post_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/posts/<int:post_id>/like', methods=['POST'])
-@require_telegram_user
-@rate_limit('posts_like')
-def like_post(post_id):
+# @app.route('/api/posts/<int:post_id>/like', methods=['POST'])
+# @require_telegram_user
+# @rate_limit('posts_like')
+def _old_like_post(post_id):
     """Dar like a una publicación."""
     try:
         if not db_manager:
@@ -2022,9 +2023,9 @@ def like_post(post_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/posts/<int:post_id>/like', methods=['DELETE'])
-@require_telegram_user
-def unlike_post(post_id):
+# @app.route('/api/posts/<int:post_id>/like', methods=['DELETE'])
+# @require_telegram_user
+def _old_unlike_post(post_id):
     """Quitar like de una publicación."""
     try:
         if not db_manager:
@@ -10054,6 +10055,8 @@ def admin_get_p2p_transfer_detail(transfer_id):
 
 # ============================================================
 # ENCRYPTED PUBLICATIONS SYSTEM - API ENDPOINTS
+# MIGRADO A routes/user_routes.py - 10 Diciembre 2025
+# (Excepto /api/publications/create que requiere cloudinary y encryption)
 # ============================================================
 
 @app.route('/api/publications/create', methods=['POST'])
@@ -10172,9 +10175,9 @@ def create_publication():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/feed', methods=['GET'])
-@require_telegram_auth
-def get_feed():
+# @app.route('/api/publications/feed', methods=['GET'])
+# @require_telegram_auth
+def _old_get_feed():
     """Get user's feed with decrypted content for viewing"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10216,9 +10219,9 @@ def get_feed():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/check-new', methods=['GET'])
-@require_telegram_auth
-def check_new_posts():
+# @app.route('/api/publications/check-new', methods=['GET'])
+# @require_telegram_auth
+def _old_check_new_posts():
     """Check for new posts since a given post ID"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10239,9 +10242,9 @@ def check_new_posts():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>', methods=['GET'])
-@require_telegram_auth
-def get_publication(post_id):
+# @app.route('/api/publications/<int:post_id>', methods=['GET'])
+# @require_telegram_auth
+def _old_get_publication(post_id):
     """Get a single publication with all details"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10263,9 +10266,9 @@ def get_publication(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>', methods=['PUT'])
-@require_telegram_auth
-def update_publication(post_id):
+# @app.route('/api/publications/<int:post_id>', methods=['PUT'])
+# @require_telegram_auth
+def _old_update_publication(post_id):
     """Update a publication (caption, comments enabled)"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10291,9 +10294,9 @@ def update_publication(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>', methods=['DELETE'])
-@require_telegram_auth
-def delete_publication(post_id):
+# @app.route('/api/publications/<int:post_id>', methods=['DELETE'])
+# @require_telegram_auth
+def _old_delete_publication(post_id):
     """Delete a publication"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10313,9 +10316,9 @@ def delete_publication(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/gallery/<user_id>', methods=['GET'])
-@require_telegram_auth
-def get_user_gallery(user_id):
+# @app.route('/api/publications/gallery/<user_id>', methods=['GET'])
+# @require_telegram_auth
+def _old_get_user_gallery(user_id):
     """Get user's gallery (grid of posts)"""
     try:
         viewer_id = str(request.telegram_user.get('id', 0))
@@ -10335,9 +10338,9 @@ def get_user_gallery(user_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/react', methods=['POST'])
-@require_telegram_auth
-def react_to_post(post_id):
+# @app.route('/api/publications/<int:post_id>/react', methods=['POST'])
+# @require_telegram_auth
+def _old_react_to_post(post_id):
     """Add or change reaction to a post"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10356,9 +10359,9 @@ def react_to_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/unreact', methods=['POST'])
-@require_telegram_auth
-def unreact_to_post(post_id):
+# @app.route('/api/publications/<int:post_id>/unreact', methods=['POST'])
+# @require_telegram_auth
+def _old_unreact_to_post(post_id):
     """Remove reaction from a post"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10374,9 +10377,9 @@ def unreact_to_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/comments', methods=['GET'])
-@require_telegram_auth
-def get_post_comments(post_id):
+# @app.route('/api/publications/<int:post_id>/comments', methods=['GET'])
+# @require_telegram_auth
+def _old_get_post_comments(post_id):
     """Get comments for a post"""
     try:
         limit = int(request.args.get('limit', 50))
@@ -10394,10 +10397,10 @@ def get_post_comments(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/comments', methods=['POST'])
-@require_telegram_auth
-@rate_limit('comments_create')
-def add_comment(post_id):
+# @app.route('/api/publications/<int:post_id>/comments', methods=['POST'])
+# @require_telegram_auth
+# @rate_limit('comments_create')
+def _old_add_comment(post_id):
     """Add a comment to a post"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10423,9 +10426,9 @@ def add_comment(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>/like', methods=['POST'])
-@require_telegram_auth
-def like_comment(comment_id):
+# @app.route('/api/comments/<int:comment_id>/like', methods=['POST'])
+# @require_telegram_auth
+def _old_like_comment(comment_id):
     """Like a comment"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10439,9 +10442,9 @@ def like_comment(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>/unlike', methods=['POST'])
-@require_telegram_auth
-def unlike_comment(comment_id):
+# @app.route('/api/comments/<int:comment_id>/unlike', methods=['POST'])
+# @require_telegram_auth
+def _old_unlike_comment(comment_id):
     """Unlike a comment"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10455,10 +10458,10 @@ def unlike_comment(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>', methods=['PUT'])
-@require_telegram_auth
-@rate_limit('comments_create')
-def update_comment(comment_id):
+# @app.route('/api/comments/<int:comment_id>', methods=['PUT'])
+# @require_telegram_auth
+# @rate_limit('comments_create')
+def _old_update_comment(comment_id):
     """Update a comment - only author can edit within time limit"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10483,9 +10486,9 @@ def update_comment(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>', methods=['GET'])
-@require_telegram_auth
-def get_comment(comment_id):
+# @app.route('/api/comments/<int:comment_id>', methods=['GET'])
+# @require_telegram_auth
+def _old_get_comment(comment_id):
     """Get a single comment by ID"""
     try:
         comment = db_manager.get_comment_by_id(comment_id)
@@ -10500,9 +10503,9 @@ def get_comment(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>/react', methods=['POST'])
-@require_telegram_auth
-def add_comment_reaction(comment_id):
+# @app.route('/api/comments/<int:comment_id>/react', methods=['POST'])
+# @require_telegram_auth
+def _old_add_comment_reaction(comment_id):
     """Add or update reaction to a comment"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10530,9 +10533,9 @@ def add_comment_reaction(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>/react', methods=['DELETE'])
-@require_telegram_auth
-def remove_comment_reaction(comment_id):
+# @app.route('/api/comments/<int:comment_id>/react', methods=['DELETE'])
+# @require_telegram_auth
+def _old_remove_comment_reaction(comment_id):
     """Remove reaction from a comment"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10555,9 +10558,9 @@ def remove_comment_reaction(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/comments/<int:comment_id>/reactions', methods=['GET'])
-@require_telegram_auth
-def get_comment_reactions_api(comment_id):
+# @app.route('/api/comments/<int:comment_id>/reactions', methods=['GET'])
+# @require_telegram_auth
+def _old_get_comment_reactions_api(comment_id):
     """Get reactions for a comment"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10577,9 +10580,9 @@ def get_comment_reactions_api(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/pin-comment', methods=['POST'])
-@require_telegram_auth
-def pin_comment(post_id):
+# @app.route('/api/publications/<int:post_id>/pin-comment', methods=['POST'])
+# @require_telegram_auth
+def _old_pin_comment(post_id):
     """Pin a comment (post owner only)"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10598,9 +10601,9 @@ def pin_comment(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/save', methods=['POST'])
-@require_telegram_auth
-def save_post(post_id):
+# @app.route('/api/publications/<int:post_id>/save', methods=['POST'])
+# @require_telegram_auth
+def _old_save_post(post_id):
     """Save a post to favorites"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10614,9 +10617,9 @@ def save_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/unsave', methods=['POST'])
-@require_telegram_auth
-def unsave_post(post_id):
+# @app.route('/api/publications/<int:post_id>/unsave', methods=['POST'])
+# @require_telegram_auth
+def _old_unsave_post(post_id):
     """Remove post from favorites"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10630,9 +10633,9 @@ def unsave_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/saved', methods=['GET'])
-@require_telegram_auth
-def get_saved_posts():
+# @app.route('/api/publications/saved', methods=['GET'])
+# @require_telegram_auth
+def _old_get_saved_posts():
     """Get user's saved posts"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10652,9 +10655,9 @@ def get_saved_posts():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/share', methods=['POST'])
-@require_telegram_auth
-def share_post(post_id):
+# @app.route('/api/publications/<int:post_id>/share', methods=['POST'])
+# @require_telegram_auth
+def _old_share_post(post_id):
     """Share/repost a publication"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -10675,9 +10678,9 @@ def share_post(post_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/publications/<int:post_id>/share-count', methods=['POST'])
-@require_telegram_auth
-def increment_share_count(post_id):
+# @app.route('/api/publications/<int:post_id>/share-count', methods=['POST'])
+# @require_telegram_auth
+def _old_increment_share_count(post_id):
     """Increment share count for external shares (copy link, Telegram share)"""
     try:
         db_manager.increment_share_count(post_id)

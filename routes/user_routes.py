@@ -24,6 +24,7 @@ import psycopg2.extras
 
 from tracking.decorators import require_telegram_auth, require_telegram_user
 from tracking.services import get_db_manager
+from tracking.utils import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,9 @@ def user_health():
         'status': 'active',
         'message': 'Endpoints de usuario funcionando.',
         'endpoints_migrated': [
-            '/api/users/<id>/profile (GET)',
-            '/api/users/<id>/profile (PUT)',
+            '/api/users/<id>/profile (GET/PUT)',
             '/api/users/<id>/posts',
-            '/api/users/<id>/follow (POST)',
-            '/api/users/<id>/follow (DELETE)',
+            '/api/users/<id>/follow (POST/DELETE)',
             '/api/users/<id>/followers',
             '/api/users/<id>/following',
             '/api/users/<id>/stats',
@@ -72,7 +71,28 @@ def user_health():
             '/api/messages/<id>/read',
             '/api/messages/unread-count',
             '/api/user/notifications',
-            '/api/user/notifications/read'
+            '/api/user/notifications/read',
+            '/api/posts (GET/POST)',
+            '/api/posts/<id> (GET/DELETE)',
+            '/api/posts/<id>/like (POST/DELETE)',
+            '/api/publications/feed',
+            '/api/publications/check-new',
+            '/api/publications/<id> (GET/PUT/DELETE)',
+            '/api/publications/gallery/<user_id>',
+            '/api/publications/<id>/react (POST)',
+            '/api/publications/<id>/unreact (POST)',
+            '/api/publications/<id>/save (POST)',
+            '/api/publications/<id>/unsave (POST)',
+            '/api/publications/saved',
+            '/api/publications/<id>/share (POST)',
+            '/api/publications/<id>/share-count (POST)',
+            '/api/publications/<id>/comments (GET/POST)',
+            '/api/publications/<id>/pin-comment (POST)',
+            '/api/comments/<id>/like (POST)',
+            '/api/comments/<id>/unlike (POST)',
+            '/api/comments/<id> (GET/PUT)',
+            '/api/comments/<id>/react (POST/DELETE)',
+            '/api/comments/<id>/reactions'
         ]
     })
 
@@ -899,4 +919,831 @@ def mark_notifications_read():
                 
     except Exception as e:
         logger.error(f"Error marking notifications read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS DE POSTS - MIGRADO 10 Diciembre 2025
+# ============================================================
+
+@user_bp.route('/posts', methods=['POST'])
+@require_telegram_user
+@rate_limit('posts_create')
+def create_post():
+    """Crear una nueva publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        data = request.get_json()
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        content_type = data.get('contentType', 'text')
+        if content_type not in ['text', 'image', 'video']:
+            return jsonify({'error': 'Tipo de contenido invalido'}), 400
+        
+        content_url = data.get('contentUrl')
+        caption = html.escape(data.get('caption', ''))[:2000] if data.get('caption') else ''
+        
+        if content_type == 'text' and not caption:
+            return jsonify({'error': 'El texto es requerido para posts de tipo texto'}), 400
+        
+        if content_type in ['image', 'video'] and not content_url:
+            return jsonify({'error': 'La URL del contenido es requerida'}), 400
+        
+        db_manager.get_or_create_user(
+            user_id=user_id,
+            username=user.get('username', ''),
+            first_name=user.get('first_name', ''),
+            last_name=user.get('last_name', ''),
+            telegram_id=user.get('id')
+        )
+        
+        post_id = db_manager.create_post(
+            user_id=user_id,
+            content_type=content_type,
+            content_url=content_url,
+            caption=caption
+        )
+        
+        if post_id:
+            return jsonify({
+                'success': True,
+                'message': 'Publicacion creada correctamente',
+                'postId': post_id
+            })
+        else:
+            return jsonify({'error': 'Error al crear la publicacion'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating post: {e}")
+        return jsonify({'error': sanitize_error(e, 'create_post')}), 500
+
+
+@user_bp.route('/posts', methods=['GET'])
+@require_telegram_user
+def get_posts_feed():
+    """Obtener feed de publicaciones."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        limit = min(limit, 50)
+        
+        posts = db_manager.get_posts_feed(user_id=user_id, limit=limit, offset=offset)
+        
+        result = []
+        for post in posts:
+            result.append({
+                'id': post.get('id'),
+                'userId': post.get('user_id'),
+                'username': post.get('username'),
+                'firstName': post.get('first_name'),
+                'avatarUrl': post.get('avatar_url'),
+                'contentType': post.get('content_type'),
+                'contentUrl': post.get('content_url'),
+                'caption': post.get('caption'),
+                'likesCount': post.get('likes_count', 0),
+                'commentsCount': post.get('comments_count', 0),
+                'sharesCount': post.get('shares_count', 0),
+                'userLiked': post.get('user_liked', False),
+                'createdAt': post.get('created_at').isoformat() if post.get('created_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'posts': result,
+            'count': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting posts feed: {e}")
+        return jsonify({'error': sanitize_error(e, 'get_posts_feed')}), 500
+
+
+@user_bp.route('/posts/<int:post_id>', methods=['GET'])
+@require_telegram_user
+def get_post_detail(post_id):
+    """Obtener detalles de una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        post = db_manager.get_post(post_id)
+        
+        if not post:
+            return jsonify({'error': 'Publicacion no encontrada'}), 404
+        
+        return jsonify({
+            'success': True,
+            'post': {
+                'id': post.get('id'),
+                'userId': post.get('user_id'),
+                'username': post.get('username'),
+                'firstName': post.get('first_name'),
+                'avatarUrl': post.get('avatar_url'),
+                'contentType': post.get('content_type'),
+                'contentUrl': post.get('content_url'),
+                'caption': post.get('caption'),
+                'likesCount': post.get('likes_count', 0),
+                'commentsCount': post.get('comments_count', 0),
+                'sharesCount': post.get('shares_count', 0),
+                'createdAt': post.get('created_at').isoformat() if post.get('created_at') else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting post {post_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+@user_bp.route('/posts/<int:post_id>', methods=['DELETE'])
+@require_telegram_user
+def delete_post(post_id):
+    """Eliminar una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        success = db_manager.delete_post(post_id, user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Publicacion eliminada correctamente'
+            })
+        else:
+            return jsonify({'error': 'No se pudo eliminar la publicacion'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error deleting post {post_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+@user_bp.route('/posts/<int:post_id>/like', methods=['POST'])
+@require_telegram_user
+@rate_limit('posts_like')
+def like_post(post_id):
+    """Dar like a una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        result = db_manager.like_post(post_id, user_id)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Like agregado' if result.get('message') == 'liked' else 'Ya habias dado like'
+            })
+        elif result.get('error') == 'post_not_found':
+            return jsonify({'error': 'Publicacion no encontrada'}), 404
+        else:
+            return jsonify({'error': 'Error al agregar like'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error liking post {post_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+@user_bp.route('/posts/<int:post_id>/like', methods=['DELETE'])
+@require_telegram_user
+def unlike_post(post_id):
+    """Quitar like de una publicacion."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user = request.telegram_user
+        user_id = str(user.get('id'))
+        
+        result = db_manager.unlike_post(post_id, user_id)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Like removido' if result.get('message') == 'unliked' else 'No habias dado like'
+            })
+        elif result.get('error') == 'post_not_found':
+            return jsonify({'error': 'Publicacion no encontrada'}), 404
+        else:
+            return jsonify({'error': 'Error al quitar like'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error unliking post {post_id}: {e}")
+        return jsonify({'error': sanitize_error(e, 'api_error')}), 500
+
+
+# ============================================================
+# ENDPOINTS DE PUBLICATIONS - MIGRADO 10 Diciembre 2025
+# ============================================================
+
+@user_bp.route('/publications/feed', methods=['GET'])
+@require_telegram_auth
+def get_publications_feed():
+    """Get user's feed with decrypted content for viewing"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_feed_posts(user_id, limit, offset)
+        
+        for post in posts:
+            if not post.get('avatar_url') and post.get('user_id'):
+                avatar_data = db_manager.get_user_avatar_data(str(post.get('user_id')))
+                if avatar_data:
+                    post['avatar_url'] = f"/api/avatar/{post.get('user_id')}"
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting feed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/check-new', methods=['GET'])
+@require_telegram_auth
+def check_new_publications():
+    """Check for new publications since last check"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        last_id = request.args.get('last_id', 0, type=int)
+        
+        count = db_manager.count_new_posts(user_id, last_id)
+        
+        return jsonify({
+            'success': True,
+            'new_count': count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking new publications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>', methods=['GET'])
+@require_telegram_auth
+def get_publication_detail(post_id):
+    """Get a single publication with full details"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        viewer_id = str(request.telegram_user.get('id', 0))
+        post = db_manager.get_post_detail(post_id, viewer_id)
+        
+        if not post:
+            return jsonify({'success': False, 'error': 'Publicacion no encontrada'}), 404
+        
+        return jsonify({
+            'success': True,
+            'post': post
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>', methods=['PUT'])
+@require_telegram_auth
+def update_publication(post_id):
+    """Update a publication (caption, comments enabled)"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        success = db_manager.update_post(
+            post_id=post_id,
+            user_id=user_id,
+            caption=data.get('caption'),
+            comments_enabled=data.get('comments_enabled')
+        )
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'No se pudo actualizar'}), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Publicacion actualizada'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>', methods=['DELETE'])
+@require_telegram_auth
+def delete_publication(post_id):
+    """Delete a publication"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.delete_post(post_id, user_id)
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar'}), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Publicacion eliminada'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting publication: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/gallery/<user_id>', methods=['GET'])
+@require_telegram_auth
+def get_user_gallery(user_id):
+    """Get user's gallery (grid of posts)"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        viewer_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_user_gallery(user_id, viewer_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting gallery: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/react', methods=['POST'])
+@require_telegram_auth
+def react_to_post(post_id):
+    """Add or change reaction to a post"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        reaction_type = data.get('reaction', 'like')
+        
+        success = db_manager.add_reaction(user_id, post_id, reaction_type)
+        
+        return jsonify({
+            'success': success,
+            'reaction': reaction_type
+        })
+        
+    except Exception as e:
+        logger.error(f"Error reacting to post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/unreact', methods=['POST'])
+@require_telegram_auth
+def unreact_to_post(post_id):
+    """Remove reaction from a post"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.remove_reaction(user_id, post_id)
+        
+        return jsonify({
+            'success': success
+        })
+        
+    except Exception as e:
+        logger.error(f"Error unreacting to post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/save', methods=['POST'])
+@require_telegram_auth
+def save_publication(post_id):
+    """Save a post to favorites"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.save_post(user_id, post_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error saving post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/unsave', methods=['POST'])
+@require_telegram_auth
+def unsave_publication(post_id):
+    """Remove post from favorites"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.unsave_post(user_id, post_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error unsaving post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/saved', methods=['GET'])
+@require_telegram_auth
+def get_saved_publications():
+    """Get user's saved posts"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        posts = db_manager.get_saved_posts(user_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'has_more': len(posts) == limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting saved posts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/share', methods=['POST'])
+@require_telegram_auth
+def share_publication(post_id):
+    """Share/repost a publication"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        share_type = data.get('type', 'repost')
+        quote_text = data.get('quote')
+        recipient_id = data.get('recipient_id')
+        
+        share_id = db_manager.share_post(user_id, post_id, share_type, quote_text, recipient_id)
+        
+        return jsonify({
+            'success': share_id is not None,
+            'share_id': share_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sharing post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/share-count', methods=['POST'])
+@require_telegram_auth
+def increment_publication_share_count(post_id):
+    """Increment share count for external shares (copy link, Telegram share)"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        db_manager.increment_share_count(post_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error incrementing share count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS DE COMENTARIOS - MIGRADO 10 Diciembre 2025
+# ============================================================
+
+@user_bp.route('/publications/<int:post_id>/comments', methods=['GET'])
+@require_telegram_auth
+def get_post_comments(post_id):
+    """Get comments for a post"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        
+        comments = db_manager.get_post_comments(post_id, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'comments': comments
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting comments: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/comments', methods=['POST'])
+@require_telegram_auth
+@rate_limit('comments_create')
+def add_comment(post_id):
+    """Add a comment to a post"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        content = data.get('content', '').strip()
+        parent_id = data.get('parent_id')
+        
+        if not content:
+            return jsonify({'success': False, 'error': 'Contenido requerido'}), 400
+        
+        content = html.escape(content)[:2000]
+        
+        comment_id = db_manager.add_comment(user_id, post_id, content, parent_id)
+        
+        if comment_id:
+            db_manager.process_mentions(post_id, content, 'comment')
+        
+        return jsonify({
+            'success': comment_id is not None,
+            'comment_id': comment_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/publications/<int:post_id>/pin-comment', methods=['POST'])
+@require_telegram_auth
+def pin_comment(post_id):
+    """Pin a comment (post owner only)"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        comment_id = data.get('comment_id')
+        
+        if not comment_id:
+            return jsonify({'success': False, 'error': 'ID de comentario requerido'}), 400
+        
+        success = db_manager.pin_comment(user_id, post_id, comment_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error pinning comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>/like', methods=['POST'])
+@require_telegram_auth
+def like_comment(comment_id):
+    """Like a comment"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.like_comment(user_id, comment_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error liking comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>/unlike', methods=['POST'])
+@require_telegram_auth
+def unlike_comment(comment_id):
+    """Unlike a comment"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        success = db_manager.unlike_comment(user_id, comment_id)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error unliking comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>', methods=['PUT'])
+@require_telegram_auth
+@rate_limit('comments_create')
+def update_comment(comment_id):
+    """Update a comment - only author can edit within time limit"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        content = data.get('content', '').strip()
+        
+        if not content:
+            return jsonify({'success': False, 'error': 'Contenido requerido'}), 400
+        
+        if len(content) > 2000:
+            return jsonify({'success': False, 'error': 'Comentario muy largo (maximo 2000 caracteres)'}), 400
+        
+        content = html.escape(content)
+        
+        result = db_manager.update_comment(user_id, comment_id, content)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+        
+    except Exception as e:
+        logger.error(f"Error updating comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>', methods=['GET'])
+@require_telegram_auth
+def get_comment(comment_id):
+    """Get a single comment by ID"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        comment = db_manager.get_comment_by_id(comment_id)
+        
+        if comment:
+            return jsonify({'success': True, 'comment': comment})
+        else:
+            return jsonify({'success': False, 'error': 'Comentario no encontrado'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting comment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>/react', methods=['POST'])
+@require_telegram_auth
+def add_comment_reaction(comment_id):
+    """Add or update reaction to a comment"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        reaction_type = data.get('reaction_type', '').strip()
+        
+        if not reaction_type:
+            return jsonify({'success': False, 'error': 'Tipo de reaccion requerido'}), 400
+        
+        result = db_manager.add_comment_reaction(user_id, comment_id, reaction_type)
+        
+        if result.get('success'):
+            reactions = db_manager.get_comment_reactions(comment_id)
+            return jsonify({
+                'success': True,
+                'reactions': reactions.get('reactions', {}),
+                'total': reactions.get('total', 0),
+                'user_reaction': reaction_type
+            })
+        else:
+            return jsonify(result), 400
+        
+    except Exception as e:
+        logger.error(f"Error adding comment reaction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>/react', methods=['DELETE'])
+@require_telegram_auth
+def remove_comment_reaction(comment_id):
+    """Remove reaction from a comment"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        result = db_manager.remove_comment_reaction(user_id, comment_id)
+        
+        if result.get('success'):
+            reactions = db_manager.get_comment_reactions(comment_id)
+            return jsonify({
+                'success': True,
+                'reactions': reactions.get('reactions', {}),
+                'total': reactions.get('total', 0),
+                'user_reaction': None
+            })
+        else:
+            return jsonify(result), 400
+        
+    except Exception as e:
+        logger.error(f"Error removing comment reaction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/comments/<int:comment_id>/reactions', methods=['GET'])
+@require_telegram_auth
+def get_comment_reactions_api(comment_id):
+    """Get reactions for a comment"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        reactions = db_manager.get_comment_reactions(comment_id)
+        user_reaction = db_manager.get_user_comment_reaction(user_id, comment_id)
+        
+        return jsonify({
+            'success': True,
+            'reactions': reactions.get('reactions', {}),
+            'total': reactions.get('total', 0),
+            'user_reaction': user_reaction
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting comment reactions: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
