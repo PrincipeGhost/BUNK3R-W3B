@@ -155,15 +155,17 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None' if (IS_PRODUCTION or IS_DEPLOYED)
 
 server_session = Session(app)
 
-from routes import auth_bp, blockchain_bp, admin_bp, user_bp, tracking_bp
+from routes import auth_bp, blockchain_bp, admin_bp, user_bp, tracking_bp, bots_bp, vn_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(blockchain_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(tracking_bp)
+app.register_blueprint(bots_bp)
+app.register_blueprint(vn_bp)
 
-logger.info("Blueprints registered: auth, blockchain, admin, user, tracking")
+logger.info("Blueprints registered: auth, blockchain, admin, user, tracking, bots, vn")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
