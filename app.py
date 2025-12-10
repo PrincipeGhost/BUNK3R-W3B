@@ -2052,11 +2052,12 @@ def unlike_post(post_id):
 
 # ============================================================
 # ENDPOINTS DE RED SOCIAL - USUARIOS Y SEGUIDORES
+# MIGRADO A routes/user_routes.py - 10 Diciembre 2025
 # ============================================================
 
-@app.route('/api/users/<user_id>/profile', methods=['GET'])
-@require_telegram_user
-def get_user_profile(user_id):
+# @app.route('/api/users/<user_id>/profile', methods=['GET'])
+# @require_telegram_user
+def _old_get_user_profile(user_id):
     """Obtener perfil de un usuario."""
     try:
         if not db_manager:
@@ -2095,9 +2096,9 @@ def get_user_profile(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/posts', methods=['GET'])
-@require_telegram_user
-def get_user_posts(user_id):
+# @app.route('/api/users/<user_id>/posts', methods=['GET'])
+# @require_telegram_user
+def _old_get_user_posts(user_id):
     """Obtener publicaciones de un usuario."""
     try:
         if not db_manager:
@@ -2152,9 +2153,9 @@ def get_user_posts(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/me/avatar', methods=['POST'])
-@require_telegram_user
-def upload_avatar():
+# @app.route('/api/users/me/avatar', methods=['POST'])
+# @require_telegram_user
+def _old_upload_avatar():
     """Subir foto de perfil."""
     try:
         if not db_manager:
@@ -2214,8 +2215,8 @@ def upload_avatar():
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/avatar/<user_id>')
-def serve_avatar(user_id):
+# @app.route('/api/avatar/<user_id>')
+def _old_serve_avatar(user_id):
     """Servir avatar desde la base de datos."""
     try:
         if not db_manager:
@@ -2239,9 +2240,9 @@ def serve_avatar(user_id):
         return jsonify({'error': 'Avatar not found'}), 404
 
 
-@app.route('/api/users/me', methods=['GET'])
-@require_telegram_user
-def get_my_profile():
+# @app.route('/api/users/me', methods=['GET'])
+# @require_telegram_user
+def _old_get_my_profile():
     """Obtener mi perfil actual con avatar."""
     try:
         if not db_manager:
@@ -2278,9 +2279,9 @@ def get_my_profile():
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/me/profile', methods=['PUT'])
-@require_telegram_user
-def update_my_profile():
+# @app.route('/api/users/me/profile', methods=['PUT'])
+# @require_telegram_user
+def _old_update_my_profile():
     """Actualizar mi perfil."""
     try:
         if not db_manager:
@@ -2308,10 +2309,10 @@ def update_my_profile():
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/follow', methods=['POST'])
-@require_telegram_user
-@rate_limit('follow')
-def follow_user(user_id):
+# @app.route('/api/users/<user_id>/follow', methods=['POST'])
+# @require_telegram_user
+# @rate_limit('follow')
+def _old_follow_user(user_id):
     """Seguir a un usuario."""
     try:
         if not db_manager:
@@ -2349,9 +2350,9 @@ def follow_user(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/follow', methods=['DELETE'])
-@require_telegram_user
-def unfollow_user(user_id):
+# @app.route('/api/users/<user_id>/follow', methods=['DELETE'])
+# @require_telegram_user
+def _old_unfollow_user(user_id):
     """Dejar de seguir a un usuario."""
     try:
         if not db_manager:
@@ -2378,9 +2379,9 @@ def unfollow_user(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/followers', methods=['GET'])
-@require_telegram_user
-def get_user_followers(user_id):
+# @app.route('/api/users/<user_id>/followers', methods=['GET'])
+# @require_telegram_user
+def _old_get_user_followers(user_id):
     """Obtener lista de seguidores de un usuario."""
     try:
         if not db_manager:
@@ -2417,9 +2418,9 @@ def get_user_followers(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/following', methods=['GET'])
-@require_telegram_user
-def get_user_following(user_id):
+# @app.route('/api/users/<user_id>/following', methods=['GET'])
+# @require_telegram_user
+def _old_get_user_following(user_id):
     """Obtener lista de usuarios que sigue."""
     try:
         if not db_manager:
@@ -2456,9 +2457,9 @@ def get_user_following(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/stats', methods=['GET'])
-@require_telegram_user
-def get_user_stats(user_id):
+# @app.route('/api/users/<user_id>/stats', methods=['GET'])
+# @require_telegram_user
+def _old_get_user_stats(user_id):
     """Obtener estadisticas del perfil de un usuario."""
     try:
         if not db_manager:
@@ -2482,9 +2483,9 @@ def get_user_stats(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/<user_id>/profile', methods=['PUT'])
-@require_telegram_user
-def update_user_profile(user_id):
+# @app.route('/api/users/<user_id>/profile', methods=['PUT'])
+# @require_telegram_user
+def _old_update_user_profile(user_id):
     """Actualizar perfil de un usuario."""
     try:
         if not db_manager:
@@ -2514,9 +2515,9 @@ def update_user_profile(user_id):
         return jsonify({'error': sanitize_error(e, 'api_error')}), 500
 
 
-@app.route('/api/users/avatar', methods=['POST'])
-@require_telegram_user
-def upload_user_avatar():
+# @app.route('/api/users/avatar', methods=['POST'])
+# @require_telegram_user
+def _old_upload_user_avatar():
     """Subir avatar de usuario."""
     try:
         if not db_manager:
@@ -14133,10 +14134,11 @@ def get_public_faqs():
 
 
 # -------------------- USER NOTIFICATIONS API --------------------
+# MIGRADO A routes/user_routes.py - 10 Diciembre 2025
 
-@app.route('/api/user/notifications', methods=['GET'])
-@require_telegram_auth
-def get_user_notifications():
+# @app.route('/api/user/notifications', methods=['GET'])
+# @require_telegram_auth
+def _old_get_user_notifications():
     """Get notifications for logged in user"""
     try:
         user_id = request.telegram_user.get('id')
@@ -14168,9 +14170,9 @@ def get_user_notifications():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/user/notifications/read', methods=['POST'])
-@require_telegram_auth
-def mark_support_notifications_read():
+# @app.route('/api/user/notifications/read', methods=['POST'])
+# @require_telegram_auth
+def _old_mark_support_notifications_read():
     """Mark support notifications as read"""
     try:
         user_id = request.telegram_user.get('id')
@@ -14204,10 +14206,11 @@ def mark_support_notifications_read():
 
 
 # ==================== PRIVATE MESSAGES SECTION ====================
+# MIGRADO A routes/user_routes.py - 10 Diciembre 2025
 
-@app.route('/api/messages', methods=['POST'])
-@require_telegram_auth
-def send_private_message():
+# @app.route('/api/messages', methods=['POST'])
+# @require_telegram_auth
+def _old_send_private_message():
     """Enviar un mensaje privado a otro usuario."""
     try:
         sender_id = str(request.telegram_user.get('id', 0))
@@ -14262,9 +14265,9 @@ def send_private_message():
         return jsonify({'success': False, 'error': 'Error al enviar mensaje'}), 500
 
 
-@app.route('/api/messages/conversations', methods=['GET'])
-@require_telegram_auth
-def get_conversations():
+# @app.route('/api/messages/conversations', methods=['GET'])
+# @require_telegram_auth
+def _old_get_conversations():
     """Obtener lista de conversaciones del usuario."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -14314,9 +14317,9 @@ def get_conversations():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/messages/<other_user_id>', methods=['GET'])
-@require_telegram_auth
-def get_messages_with_user(other_user_id):
+# @app.route('/api/messages/<other_user_id>', methods=['GET'])
+# @require_telegram_auth
+def _old_get_messages_with_user(other_user_id):
     """Obtener mensajes con un usuario especifico."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -14375,9 +14378,9 @@ def get_messages_with_user(other_user_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/messages/<int:message_id>/read', methods=['POST'])
-@require_telegram_auth
-def mark_message_read(message_id):
+# @app.route('/api/messages/<int:message_id>/read', methods=['POST'])
+# @require_telegram_auth
+def _old_mark_message_read(message_id):
     """Marcar un mensaje como leido."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -14402,9 +14405,9 @@ def mark_message_read(message_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/messages/unread-count', methods=['GET'])
-@require_telegram_auth
-def get_unread_messages_count():
+# @app.route('/api/messages/unread-count', methods=['GET'])
+# @require_telegram_auth
+def _old_get_unread_messages_count():
     """Obtener cantidad de mensajes no leidos."""
     try:
         user_id = str(request.telegram_user.get('id', 0))

@@ -13,10 +13,11 @@
 
 ## PROGRESO GLOBAL DE MIGRACION
 
-**Estado actual (9 Diciembre 2025):**
-- Endpoints en app.py: 317 → 289 (28 endpoints admin migrados)
+**Estado actual (10 Diciembre 2025):**
+- Endpoints en app.py: 317 → 268 (49 endpoints migrados en total)
 - Blueprints activos: auth, blockchain, admin, user
 - Endpoints en admin_routes.py: 28 (4 dashboard + 13 users + 4 stats + 7 security)
+- Endpoints en user_routes.py: 21 (14 perfil + 5 mensajes + 2 notificaciones)
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
 **Fecha:** 9 Diciembre 2025
@@ -78,6 +79,50 @@
 
 **Archivo:** routes/admin_routes.py
 **Dependencia:** get_security_manager() de tracking/services.py
+
+### FASE 0.8: MIGRACION USER PROFILE - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 14
+
+- [x] GET /api/users/{id}/profile
+- [x] PUT /api/users/{id}/profile
+- [x] GET /api/users/{id}/posts
+- [x] GET /api/users/me
+- [x] PUT /api/users/me/profile
+- [x] POST /api/users/me/avatar
+- [x] GET /api/avatar/{id}
+- [x] POST /api/users/avatar
+- [x] POST /api/users/{id}/follow
+- [x] DELETE /api/users/{id}/follow
+- [x] GET /api/users/{id}/followers
+- [x] GET /api/users/{id}/following
+- [x] GET /api/users/{id}/stats
+
+**Archivo:** routes/user_routes.py
+**Endpoints originales comentados en app.py:** Lineas 2057-2560
+
+### FASE 0.9: MIGRACION PRIVATE MESSAGES - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 5
+
+- [x] POST /api/messages
+- [x] GET /api/messages/conversations
+- [x] GET /api/messages/{other_user_id}
+- [x] POST /api/messages/{id}/read
+- [x] GET /api/messages/unread-count
+
+**Archivo:** routes/user_routes.py
+**Endpoints originales comentados en app.py:** Lineas 14208-14428
+
+### FASE 0.10: MIGRACION USER NOTIFICATIONS - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 2
+
+- [x] GET /api/user/notifications
+- [x] POST /api/user/notifications/read
+
+**Archivo:** routes/user_routes.py
+**Endpoints originales comentados en app.py:** Lineas 14137-14200
 
 ---
 
