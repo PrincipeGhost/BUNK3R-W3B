@@ -1299,92 +1299,7 @@ def ensure_user_exists(user_data, db_mgr):
         return False
 
 
-# MIGRADO A routes/auth_routes.py: /api/2fa/status, /api/2fa/setup, /api/2fa/verify, /api/2fa/session, /api/2fa/refresh, /api/2fa/disable
-
-@app.route('/api/validate', methods=['POST'])
-def validate_user():
-    """Valida el usuario de Telegram y verifica permisos."""
-    data = request.get_json()
-    init_data = data.get('initData', '')
-    
-    if not init_data:
-        return jsonify({
-            'valid': False,
-            'error': 'No se proporcionaron datos de Telegram'
-        }), 400
-    
-    validated_data = validate_telegram_webapp_data(init_data)
-    
-    if not validated_data:
-        return jsonify({
-            'valid': False,
-            'error': 'Datos de Telegram inválidos'
-        }), 401
-    
-    user = validated_data.get('user', {})
-    user_id = user.get('id')
-    
-    if not user_id:
-        return jsonify({
-            'valid': False,
-            'error': 'Usuario no identificado'
-        }), 401
-    
-    owner_status = is_owner(user_id)
-    test_user_status = is_test_user(user_id)
-    
-    if not owner_status and not test_user_status:
-        return jsonify({
-            'valid': False,
-            'error': 'Acceso no autorizado',
-            'isOwner': False
-        }), 403
-    
-    photo_url = user.get('photo_url')
-    
-    if db_manager:
-        try:
-            logger.info(f"Creating/updating user {user_id} in database")
-            created_user = db_manager.get_or_create_user(
-                user_id=str(user_id),
-                username=user.get('username'),
-                first_name=user.get('first_name'),
-                last_name=user.get('last_name'),
-                telegram_id=user_id
-            )
-            logger.info(f"User created/updated: {created_user}")
-            
-            if photo_url:
-                avatar_data = download_telegram_photo(photo_url)
-                if avatar_data:
-                    db_manager.update_user_avatar_data(str(user_id), avatar_data)
-                    local_avatar_url = f"/api/avatar/{user_id}"
-                    db_manager.update_user_profile(str(user_id), avatar_url=local_avatar_url)
-                    logger.info(f"Downloaded and saved Telegram photo for user {user_id}")
-                else:
-                    db_manager.update_user_profile(str(user_id), avatar_url=photo_url)
-                    logger.info(f"Using direct Telegram URL for user {user_id}: {photo_url}")
-            
-            if owner_status:
-                db_manager.initialize_bot_types()
-                db_manager.assign_owner_bots(user_id)
-                logger.info(f"Assigned owner bots to user {user_id}")
-        except Exception as e:
-            logger.error(f"Error creating/updating user: {e}")
-    
-    return jsonify({
-        'valid': True,
-        'user': {
-            'id': user_id,
-            'firstName': user.get('first_name', ''),
-            'lastName': user.get('last_name', ''),
-            'username': user.get('username', ''),
-            'languageCode': user.get('language_code', 'es'),
-            'photoUrl': photo_url
-        },
-        'isOwner': owner_status,
-        'isTestUser': test_user_status
-    })
+# MIGRADO A routes/auth_routes.py: /api/2fa/status, /api/2fa/setup, /api/2fa/verify, /api/2fa/session, /api/2fa/refresh, /api/2fa/disable, /api/validate
 
 
 @app.route('/admin')
@@ -1411,100 +1326,13 @@ def admin_page():
 
 
 # ============================================================
-# ENDPOINTS MIGRADOS A routes/admin_routes.py (9 Diciembre 2025)
-# Los siguientes endpoints ahora estan en el blueprint admin_bp:
-# - /api/admin/dashboard/stats
-# - /api/admin/dashboard/activity
-# - /api/admin/dashboard/alerts
-# - /api/admin/dashboard/charts
-# - /api/admin/users (GET listar todos)
-# - /api/admin/users/export (GET)
-# - /api/admin/users/<id>/ban (POST)
-# - /api/admin/users/<id>/detail (GET)
-# - /api/admin/users/<id>/balance (POST)
-# - /api/admin/users/<id>/note (POST)
-# - /api/admin/users/<id>/logout (POST)
-# - /api/admin/users/<id>/notify (POST)
-# - /api/admin/users/<id>/risk-score (GET)
-# - /api/admin/users/<id>/risk-score/calculate (POST)
-# - /api/admin/users/<id>/risk-score/history (GET)
-# - /api/admin/users/<id>/related-accounts (GET)
-# - /api/admin/users/<id>/tags (POST)
+# ENDPOINTS MIGRADOS A routes/admin_routes.py (9-10 Diciembre 2025)
+# Ver archivo routes/admin_routes.py para la implementacion activa
+# - /api/admin/dashboard/*, /api/admin/users/*, /api/admin/stats/*
+# - /api/admin/security/*, /api/admin/users/<id>/* (risk-score, etc)
 # ============================================================
 
 
-@app.route('/api/admin/users/<user_id>/detail', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_user_detail(user_id):
-    """Admin: Obtener detalle completo de un usuario."""
-    try:
-        if not db_manager:
-            return jsonify({'success': False, 'error': 'Database not available'}), 500
-        
-        with db_manager.get_connection() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("""
-                    SELECT id, telegram_id, username, first_name, last_name, credits,
-                           level, is_active, is_verified, wallet_address, created_at, last_seen,
-                           COALESCE(is_banned, false) as is_banned
-                    FROM users WHERE id = %s OR telegram_id::text = %s
-                """, (str(user_id), str(user_id)))
-                user = cur.fetchone()
-                
-                if not user:
-                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
-                
-                cur.execute("""
-                    SELECT DISTINCT ip_address, device_name, device_type, user_agent, 
-                           last_used_at, created_at, is_active
-                    FROM trusted_devices WHERE user_id = %s
-                    ORDER BY last_used_at DESC NULLS LAST LIMIT 20
-                """, (str(user.get('telegram_id', user_id)),))
-                devices = cur.fetchall()
-                
-                cur.execute("""
-                    SELECT DISTINCT ip_address, activity_type, created_at
-                    FROM security_activity_log 
-                    WHERE user_id = %s AND ip_address IS NOT NULL AND ip_address != ''
-                    ORDER BY created_at DESC LIMIT 50
-                """, (str(user.get('telegram_id', user_id)),))
-                ip_history = cur.fetchall()
-                
-                cur.execute("""
-                    SELECT id, transaction_type as type, amount, description, created_at
-                    FROM wallet_transactions WHERE user_id = %s
-                    ORDER BY created_at DESC LIMIT 50
-                """, (str(user.get('telegram_id', user_id)),))
-                transactions = cur.fetchall()
-                
-                cur.execute("""
-                    SELECT id, content_type, caption, created_at, is_active
-                    FROM posts WHERE user_id = %s
-                    ORDER BY created_at DESC LIMIT 20
-                """, (str(user.get('telegram_id', user_id)),))
-                publications = cur.fetchall()
-                
-                cur.execute("""
-                    SELECT id, note, created_by, created_at
-                    FROM admin_user_notes WHERE user_id = %s
-                    ORDER BY created_at DESC
-                """, (str(user_id),))
-                notes = cur.fetchall()
-                
-                cur.execute("""
-                    SELECT id, activity_type, description, ip_address, created_at
-                    FROM security_activity_log WHERE user_id = %s
-                    ORDER BY created_at DESC LIMIT 30
-                """, (str(user.get('telegram_id', user_id)),))
-                activity_log = cur.fetchall()
-                
-                ips_from_devices = [d['ip_address'] for d in devices if d.get('ip_address')]
-                ips_from_history = [ip['ip_address'] for ip in ip_history if ip.get('ip_address')]
-                all_ips = list(set(ips_from_devices + ips_from_history))
-                
-                fraud_alerts = []
-                if all_ips:
                     cur.execute("""
                         SELECT DISTINCT user_id, ip_address 
                         FROM trusted_devices 
