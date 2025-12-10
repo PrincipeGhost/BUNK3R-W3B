@@ -13,11 +13,11 @@
 
 ## PROGRESO GLOBAL DE MIGRACION
 
-**Estado actual (10 Diciembre 2025):**
-- Endpoints en app.py: 317 → 234 (83 endpoints migrados en total)
+**Estado actual (10 Diciembre 2025 - Sesion 2):**
+- Endpoints en app.py: 317 → 229 (101 endpoints migrados en total)
 - Blueprints activos: auth, blockchain, admin, user
 - Endpoints en admin_routes.py: 63 (admin dashboard, users, stats, security, logs, config, blocked-ips, wallet-pool, etc)
-- Endpoints en user_routes.py: 50 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments)
+- Endpoints en user_routes.py: 68 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments + 18 security/devices)
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
 **Fecha:** 9 Diciembre 2025
@@ -190,6 +190,38 @@
 **Archivo:** routes/admin_routes.py
 **Helpers agregados:** log_admin_action, log_system_error, log_config_change
 **Nota:** Corregido duplicados de funciones (admin_get_config, admin_update_config ya existian)
+
+### FASE 0.15: MIGRACION SECURITY/DEVICES - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 2)
+**Endpoints migrados:** 18
+
+**Trusted Devices:**
+- [x] GET /api/devices/trusted
+- [x] POST /api/devices/trusted/check
+- [x] POST /api/devices/trusted/add
+- [x] POST /api/devices/trusted/remove
+
+**Wallet Security:**
+- [x] POST /api/security/wallet/validate
+- [x] GET /api/security/wallet/primary
+- [x] POST /api/security/wallet/backup
+- [x] GET /api/security/wallet/primary/check
+- [x] POST /api/security/wallet/primary/register
+- [x] POST /api/wallet/debit
+
+**Security Status:**
+- [x] GET /api/security/status
+- [x] GET /api/security/devices
+- [x] POST /api/security/devices/check
+- [x] POST /api/security/devices/add
+- [x] POST /api/security/devices/remove
+- [x] POST /api/security/devices/remove-all
+- [x] GET /api/security/activity
+- [x] GET /api/security/lockout/check
+
+**Archivo:** routes/user_routes.py
+**Endpoints originales comentados en app.py:** Lineas 4319-4934
+**Funciones helper copiadas:** validate_ton_address()
 
 ---
 
