@@ -85,3 +85,24 @@ Migrated ~30+ endpoints from monolithic `app.py` to modular Flask Blueprints:
 - `tracking_routes.py` - Package tracking
 - `bots_routes.py` - Bot management
 - `vn_routes.py` - Virtual numbers
+
+### Limpieza de Codigo - 10 Diciembre 2025
+Eliminacion masiva de codigo duplicado y comentado de app.py:
+
+**Lineas eliminadas:** ~4,650 (app.py paso de 12,750 a 8,095 lineas)
+
+**Codigo eliminado:**
+- Endpoints BOTS duplicados (7 endpoints) - Ya en bots_routes.py
+- Endpoints TON/Wallet duplicados (6 endpoints) - Ya en blockchain_routes.py
+- ~50 endpoints comentados de admin logs/security/config
+- ~20 endpoints comentados de notifications/messages
+- ~15 endpoints comentados de publications/comments
+- Funciones legacy sin ruta (_old_* functions)
+
+**Endpoints que permanecen en app.py (173 rutas activas):**
+- Paginas: `/`, `/admin`, `/virtual-numbers`
+- Core: `/api/health`, `/api/validate`, `/static/tonconnect-manifest.json`
+- Proxy: `/api/proxy`, `/api/mobile-screenshot`
+- Interactive Browser: `/api/interactive-browser/*`
+- Admin 2FA: `/api/admin/2fa/verify`
+- Stories, Encryption, Cloudinary, Config endpoints
