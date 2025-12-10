@@ -1768,3 +1768,330 @@ def get_last_b3c_purchase():
     except Exception as e:
         logger.error(f"Error getting last B3C purchase: {e}")
         return jsonify({'success': False, 'error': 'Error al obtener ultima compra'}), 500
+
+
+# ============================================================
+# TON PAYMENT ENDPOINTS - Migrados desde app.py 10 Dic 2025
+# ============================================================
+
+@blockchain_bp.route('/api/ton/payment/create', methods=['POST'])
+@require_telegram_user
+def create_ton_payment():
+    """Crear una solicitud de pago pendiente."""
+    try:
+        data = request.get_json()
+        ton_amount = data.get('tonAmount', 0)
+        
+        if not ton_amount or float(ton_amount) <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        ton_amount = float(ton_amount)
+        if ton_amount < 0.5:
+            return jsonify({'success': False, 'error': 'Monto minimo: 0.5 TON'}), 400
+        if ton_amount > 1000:
+            return jsonify({'success': False, 'error': 'Monto maximo: 1000 TON'}), 400
+        
+        credits = calculate_credits_from_ton(ton_amount)
+        
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        payment_id = str(uuid.uuid4())[:8].upper()
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True, 
+                'paymentId': payment_id,
+                'merchantWallet': MERCHANT_TON_WALLET,
+                'tonAmount': ton_amount,
+                'credits': credits,
+                'message': 'Demo mode'
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO pending_payments (payment_id, user_id, credits, ton_amount)
+                    VALUES (%s, %s, %s, %s)
+                """, (payment_id, user_id, credits, ton_amount))
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'paymentId': payment_id,
+            'merchantWallet': MERCHANT_TON_WALLET,
+            'tonAmount': ton_amount,
+            'credits': credits,
+            'comment': f'BUNK3R-{payment_id}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating payment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@blockchain_bp.route('/api/ton/payment/<payment_id>/verify', methods=['POST'])
+@require_telegram_user
+@rate_limit('payment_verify')
+def verify_ton_payment(payment_id):
+    """Verificar si un pago fue recibido en la blockchain."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'status': 'confirmed', 'message': 'Demo mode'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM pending_payments 
+                    WHERE payment_id = %s AND user_id = %s
+                """, (payment_id, user_id))
+                payment = cur.fetchone()
+                
+                if not payment:
+                    return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+                
+                if payment['status'] == 'confirmed':
+                    return jsonify({'success': True, 'status': 'confirmed', 'message': 'Pago ya confirmado'})
+                
+                expected_comment = f'BUNK3R-{payment_id}'
+                expected_amount = float(payment['ton_amount'])
+                
+                try:
+                    response = requests.get(
+                        f'{TONCENTER_API_URL}/transactions',
+                        params={
+                            'account': MERCHANT_TON_WALLET,
+                            'limit': 50,
+                            'sort': 'desc'
+                        },
+                        timeout=15
+                    )
+                    
+                    if response.status_code != 200:
+                        return jsonify({
+                            'success': True, 
+                            'status': 'pending',
+                            'message': 'Esperando confirmacion en la blockchain...'
+                        })
+                    
+                    tx_data = response.json()
+                    transactions = tx_data.get('transactions', [])
+                    
+                    for tx in transactions:
+                        in_msg = tx.get('in_msg', {})
+                        
+                        if not in_msg or in_msg.get('msg_type') != 'int_msg':
+                            continue
+                        
+                        msg_value = int(in_msg.get('value', 0))
+                        msg_amount_ton = msg_value / 1e9
+                        
+                        if msg_amount_ton < expected_amount * 0.99:
+                            continue
+                        
+                        decoded = in_msg.get('decoded_body', {})
+                        comment = decoded.get('text', '') if decoded else ''
+                        
+                        if not comment:
+                            raw_body = in_msg.get('message', '')
+                            if raw_body:
+                                try:
+                                    comment = bytes.fromhex(raw_body).decode('utf-8', errors='ignore')
+                                except (ValueError, UnicodeDecodeError) as e:
+                                    logger.debug(f"Error decoding message body: {e}")
+                        
+                        if expected_comment.lower() in comment.lower():
+                            tx_hash = tx.get('hash', '')
+                            
+                            cur.execute("""
+                                UPDATE pending_payments 
+                                SET status = 'confirmed', tx_hash = %s, confirmed_at = NOW()
+                                WHERE payment_id = %s
+                            """, (tx_hash, payment_id))
+                            
+                            credits = calculate_credits_from_ton(expected_amount)
+                            cur.execute("""
+                                INSERT INTO wallet_transactions (user_id, amount, transaction_type, description, reference_id, created_at)
+                                VALUES (%s, %s, 'credit', %s, %s, NOW())
+                            """, (user_id, credits, f'Recarga TON - {expected_amount} TON', tx_hash))
+                            
+                            conn.commit()
+                            
+                            cur.execute("""
+                                SELECT COALESCE(SUM(amount), 0) as balance
+                                FROM wallet_transactions
+                                WHERE user_id = %s
+                            """, (user_id,))
+                            result = cur.fetchone()
+                            new_balance = float(result['balance']) if result else credits
+                            
+                            db_manager.create_transaction_notification(
+                                user_id=user_id,
+                                amount=credits,
+                                transaction_type='credit',
+                                new_balance=new_balance
+                            )
+                            
+                            return jsonify({
+                                'success': True,
+                                'status': 'confirmed',
+                                'txHash': tx_hash,
+                                'creditsAdded': credits,
+                                'newBalance': new_balance,
+                                'message': f'+{credits} BUNK3RCO1N agregados!'
+                            })
+                    
+                    return jsonify({
+                        'success': True,
+                        'status': 'pending',
+                        'message': 'Transaccion no encontrada aun. Espera unos segundos...'
+                    })
+                    
+                except requests.RequestException as e:
+                    logger.error(f"TonCenter API error: {e}")
+                    return jsonify({
+                        'success': True,
+                        'status': 'pending',
+                        'message': 'Verificando en la blockchain...'
+                    })
+                    
+    except Exception as e:
+        logger.error(f"Error verifying payment: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@blockchain_bp.route('/api/ton/payment/<payment_id>/status', methods=['GET'])
+@require_telegram_user
+def get_payment_status(payment_id):
+    """Obtener el estado de un pago pendiente."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'status': 'pending'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT status, tx_hash, credits FROM pending_payments 
+                    WHERE payment_id = %s AND user_id = %s
+                """, (payment_id, user_id))
+                payment = cur.fetchone()
+                
+                if not payment:
+                    return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'status': payment['status'],
+                    'txHash': payment.get('tx_hash'),
+                    'credits': payment['credits']
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting payment status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@blockchain_bp.route('/api/wallet/credit', methods=['POST'])
+@require_telegram_user
+def credit_wallet():
+    """Agregar BUNK3RCO1N a la billetera del usuario."""
+    try:
+        data = request.get_json()
+        credits = data.get('credits', 0)
+        usdt_amount = data.get('usdtAmount', 0)
+        transaction_boc = data.get('transactionBoc', '')
+        user_id = str(data.get('userId') or (request.telegram_user.get('id', 0) if hasattr(request, 'telegram_user') else 0))
+        
+        if not credits or credits <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'newBalance': credits, 'message': 'Demo mode'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO wallet_transactions (user_id, amount, transaction_type, description, reference_id, created_at)
+                    VALUES (%s, %s, 'credit', %s, %s, NOW())
+                """, (user_id, credits, f'Recarga de {usdt_amount} USDT', transaction_boc))
+                conn.commit()
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as balance
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                """, (user_id,))
+                result = cur.fetchone()
+                new_balance = result[0] if result else credits
+        
+        db_manager.create_transaction_notification(
+            user_id=user_id,
+            amount=credits,
+            transaction_type='credit',
+            new_balance=float(new_balance)
+        )
+                
+        return jsonify({
+            'success': True,
+            'newBalance': float(new_balance),
+            'creditsAdded': credits
+        })
+        
+    except Exception as e:
+        logger.error(f"Error crediting wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@blockchain_bp.route('/api/wallet/transactions', methods=['GET'])
+@require_telegram_auth
+def get_wallet_transactions():
+    """Obtener historial de transacciones del usuario con filtros."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
+        offset = request.args.get('offset', 0, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        filter_type = request.args.get('filter', 'all')
+        from_date = request.args.get('from_date', None)
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'transactions': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT id, amount, transaction_type, description, created_at
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                """
+                params = [user_id]
+                
+                if filter_type == 'credit':
+                    query += " AND amount > 0"
+                elif filter_type == 'debit':
+                    query += " AND amount < 0"
+                
+                if from_date:
+                    query += " AND created_at >= %s"
+                    params.append(from_date)
+                
+                query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                transactions = cur.fetchall()
+                
+        return jsonify({
+            'success': True,
+            'transactions': [dict(t) for t in transactions] if transactions else []
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting transactions: {e}")
+        return jsonify({'success': True, 'transactions': []})
