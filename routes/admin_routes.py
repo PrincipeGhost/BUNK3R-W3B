@@ -5861,5 +5861,3 @@ def admin_consolidate_single_wallet(wallet_id):
     except Exception as e:
         logger.error(f"Error in consolidate single wallet: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-

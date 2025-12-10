@@ -11464,10 +11464,11 @@ def log_admin_action(admin_id, admin_name, action_type, target_type=None, target
         logger.error(f"Error logging admin action: {e}")
 
 
-@app.route('/api/admin/logs/admin', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_admin_logs():
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/admin', methods=['GET'])
+# @require_telegram_auth
+# @require_owner
+# def admin_get_admin_logs():
     """Admin: Obtener logs de acciones de administradores."""
     try:
         if not db_manager:
@@ -11549,10 +11550,11 @@ def admin_get_admin_logs():
         return jsonify({'success': True, 'logs': [], 'total': 0, 'actionTypes': []})
 
 
-@app.route('/api/admin/logs/security', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_security_logs():
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/security', methods=['GET'])
+# @require_telegram_auth
+# @require_owner
+# def admin_get_security_logs():
     """Admin: Obtener logs de seguridad (intentos de login, actividad sospechosa)."""
     try:
         if not db_manager:
@@ -11621,10 +11623,11 @@ def admin_get_security_logs():
         return jsonify({'success': True, 'logs': [], 'total': 0})
 
 
-@app.route('/api/admin/logs/export', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_export_logs():
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/export', methods=['GET'])
+# @require_telegram_auth
+# @require_owner
+# def admin_export_logs():
     """Admin: Exportar logs a CSV o JSON."""
     try:
         if not db_manager:
@@ -11813,10 +11816,11 @@ def log_system_error(error_level, endpoint, error_message, stack_trace=None, use
         logger.error(f"Error logging system error: {e}")
 
 
-@app.route('/api/admin/logs/errors', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_error_logs():
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/errors', methods=['GET'])
+# @require_telegram_auth
+# @require_owner
+# def admin_get_error_logs():
     """Admin: Obtener logs de errores del sistema."""
     try:
         if not db_manager:
@@ -11914,10 +11918,11 @@ def admin_get_error_logs():
         return jsonify({'success': True, 'logs': [], 'total': 0})
 
 
-@app.route('/api/admin/logs/errors/<int:error_id>/resolve', methods=['POST'])
-@require_telegram_auth
-@require_owner
-def admin_resolve_error(error_id):
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/errors/<int:error_id>/resolve', methods=['POST'])
+# @require_telegram_auth
+# @require_owner
+# def admin_resolve_error(error_id):
     """Admin: Marcar error como resuelto."""
     try:
         if not db_manager:
@@ -11945,10 +11950,11 @@ def admin_resolve_error(error_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/admin/logs/logins', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_login_logs():
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/logins', methods=['GET'])
+# @require_telegram_auth
+# @require_owner
+# def admin_get_login_logs():
     """Admin: Obtener logs de intentos de login."""
     try:
         if not db_manager:
@@ -12055,10 +12061,11 @@ def admin_get_login_logs():
         return jsonify({'success': True, 'logs': [], 'total': 0})
 
 
-@app.route('/api/admin/logs/config-history', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_config_history():
+# MIGRADO a routes/admin_routes.py - 10 Diciembre 2025
+# @app.route('/api/admin/logs/config-history', methods=['GET'])
+# @require_telegram_auth
+# @require_owner
+# def admin_get_config_history():
     """Admin: Obtener historial de cambios de configuración."""
     try:
         if not db_manager:
