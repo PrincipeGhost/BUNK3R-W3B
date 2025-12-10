@@ -13,11 +13,14 @@
 
 ## PROGRESO GLOBAL DE MIGRACION
 
-**Estado actual (10 Diciembre 2025 - Sesion 2):**
-- Endpoints en app.py: 317 → 229 (101 endpoints migrados en total)
+**Estado actual (10 Diciembre 2025 - Sesion 3):**
+- Endpoints en app.py: 315 → ~190 (126 endpoints migrados en total)
 - Blueprints activos: auth, blockchain, admin, user
-- Endpoints en admin_routes.py: 63 (admin dashboard, users, stats, security, logs, config, blocked-ips, wallet-pool, etc)
+- Endpoints en admin_routes.py: 88 (dashboard, users, stats, security, logs, config, blocked-ips, wallet-pool, fraud, sessions, products, transactions, purchases, activity, lockouts, settings, notifications)
 - Endpoints en user_routes.py: 68 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments + 18 security/devices)
+- Endpoints en auth_routes.py: 10
+- Endpoints en blockchain_routes.py: 37
+- **Total en blueprints: 203 endpoints**
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
 **Fecha:** 9 Diciembre 2025
@@ -222,6 +225,62 @@
 **Archivo:** routes/user_routes.py
 **Endpoints originales comentados en app.py:** Lineas 4319-4934
 **Funciones helper copiadas:** validate_ton_address()
+
+### FASE 0.16: MIGRACION FRAUD/SESSIONS - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 3)
+**Endpoints migrados:** 10
+
+**Fraud Detection:**
+- [x] GET /api/admin/fraud/multiple-accounts
+- [x] GET /api/admin/fraud/ip-blacklist
+- [x] POST /api/admin/fraud/ip-blacklist
+- [x] DELETE /api/admin/fraud/ip-blacklist/{id}
+
+**Sessions:**
+- [x] GET /api/admin/realtime/online
+- [x] GET /api/admin/sessions
+- [x] POST /api/admin/sessions/terminate
+- [x] POST /api/admin/sessions/terminate-all/{user_id}
+- [x] POST /api/admin/sessions/logout-all
+
+**Archivo:** routes/admin_routes.py
+
+### FASE 0.17: MIGRACION PRODUCTS/TRANSACTIONS - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 3)
+**Endpoints migrados:** 5
+
+- [x] GET /api/admin/products
+- [x] POST /api/admin/products
+- [x] DELETE /api/admin/products/{id}
+- [x] GET /api/admin/transactions
+- [x] GET /api/admin/transactions/{id}
+
+**Archivo:** routes/admin_routes.py
+
+### FASE 0.18: MIGRACION PURCHASES - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 3)
+**Endpoints migrados:** 3
+
+- [x] GET /api/admin/purchases
+- [x] GET /api/admin/purchases/{id}
+- [x] POST /api/admin/purchases/{id}/credit
+
+**Archivo:** routes/admin_routes.py
+
+### FASE 0.19: MIGRACION ACTIVITY/LOCKOUTS/SETTINGS - COMPLETADO
+**Fecha:** 10 Diciembre 2025 (Sesion 3)
+**Endpoints migrados:** 7
+
+- [x] GET /api/admin/activity
+- [x] GET /api/admin/lockouts
+- [x] POST /api/admin/unlock-user
+- [x] GET/POST /api/admin/settings
+- [x] GET /api/admin/notifications
+- [x] POST /api/admin/notifications/mark-read
+- [x] POST /api/admin/notifications/delete
+- [x] GET /api/admin/system-status
+
+**Archivo:** routes/admin_routes.py
 
 ---
 

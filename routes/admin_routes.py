@@ -3903,3 +3903,1179 @@ def admin_secrets_status():
     
     return jsonify({'success': True, 'secrets': status})
 
+
+# ============================================================
+# FRAUD DETECTION ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/fraud/multiple-accounts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_fraud_multiple_accounts():
+    """Admin: Detectar multiples cuentas usando misma IP."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'suspicious': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT ip_address, COUNT(DISTINCT user_id) as user_count,
+                           ARRAY_AGG(DISTINCT user_id) as user_ids
+                    FROM trusted_devices
+                    WHERE ip_address IS NOT NULL AND ip_address != ''
+                    GROUP BY ip_address
+                    HAVING COUNT(DISTINCT user_id) > 1
+                    ORDER BY user_count DESC
+                    LIMIT 50
+                """)
+                results = cur.fetchall()
+        
+        suspicious = []
+        for r in results:
+            suspicious.append({
+                'ip': r['ip_address'],
+                'user_count': r['user_count'],
+                'user_ids': r['user_ids']
+            })
+        
+        return jsonify({'success': True, 'suspicious': suspicious, 'count': len(suspicious)})
+        
+    except Exception as e:
+        logger.error(f"Error detecting multiple accounts: {e}")
+        return jsonify({'success': True, 'suspicious': []})
+
+
+@admin_bp.route('/fraud/ip-blacklist', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_ip_blacklist():
+    """Admin: Obtener lista de IPs bloqueadas."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'blacklist': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS ip_blacklist (
+                        id SERIAL PRIMARY KEY,
+                        ip_address TEXT UNIQUE NOT NULL,
+                        reason TEXT,
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cur.execute("""
+                    SELECT id, ip_address, reason, created_by, created_at
+                    FROM ip_blacklist ORDER BY created_at DESC
+                """)
+                ips = cur.fetchall()
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'blacklist': [{
+                'id': ip['id'],
+                'ip': ip['ip_address'],
+                'reason': ip.get('reason'),
+                'created_by': ip.get('created_by'),
+                'date': str(ip['created_at'])
+            } for ip in ips]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting IP blacklist: {e}")
+        return jsonify({'success': True, 'blacklist': []})
+
+
+@admin_bp.route('/fraud/ip-blacklist', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_add_ip_blacklist():
+    """Admin: Agregar IP a la blacklist."""
+    try:
+        data = request.get_json() or {}
+        ip = data.get('ip', '').strip()
+        reason = data.get('reason', 'Sin razon especificada')
+        
+        if not ip:
+            return jsonify({'success': False, 'error': 'IP requerida'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO ip_blacklist (ip_address, reason, created_by)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (ip_address) DO UPDATE SET reason = EXCLUDED.reason
+                    RETURNING id
+                """, (ip, reason, admin_id))
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': f'IP {ip} agregada a blacklist'})
+        
+    except Exception as e:
+        logger.error(f"Error adding IP to blacklist: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/fraud/ip-blacklist/<int:ip_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_remove_ip_blacklist(ip_id):
+    """Admin: Remover IP de la blacklist."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM ip_blacklist WHERE id = %s RETURNING ip_address", (ip_id,))
+                result = cur.fetchone()
+                if not result:
+                    return jsonify({'success': False, 'error': 'IP no encontrada'}), 404
+                conn.commit()
+        
+        return jsonify({'success': True, 'message': f'IP {result[0]} removida de blacklist'})
+        
+    except Exception as e:
+        logger.error(f"Error removing IP from blacklist: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# REALTIME / SESSIONS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/realtime/online', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_realtime_online():
+    """Obtener usuarios online en tiempo real."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'count': 0, 'users': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, first_name, last_seen
+                    FROM users
+                    WHERE last_seen >= NOW() - INTERVAL '5 minutes'
+                    ORDER BY last_seen DESC
+                    LIMIT 50
+                """)
+                users = cur.fetchall()
+                
+                users_list = []
+                for u in users:
+                    users_list.append({
+                        'user_id': u['id'],
+                        'username': u['username'],
+                        'first_name': u['first_name'],
+                        'last_seen': u['last_seen'].isoformat() if u['last_seen'] else None
+                    })
+        
+        return jsonify({'success': True, 'count': len(users_list), 'users': users_list})
+        
+    except Exception as e:
+        logger.error(f"Error getting online users: {e}")
+        return jsonify({'success': True, 'count': 0, 'users': []})
+
+
+@admin_bp.route('/sessions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_sessions():
+    """Obtener sesiones activas."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'sessions': []})
+        
+        sessions = []
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT td.user_id, td.device_name, td.last_used_at, td.ip_address,
+                           u.first_name, u.username
+                    FROM trusted_devices td
+                    LEFT JOIN users u ON td.user_id = u.id
+                    WHERE td.last_used_at >= NOW() - INTERVAL '24 hours'
+                    ORDER BY td.last_used_at DESC
+                    LIMIT 100
+                """)
+                for row in cur.fetchall():
+                    sessions.append({
+                        'user_id': row['user_id'],
+                        'username': row['username'],
+                        'first_name': row['first_name'],
+                        'device': row['device_name'],
+                        'ip': row['ip_address'],
+                        'last_activity': row['last_used_at'].isoformat() if row['last_used_at'] else None
+                    })
+        
+        return jsonify({'success': True, 'sessions': sessions})
+        
+    except Exception as e:
+        logger.error(f"Error getting sessions: {e}")
+        return jsonify({'success': True, 'sessions': []})
+
+
+@admin_bp.route('/sessions/terminate', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_terminate_session():
+    """Admin: Terminar sesion especifica de un dispositivo."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        data = request.json or {}
+        user_id = data.get('user_id')
+        device_name = data.get('device_name')
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'user_id requerido'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if device_name:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id = %s AND device_name = %s
+                    """, (user_id, device_name))
+                else:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id = %s
+                    """, (user_id,))
+                
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'{deleted} sesion(es) terminada(s)',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error terminating session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/sessions/terminate-all/<user_id>', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_terminate_all_user_sessions(user_id):
+    """Admin: Terminar todas las sesiones de un usuario."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM trusted_devices WHERE user_id = %s
+                """, (user_id,))
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Todas las sesiones de usuario {user_id} terminadas ({deleted})',
+                    'deleted': deleted
+                })
+                
+    except Exception as e:
+        logger.error(f"Error terminating all user sessions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/sessions/logout-all', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_logout_all_users():
+    """Admin: Cerrar todas las sesiones de todos los usuarios (excepto admins)."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        data = request.json or {}
+        exclude_admins = data.get('exclude_admins', True)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if exclude_admins:
+                    cur.execute("""
+                        DELETE FROM trusted_devices
+                        WHERE user_id NOT IN (
+                            SELECT id FROM users WHERE LOWER(role) IN ('owner', 'admin')
+                        )
+                    """)
+                else:
+                    cur.execute("DELETE FROM trusted_devices")
+                
+                deleted = cur.rowcount
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Todas las sesiones cerradas ({deleted} dispositivos)',
+                    'deleted': deleted
+                })
+
+                
+    except Exception as e:
+        logger.error(f"Error logging out all users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# PRODUCTS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/products', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_products():
+    """Admin: Obtener todos los productos."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'products': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM products ORDER BY created_at DESC")
+                products = cur.fetchall()
+        
+        return jsonify({
+            'success': True,
+            'products': [dict(p) for p in products] if products else []
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting products: {e}")
+        return jsonify({'success': True, 'products': []})
+
+
+@admin_bp.route('/products', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_create_product():
+    """Admin: Crear nuevo producto."""
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        price = float(data.get('price', 0))
+        category = data.get('category', 'general').strip()
+        stock = int(data.get('stock', 1))
+        icon = data.get('icon', '')
+        
+        if not title:
+            return jsonify({'success': False, 'error': 'El titulo es requerido'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO products (user_id, title, description, price, category, stock, image_url, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+                    RETURNING id
+                """, (user_id, title, description, price, category, stock, icon))
+                product_id = cur.fetchone()[0]
+                conn.commit()
+        
+        logger.info(f"Product created: {title} (ID: {product_id})")
+        return jsonify({'success': True, 'product_id': product_id, 'message': 'Producto creado correctamente'})
+        
+    except Exception as e:
+        logger.error(f"Error creating product: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/products/<int:product_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_product(product_id):
+    """Admin: Eliminar producto."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM products WHERE id = %s", (product_id,))
+                conn.commit()
+        
+        logger.info(f"Product deleted: ID {product_id}")
+        return jsonify({'success': True, 'message': 'Producto eliminado'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting product: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# TRANSACTIONS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/transactions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_transactions():
+    """Admin: Obtener todas las transacciones."""
+    try:
+        filter_type = request.args.get('filter', 'all')
+        tx_type = request.args.get('type', '')
+        status = request.args.get('status', '')
+        period = request.args.get('period', 'all')
+        user_id = request.args.get('user_id', '')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        offset = (page - 1) * limit
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'transactions': [],
+                'total': 0,
+                'page': 1,
+                'pages': 1,
+                'totalVolume': 0,
+                'totalFees': 0
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT wt.*, u.username, u.telegram_id
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON CAST(wt.user_id AS INTEGER) = u.id
+                    WHERE 1=1
+                """
+                count_query = "SELECT COUNT(*) FROM wallet_transactions wt WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if filter_type != 'all':
+                    query += " AND wt.transaction_type = %s"
+                    count_query += " AND wt.transaction_type = %s"
+                    params.append(filter_type)
+                    count_params.append(filter_type)
+                
+                if tx_type:
+                    query += " AND wt.transaction_type = %s"
+                    count_query += " AND wt.transaction_type = %s"
+                    params.append(tx_type)
+                    count_params.append(tx_type)
+                
+                if user_id:
+                    query += " AND wt.user_id = %s"
+                    count_query += " AND wt.user_id = %s"
+                    params.append(str(user_id))
+                    count_params.append(str(user_id))
+                
+                if period == 'today':
+                    query += " AND wt.created_at >= CURRENT_DATE"
+                    count_query += " AND wt.created_at >= CURRENT_DATE"
+                elif period == 'week':
+                    query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '7 days'"
+                    count_query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '7 days'"
+                elif period == 'month':
+                    query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '30 days'"
+                    count_query += " AND wt.created_at >= CURRENT_DATE - INTERVAL '30 days'"
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()[0] or 0
+                
+                query += " ORDER BY wt.created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                transactions = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as volume,
+                           COALESCE(SUM(CASE WHEN transaction_type IN ('buy', 'sell') THEN amount * 0.01 ELSE 0 END), 0) as fees
+                    FROM wallet_transactions
+                """)
+                totals = cur.fetchone()
+        
+        pages = max(1, (total + limit - 1) // limit)
+        
+        return jsonify({
+            'success': True,
+            'transactions': [{
+                'id': t['id'],
+                'user_id': t.get('user_id', ''),
+                'type': t.get('transaction_type', 'unknown'),
+                'amount': float(t.get('amount', 0)),
+                'currency': 'B3C',
+                'status': 'completed',
+                'username': t.get('username') or f"User {t.get('user_id', 'N/A')}",
+                'description': t.get('description', ''),
+                'reference_id': t.get('reference_id', ''),
+                'tx_hash': t.get('reference_id', ''),
+                'created_at': str(t.get('created_at', ''))
+            } for t in transactions],
+            'total': total,
+            'page': page,
+            'pages': pages,
+            'totalVolume': float(totals['volume']) if totals else 0,
+            'totalFees': float(totals['fees']) if totals else 0
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting transactions: {e}")
+        return jsonify({
+            'success': True,
+            'transactions': [],
+            'totalDeposits': 0,
+            'totalWithdrawals': 0
+        })
+
+
+@admin_bp.route('/transactions/<int:tx_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_transaction_detail(tx_id):
+    """Admin: Obtener detalle de una transaccion especifica."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT wt.*, u.username, u.telegram_id, u.first_name, u.last_name
+                    FROM wallet_transactions wt
+                    LEFT JOIN users u ON CAST(wt.user_id AS INTEGER) = u.id
+                    WHERE wt.id = %s
+                """, (tx_id,))
+                tx = cur.fetchone()
+                
+                if not tx:
+                    return jsonify({'success': False, 'error': 'Transaccion no encontrada'})
+                
+                tx_type = tx.get('transaction_type', 'unknown')
+                tx_types_labels = {
+                    'buy': 'Compra B3C',
+                    'sell': 'Venta B3C',
+                    'transfer_in': 'Transferencia Recibida',
+                    'transfer_out': 'Transferencia Enviada',
+                    'withdrawal': 'Retiro',
+                    'deposit': 'Deposito',
+                    'reward': 'Recompensa',
+                    'fee': 'Comision'
+                }
+                
+                return jsonify({
+                    'success': True,
+                    'transaction': {
+                        'id': tx['id'],
+                        'user_id': tx.get('user_id', ''),
+                        'username': tx.get('username') or f"User {tx.get('user_id', 'N/A')}",
+                        'user_name': f"{tx.get('first_name', '')} {tx.get('last_name', '')}".strip() or 'N/A',
+                        'telegram_id': tx.get('telegram_id', ''),
+                        'type': tx_type,
+                        'type_label': tx_types_labels.get(tx_type, tx_type.capitalize()),
+                        'amount': float(tx.get('amount', 0)),
+                        'currency': 'B3C',
+                        'status': 'completed',
+                        'description': tx.get('description', ''),
+                        'reference_id': tx.get('reference_id', ''),
+                        'tx_hash': tx.get('reference_id', ''),
+                        'created_at': str(tx.get('created_at', '')),
+                        'balance_before': float(tx.get('balance_before', 0)) if tx.get('balance_before') else None,
+                        'balance_after': float(tx.get('balance_after', 0)) if tx.get('balance_after') else None
+                    }
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting transaction detail: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# ============================================================
+# PURCHASES ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/purchases', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_purchases():
+    """Admin: Obtener todas las compras de B3C."""
+    try:
+        status_filter = request.args.get('status', '')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        offset = (page - 1) * limit
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({
+                'success': True,
+                'purchases': [],
+                'total': 0,
+                'page': 1,
+                'pages': 1
+            })
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT 
+                        bp.id, bp.purchase_id, bp.user_id, bp.ton_amount, bp.b3c_amount,
+                        bp.commission_ton, bp.status, bp.tx_hash, bp.created_at, bp.confirmed_at,
+                        u.username, u.first_name, u.last_name, u.telegram_id,
+                        dw.wallet_address as deposit_wallet, dw.expected_amount as expected_amount
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id::integer = u.id
+                    LEFT JOIN deposit_wallets dw ON dw.assigned_to_purchase_id = bp.purchase_id
+                    WHERE 1=1
+                """
+                count_query = "SELECT COUNT(*) FROM b3c_purchases WHERE 1=1"
+                params = []
+                count_params = []
+                
+                if status_filter:
+                    query += " AND bp.status = %s"
+                    count_query += " AND status = %s"
+                    params.append(status_filter)
+                    count_params.append(status_filter)
+                
+                cur.execute(count_query, count_params)
+                total = cur.fetchone()[0] or 0
+                
+                query += " ORDER BY bp.created_at DESC LIMIT %s OFFSET %s"
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                purchases = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_purchases,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+                        COUNT(*) FILTER (WHERE status = 'confirmed') as confirmed_count,
+                        COUNT(*) FILTER (WHERE status = 'failed') as failed_count,
+                        COUNT(*) FILTER (WHERE status = 'expired') as expired_count,
+                        COALESCE(SUM(ton_amount) FILTER (WHERE status = 'confirmed'), 0) as total_ton,
+                        COALESCE(SUM(b3c_amount) FILTER (WHERE status = 'confirmed'), 0) as total_b3c
+                    FROM b3c_purchases
+                """)
+                stats = cur.fetchone()
+        
+        pages = max(1, (total + limit - 1) // limit)
+        
+        status_labels = {
+            'pending': 'Pendiente',
+            'confirmed': 'Confirmada',
+            'failed': 'Fallida',
+            'expired': 'Expirada'
+        }
+        
+        return jsonify({
+            'success': True,
+            'purchases': [{
+                'id': p['id'],
+                'purchaseId': p['purchase_id'],
+                'userId': p['user_id'],
+                'username': p['username'] or f"User {p['user_id']}",
+                'userFullName': f"{p['first_name'] or ''} {p['last_name'] or ''}".strip() or 'N/A',
+                'telegramId': p['telegram_id'],
+                'tonAmount': float(p['ton_amount']),
+                'b3cAmount': float(p['b3c_amount']),
+                'commissionTon': float(p['commission_ton']),
+                'status': p['status'],
+                'statusLabel': status_labels.get(p['status'], p['status']),
+                'txHash': p['tx_hash'],
+                'depositWallet': p['deposit_wallet'],
+                'expectedAmount': float(p['expected_amount']) if p['expected_amount'] else None,
+                'createdAt': p['created_at'].isoformat() if p['created_at'] else None,
+                'confirmedAt': p['confirmed_at'].isoformat() if p['confirmed_at'] else None
+            } for p in purchases],
+            'total': total,
+            'page': page,
+            'pages': pages,
+            'stats': {
+                'totalPurchases': stats['total_purchases'] or 0,
+                'pendingCount': stats['pending_count'] or 0,
+                'confirmedCount': stats['confirmed_count'] or 0,
+                'failedCount': stats['failed_count'] or 0,
+                'expiredCount': stats['expired_count'] or 0,
+                'totalTon': float(stats['total_ton'] or 0),
+                'totalB3C': float(stats['total_b3c'] or 0)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting purchases: {e}")
+        return jsonify({
+            'success': True,
+            'purchases': [],
+            'total': 0,
+            'page': 1,
+            'pages': 1
+        })
+
+
+@admin_bp.route('/purchases/<purchase_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_purchase_detail(purchase_id):
+    """Admin: Obtener detalle de una compra especifica."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        bp.*, u.username, u.first_name, u.last_name, u.telegram_id, u.b3c_balance,
+                        dw.wallet_address as deposit_wallet, dw.expected_amount, dw.deposit_amount, dw.status as wallet_status
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id::integer = u.id
+                    LEFT JOIN deposit_wallets dw ON dw.assigned_to_purchase_id = bp.purchase_id
+                    WHERE bp.purchase_id = %s
+                """, (purchase_id,))
+                purchase = cur.fetchone()
+                
+                if not purchase:
+                    return jsonify({'success': False, 'error': 'Compra no encontrada'}), 404
+        
+        status_labels = {
+            'pending': 'Pendiente',
+            'confirmed': 'Confirmada',
+            'failed': 'Fallida',
+            'expired': 'Expirada'
+        }
+        
+        return jsonify({
+            'success': True,
+            'purchase': {
+                'id': purchase['id'],
+                'purchaseId': purchase['purchase_id'],
+                'userId': purchase['user_id'],
+                'username': purchase['username'] or f"User {purchase['user_id']}",
+                'userFullName': f"{purchase['first_name'] or ''} {purchase['last_name'] or ''}".strip() or 'N/A',
+                'telegramId': purchase['telegram_id'],
+                'userBalance': float(purchase['b3c_balance']) if purchase['b3c_balance'] else 0,
+                'tonAmount': float(purchase['ton_amount']),
+                'b3cAmount': float(purchase['b3c_amount']),
+                'commissionTon': float(purchase['commission_ton']),
+                'status': purchase['status'],
+                'statusLabel': status_labels.get(purchase['status'], purchase['status']),
+                'txHash': purchase['tx_hash'],
+                'depositWallet': purchase['deposit_wallet'],
+                'expectedAmount': float(purchase['expected_amount']) if purchase['expected_amount'] else None,
+                'depositAmount': float(purchase['deposit_amount']) if purchase['deposit_amount'] else None,
+                'walletStatus': purchase['wallet_status'],
+                'createdAt': purchase['created_at'].isoformat() if purchase['created_at'] else None,
+                'confirmedAt': purchase['confirmed_at'].isoformat() if purchase['confirmed_at'] else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting purchase detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/purchases/<purchase_id>/credit', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_credit_purchase(purchase_id):
+    """Admin: Acreditar manualmente una compra de B3C pendiente."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        admin_user = request.telegram_user
+        admin_user_id = str(admin_user.get('id', 0))
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT bp.*, u.username, u.first_name
+                    FROM b3c_purchases bp
+                    LEFT JOIN users u ON bp.user_id::integer = u.id
+                    WHERE bp.purchase_id = %s
+                """, (purchase_id,))
+                purchase = cur.fetchone()
+                
+                if not purchase:
+                    return jsonify({'success': False, 'error': 'Compra no encontrada'}), 404
+                
+                if purchase['status'] == 'confirmed':
+                    return jsonify({'success': False, 'error': 'Esta compra ya fue acreditada'}), 400
+                
+                user_id = purchase['user_id']
+                b3c_amount = float(purchase['b3c_amount'])
+                
+                cur.execute("SELECT b3c_balance FROM users WHERE id = %s", (int(user_id),))
+                user_row = cur.fetchone()
+                balance_before = float(user_row['b3c_balance']) if user_row and user_row['b3c_balance'] else 0
+                balance_after = balance_before + b3c_amount
+                
+                cur.execute("""
+                    UPDATE users SET b3c_balance = b3c_balance + %s, updated_at = NOW() WHERE id = %s
+                """, (b3c_amount, int(user_id)))
+                
+                cur.execute("""
+                    UPDATE b3c_purchases SET status = 'confirmed', confirmed_at = NOW() WHERE purchase_id = %s
+                """, (purchase_id,))
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, transaction_type, amount, balance_before, balance_after, description, reference_id)
+                    VALUES (%s, 'buy', %s, %s, %s, %s, %s)
+                """, (user_id, b3c_amount, balance_before, balance_after, 'Compra B3C acreditada manualmente por admin', purchase_id))
+                
+                cur.execute("UPDATE deposit_wallets SET status = 'used' WHERE assigned_to_purchase_id = %s", (purchase_id,))
+                
+                conn.commit()
+                
+                logger.info(f"[ADMIN] Compra {purchase_id} acreditada por admin {admin_user_id}. Usuario {user_id} recibio {b3c_amount} B3C")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Compra acreditada correctamente. {b3c_amount} B3C fueron anadidos al usuario.',
+            'credited': {
+                'purchaseId': purchase_id,
+                'userId': user_id,
+                'username': purchase['username'],
+                'b3cAmount': b3c_amount,
+                'balanceBefore': balance_before,
+                'balanceAfter': balance_after
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error crediting purchase: {e}")
+        return jsonify({'success': False, 'error': 'Error al acreditar la compra'}), 500
+
+
+# ============================================================
+# ACTIVITY & LOCKOUTS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/activity', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_activity():
+    """Admin: Obtener actividad del sistema."""
+    try:
+        type_filter = request.args.get('type', 'all')
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'activities': []})
+        
+        activities = security_manager.get_all_activity_admin(type_filter)
+        
+        return jsonify({'success': True, 'activities': activities})
+        
+    except Exception as e:
+        logger.error(f"Error getting activity: {e}")
+        return jsonify({'success': True, 'activities': []})
+
+
+@admin_bp.route('/lockouts', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_lockouts():
+    """Admin: Obtener usuarios bloqueados."""
+    try:
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'lockouts': []})
+        
+        lockouts = security_manager.get_locked_users_admin()
+        
+        return jsonify({'success': True, 'lockouts': lockouts})
+        
+    except Exception as e:
+        logger.error(f"Error getting lockouts: {e}")
+        return jsonify({'success': True, 'lockouts': []})
+
+
+@admin_bp.route('/unlock-user', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_unlock_user():
+    """Admin: Desbloquear un usuario."""
+    try:
+        data = request.get_json() or {}
+        user_id = data.get('userId')
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'ID de usuario requerido'}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        result = security_manager.unlock_user_admin(user_id)
+        
+        return jsonify({'success': True, 'message': 'Usuario desbloqueado', 'result': result})
+        
+    except Exception as e:
+        logger.error(f"Error unlocking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# SETTINGS & NOTIFICATIONS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+import os
+
+
+@admin_bp.route('/settings', methods=['GET', 'POST'])
+@require_telegram_auth
+@require_owner
+def admin_system_settings():
+    """Admin: Configuracion del sistema."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+            
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if request.method == 'GET':
+                    cur.execute("SELECT key, value, category FROM system_settings")
+                    rows = cur.fetchall()
+                    settings = {row['key']: row['value'] for row in rows}
+                    
+                    return jsonify({
+                        'success': True,
+                        'maintenanceMode': settings.get('maintenance_mode', 'false') == 'true',
+                        'maintenanceMessage': settings.get('maintenance_message', ''),
+                        'registrationOpen': settings.get('registration_open', 'true') == 'true',
+                        'merchantWallet': os.environ.get('TON_WALLET_ADDRESS', 'No configurada'),
+                        'minDeposit': float(settings.get('min_deposit', '1')),
+                        'minWithdrawal': float(settings.get('min_withdrawal', '0.5')),
+                        'withdrawalFee': float(settings.get('withdrawal_fee', '0.05')),
+                        'transactionFeePercent': float(settings.get('transaction_fee_percent', '2')),
+                        'emailAlerts': settings.get('email_alerts', 'true') == 'true',
+                        'telegramAlerts': settings.get('telegram_alerts', 'true') == 'true',
+                        'largeTransactionThreshold': float(settings.get('large_transaction_threshold', '100'))
+                    })
+                else:
+                    data = request.json or {}
+                    updates = []
+                    
+                    setting_mappings = {
+                        'maintenanceMode': ('maintenance_mode', lambda v: 'true' if v else 'false'),
+                        'maintenanceMessage': ('maintenance_message', str),
+                        'registrationOpen': ('registration_open', lambda v: 'true' if v else 'false'),
+                        'minDeposit': ('min_deposit', str),
+                        'minWithdrawal': ('min_withdrawal', str),
+                        'withdrawalFee': ('withdrawal_fee', str),
+                        'transactionFeePercent': ('transaction_fee_percent', str),
+                        'emailAlerts': ('email_alerts', lambda v: 'true' if v else 'false'),
+                        'telegramAlerts': ('telegram_alerts', lambda v: 'true' if v else 'false'),
+                        'largeTransactionThreshold': ('large_transaction_threshold', str)
+                    }
+                    
+                    for key, value in data.items():
+                        if key in setting_mappings:
+                            db_key, transform = setting_mappings[key]
+                            cur.execute("""
+                                INSERT INTO system_settings (key, value, updated_at)
+                                VALUES (%s, %s, NOW())
+                                ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()
+                            """, (db_key, transform(value), transform(value)))
+                            updates.append(db_key)
+                    
+                    conn.commit()
+                    return jsonify({
+                        'success': True,
+                        'message': 'Configuracion guardada',
+                        'updated': updates
+                    })
+        
+    except Exception as e:
+        logger.error(f"Error with settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/notifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_notifications():
+    """Admin: Obtener notificaciones del panel."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'notifications': [], 'unread_count': 0})
+            
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, type, title, message, data, is_read, created_at
+                    FROM admin_notifications
+                    ORDER BY created_at DESC
+                    LIMIT 100
+                """)
+                notifications = cur.fetchall()
+                
+                cur.execute("SELECT COUNT(*) FROM admin_notifications WHERE is_read = false")
+                unread_count = cur.fetchone()['count']
+                
+                for n in notifications:
+                    if n.get('created_at'):
+                        n['created_at'] = n['created_at'].isoformat()
+                    if n.get('data'):
+                        try:
+                            n['data'] = json.loads(n['data']) if isinstance(n['data'], str) else n['data']
+                        except:
+                            pass
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': notifications,
+                    'unread_count': unread_count
+                })
+    except Exception as e:
+        logger.error(f"Error getting notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/notifications/mark-read', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_mark_notification_read():
+    """Admin: Marcar notificacion como leida."""
+    try:
+        data = request.get_json() or {}
+        notification_id = data.get('id')
+        mark_all = data.get('all', False)
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if mark_all:
+                    cur.execute("UPDATE admin_notifications SET is_read = true WHERE is_read = false")
+                elif notification_id:
+                    cur.execute("UPDATE admin_notifications SET is_read = true WHERE id = %s", (notification_id,))
+                conn.commit()
+                
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error marking notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/notifications/delete', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_delete_notification():
+    """Admin: Eliminar notificacion."""
+    try:
+        data = request.get_json() or {}
+        notification_id = data.get('id')
+        delete_all = data.get('all', False)
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                if delete_all:
+                    cur.execute("DELETE FROM admin_notifications")
+                elif notification_id:
+                    cur.execute("DELETE FROM admin_notifications WHERE id = %s", (notification_id,))
+                conn.commit()
+                
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/system-status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_system_status():
+    """Admin: Estado del sistema y APIs externas."""
+    try:
+        status = {
+            'database': {'status': 'unknown', 'message': ''},
+            'toncenter': {'status': 'unknown', 'message': ''},
+            'smspool': {'status': 'unknown', 'message': ''},
+            'cloudinary': {'status': 'unknown', 'message': ''}
+        }
+        
+        db_manager = get_db_manager()
+        try:
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    status['database'] = {'status': 'ok', 'message': 'Conectada'}
+        except Exception as e:
+            status['database'] = {'status': 'error', 'message': str(e)}
+        
+        toncenter_key = os.environ.get('TONCENTER_API_KEY', '')
+        if toncenter_key:
+            status['toncenter'] = {'status': 'ok', 'message': 'API Key configurada'}
+        else:
+            status['toncenter'] = {'status': 'warning', 'message': 'API Key no configurada'}
+        
+        smspool_key = os.environ.get('SMSPOOL_API_KEY', '')
+        if smspool_key:
+            status['smspool'] = {'status': 'ok', 'message': 'API Key configurada'}
+        else:
+            status['smspool'] = {'status': 'warning', 'message': 'API Key no configurada'}
+        
+        cloudinary_url = os.environ.get('CLOUDINARY_URL', '')
+        if cloudinary_url:
+            status['cloudinary'] = {'status': 'ok', 'message': 'Configurada'}
+        else:
+            status['cloudinary'] = {'status': 'warning', 'message': 'No configurada'}
+        
+        return jsonify({'success': True, 'services': status})
+        
+    except Exception as e:
+        logger.error(f"Error checking system status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
