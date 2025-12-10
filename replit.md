@@ -99,6 +99,14 @@ static/js/
 
 ## Recent Changes (December 2025)
 
+### 10 Diciembre 2025 - Migracion User Endpoints
+- **USER Blueprint migrado (21 endpoints):**
+  - Perfil de usuario (14 endpoints): GET/PUT profile, posts, me, avatar, follow/unfollow, followers, following, stats
+  - Mensajes privados (5 endpoints): POST messages, GET conversations, GET messages/:id, POST read, GET unread-count
+  - Notificaciones (2 endpoints): GET notifications, POST notifications/read
+- **Endpoints originales comentados en app.py** (lineas 2057-2560, 14137-14428)
+- **Progreso total:** 94 endpoints migrados (9 auth + 36 blockchain + 28 admin + 21 user)
+
 ### 8 Diciembre 2025 - Migracion a Blueprints
 - **Arquitectura de servicios compartidos creada:**
   - `tracking/services.py`: Inyeccion de dependencias para db_manager, security_manager, vn_manager
