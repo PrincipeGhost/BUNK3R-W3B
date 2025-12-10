@@ -1771,63 +1771,9 @@ def get_last_b3c_purchase():
 
 
 # ============================================================
-# TON PAYMENT ENDPOINTS - Migrados desde app.py 10 Dic 2025
+# TON PAYMENT VERIFICATION - Migrado desde app.py 10 Dic 2025
+# (create_ton_payment ya existe en lineas ~256-308)
 # ============================================================
-
-@blockchain_bp.route('/api/ton/payment/create', methods=['POST'])
-@require_telegram_user
-def create_ton_payment():
-    """Crear una solicitud de pago pendiente."""
-    try:
-        data = request.get_json()
-        ton_amount = data.get('tonAmount', 0)
-        
-        if not ton_amount or float(ton_amount) <= 0:
-            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
-        
-        ton_amount = float(ton_amount)
-        if ton_amount < 0.5:
-            return jsonify({'success': False, 'error': 'Monto minimo: 0.5 TON'}), 400
-        if ton_amount > 1000:
-            return jsonify({'success': False, 'error': 'Monto maximo: 1000 TON'}), 400
-        
-        credits = calculate_credits_from_ton(ton_amount)
-        
-        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
-        payment_id = str(uuid.uuid4())[:8].upper()
-        
-        db_manager = get_db_manager()
-        if not db_manager:
-            return jsonify({
-                'success': True, 
-                'paymentId': payment_id,
-                'merchantWallet': MERCHANT_TON_WALLET,
-                'tonAmount': ton_amount,
-                'credits': credits,
-                'message': 'Demo mode'
-            })
-        
-        with db_manager.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO pending_payments (payment_id, user_id, credits, ton_amount)
-                    VALUES (%s, %s, %s, %s)
-                """, (payment_id, user_id, credits, ton_amount))
-                conn.commit()
-        
-        return jsonify({
-            'success': True,
-            'paymentId': payment_id,
-            'merchantWallet': MERCHANT_TON_WALLET,
-            'tonAmount': ton_amount,
-            'credits': credits,
-            'comment': f'BUNK3R-{payment_id}'
-        })
-        
-    except Exception as e:
-        logger.error(f"Error creating payment: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @blockchain_bp.route('/api/ton/payment/<payment_id>/verify', methods=['POST'])
 @require_telegram_user

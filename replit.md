@@ -55,3 +55,33 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 - **CoinGecko API:** TON/USD conversion.
 - **TON Connect SDK:** For wallet connection and transaction signing.
 - **tonsdk (Python library):** For generating unique TON wallets.
+
+## Recent Changes (December 2025)
+
+### Migration to Flask Blueprints - 10 Diciembre 2025
+Migrated ~30+ endpoints from monolithic `app.py` to modular Flask Blueprints:
+
+**Endpoints migrated to `routes/admin_routes.py`:**
+- Wallet Pool: `/api/admin/wallets/hot`, `/api/admin/wallets/deposits`, `/api/admin/wallets/fill-pool`, `/api/admin/wallets/consolidate`, `/api/admin/wallets/pool-config`, `/api/admin/wallets/<id>/consolidate`
+- Blockchain: `/api/admin/blockchain/history`
+- Analytics: `/api/admin/analytics/users`, `/api/admin/analytics/usage`, `/api/admin/analytics/conversion`
+- Support: `/api/admin/support/tickets`, `/api/admin/support/tickets/<id>`, `/api/admin/support/tickets/<id>/reply`, `/api/admin/support/templates`
+- FAQ Admin: `/api/admin/faq` (CRUD)
+- Mass Messages: `/api/admin/messages`, `/api/admin/messages/scheduled`, `/api/admin/messages/<id>/cancel`
+
+**Endpoints migrated to `routes/user_routes.py`:**
+- Public FAQ: `/api/faq`
+
+**Files cleaned:**
+- Removed ~1300 lines of duplicate endpoints from `app.py`
+- Removed ~900 lines of duplicate endpoints from `routes/admin_routes.py`
+- Removed duplicate `create_ton_payment` function from `routes/blockchain_routes.py`
+
+**Current Blueprint Structure:**
+- `auth_routes.py` - Authentication, 2FA, sessions
+- `blockchain_routes.py` - TON payments, B3C purchases, wallet operations
+- `admin_routes.py` - Admin panel, analytics, support, FAQ, messages
+- `user_routes.py` - User profiles, social features, notifications, public FAQ
+- `tracking_routes.py` - Package tracking
+- `bots_routes.py` - Bot management
+- `vn_routes.py` - Virtual numbers
