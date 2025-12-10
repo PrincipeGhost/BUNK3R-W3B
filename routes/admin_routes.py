@@ -5864,5 +5864,151 @@ def admin_consolidate_single_wallet(wallet_id):
 
 
 
+# ============================================================
+# ADMIN 2FA VERIFICATION
+# ============================================================
+
+@admin_bp.route('/2fa/verify', methods=['POST'])
+def verify_admin_2fa():
+    """Verificar codigo 2FA para el owner que accede desde Telegram al panel admin."""
+    try:
+        from flask import session
+        from tracking.decorators import validate_telegram_webapp_data, is_owner
+        import pyotp
+        
+        init_data = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')
+        
+        if not init_data:
+            return jsonify({'error': 'Se requieren datos de Telegram', 'code': 'NO_INIT_DATA'}), 401
+        
+        validated_data = validate_telegram_webapp_data(init_data)
+        if not validated_data:
+            return jsonify({'error': 'Datos de Telegram invalidos', 'code': 'INVALID_DATA'}), 401
+        
+        user = validated_data.get('user', {})
+        user_id = user.get('id')
+        
+        if not user_id:
+            return jsonify({'error': 'Usuario no identificado'}), 401
+        
+        if not is_owner(user_id):
+            return jsonify({'error': 'Solo disponible para el administrador'}), 403
+        
+        data = request.get_json() or {}
+        code = data.get('code', '').strip()
+        
+        if not code or len(code) != 6:
+            return jsonify({
+                'success': False,
+                'error': 'Codigo debe ser de 6 digitos'
+            }), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        secret = db_manager.get_user_totp_secret(str(user_id))
+        
+        if not secret:
+            return jsonify({
+                'success': False,
+                'error': '2FA no esta configurado para esta cuenta'
+            }), 400
+        
+        totp = pyotp.TOTP(secret, interval=30)
+        is_valid = totp.verify(code, valid_window=1)
+        
+        if not is_valid:
+            totp_60 = pyotp.TOTP(secret, interval=60)
+            is_valid = totp_60.verify(code, valid_window=1)
+        
+        if is_valid:
+            import secrets as sec_module
+            from datetime import datetime
+            admin_session_token = sec_module.token_urlsafe(32)
+            session['admin_2fa_token'] = admin_session_token
+            session['admin_2fa_user_id'] = str(user_id)
+            session['admin_2fa_created_at'] = datetime.now().isoformat()
+            session['admin_2fa_valid'] = True
+            session.permanent = True
+            
+            db_manager.update_2fa_verified_time(str(user_id))
+            
+            logger.info(f"Admin 2FA verified for owner {user_id}")
+            return jsonify({
+                'success': True,
+                'sessionToken': admin_session_token,
+                'message': 'Verificacion exitosa'
+            })
+        else:
+            logger.warning(f"Admin 2FA failed for owner {user_id}")
+            return jsonify({
+                'success': False,
+                'error': 'Codigo incorrecto'
+            }), 401
+            
+    except Exception as e:
+        logger.error(f"Error verifying admin 2FA: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+# ============================================================
+# REPORTS ENDPOINTS (Migrados 10 Diciembre 2025)
+# ============================================================
+
+@admin_bp.route('/reports', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def get_reports():
+    """Admin: Get content reports"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        status = request.args.get('status', 'pending')
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        
+        reports = db_manager.get_reports(status, limit, offset)
+        
+        return jsonify({
+            'success': True,
+            'reports': reports
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting reports: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/reports/<int:report_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def update_report(report_id):
+    """Admin: Update report status"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        admin_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        status = data.get('status')
+        notes = data.get('notes')
+        
+        if not status:
+            return jsonify({'success': False, 'error': 'Estado requerido'}), 400
+        
+        success = db_manager.update_report_status(report_id, status, admin_id, notes)
+        
+        return jsonify({'success': success})
+        
+    except Exception as e:
+        logger.error(f"Error updating report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ==================== FIN DE ENDPOINTS ADMIN ====================
 
