@@ -4316,9 +4316,14 @@ def get_last_b3c_purchase():
         return jsonify({'success': False, 'error': 'Error al obtener última compra'}), 500
 
 
-@app.route('/api/devices/trusted', methods=['GET'])
-@require_telegram_user
-def get_trusted_devices():
+# ============================================================
+# ENDPOINTS MIGRADOS A routes/user_routes.py (10 Diciembre 2025)
+# Security/Devices endpoints movidos al blueprint user_bp
+# ============================================================
+
+# @app.route('/api/devices/trusted', methods=['GET'])
+# @require_telegram_user
+def _old_get_trusted_devices():
     """Obtener lista de dispositivos de confianza del usuario."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4354,9 +4359,9 @@ def get_trusted_devices():
         return jsonify({'success': False, 'error': 'Error al obtener dispositivos'}), 500
 
 
-@app.route('/api/devices/trusted/check', methods=['POST'])
-@require_telegram_user
-def check_trusted_device():
+# @app.route('/api/devices/trusted/check', methods=['POST'])
+# @require_telegram_user
+def _old_check_trusted_device():
     """Verificar si el dispositivo actual es de confianza."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4393,9 +4398,9 @@ def check_trusted_device():
         return jsonify({'success': True, 'isTrusted': False})
 
 
-@app.route('/api/devices/trusted/add', methods=['POST'])
-@require_telegram_user
-def add_trusted_device():
+# @app.route('/api/devices/trusted/add', methods=['POST'])
+# @require_telegram_user
+def _old_add_trusted_device():
     """Agregar un dispositivo de confianza."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4435,9 +4440,9 @@ def add_trusted_device():
         return jsonify({'success': False, 'error': 'Error al agregar dispositivo'}), 500
 
 
-@app.route('/api/devices/trusted/remove', methods=['POST'])
-@require_telegram_user
-def remove_trusted_device():
+# @app.route('/api/devices/trusted/remove', methods=['POST'])
+# @require_telegram_user
+def _old_remove_trusted_device():
     """Eliminar un dispositivo de confianza."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4459,12 +4464,13 @@ def remove_trusted_device():
 
 
 # ============================================================
-# ENDPOINTS DE SEGURIDAD - SISTEMA COMPLETO
+# ENDPOINTS DE SEGURIDAD - MIGRADOS A routes/user_routes.py
+# 10 Diciembre 2025
 # ============================================================
 
-@app.route('/api/security/wallet/validate', methods=['POST'])
-@require_telegram_user
-def validate_wallet_security():
+# @app.route('/api/security/wallet/validate', methods=['POST'])
+# @require_telegram_user
+def _old_validate_wallet_security():
     """Validar que la wallet conectada es la registrada del usuario."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4491,9 +4497,9 @@ def validate_wallet_security():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/wallet/primary', methods=['GET'])
-@require_telegram_user
-def get_primary_wallet():
+# @app.route('/api/security/wallet/primary', methods=['GET'])
+# @require_telegram_user
+def _old_get_primary_wallet():
     """Obtener la wallet primaria registrada del usuario."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4513,9 +4519,9 @@ def get_primary_wallet():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/wallet/backup', methods=['POST'])
-@require_telegram_user
-def register_backup_wallet():
+# @app.route('/api/security/wallet/backup', methods=['POST'])
+# @require_telegram_user
+def _old_register_backup_wallet():
     """Registrar una wallet de respaldo para emergencias."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4537,9 +4543,9 @@ def register_backup_wallet():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/wallet/primary/check', methods=['GET'])
-@require_telegram_user
-def check_primary_wallet():
+# @app.route('/api/security/wallet/primary/check', methods=['GET'])
+# @require_telegram_user
+def _old_check_primary_wallet():
     """Verificar si el usuario ya tiene wallet primaria registrada."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4580,9 +4586,9 @@ def validate_ton_address(address):
     return True, None
 
 
-@app.route('/api/security/wallet/primary/register', methods=['POST'])
-@require_telegram_user
-def register_primary_wallet_endpoint():
+# @app.route('/api/security/wallet/primary/register', methods=['POST'])
+# @require_telegram_user
+def _old_register_primary_wallet_endpoint():
     """Registrar wallet como primaria (solo si no tiene una)."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4604,9 +4610,9 @@ def register_primary_wallet_endpoint():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/wallet/debit', methods=['POST'])
-@require_telegram_user
-def debit_wallet():
+# @app.route('/api/wallet/debit', methods=['POST'])
+# @require_telegram_user
+def _old_debit_wallet():
     """
     Realizar un debito de BUNK3RCO1N.
     
@@ -4689,9 +4695,9 @@ def debit_wallet():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/status', methods=['GET'])
-@require_telegram_user
-def get_security_status():
+# @app.route('/api/security/status', methods=['GET'])
+# @require_telegram_user
+def _old_get_security_status():
     """Obtener estado de seguridad completo del usuario."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4715,9 +4721,9 @@ def get_security_status():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/devices', methods=['GET'])
-@require_telegram_user
-def get_security_devices():
+# @app.route('/api/security/devices', methods=['GET'])
+# @require_telegram_user
+def _old_get_security_devices():
     """Obtener lista de dispositivos de confianza con info completa."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4738,9 +4744,9 @@ def get_security_devices():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/devices/check', methods=['POST'])
-@require_telegram_user
-def check_device_trust():
+# @app.route('/api/security/devices/check', methods=['POST'])
+# @require_telegram_user
+def _old_check_device_trust():
     """Verificar si el dispositivo actual es de confianza."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4767,9 +4773,9 @@ def check_device_trust():
         return jsonify({'success': True, 'isTrusted': False})
 
 
-@app.route('/api/security/devices/add', methods=['POST'])
-@require_telegram_user
-def add_security_device():
+# @app.route('/api/security/devices/add', methods=['POST'])
+# @require_telegram_user
+def _old_add_security_device():
     """Agregar un dispositivo de confianza (requiere wallet + 2FA)."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4809,9 +4815,9 @@ def add_security_device():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/devices/remove', methods=['POST'])
-@require_telegram_user
-def remove_security_device():
+# @app.route('/api/security/devices/remove', methods=['POST'])
+# @require_telegram_user
+def _old_remove_security_device():
     """Eliminar un dispositivo de confianza (requiere 2FA)."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4846,9 +4852,9 @@ def remove_security_device():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/devices/remove-all', methods=['POST'])
-@require_telegram_user
-def remove_all_devices():
+# @app.route('/api/security/devices/remove-all', methods=['POST'])
+# @require_telegram_user
+def _old_remove_all_devices():
     """Cerrar sesion en todos los dispositivos excepto el actual."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4880,9 +4886,9 @@ def remove_all_devices():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/activity', methods=['GET'])
-@require_telegram_user
-def get_security_activity():
+# @app.route('/api/security/activity', methods=['GET'])
+# @require_telegram_user
+def _old_get_security_activity():
     """Obtener historial de actividad de seguridad."""
     try:
         user_id = str(request.telegram_user.get('id', 0))
@@ -4903,9 +4909,9 @@ def get_security_activity():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/security/lockout/check', methods=['GET'])
-@require_telegram_user
-def check_user_lockout():
+# @app.route('/api/security/lockout/check', methods=['GET'])
+# @require_telegram_user
+def _old_check_user_lockout():
     """Verificar si el usuario esta bloqueado."""
     try:
         user_id = str(request.telegram_user.get('id', 0))

@@ -92,7 +92,25 @@ def user_health():
             '/api/comments/<id>/unlike (POST)',
             '/api/comments/<id> (GET/PUT)',
             '/api/comments/<id>/react (POST/DELETE)',
-            '/api/comments/<id>/reactions'
+            '/api/comments/<id>/reactions',
+            '/api/devices/trusted (GET)',
+            '/api/devices/trusted/check (POST)',
+            '/api/devices/trusted/add (POST)',
+            '/api/devices/trusted/remove (POST)',
+            '/api/security/wallet/validate (POST)',
+            '/api/security/wallet/primary (GET)',
+            '/api/security/wallet/backup (POST)',
+            '/api/security/wallet/primary/check (GET)',
+            '/api/security/wallet/primary/register (POST)',
+            '/api/wallet/debit (POST)',
+            '/api/security/status (GET)',
+            '/api/security/devices (GET)',
+            '/api/security/devices/check (POST)',
+            '/api/security/devices/add (POST)',
+            '/api/security/devices/remove (POST)',
+            '/api/security/devices/remove-all (POST)',
+            '/api/security/activity (GET)',
+            '/api/security/lockout/check (GET)'
         ]
     })
 
@@ -1747,3 +1765,663 @@ def get_comment_reactions_api(comment_id):
     except Exception as e:
         logger.error(f"Error getting comment reactions: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS DE DISPOSITIVOS DE CONFIANZA
+# Migrado desde app.py - 10 Diciembre 2025
+# ============================================================
+
+@user_bp.route('/devices/trusted', methods=['GET'])
+@require_telegram_user
+def get_trusted_devices():
+    """Obtener lista de dispositivos de confianza del usuario."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': True, 'devices': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, device_id, device_name, device_type, created_at, last_used_at, is_active
+                    FROM trusted_devices 
+                    WHERE user_id = %s AND is_active = TRUE
+                    ORDER BY last_used_at DESC
+                """, (user_id,))
+                rows = cur.fetchall()
+                devices = []
+                for row in rows:
+                    devices.append({
+                        'id': row[0],
+                        'deviceId': row[1],
+                        'deviceName': row[2],
+                        'deviceType': row[3],
+                        'createdAt': row[4].isoformat() if row[4] else None,
+                        'lastUsedAt': row[5].isoformat() if row[5] else None,
+                        'isActive': row[6]
+                    })
+                    
+        return jsonify({'success': True, 'devices': devices})
+        
+    except Exception as e:
+        logger.error(f"Error getting trusted devices: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener dispositivos'}), 500
+
+
+@user_bp.route('/devices/trusted/check', methods=['POST'])
+@require_telegram_user
+def check_trusted_device():
+    """Verificar si el dispositivo actual es de confianza."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        
+        if not device_id or not db_manager:
+            return jsonify({'success': True, 'isTrusted': False})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, device_name FROM trusted_devices 
+                    WHERE user_id = %s AND device_id = %s AND is_active = TRUE
+                """, (user_id, device_id))
+                result = cur.fetchone()
+                
+                if result:
+                    cur.execute("""
+                        UPDATE trusted_devices SET last_used_at = NOW()
+                        WHERE id = %s
+                    """, (result[0],))
+                    conn.commit()
+                    return jsonify({
+                        'success': True, 
+                        'isTrusted': True,
+                        'deviceName': result[1]
+                    })
+                    
+        return jsonify({'success': True, 'isTrusted': False})
+        
+    except Exception as e:
+        logger.error(f"Error checking trusted device: {e}")
+        return jsonify({'success': True, 'isTrusted': False})
+
+
+@user_bp.route('/devices/trusted/add', methods=['POST'])
+@require_telegram_user
+def add_trusted_device():
+    """Agregar un dispositivo de confianza."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        device_name = data.get('deviceName', 'Dispositivo desconocido')
+        device_type = data.get('deviceType', 'unknown')
+        user_agent = request.headers.get('User-Agent', '')[:500]
+        ip_address = request.remote_addr or ''
+        
+        if not device_id:
+            return jsonify({'success': False, 'error': 'ID de dispositivo requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO trusted_devices (user_id, device_id, device_name, device_type, user_agent, ip_address)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id, device_id) 
+                    DO UPDATE SET 
+                        device_name = EXCLUDED.device_name,
+                        is_active = TRUE,
+                        last_used_at = NOW()
+                    RETURNING id
+                """, (user_id, device_id, device_name, device_type, user_agent, ip_address))
+                result = cur.fetchone()
+                conn.commit()
+                
+        logger.info(f"Dispositivo de confianza agregado para usuario {user_id}: {device_name}")
+        return jsonify({'success': True, 'message': 'Dispositivo agregado correctamente', 'deviceId': result[0] if result else None})
+        
+    except Exception as e:
+        logger.error(f"Error adding trusted device: {e}")
+        return jsonify({'success': False, 'error': 'Error al agregar dispositivo'}), 500
+
+
+@user_bp.route('/devices/trusted/remove', methods=['POST'])
+@require_telegram_user
+def remove_trusted_device():
+    """Eliminar un dispositivo de confianza."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        
+        if not device_id:
+            return jsonify({'success': False, 'error': 'ID de dispositivo requerido'}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        result = security_manager.remove_trusted_device(user_id, device_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error removing trusted device: {e}")
+        return jsonify({'success': False, 'error': 'Error al eliminar dispositivo'}), 500
+
+
+# ============================================================
+# ENDPOINTS DE SEGURIDAD - WALLET Y DISPOSITIVOS
+# Migrado desde app.py - 10 Diciembre 2025
+# ============================================================
+
+def validate_ton_address(address):
+    """Validate TON wallet address format server-side."""
+    import re
+    if not address or not isinstance(address, str):
+        return False, 'Direccion de wallet requerida'
+    
+    address = address.strip()
+    
+    if len(address) != 48:
+        return False, 'La direccion debe tener 48 caracteres'
+    
+    prefix = address[:2]
+    if prefix not in ['EQ', 'UQ']:
+        return False, 'Direccion invalida. Debe empezar con EQ o UQ'
+    
+    if not re.match(r'^[A-Za-z0-9_-]+$', address):
+        return False, 'La direccion contiene caracteres invalidos'
+    
+    return True, None
+
+
+@user_bp.route('/security/wallet/validate', methods=['POST'])
+@require_telegram_user
+def validate_wallet_security():
+    """Validar que la wallet conectada es la registrada del usuario."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        wallet_address = data.get('walletAddress', '')
+        device_id = data.get('deviceId', '')
+        
+        if not wallet_address:
+            return jsonify({'success': False, 'error': 'Direccion de wallet requerida'}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'message': 'Demo mode'})
+        
+        ip_address = request.remote_addr or ''
+        result = security_manager.validate_wallet_connection(user_id, wallet_address, device_id, ip_address)
+        
+        if result.get('is_locked'):
+            return jsonify(result), 423
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error validating wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/wallet/primary', methods=['GET'])
+@require_telegram_user
+def get_primary_wallet():
+    """Obtener la wallet primaria registrada del usuario."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'wallet': None})
+        
+        wallet = security_manager.get_user_primary_wallet(user_id)
+        return jsonify({
+            'success': True,
+            'hasWallet': wallet is not None,
+            'walletHint': f"{wallet[:8]}...{wallet[-4:]}" if wallet else None
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting primary wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/wallet/backup', methods=['POST'])
+@require_telegram_user
+def register_backup_wallet():
+    """Registrar una wallet de respaldo para emergencias."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        backup_wallet = data.get('backupWallet', '')
+        
+        is_valid, error_msg = validate_ton_address(backup_wallet)
+        if not is_valid:
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        result = security_manager.register_backup_wallet(user_id, backup_wallet.strip())
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error registering backup wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/wallet/primary/check', methods=['GET'])
+@require_telegram_user
+def check_primary_wallet():
+    """Verificar si el usuario ya tiene wallet primaria registrada."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'hasPrimaryWallet': False})
+        
+        wallet = security_manager.get_user_primary_wallet(user_id)
+        return jsonify({
+            'success': True,
+            'hasPrimaryWallet': wallet is not None,
+            'walletHint': f"{wallet[:8]}...{wallet[-4:]}" if wallet else None
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking primary wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/wallet/primary/register', methods=['POST'])
+@require_telegram_user
+def register_primary_wallet_endpoint():
+    """Registrar wallet como primaria (solo si no tiene una)."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        wallet_address = data.get('walletAddress', '')
+        
+        is_valid, error_msg = validate_ton_address(wallet_address)
+        if not is_valid:
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        result = security_manager.register_primary_wallet(user_id, wallet_address.strip())
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error registering primary wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/wallet/debit', methods=['POST'])
+@require_telegram_user
+def debit_wallet():
+    """Realizar un debito de BUNK3RCO1N."""
+    try:
+        from tracking.services import get_security_manager
+        
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        
+        amount = data.get('amount', 0)
+        transaction_type = data.get('type', 'purchase')
+        description = data.get('description', 'Gasto')
+        reference_id = data.get('reference_id', '')
+        
+        if not amount or amount <= 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(amount), 0) as balance
+                    FROM wallet_transactions
+                    WHERE user_id = %s
+                """, (user_id,))
+                result = cur.fetchone()
+                current_balance = float(result[0]) if result else 0
+                
+                if current_balance < amount:
+                    return jsonify({
+                        'success': False,
+                        'error': 'insufficient_balance',
+                        'message': 'Saldo insuficiente',
+                        'currentBalance': current_balance,
+                        'required': amount
+                    }), 402
+                
+                cur.execute("""
+                    INSERT INTO wallet_transactions 
+                    (user_id, amount, transaction_type, description, reference_id, created_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """, (user_id, -amount, transaction_type, description, reference_id))
+                conn.commit()
+                
+                new_balance = current_balance - amount
+        
+        db_manager.create_transaction_notification(
+            user_id=user_id,
+            amount=amount,
+            transaction_type='debit',
+            new_balance=new_balance
+        )
+        
+        security_manager = get_security_manager()
+        if amount > 100 and security_manager:
+            security_manager.send_telegram_notification(
+                user_id,
+                f"💸 <b>Gasto registrado</b>\n\n"
+                f"📦 {description}\n"
+                f"💰 -{amount} BUNK3RCO1N\n"
+                f"📊 Saldo restante: {new_balance:.2f} B3C"
+            )
+        
+        logger.info(f"Debito de {amount} B3C para usuario {user_id}: {description}")
+        return jsonify({
+            'success': True,
+            'newBalance': new_balance,
+            'amountDebited': amount
+        })
+        
+    except Exception as e:
+        logger.error(f"Error debiting wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/status', methods=['GET'])
+@require_telegram_user
+def get_security_status():
+    """Obtener estado de seguridad completo del usuario."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({
+                'success': True,
+                'wallet_connected': False,
+                'two_factor_enabled': False,
+                'trusted_devices_count': 0,
+                'max_devices': 2,
+                'security_score': 0,
+                'security_level': 'bajo'
+            })
+        
+        status = security_manager.get_security_status(user_id)
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error getting security status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/devices', methods=['GET'])
+@require_telegram_user
+def get_security_devices():
+    """Obtener lista de dispositivos de confianza con info completa."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'devices': [], 'count': 0, 'max': 2})
+        
+        devices = security_manager.get_trusted_devices(user_id)
+        return jsonify({
+            'success': True,
+            'devices': devices,
+            'count': len(devices),
+            'max': security_manager.MAX_TRUSTED_DEVICES
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting security devices: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/devices/check', methods=['POST'])
+@require_telegram_user
+def check_device_trust():
+    """Verificar si el dispositivo actual es de confianza."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        
+        if not device_id:
+            return jsonify({'success': True, 'isTrusted': False})
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'isTrusted': False})
+        
+        result = security_manager.is_device_trusted(user_id, device_id)
+        return jsonify({
+            'success': True,
+            'isTrusted': result.get('is_trusted', False),
+            'deviceName': result.get('device_name'),
+            'deviceType': result.get('device_type'),
+            'expired': result.get('expired', False)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking device trust: {e}")
+        return jsonify({'success': True, 'isTrusted': False})
+
+
+@user_bp.route('/security/devices/add', methods=['POST'])
+@require_telegram_user
+def add_security_device():
+    """Agregar un dispositivo de confianza (requiere wallet + 2FA)."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        device_name = data.get('deviceName', 'Dispositivo')
+        device_type = data.get('deviceType', 'unknown')
+        wallet_verified = data.get('walletVerified', False)
+        twofa_verified = data.get('twofaVerified', False)
+        
+        if not device_id:
+            return jsonify({'success': False, 'error': 'ID de dispositivo requerido'}), 400
+        
+        if not wallet_verified:
+            return jsonify({'success': False, 'error': 'Debes conectar tu wallet primero', 'requiresWallet': True}), 400
+        
+        if not twofa_verified:
+            return jsonify({'success': False, 'error': 'Debes verificar 2FA primero', 'requires2FA': True}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        user_agent = request.headers.get('User-Agent', '')[:500]
+        ip_address = request.remote_addr or ''
+        
+        result = security_manager.add_trusted_device(
+            user_id, device_id, device_name, device_type, user_agent, ip_address
+        )
+        
+        if result.get('max_reached'):
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error adding security device: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/devices/remove', methods=['POST'])
+@require_telegram_user
+def remove_security_device():
+    """Eliminar un dispositivo de confianza (requiere 2FA)."""
+    try:
+        from tracking.services import get_security_manager
+        import pyotp
+        
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        device_id = data.get('deviceId', '')
+        twofa_code = data.get('twofaCode', '')
+        
+        if not device_id:
+            return jsonify({'success': False, 'error': 'ID de dispositivo requerido'}), 400
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        if db_manager:
+            status = db_manager.get_user_2fa_status(user_id)
+            if status['enabled']:
+                if not twofa_code or len(twofa_code) != 6:
+                    return jsonify({'success': False, 'error': 'Codigo 2FA requerido', 'requires2FA': True}), 400
+                
+                secret = db_manager.get_user_totp_secret(user_id)
+                if secret:
+                    totp = pyotp.TOTP(secret)
+                    if not totp.verify(twofa_code, valid_window=1):
+                        return jsonify({'success': False, 'error': 'Codigo 2FA incorrecto'}), 401
+        
+        result = security_manager.remove_trusted_device(user_id, device_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error removing security device: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/devices/remove-all', methods=['POST'])
+@require_telegram_user
+def remove_all_devices():
+    """Cerrar sesion en todos los dispositivos excepto el actual."""
+    try:
+        from tracking.services import get_security_manager
+        import pyotp
+        
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        current_device_id = data.get('currentDeviceId', '')
+        twofa_code = data.get('twofaCode', '')
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': False, 'error': 'Security manager not available'}), 500
+        
+        if db_manager:
+            status = db_manager.get_user_2fa_status(user_id)
+            if status['enabled']:
+                if not twofa_code or len(twofa_code) != 6:
+                    return jsonify({'success': False, 'error': 'Codigo 2FA requerido', 'requires2FA': True}), 400
+                
+                secret = db_manager.get_user_totp_secret(user_id)
+                if secret:
+                    totp = pyotp.TOTP(secret)
+                    if not totp.verify(twofa_code, valid_window=1):
+                        return jsonify({'success': False, 'error': 'Codigo 2FA incorrecto'}), 401
+        
+        result = security_manager.remove_all_devices_except_current(user_id, current_device_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error removing all devices: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/activity', methods=['GET'])
+@require_telegram_user
+def get_security_activity():
+    """Obtener historial de actividad de seguridad."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        limit = request.args.get('limit', 20, type=int)
+        limit = min(limit, 50)
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'activities': []})
+        
+        activities = security_manager.get_security_activity(user_id, limit)
+        return jsonify({
+            'success': True,
+            'activities': activities
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting security activity: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/security/lockout/check', methods=['GET'])
+@require_telegram_user
+def check_user_lockout():
+    """Verificar si el usuario esta bloqueado."""
+    try:
+        from tracking.services import get_security_manager
+        
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        security_manager = get_security_manager()
+        if not security_manager:
+            return jsonify({'success': True, 'isLocked': False})
+        
+        is_locked = security_manager.is_user_locked_out(user_id, 'wallet_attempts')
+        lockout_time = None
+        if is_locked:
+            lockout_time = security_manager.get_lockout_time(user_id, 'wallet_attempts')
+        
+        return jsonify({
+            'success': True,
+            'isLocked': is_locked,
+            'lockedUntil': lockout_time.isoformat() if lockout_time else None
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking lockout: {e}")
+        return jsonify({'success': True, 'isLocked': False})
