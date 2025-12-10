@@ -100,12 +100,16 @@ static/js/
 ## Recent Changes (December 2025)
 
 ### 10 Diciembre 2025 - Migracion User Endpoints
-- **USER Blueprint migrado (21 endpoints):**
+- **USER Blueprint migrado (50 endpoints):**
   - Perfil de usuario (14 endpoints): GET/PUT profile, posts, me, avatar, follow/unfollow, followers, following, stats
   - Mensajes privados (5 endpoints): POST messages, GET conversations, GET messages/:id, POST read, GET unread-count
   - Notificaciones (2 endpoints): GET notifications, POST notifications/read
-- **Endpoints originales comentados en app.py** (lineas 2057-2560, 14137-14428)
-- **Progreso total:** 94 endpoints migrados (9 auth + 36 blockchain + 28 admin + 21 user)
+  - Posts (6 endpoints): POST/GET posts, GET/DELETE posts/:id, POST/DELETE posts/:id/like
+  - Publications (14 endpoints): feed, check-new, CRUD, gallery, react, save, share, pin-comment
+  - Comments (9 endpoints): GET/POST comments, like/unlike, CRUD, reactions
+- **Endpoints originales comentados en app.py** (lineas 1828-2050, 2057-2560, 10377-10583, 14137-14428)
+- **Rate limiting aplicado:** posts_create, posts_like, comments_create
+- **Progreso total:** 123 endpoints migrados (9 auth + 36 blockchain + 28 admin + 50 user)
 
 ### 8 Diciembre 2025 - Migracion a Blueprints
 - **Arquitectura de servicios compartidos creada:**
@@ -144,10 +148,10 @@ static/js/
   - GET /api/user/health - 200 OK
 
 ### Pendiente de Migracion
-- **~304 endpoints restantes en app.py** distribuidos en:
+- **~194 endpoints restantes en app.py** distribuidos en:
   - BLOCKCHAIN: /api/wallet/*, /api/ton/*, /api/exchange/* (~55 endpoints - B3C endpoints ya migrados)
-  - ADMIN: /api/admin/* (~60 endpoints)
-  - USER: /api/users/*, /api/publications/*, /api/stories/*, /api/messages/*, /api/notifications/* (~180 endpoints)
+  - ADMIN: /api/admin/* (~30 endpoints restantes)
+  - USER: /api/stories/*, /api/publications/create, virtual numbers (~100 endpoints)
 
 ### Cambios anteriores (December 2024)
 - **Wallet Pool Optimizations:** Added rotation algorithm, low balance alerts, automated cleanup of old consolidated wallets, and pool maintenance routine.
@@ -165,9 +169,9 @@ app.py                    - Aplicacion principal (~14,500 lineas, ~304 endpoints
 routes/                   - Blueprints para migracion gradual
   __init__.py             - Exporta todos los blueprints
   auth_routes.py          - Blueprint AUTH (9 endpoints MIGRADOS)
-  blockchain_routes.py    - Blueprint BLOCKCHAIN (25 endpoints B3C MIGRADOS)
-  admin_routes.py         - Blueprint admin (pendiente)
-  user_routes.py          - Blueprint usuario (pendiente)
+  blockchain_routes.py    - Blueprint BLOCKCHAIN (37 endpoints MIGRADOS)
+  admin_routes.py         - Blueprint ADMIN (32 endpoints MIGRADOS)
+  user_routes.py          - Blueprint USER (50 endpoints MIGRADOS)
 tracking/                 - Servicios y modelos compartidos
   services.py             - Inyeccion de dependencias (get_db_manager, set_db_manager)
   decorators.py           - Decoradores de autenticacion (require_telegram_auth, require_owner)
@@ -187,4 +191,4 @@ WORK/                     - Archivos de tareas por agente
 3. Eliminar endpoint duplicado de app.py despues de verificar funcionamiento
 4. Los endpoints duplicados funcionan temporalmente (Flask usa el primero registrado)
 
-**NOTA:** 34/338 endpoints migrados (9 AUTH + 25 B3C). La migracion completa es un proceso gradual.
+**NOTA:** 128/320 endpoints migrados (9 AUTH + 37 BLOCKCHAIN + 32 ADMIN + 50 USER). La migracion completa es un proceso gradual.
