@@ -14,9 +14,9 @@
 ## PROGRESO GLOBAL DE MIGRACION
 
 **Estado actual (10 Diciembre 2025):**
-- Endpoints en app.py: 317 → 239 (78 endpoints migrados en total)
+- Endpoints en app.py: 317 → 234 (83 endpoints migrados en total)
 - Blueprints activos: auth, blockchain, admin, user
-- Endpoints en admin_routes.py: 32 (4 dashboard + 13 users + 4 stats + 7 security + 4 extra)
+- Endpoints en admin_routes.py: 63 (admin dashboard, users, stats, security, logs, config, blocked-ips, wallet-pool, etc)
 - Endpoints en user_routes.py: 50 (14 perfil + 5 mensajes + 2 notificaciones + 6 posts + 14 publications + 9 comments)
 
 ### FASE 0.4: MIGRACION ADMIN DASHBOARD - COMPLETADO
@@ -176,6 +176,20 @@
 
 **Archivo:** routes/user_routes.py
 **Endpoints originales comentados en app.py:** Lineas 10377-10583
+
+### FASE 0.14: MIGRACION ADMIN EXTRAS - COMPLETADO
+**Fecha:** 10 Diciembre 2025
+**Endpoints migrados:** 5
+
+- [x] GET /api/admin/blocked-ips
+- [x] POST /api/admin/blocked-ips
+- [x] DELETE /api/admin/blocked-ips/{id}
+- [x] GET /api/admin/wallet-pool/stats
+- [x] GET /api/admin/secrets-status
+
+**Archivo:** routes/admin_routes.py
+**Helpers agregados:** log_admin_action, log_system_error, log_config_change
+**Nota:** Corregido duplicados de funciones (admin_get_config, admin_update_config ya existian)
 
 ---
 

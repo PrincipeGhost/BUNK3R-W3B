@@ -3729,3 +3729,177 @@ def cancel_scheduled_message(message_id):
     except Exception as e:
         logger.error(f"Error cancelling message: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS DE BLOCKED IPS, WALLET POOL Y SECRETS - Migrados 10 Diciembre 2025
+# ============================================================
+
+@admin_bp.route('/blocked-ips', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_blocked_ips():
+    """Admin: Obtener lista de IPs bloqueadas."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'ips': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM blocked_ips 
+                    WHERE is_active = true
+                    ORDER BY blocked_at DESC
+                """)
+                ips = cur.fetchall()
+                
+                for ip in ips:
+                    if ip.get('blocked_at'):
+                        ip['blocked_at'] = ip['blocked_at'].isoformat()
+                    if ip.get('expires_at'):
+                        ip['expires_at'] = ip['expires_at'].isoformat()
+                
+                return jsonify({'success': True, 'ips': ips})
+    
+    except Exception as e:
+        logger.error(f"Error getting blocked IPs: {e}")
+        return jsonify({'success': True, 'ips': []})
+
+
+@admin_bp.route('/blocked-ips', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_block_ip():
+    """Admin: Bloquear una IP."""
+    try:
+        data = request.get_json()
+        ip_address = data.get('ip_address', '').strip()
+        reason = data.get('reason', '')
+        is_permanent = data.get('is_permanent', False)
+        user_id = getattr(request, 'user_id', '0')
+        
+        if not ip_address:
+            return jsonify({'success': False, 'error': 'IP requerida'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO blocked_ips (ip_address, reason, blocked_by, is_permanent)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (ip_address, reason, user_id, is_permanent))
+            conn.commit()
+        
+        log_admin_action(user_id, 'Admin', 'ip_block', 'blocked_ips', ip_address, 
+                        f"Blocked IP: {ip_address}", {'reason': reason, 'permanent': is_permanent})
+        
+        return jsonify({'success': True, 'message': f'IP {ip_address} bloqueada'})
+    
+    except Exception as e:
+        logger.error(f"Error blocking IP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/blocked-ips/<int:ip_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_unblock_ip(ip_id):
+    """Admin: Desbloquear una IP."""
+    try:
+        user_id = getattr(request, 'user_id', '0')
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT ip_address FROM blocked_ips WHERE id = %s", (ip_id,))
+                row = cur.fetchone()
+                ip_address = row['ip_address'] if row else 'Unknown'
+                
+                cur.execute("UPDATE blocked_ips SET is_active = false WHERE id = %s", (ip_id,))
+            conn.commit()
+        
+        log_admin_action(user_id, 'Admin', 'ip_unblock', 'blocked_ips', str(ip_id), 
+                        f"Unblocked IP: {ip_address}")
+        
+        return jsonify({'success': True, 'message': 'IP desbloqueada'})
+    
+    except Exception as e:
+        logger.error(f"Error unblocking IP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/wallet-pool/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_wallet_pool_stats():
+    """Admin: Obtener estadisticas del pool de wallets."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM deposit_wallets")
+                total = cur.fetchone()['total']
+                
+                cur.execute("SELECT COUNT(*) as available FROM deposit_wallets WHERE status = 'available'")
+                available = cur.fetchone()['available']
+                
+                cur.execute("SELECT COUNT(*) as assigned FROM deposit_wallets WHERE status = 'assigned'")
+                assigned = cur.fetchone()['assigned']
+                
+                cur.execute("SELECT COUNT(*) as used FROM deposit_wallets WHERE status = 'used'")
+                used = cur.fetchone()['used']
+                
+                cur.execute("SELECT COALESCE(SUM(deposit_amount), 0) as pending_balance FROM deposit_wallets WHERE deposit_amount > 0 AND consolidated_at IS NULL")
+                pending_balance = float(cur.fetchone()['pending_balance'] or 0)
+                
+                return jsonify({
+                    'success': True,
+                    'stats': {
+                        'total': total,
+                        'available': available,
+                        'assigned': assigned,
+                        'used': used,
+                        'pendingBalance': pending_balance
+                    }
+                })
+    
+    except Exception as e:
+        logger.error(f"Error getting wallet pool stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/secrets-status', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_secrets_status():
+    """Admin: Verificar que secrets estan configurados."""
+    import os
+    secrets_to_check = [
+        'BOT_TOKEN',
+        'ADMIN_TOKEN',
+        'OWNER_TELEGRAM_ID',
+        'TONCENTER_API_KEY',
+        'B3C_HOT_WALLET_MNEMONIC',
+        'WALLET_MASTER_KEY',
+        'SMSPOOL_API_KEY',
+        'CLOUDINARY_URL',
+        'RESEND_API_KEY'
+    ]
+    
+    status = {}
+    for secret in secrets_to_check:
+        status[secret] = bool(os.environ.get(secret))
+    
+    return jsonify({'success': True, 'secrets': status})
+
