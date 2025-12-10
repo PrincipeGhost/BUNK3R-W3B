@@ -99,17 +99,24 @@ static/js/
 
 ## Recent Changes (December 2025)
 
-### 10 Diciembre 2025 - Migracion User Endpoints
-- **USER Blueprint migrado (50 endpoints):**
+### 10 Diciembre 2025 - Migracion User Endpoints (Sesion 4)
+- **USER Blueprint expandido (93 endpoints):**
   - Perfil de usuario (14 endpoints): GET/PUT profile, posts, me, avatar, follow/unfollow, followers, following, stats
   - Mensajes privados (5 endpoints): POST messages, GET conversations, GET messages/:id, POST read, GET unread-count
+  - Stories (7 endpoints): create, feed, user/:id, view, viewers, delete, react
+  - Explore/Search (6 endpoints): explore, search/posts, search/users, hashtag/:tag, trending/hashtags, suggested/users
+  - Notifications (8 endpoints): list, count, read, unread-count, mark-all-read, single read, preferences GET/POST
+  - Block/Report (4 endpoints): block, unblock, blocked list, create report
+- **ADMIN Blueprint expandido (99 endpoints):**
+  - Financial (3 endpoints): stats, period-stats, period-stats/export
+  - Content Moderation (8 endpoints): stats, posts list, post detail, delete post, warn author, ban author, reported content
   - Notificaciones (2 endpoints): GET notifications, POST notifications/read
   - Posts (6 endpoints): POST/GET posts, GET/DELETE posts/:id, POST/DELETE posts/:id/like
   - Publications (14 endpoints): feed, check-new, CRUD, gallery, react, save, share, pin-comment
   - Comments (9 endpoints): GET/POST comments, like/unlike, CRUD, reactions
 - **Endpoints originales comentados en app.py** (lineas 1828-2050, 2057-2560, 10377-10583, 14137-14428)
 - **Rate limiting aplicado:** posts_create, posts_like, comments_create
-- **Progreso total:** 123 endpoints migrados (9 auth + 36 blockchain + 28 admin + 50 user)
+- **Progreso total:** 239 endpoints migrados (10 auth + 37 blockchain + 99 admin + 93 user)
 
 ### 8 Diciembre 2025 - Migracion a Blueprints
 - **Arquitectura de servicios compartidos creada:**
