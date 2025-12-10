@@ -1946,26 +1946,6 @@ def remove_trusted_device():
 # Migrado desde app.py - 10 Diciembre 2025
 # ============================================================
 
-def validate_ton_address(address):
-    """Validate TON wallet address format server-side."""
-    import re
-    if not address or not isinstance(address, str):
-        return False, 'Direccion de wallet requerida'
-    
-    address = address.strip()
-    
-    if len(address) != 48:
-        return False, 'La direccion debe tener 48 caracteres'
-    
-    prefix = address[:2]
-    if prefix not in ['EQ', 'UQ']:
-        return False, 'Direccion invalida. Debe empezar con EQ o UQ'
-    
-    if not re.match(r'^[A-Za-z0-9_-]+$', address):
-        return False, 'La direccion contiene caracteres invalidos'
-    
-    return True, None
-
 
 @user_bp.route('/security/wallet/validate', methods=['POST'])
 @require_telegram_user
@@ -2854,7 +2834,7 @@ def get_notifications_count():
 
 @user_bp.route('/notifications/read', methods=['POST'])
 @require_telegram_user
-def mark_notifications_read():
+def mark_notifications_read_api():
     """Mark notifications as read"""
     try:
         user_id = str(request.telegram_user.get('id', 0))
