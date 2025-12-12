@@ -1,0 +1,50 @@
+Implementa un sistema de wallets personales por usuario con soporte multi-token en TON. 
+
+CONTEXTO ACTUAL:
+- Ya tenemos el token B3C implementado como Jetton en TON
+- Ya existe un sistema de wallet pool con consolidación automática al hot wallet
+- Los usuarios actualmente usan wallets del pool para recargar
+
+REQUERIMIENTOS:
+
+1. WALLET PERSONAL POR USUARIO:
+- Crear/asignar una wallet TON única y permanente a cada usuario
+- Guardar la dirección y mnemonic encriptado en la base de datos
+- Mostrar siempre la misma dirección al usuario (mejor UX)
+- Esta wallet reemplaza las wallets temporales del pool para depósitos
+
+2. SOPORTE MULTI-TOKEN:
+- Mostrar en la UI los siguientes activos del usuario:
+  * TON (nativo)
+  * USDT (Jetton: EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs)
+  * B3C (nuestro Jetton)
+- Consultar balances reales de cada token en la wallet personal
+- Mostrar historial de transacciones por token
+
+3. DETECCIÓN DE DEPÓSITOS:
+- Detectar automáticamente depósitos de TON, USDT y B3C
+- Identificar el tipo de token por el contrato Jetton involucrado
+- Actualizar balance interno del usuario según el token depositado
+- Aplicar tasas de conversión si es necesario (USDT/TON a balance interno)
+
+4. CONSOLIDACIÓN (MANTENER SISTEMA ACTUAL):
+- Después de detectar depósito, consolidar automáticamente al hot wallet
+- Consolidar TON, USDT y B3C por separado
+- Mantener registro de montos consolidados por tipo
+
+5. UI/UX - SECCIÓN DE ACTIVOS:
+- Nueva vista "Mis Activos" o modificar wallet actual
+- Mostrar balance de cada token con su ícono
+- Dirección de depósito única del usuario (con QR)
+- Botón para copiar dirección
+- Indicador de que acepta TON, USDT y B3C
+
+6. BASE DE DATOS:
+- Tabla user_wallets: user_id, address, encrypted_mnemonic, created_at
+- Tabla token_balances: user_id, token_type, balance, last_updated
+- Tabla token_transactions: id, user_id, token_type, amount, tx_hash, status, created_at
+
+NOTAS TÉCNICAS:
+- Usar tonsdk para consultar Jetton balances
+- API endpoint para Jettons: /jetton/masters/{jetton_address}/jetton/wallets/{owner_address}
+- Mantener compatibilidad con el sistema actual de pagos y consolidación
