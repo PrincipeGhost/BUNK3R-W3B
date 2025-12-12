@@ -1,5 +1,7 @@
 let tg = window.Telegram?.WebApp;
 let initData = '';
+let demoSessionToken = null;
+let isDemoMode = false;
 let currentUser = null;
 let userBalance = 0;
 let selectedCountry = null;
@@ -27,7 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (!initData) {
-        console.error('No Telegram init data available');
+        const savedToken = sessionStorage.getItem('demoSessionToken');
+        if (savedToken) {
+            demoSessionToken = savedToken;
+            isDemoMode = true;
+            console.log('[VN] Modo demo detectado con sesion guardada');
+            initApp();
+            return;
+        }
+        
+        console.error('No Telegram init data available and no demo session');
         showToast('Error de autenticacion', 'error');
         setTimeout(() => {
             window.location.href = '/';
@@ -82,9 +93,14 @@ function filterItems(containerId, data, query, type) {
 
 async function apiCall(endpoint, options = {}) {
     const headers = {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': initData
+        'Content-Type': 'application/json'
     };
+    
+    if (isDemoMode && demoSessionToken) {
+        headers['X-Demo-Session'] = demoSessionToken;
+    } else if (initData) {
+        headers['X-Telegram-Init-Data'] = initData;
+    }
     
     const response = await fetch(endpoint, {
         ...options,
