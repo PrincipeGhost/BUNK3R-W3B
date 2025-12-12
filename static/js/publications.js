@@ -788,7 +788,22 @@ const PublicationsManager = {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     
-    renderFeed() {
+    async decryptCaption(encryptedCaption, encryptionKey, encryptionIv) {
+        if (!encryptedCaption || !encryptionKey || !encryptionIv) {
+            return encryptedCaption;
+        }
+        try {
+            const key = await CryptoModule.importKey(encryptionKey);
+            const encryptedData = CryptoModule.base64ToArrayBuffer(encryptedCaption);
+            const decrypted = await CryptoModule.decrypt(encryptedData, key, encryptionIv);
+            return new TextDecoder().decode(decrypted);
+        } catch (error) {
+            console.error('Error decrypting caption:', error);
+            return encryptedCaption;
+        }
+    },
+
+    async renderFeed() {
         Logger?.debug('renderFeed called, posts:', this.feedPosts.length);
         const feedContainer = document.getElementById('publications-feed');
         if (!feedContainer) return;
@@ -806,6 +821,12 @@ const PublicationsManager = {
                 `;
             }
             return;
+        }
+        
+        for (const post of this.feedPosts) {
+            if (post.is_encrypted && post.encryption_key && post.encryption_iv && post.caption) {
+                post.decrypted_caption = await this.decryptCaption(post.caption, post.encryption_key, post.encryption_iv);
+            }
         }
         
         const postsHtml = this.feedPosts.map(post => this.renderPost(post)).join('');
