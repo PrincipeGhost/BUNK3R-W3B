@@ -5837,7 +5837,73 @@ const App = {
     },
 
     showB3CDepositModal() {
-        this.showPersonalDepositModal();
+        const modal = document.createElement('div');
+        modal.className = 'b3c-modal modal-overlay';
+        modal.id = 'b3c-deposit-options-modal';
+        modal.innerHTML = `
+            <div class="modal-content b3c-modal-content">
+                <div class="modal-header">
+                    <h3>Depositar B3C</h3>
+                    <button class="modal-close" onclick="App.closeB3CModal('b3c-deposit-options-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="neo-deposit-intro">
+                        <p class="neo-deposit-text">Selecciona como deseas recargar tu balance:</p>
+                    </div>
+                    
+                    <div class="neo-deposit-options">
+                        <div class="neo-deposit-option" onclick="App.showRechargePackages()">
+                            <div class="neo-deposit-option-icon recharge">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                </svg>
+                            </div>
+                            <div class="neo-deposit-option-info">
+                                <span class="neo-deposit-option-title">Comprar B3C con TON</span>
+                                <span class="neo-deposit-option-desc">Paquetes de recarga rapida</span>
+                            </div>
+                            <svg class="neo-deposit-option-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </div>
+                        
+                        <div class="neo-deposit-option" onclick="App.closeB3CModal('b3c-deposit-options-modal'); App.showPersonalDepositModal()">
+                            <div class="neo-deposit-option-icon wallet">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                    <path d="M2 10h20"/>
+                                </svg>
+                            </div>
+                            <div class="neo-deposit-option-info">
+                                <span class="neo-deposit-option-title">Depositar a Mi Wallet</span>
+                                <span class="neo-deposit-option-desc">Envia TON/USDT/B3C a tu direccion personal</span>
+                            </div>
+                            <svg class="neo-deposit-option-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeB3CModal('b3c-deposit-options-modal');
+        });
+    },
+    
+    showRechargePackages() {
+        this.closeB3CModal('b3c-deposit-options-modal');
+        
+        const syncedWallets = this.getSyncedWallets();
+        const hasSyncedWallet = syncedWallets.telegram || syncedWallets.binance;
+        
+        if (hasSyncedWallet) {
+            const primaryType = syncedWallets.telegram ? 'telegram' : 'binance';
+            this.showDepositPackages(primaryType);
+        } else {
+            this.showWalletSyncModal();
+        }
     },
     
     showWalletSyncModal() {

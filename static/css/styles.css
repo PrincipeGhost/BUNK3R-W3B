@@ -3684,6 +3684,92 @@ select:focus-visible {
     box-shadow: 0 4px 12px rgba(240, 185, 11, 0.3);
 }
 
+/* Neo Deposit Options Modal */
+.neo-deposit-intro {
+    text-align: center;
+    padding: 10px 0 20px;
+}
+
+.neo-deposit-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.neo-deposit-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.neo-deposit-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neo-deposit-option:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(240, 185, 11, 0.3);
+    transform: translateX(2px);
+}
+
+.neo-deposit-option-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.neo-deposit-option-icon.recharge {
+    background: linear-gradient(135deg, rgba(240, 185, 11, 0.15), rgba(240, 185, 11, 0.25));
+    color: var(--accent-primary);
+}
+
+.neo-deposit-option-icon.wallet {
+    background: linear-gradient(135deg, rgba(45, 156, 219, 0.15), rgba(45, 156, 219, 0.25));
+    color: #2d9cdb;
+}
+
+.neo-deposit-option-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neo-deposit-option-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.neo-deposit-option-desc {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.neo-deposit-option-arrow {
+    color: var(--text-tertiary);
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.neo-deposit-option:hover .neo-deposit-option-arrow {
+    opacity: 1;
+    color: var(--accent-primary);
+    transform: translateX(2px);
+}
+
 .neo-sync-intro {
     text-align: center;
     padding: 20px 0;
