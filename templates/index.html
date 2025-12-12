@@ -824,58 +824,107 @@
                     </div>
                 </div>
                 
-                <!-- Seccion de Wallet TON -->
-                <div class="neo-wallet-connection-card">
-                    <div class="neo-wallet-header">
-                        <div class="neo-wallet-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
-                                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
-                                <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>
-                            </svg>
+                <!-- Seccion Mis Activos - Multi-Token Wallet -->
+                <div class="neo-assets-card">
+                    <div class="neo-assets-header">
+                        <div class="neo-assets-title-row">
+                            <div class="neo-assets-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+                                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+                                    <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>
+                                </svg>
+                            </div>
+                            <span class="neo-assets-title">Mis Activos</span>
                         </div>
-                        <span class="neo-wallet-title">Wallet TON</span>
-                    </div>
-                    
-                    <div id="ton-wallet-not-connected" class="neo-wallet-disconnected">
-                        <p class="neo-wallet-desc">Conecta tu wallet para comprar y transferir B3C</p>
-                        <button class="neo-wallet-connect-btn" id="ton-connect-btn">
+                        <button class="neo-assets-sync-btn" id="sync-assets-btn" onclick="App.syncPersonalWallet()" title="Sincronizar">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                                <polyline points="10 17 15 12 10 7"/>
-                                <line x1="15" y1="12" x2="3" y2="12"/>
+                                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                             </svg>
-                            Conectar Wallet
                         </button>
                     </div>
                     
-                    <div id="ton-wallet-connected" class="neo-wallet-connected hidden">
-                        <div class="neo-wallet-info">
-                            <span class="neo-wallet-status-label" id="ton-wallet-status-label">Wallet conectada</span>
-                            <div class="neo-wallet-address-row">
-                                <span class="neo-wallet-address" id="ton-wallet-address">...</span>
-                                <button class="neo-wallet-copy-btn" id="ton-copy-address" title="Copiar direccion">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                    </svg>
-                                </button>
+                    <div class="neo-assets-loading hidden" id="assets-loading">
+                        <div class="neo-assets-spinner"></div>
+                        <span>Cargando activos...</span>
+                    </div>
+                    
+                    <div class="neo-assets-content" id="assets-content">
+                        <div class="neo-tokens-section">
+                            <div class="neo-tokens-label">TOKENS PRINCIPALES</div>
+                            <div class="neo-tokens-list" id="main-tokens-list">
+                                <div class="neo-token-item" data-token="B3C" onclick="App.showTokenDetail('B3C')">
+                                    <div class="neo-token-left">
+                                        <div class="neo-token-icon b3c-icon">
+                                            <img src="/static/images/b3c-logo.png" alt="B3C" onerror="this.style.display='none'">
+                                        </div>
+                                        <div class="neo-token-info">
+                                            <span class="neo-token-symbol">B3C</span>
+                                            <span class="neo-token-name">BUNK3R Coin</span>
+                                        </div>
+                                    </div>
+                                    <div class="neo-token-right">
+                                        <span class="neo-token-balance" id="asset-b3c-balance">0.00</span>
+                                        <svg class="neo-token-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 18l6-6-6-6"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <div class="neo-token-item" data-token="USDT" onclick="App.showTokenDetail('USDT')">
+                                    <div class="neo-token-left">
+                                        <div class="neo-token-icon usdt-icon">
+                                            <img src="/static/images/usdt-logo.png" alt="USDT" onerror="this.innerHTML='💵'">
+                                        </div>
+                                        <div class="neo-token-info">
+                                            <span class="neo-token-symbol">USDT</span>
+                                            <span class="neo-token-name">Tether USD</span>
+                                        </div>
+                                    </div>
+                                    <div class="neo-token-right">
+                                        <span class="neo-token-balance" id="asset-usdt-balance">0.00</span>
+                                        <svg class="neo-token-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 18l6-6-6-6"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <div class="neo-token-item" data-token="TON" onclick="App.showTokenDetail('TON')">
+                                    <div class="neo-token-left">
+                                        <div class="neo-token-icon ton-icon">
+                                            <img src="/static/images/ton-logo.png" alt="TON" onerror="this.innerHTML='💎'">
+                                        </div>
+                                        <div class="neo-token-info">
+                                            <span class="neo-token-symbol">TON</span>
+                                            <span class="neo-token-name">Toncoin</span>
+                                        </div>
+                                    </div>
+                                    <div class="neo-token-right">
+                                        <span class="neo-token-balance" id="asset-ton-balance">0.00</span>
+                                        <svg class="neo-token-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 18l6-6-6-6"/>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="neo-wallet-actions">
-                            <button class="neo-wallet-change-btn hidden" id="ton-change-btn">
+                        
+                        <div class="neo-tokens-section neo-other-tokens hidden" id="other-tokens-section">
+                            <div class="neo-tokens-label">OTROS TOKENS</div>
+                            <div class="neo-tokens-list" id="other-tokens-list">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="neo-wallet-address-display" id="personal-wallet-display">
+                        <div class="neo-wallet-address-label">Tu direccion de deposito:</div>
+                        <div class="neo-wallet-address-row">
+                            <span class="neo-wallet-address-value" id="personal-wallet-address">Cargando...</span>
+                            <button class="neo-wallet-copy-btn" onclick="App.copyPersonalWalletAddress()" title="Copiar direccion">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                                 </svg>
-                                Cambiar
-                            </button>
-                            <button class="neo-wallet-disconnect-btn" id="ton-disconnect-btn">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                                    <polyline points="16 17 21 12 16 7"/>
-                                    <line x1="21" y1="12" x2="9" y2="12"/>
-                                </svg>
-                                Desconectar
                             </button>
                         </div>
                     </div>
@@ -2621,6 +2670,72 @@
             </svg>
         </button>
     </nav>
+
+    <!-- Modal de Deposito con QR -->
+    <div id="deposit-qr-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deposit-qr-title">
+        <div class="modal-container deposit-qr-container">
+            <div class="modal-header">
+                <span class="modal-title" id="deposit-qr-title">Depositar</span>
+                <button class="modal-close" onclick="App.closeDepositQRModal()" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="modal-body deposit-qr-body">
+                <div class="deposit-qr-token-select">
+                    <label class="deposit-qr-label">Selecciona el token a depositar:</label>
+                    <div class="deposit-token-buttons" id="deposit-token-buttons">
+                        <button class="deposit-token-btn active" data-token="TON" onclick="App.selectDepositToken('TON')">
+                            <img src="/static/images/ton-logo.png" alt="TON" onerror="this.style.display='none'">
+                            <span>TON</span>
+                        </button>
+                        <button class="deposit-token-btn" data-token="B3C" onclick="App.selectDepositToken('B3C')">
+                            <img src="/static/images/b3c-logo.png" alt="B3C" onerror="this.style.display='none'">
+                            <span>B3C</span>
+                        </button>
+                        <button class="deposit-token-btn" data-token="USDT" onclick="App.selectDepositToken('USDT')">
+                            <img src="/static/images/usdt-logo.png" alt="USDT" onerror="this.style.display='none'">
+                            <span>USDT</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="deposit-qr-section">
+                    <div class="deposit-qr-wrapper" id="deposit-qr-wrapper">
+                        <div class="deposit-qr-loading" id="deposit-qr-loading">
+                            <div class="deposit-qr-spinner"></div>
+                            <span>Generando QR...</span>
+                        </div>
+                        <div class="deposit-qr-code" id="deposit-qr-code"></div>
+                    </div>
+                    <p class="deposit-qr-hint">Escanea este codigo QR para depositar</p>
+                </div>
+                
+                <div class="deposit-address-section">
+                    <label class="deposit-qr-label">Tu direccion de deposito:</label>
+                    <div class="deposit-address-box">
+                        <span class="deposit-address-text" id="deposit-address-text">Cargando...</span>
+                        <button class="deposit-copy-btn" onclick="App.copyDepositAddress()" title="Copiar direccion">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="deposit-warning-section">
+                    <div class="deposit-warning-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div class="deposit-warning-text">
+                        <strong>Importante:</strong> Solo envia <span id="deposit-token-name">TON</span> a esta direccion en la red TON. Enviar otros tokens puede resultar en perdida de fondos.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

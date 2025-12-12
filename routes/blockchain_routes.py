@@ -2041,3 +2041,143 @@ def get_wallet_transactions():
     except Exception as e:
         logger.error(f"Error getting transactions: {e}")
         return jsonify({'success': True, 'transactions': []})
+
+
+# ==========================================
+# Personal Wallet Endpoints - Multi-Token
+# ==========================================
+from tracking.personal_wallet_service import PersonalWalletService
+
+
+def get_personal_wallet_service():
+    """Obtener instancia del servicio de wallet personal."""
+    db_manager = get_db_manager()
+    if not db_manager:
+        return None
+    return PersonalWalletService(db_manager)
+
+
+@blockchain_bp.route('/api/wallet/personal', methods=['GET'])
+@require_telegram_auth
+def get_personal_wallet():
+    """Obtener o crear wallet personal del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else None
+        if not user_id:
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        
+        service = get_personal_wallet_service()
+        if not service:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        result = service.get_or_create_wallet(user_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting personal wallet: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/assets', methods=['GET'])
+@require_telegram_auth
+def get_user_assets():
+    """Obtener todos los tokens y balances del usuario."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else None
+        if not user_id:
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        
+        service = get_personal_wallet_service()
+        if not service:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        result = service.get_user_assets(user_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting user assets: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/assets/<token_address>', methods=['GET'])
+@require_telegram_auth
+def get_token_detail(token_address):
+    """Obtener detalle de un token específico con historial."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else None
+        if not user_id:
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        
+        service = get_personal_wallet_service()
+        if not service:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        result = service.get_token_detail(user_id, token_address)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting token detail: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/token-transactions', methods=['GET'])
+@require_telegram_auth
+def get_token_transactions():
+    """Obtener historial de transacciones de todos los tokens."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else None
+        if not user_id:
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        service = get_personal_wallet_service()
+        if not service:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        result = service.get_all_transactions(user_id, limit=limit, offset=offset)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting token transactions: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/sync', methods=['POST'])
+@require_telegram_auth
+@rate_limit('balance_check')
+def sync_wallet():
+    """Sincronizar wallet desde la blockchain TON."""
+    try:
+        user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else None
+        if not user_id:
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        
+        service = get_personal_wallet_service()
+        if not service:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        result = service.sync_wallet_from_blockchain(user_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error syncing wallet: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/withdrawal-fee/<token_address>', methods=['GET'])
+@require_telegram_auth
+def get_withdrawal_fee(token_address):
+    """Obtener comisión de retiro para un token."""
+    try:
+        service = get_personal_wallet_service()
+        if not service:
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        result = service.get_withdrawal_fee(token_address)
+        return jsonify({'success': True, 'fee': result})
+        
+    except Exception as e:
+        logger.error(f"Error getting withdrawal fee: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500

@@ -1478,6 +1478,7 @@ const App = {
             this.loadWalletBalance();
             this.startB3CPricePolling();
             this.loadB3CBalance();
+            this.loadPersonalWalletAssets();
         }
         
         if (pageName === 'explore') {
@@ -4695,6 +4696,275 @@ const App = {
         }
     },
 
+    personalWalletAddress: null,
+
+    async loadPersonalWalletAssets() {
+        const loadingEl = document.getElementById('assets-loading');
+        const contentEl = document.getElementById('assets-content');
+        
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        if (contentEl) contentEl.classList.add('hidden');
+        
+        try {
+            const response = await this.apiRequest('/api/wallet/assets');
+            
+            if (response.success) {
+                this.personalWalletAddress = response.wallet?.address || null;
+                
+                const addressEl = document.getElementById('personal-wallet-address');
+                if (addressEl && this.personalWalletAddress) {
+                    const shortAddr = this.personalWalletAddress.slice(0, 8) + '...' + this.personalWalletAddress.slice(-6);
+                    addressEl.textContent = shortAddr;
+                    addressEl.dataset.fullAddress = this.personalWalletAddress;
+                }
+                
+                this.updateMainTokensUI(response.main_tokens || []);
+                this.updateOtherTokensUI(response.other_tokens || []);
+            }
+        } catch (error) {
+            console.error('Error loading personal wallet assets:', error);
+        } finally {
+            if (loadingEl) loadingEl.classList.add('hidden');
+            if (contentEl) contentEl.classList.remove('hidden');
+        }
+    },
+
+    updateMainTokensUI(tokens) {
+        const tokenMap = {
+            'B3C': 'asset-b3c-balance',
+            'USDT': 'asset-usdt-balance',
+            'TON': 'asset-ton-balance'
+        };
+        
+        tokens.forEach(token => {
+            const elId = tokenMap[token.symbol];
+            if (elId) {
+                const el = document.getElementById(elId);
+                if (el) {
+                    const balance = parseFloat(token.balance) || 0;
+                    el.textContent = balance.toLocaleString('en-US', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: token.symbol === 'B3C' ? 2 : 6 
+                    });
+                }
+            }
+        });
+    },
+
+    updateOtherTokensUI(tokens) {
+        const section = document.getElementById('other-tokens-section');
+        const list = document.getElementById('other-tokens-list');
+        
+        if (!section || !list) return;
+        
+        if (!tokens || tokens.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+        
+        section.classList.remove('hidden');
+        list.innerHTML = '';
+        
+        tokens.forEach(token => {
+            const item = document.createElement('div');
+            item.className = 'neo-token-item';
+            item.dataset.token = token.address;
+            item.onclick = () => this.showTokenDetail(token.address);
+            
+            const balance = parseFloat(token.balance) || 0;
+            
+            item.innerHTML = `
+                <div class="neo-token-left">
+                    <div class="neo-token-icon">
+                        ${token.icon ? `<img src="${token.icon}" alt="${token.symbol}" onerror="this.innerHTML='🪙'">` : '🪙'}
+                    </div>
+                    <div class="neo-token-info">
+                        <span class="neo-token-symbol">${token.symbol}</span>
+                        <span class="neo-token-name">${token.name || token.symbol}</span>
+                    </div>
+                </div>
+                <div class="neo-token-right">
+                    <span class="neo-token-balance">${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
+                    <svg class="neo-token-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </div>
+            `;
+            
+            list.appendChild(item);
+        });
+    },
+
+    async syncPersonalWallet() {
+        const syncBtn = document.getElementById('sync-assets-btn');
+        if (syncBtn) syncBtn.classList.add('syncing');
+        
+        try {
+            const response = await this.apiRequest('/api/wallet/sync', { method: 'POST' });
+            
+            if (response.success) {
+                this.showToast('Wallet sincronizada', 'success');
+                await this.loadPersonalWalletAssets();
+            } else {
+                this.showToast(response.error || 'Error al sincronizar', 'error');
+            }
+        } catch (error) {
+            console.error('Error syncing wallet:', error);
+            this.showToast('Error al sincronizar wallet', 'error');
+        } finally {
+            if (syncBtn) {
+                setTimeout(() => syncBtn.classList.remove('syncing'), 500);
+            }
+        }
+    },
+
+    copyPersonalWalletAddress() {
+        const addressEl = document.getElementById('personal-wallet-address');
+        const fullAddress = addressEl?.dataset?.fullAddress || this.personalWalletAddress;
+        
+        if (!fullAddress) {
+            this.showToast('No hay direccion disponible', 'error');
+            return;
+        }
+        
+        navigator.clipboard.writeText(fullAddress).then(() => {
+            this.showToast('Direccion copiada', 'success');
+            if (this.tg?.HapticFeedback) {
+                this.tg.HapticFeedback.notificationOccurred('success');
+            }
+        }).catch(() => {
+            this.showToast('Error al copiar', 'error');
+        });
+    },
+
+    async showTokenDetail(tokenSymbolOrAddress) {
+        let tokenAddress = tokenSymbolOrAddress;
+        
+        const mainTokens = {
+            'B3C': 'B3C',
+            'USDT': 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
+            'TON': 'native'
+        };
+        
+        if (mainTokens[tokenSymbolOrAddress]) {
+            tokenAddress = mainTokens[tokenSymbolOrAddress];
+        }
+        
+        this.showToast(`Cargando ${tokenSymbolOrAddress}...`, 'info');
+    },
+
+    selectedDepositToken: 'TON',
+    depositQRInstance: null,
+
+    async showPersonalDepositModal() {
+        const modal = document.getElementById('deposit-qr-modal');
+        if (!modal) return;
+        
+        modal.classList.remove('hidden');
+        
+        this.selectedDepositToken = 'TON';
+        document.querySelectorAll('.deposit-token-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.token === 'TON');
+        });
+        document.getElementById('deposit-token-name').textContent = 'TON';
+        
+        const loadingEl = document.getElementById('deposit-qr-loading');
+        const qrContainer = document.getElementById('deposit-qr-code');
+        const addressText = document.getElementById('deposit-address-text');
+        
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        if (qrContainer) qrContainer.innerHTML = '';
+        
+        try {
+            let walletAddress = this.personalWalletAddress;
+            
+            if (!walletAddress) {
+                const response = await this.apiRequest('/api/wallet/personal');
+                if (response.success && response.wallet) {
+                    walletAddress = response.wallet.address;
+                    this.personalWalletAddress = walletAddress;
+                }
+            }
+            
+            if (walletAddress) {
+                if (addressText) addressText.textContent = walletAddress;
+                
+                if (this.depositQRInstance) {
+                    this.depositQRInstance.clear();
+                    this.depositQRInstance = null;
+                }
+                
+                if (typeof QRCode !== 'undefined') {
+                    qrContainer.innerHTML = '';
+                    this.depositQRInstance = new QRCode(qrContainer, {
+                        text: walletAddress,
+                        width: 180,
+                        height: 180,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+            } else {
+                if (addressText) addressText.textContent = 'Error al cargar direccion';
+            }
+        } catch (error) {
+            console.error('Error loading deposit address:', error);
+            if (addressText) addressText.textContent = 'Error al cargar';
+        } finally {
+            if (loadingEl) loadingEl.classList.add('hidden');
+        }
+    },
+
+    closeDepositQRModal() {
+        const modal = document.getElementById('deposit-qr-modal');
+        if (modal) modal.classList.add('hidden');
+        
+        if (this.depositQRInstance) {
+            this.depositQRInstance.clear();
+            this.depositQRInstance = null;
+        }
+    },
+
+    selectDepositToken(token) {
+        this.selectedDepositToken = token;
+        
+        document.querySelectorAll('.deposit-token-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.token === token);
+        });
+        
+        const tokenNameEl = document.getElementById('deposit-token-name');
+        if (tokenNameEl) {
+            const tokenNames = { 'TON': 'TON', 'B3C': 'B3C', 'USDT': 'USDT (Jetton)' };
+            tokenNameEl.textContent = tokenNames[token] || token;
+        }
+    },
+
+    copyDepositAddress() {
+        const addressEl = document.getElementById('deposit-address-text');
+        const address = addressEl?.textContent || this.personalWalletAddress;
+        
+        if (!address || address === 'Cargando...' || address.includes('Error')) {
+            this.showToast('No hay direccion disponible', 'error');
+            return;
+        }
+        
+        navigator.clipboard.writeText(address).then(() => {
+            this.showToast('Direccion copiada', 'success');
+            if (this.tg?.HapticFeedback) {
+                this.tg.HapticFeedback.notificationOccurred('success');
+            }
+        }).catch(() => {
+            const textArea = document.createElement('textarea');
+            textArea.value = address;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            this.showToast('Direccion copiada', 'success');
+        });
+    },
+
     async calculateB3CPreview() {
         const tonInput = document.getElementById('custom-ton-amount');
         const previewContainer = document.getElementById('b3c-preview');
@@ -5567,17 +5837,7 @@ const App = {
     },
 
     showB3CDepositModal() {
-        const syncedCount = this.countSyncedWallets();
-        
-        if (syncedCount === 0) {
-            this.showWalletSyncModal();
-        } else if (syncedCount === 1) {
-            const primary = this.getPrimaryWallet();
-            this.selectedWalletType = primary.type;
-            this.showDepositPackages(primary.type);
-        } else if (syncedCount >= 2) {
-            this.showWalletSelectionModal();
-        }
+        this.showPersonalDepositModal();
     },
     
     showWalletSyncModal() {
