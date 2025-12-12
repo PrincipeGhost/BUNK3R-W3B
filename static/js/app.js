@@ -5607,44 +5607,87 @@ const App = {
         }
     },
 
+    _withdrawAssets: {
+        'B3C': { symbol: 'B3C', name: 'BUNK3RCO1N', min: 100, max: 100000, fee: '~0.05 TON', decimals: 2 },
+        'TON': { symbol: 'TON', name: 'Toncoin', min: 0.5, max: 10000, fee: '~0.01 TON', decimals: 4 },
+        'USDT': { symbol: 'USDT', name: 'Tether USD', min: 1, max: 50000, fee: '~0.1 TON', decimals: 2 }
+    },
+    _selectedWithdrawAsset: 'B3C',
+
     showB3CWithdrawModal() {
+        const assets = this._withdrawAssets;
+        const selectedAsset = assets[this._selectedWithdrawAsset];
+        
         const modal = document.createElement('div');
         modal.className = 'b3c-modal modal-overlay';
         modal.id = 'b3c-withdraw-modal';
         modal.innerHTML = `
-            <div class="modal-content b3c-modal-content">
-                <div class="modal-header">
-                    <h3>Retirar B3C</h3>
-                    <button class="modal-close" onclick="App.closeB3CModal('b3c-withdraw-modal')">&times;</button>
+            <div class="modal-content withdraw-modal-content">
+                <div class="withdraw-modal-header">
+                    <h3>Retirar Activos</h3>
+                    <button class="modal-close-btn" onclick="App.closeB3CModal('b3c-withdraw-modal')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
-                <div class="modal-body">
-                    <div class="b3c-withdraw-info">
-                        <p>Retira tus B3C a tu wallet personal.</p>
-                        <div class="b3c-limits">
-                            <span>Minimo: 100 B3C</span>
-                            <span>Maximo: 100,000 B3C/dia</span>
+                <div class="withdraw-modal-body">
+                    <p class="withdraw-description">Retira tus activos a tu wallet personal en la red TON.</p>
+                    
+                    <div class="withdraw-asset-section">
+                        <label class="withdraw-label">Seleccionar activo</label>
+                        <div class="withdraw-asset-selector" id="withdraw-asset-selector">
+                            ${Object.keys(assets).map(key => `
+                                <button class="withdraw-asset-option ${key === this._selectedWithdrawAsset ? 'active' : ''}" 
+                                        data-asset="${key}" onclick="App.selectWithdrawAsset('${key}')">
+                                    <span class="withdraw-asset-symbol">${key}</span>
+                                </button>
+                            `).join('')}
                         </div>
                     </div>
                     
-                    <div class="b3c-input-group">
-                        <label>Cantidad de B3C a retirar</label>
-                        <input type="number" id="withdraw-b3c-amount" placeholder="Cantidad" min="100" max="100000" step="100">
-                        <button class="btn-max" onclick="App.setMaxWithdraw()">MAX</button>
+                    <div class="withdraw-balance-display" id="withdraw-balance-display">
+                        <span class="withdraw-balance-label">Disponible:</span>
+                        <span class="withdraw-balance-value" id="withdraw-available-balance">-- ${this._selectedWithdrawAsset}</span>
                     </div>
                     
-                    <div class="b3c-input-group">
-                        <label>Wallet TON destino</label>
-                        <input type="text" id="withdraw-destination-wallet" placeholder="UQ... o EQ..." value="${this._savedWalletAddress || ''}">
+                    <div class="withdraw-limits-bar">
+                        <span class="withdraw-limit">Min: ${selectedAsset.min} ${selectedAsset.symbol}</span>
+                        <span class="withdraw-limit">Max: ${selectedAsset.max.toLocaleString()} ${selectedAsset.symbol}/dia</span>
                     </div>
                     
-                    <div class="b3c-fee-notice">
-                        <span class="fee-icon">&#9888;</span>
-                        <span>Fee de red: ~0.5 TON (pagado del retiro)</span>
+                    <div class="withdraw-input-group">
+                        <label class="withdraw-label">Cantidad a retirar</label>
+                        <div class="withdraw-input-wrapper">
+                            <input type="number" id="withdraw-amount" class="withdraw-input" 
+                                   placeholder="0.00" min="${selectedAsset.min}" max="${selectedAsset.max}" 
+                                   step="0.01" oninput="App.updateWithdrawPreview()">
+                            <button class="withdraw-max-btn" onclick="App.setMaxWithdraw()">MAX</button>
+                        </div>
                     </div>
                     
-                    <div class="b3c-modal-actions">
-                        <button class="btn-secondary" onclick="App.closeB3CModal('b3c-withdraw-modal')">Cancelar</button>
-                        <button class="btn-primary" id="confirm-withdraw-btn" onclick="App.confirmWithdrawB3C()">Retirar B3C</button>
+                    <div class="withdraw-input-group">
+                        <label class="withdraw-label">Wallet destino (TON)</label>
+                        <input type="text" id="withdraw-destination-wallet" class="withdraw-input wallet-input" 
+                               placeholder="UQ... o EQ..." value="${this._savedWalletAddress || ''}">
+                    </div>
+                    
+                    <div class="withdraw-fee-info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <span id="withdraw-fee-text">Fee de red: ${selectedAsset.fee}</span>
+                    </div>
+                    
+                    <div class="withdraw-actions">
+                        <button class="withdraw-cancel-btn" onclick="App.closeB3CModal('b3c-withdraw-modal')">Cancelar</button>
+                        <button class="withdraw-confirm-btn" id="confirm-withdraw-btn" onclick="App.confirmWithdrawB3C()">
+                            <span>Retirar</span>
+                            <span id="withdraw-btn-asset">${this._selectedWithdrawAsset}</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -5653,28 +5696,117 @@ const App = {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) this.closeB3CModal('b3c-withdraw-modal');
         });
+        
+        this.updateWithdrawBalance();
+    },
+
+    selectWithdrawAsset(assetKey) {
+        this._selectedWithdrawAsset = assetKey;
+        const asset = this._withdrawAssets[assetKey];
+        
+        document.querySelectorAll('.withdraw-asset-option').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.asset === assetKey);
+        });
+        
+        const amountInput = document.getElementById('withdraw-amount');
+        if (amountInput) {
+            amountInput.min = asset.min;
+            amountInput.max = asset.max;
+            amountInput.value = '';
+        }
+        
+        const limitsBar = document.querySelector('.withdraw-limits-bar');
+        if (limitsBar) {
+            limitsBar.innerHTML = `
+                <span class="withdraw-limit">Min: ${asset.min} ${asset.symbol}</span>
+                <span class="withdraw-limit">Max: ${asset.max.toLocaleString()} ${asset.symbol}/dia</span>
+            `;
+        }
+        
+        const feeText = document.getElementById('withdraw-fee-text');
+        if (feeText) {
+            feeText.textContent = `Fee de red: ${asset.fee}`;
+        }
+        
+        const btnAsset = document.getElementById('withdraw-btn-asset');
+        if (btnAsset) {
+            btnAsset.textContent = assetKey;
+        }
+        
+        this.updateWithdrawBalance();
+    },
+
+    async updateWithdrawBalance() {
+        const balanceEl = document.getElementById('withdraw-available-balance');
+        if (!balanceEl) return;
+        
+        const asset = this._selectedWithdrawAsset;
+        balanceEl.textContent = `Cargando...`;
+        
+        try {
+            if (asset === 'B3C') {
+                const walletBalanceEl = document.getElementById('wallet-balance');
+                if (walletBalanceEl) {
+                    const balance = parseFloat(walletBalanceEl.textContent.replace(/,/g, '')) || 0;
+                    balanceEl.textContent = `${balance.toLocaleString()} B3C`;
+                } else {
+                    balanceEl.textContent = `-- B3C`;
+                }
+            } else {
+                const response = await this.apiRequest('/api/wallet/personal/assets');
+                if (response.success && response.main_tokens) {
+                    const token = response.main_tokens.find(t => t.symbol === asset);
+                    if (token) {
+                        balanceEl.textContent = `${token.balance.toLocaleString(undefined, {maximumFractionDigits: 4})} ${asset}`;
+                    } else {
+                        balanceEl.textContent = `0 ${asset}`;
+                    }
+                } else {
+                    balanceEl.textContent = `-- ${asset}`;
+                }
+            }
+        } catch (error) {
+            balanceEl.textContent = `-- ${asset}`;
+        }
     },
 
     setMaxWithdraw() {
-        const balanceEl = document.getElementById('wallet-balance');
-        if (balanceEl) {
-            const balance = parseFloat(balanceEl.textContent.replace(/,/g, '')) || 0;
-            const max = Math.min(balance, 100000);
-            document.getElementById('withdraw-b3c-amount').value = max;
+        const asset = this._selectedWithdrawAsset;
+        const assetConfig = this._withdrawAssets[asset];
+        
+        if (asset === 'B3C') {
+            const balanceEl = document.getElementById('wallet-balance');
+            if (balanceEl) {
+                const balance = parseFloat(balanceEl.textContent.replace(/,/g, '')) || 0;
+                const max = Math.min(balance, assetConfig.max);
+                document.getElementById('withdraw-amount').value = max;
+            }
+        } else {
+            const balanceText = document.getElementById('withdraw-available-balance')?.textContent || '';
+            const balance = parseFloat(balanceText.replace(/,/g, '').replace(asset, '').trim()) || 0;
+            const max = Math.min(balance, assetConfig.max);
+            document.getElementById('withdraw-amount').value = max;
         }
+        
+        this.updateWithdrawPreview();
+    },
+
+    updateWithdrawPreview() {
     },
 
     async confirmWithdrawB3C() {
-        const amount = parseFloat(document.getElementById('withdraw-b3c-amount')?.value) || 0;
+        const asset = this._selectedWithdrawAsset;
+        const assetConfig = this._withdrawAssets[asset];
+        const amount = parseFloat(document.getElementById('withdraw-amount')?.value) || 0;
         const wallet = document.getElementById('withdraw-destination-wallet')?.value?.trim();
         
-        if (amount < 100) {
-            this.showToast('Minimo 100 B3C para retirar', 'error');
+        if (amount < assetConfig.min) {
+            this.showToast(`Minimo ${assetConfig.min} ${asset} para retirar`, 'error');
             return;
         }
         
-        if (amount > 100000) {
-            this.showToast('Maximo 100,000 B3C por retiro', 'error');
+        if (amount > assetConfig.max) {
+            this.showToast(`Maximo ${assetConfig.max.toLocaleString()} ${asset} por retiro`, 'error');
             return;
         }
         
@@ -5686,33 +5818,41 @@ const App = {
         const btn = document.getElementById('confirm-withdraw-btn');
         if (btn) {
             btn.disabled = true;
-            btn.textContent = 'Procesando...';
+            btn.innerHTML = '<span>Procesando...</span>';
         }
         
         try {
-            const response = await this.apiRequest('/api/b3c/withdraw', {
+            let endpoint = '/api/b3c/withdraw';
+            let body = { b3cAmount: amount, destinationWallet: wallet };
+            
+            if (asset === 'TON') {
+                endpoint = '/api/wallet/withdraw/ton';
+                body = { amount: amount, destinationWallet: wallet };
+            } else if (asset === 'USDT') {
+                endpoint = '/api/wallet/withdraw/usdt';
+                body = { amount: amount, destinationWallet: wallet };
+            }
+            
+            const response = await this.apiRequest(endpoint, {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    b3cAmount: amount,
-                    destinationWallet: wallet
-                })
+                body: JSON.stringify(body)
             });
             
             if (response.success) {
                 this.closeB3CModal('b3c-withdraw-modal');
-                this.showToast(`Retiro iniciado! ${amount.toLocaleString()} B3C en camino`, 'success');
+                this.showToast(`Retiro iniciado: ${amount.toLocaleString()} ${asset}`, 'success');
                 this.refreshB3CBalance();
                 this._savedWalletAddress = wallet;
             } else {
                 this.showToast(response.error || 'Error al procesar retiro', 'error');
             }
         } catch (error) {
-            console.error('Error withdrawing B3C:', error);
+            console.error('Error withdrawing:', error);
             this.showToast('Error de conexion', 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Retirar B3C';
+                btn.innerHTML = `<span>Retirar</span><span>${asset}</span>`;
             }
         }
     },
