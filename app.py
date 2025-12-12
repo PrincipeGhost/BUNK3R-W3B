@@ -1508,9 +1508,8 @@ def check_cloudinary_status():
 # ============================================================
 
 @app.route('/virtual-numbers')
-@require_telegram_auth
 def virtual_numbers_page():
-    """Render virtual numbers page"""
+    """Render virtual numbers page - authentication handled by JavaScript"""
     return render_template('virtual_numbers.html')
 
 
