@@ -6545,9 +6545,6 @@ select:focus-visible {
     gap: 8px;
 }
 
-.security-section-title::before {
-    content: '🔐';
-}
 
 /* Widget estado de seguridad */
 .security-status-widget {
