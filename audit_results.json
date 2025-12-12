@@ -1,179 +1,125 @@
 {
-  "timestamp": "2025-12-12T20:02:29.084525",
+  "timestamp": "2025-12-12T20:38:19.389891",
   "summary": {
-    "tested": 130,
-    "passed": 102,
-    "failed": 28,
-    "success_rate": "78.5%"
+    "tested": 314,
+    "passed": 303,
+    "failed": 11,
+    "success_rate": "96.5%"
+  },
+  "by_blueprint": {
+    "auth_routes": {
+      "tested": 10,
+      "passed": 10,
+      "failed": 0
+    },
+    "admin_routes": {
+      "tested": 135,
+      "passed": 134,
+      "failed": 1
+    },
+    "blockchain_routes": {
+      "tested": 41,
+      "passed": 40,
+      "failed": 1
+    },
+    "bots_routes": {
+      "tested": 8,
+      "passed": 8,
+      "failed": 0
+    },
+    "tracking_routes": {
+      "tested": 12,
+      "passed": 12,
+      "failed": 0
+    },
+    "user_routes": {
+      "tested": 92,
+      "passed": 84,
+      "failed": 8
+    },
+    "vn_routes": {
+      "tested": 16,
+      "passed": 15,
+      "failed": 1
+    }
   },
   "errors": [
     {
-      "endpoint": "GET /api/admin/users/8305740334/risk-score",
-      "description": "User risk score",
-      "error": "relation \"risk_scores\" does not exist\nLINE 2:                     SELECT * FROM risk_scores WHERE user_id ...\n                                          ^\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/users/8305740334/related-accounts",
-      "description": "Related accounts",
-      "error": "column td.device_fingerprint does not exist\nLINE 4:                     JOIN trusted_devices td2 ON td.device_fi...\n                                                        ^\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "POST /api/admin/users/8305740334/risk-score/calculate",
-      "description": "Calculate risk score",
-      "error": "relation \"risk_scores\" does not exist\nLINE 1: SELECT * FROM risk_scores WHERE user_id = '8305740334'\n                      ^\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/users/8305740334/risk-score/history",
-      "description": "Risk score history",
-      "error": "relation \"risk_score_history\" does not exist\nLINE 2:                     SELECT * FROM risk_score_history\n                                          ^\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/stats/overview",
-      "description": "Stats overview",
-      "error": "0",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/stats/users",
-      "description": "Stats users",
-      "error": "0",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/stats/transactions",
-      "description": "Stats transactions",
-      "error": "0",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/financial/period-stats",
-      "description": "Period stats",
-      "error": "Fechas requeridas",
+      "endpoint": "POST /api/admin/wallets/1/consolidate",
+      "blueprint": "admin_routes",
+      "description": "Consolidate 1",
+      "error": "Wallet ya consolidada",
       "status_code": 400
-    },
-    {
-      "endpoint": "GET /api/admin/analytics/users",
-      "description": "Analytics users",
-      "error": "column \"user_agent\" does not exist\nLINE 4:                             WHEN user_agent ILIKE '%android%...\n                                         ^\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/analytics/conversion",
-      "description": "Analytics conversion",
-      "error": "current transaction is aborted, commands ignored until end of transaction block\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/support/templates",
-      "description": "Support templates",
-      "error": "column \"name\" does not exist\nLINE 4:                     ORDER BY name ASC\n                                     ^\n",
-      "status_code": 500
-    },
-    {
-      "endpoint": "GET /api/admin/promotional-codes",
-      "description": "Promo codes",
-      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/admin/transactions/pending",
-      "description": "Pending transactions",
-      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/admin/transactions/charts",
-      "description": "Transaction charts",
-      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/admin/transactions/export",
-      "description": "Export transactions",
-      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
-      "status_code": 404
     },
     {
       "endpoint": "GET /api/exchange/currencies",
-      "description": "Exchange currencies",
-      "error": "Acceso no autorizado",
-      "status_code": 401
-    },
-    {
-      "endpoint": "GET /api/exchange/min-amount?from=btc&to=ton",
-      "description": "Exchange min amount",
-      "error": "Acceso no autorizado",
-      "status_code": 401
-    },
-    {
-      "endpoint": "GET /api/exchange/estimate?from=btc&to=ton&amount=0.01",
-      "description": "Exchange estimate",
-      "error": "Acceso no autorizado",
-      "status_code": 401
-    },
-    {
-      "endpoint": "POST /api/b3c/calculate/buy",
-      "description": "B3C calculate buy",
-      "error": "Cantidad invalida",
-      "status_code": 400
-    },
-    {
-      "endpoint": "POST /api/b3c/calculate/sell",
-      "description": "B3C calculate sell",
-      "error": "Cantidad invalida",
-      "status_code": 400
+      "blueprint": "blockchain_routes",
+      "description": "Currencies",
+      "error": "API key no configurada",
+      "status_code": 500
     },
     {
       "endpoint": "GET /api/users/me",
-      "description": "Get me",
+      "blueprint": "user_routes",
+      "description": "My profile",
       "error": "Perfil no encontrado",
       "status_code": 404
     },
     {
-      "endpoint": "GET /api/users/me/profile",
-      "description": "Get my profile",
-      "error": "Usuario no encontrado",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/users/me/avatar",
-      "description": "Get my avatar",
-      "error": "<!doctype html>\n<html lang=en>\n<title>405 Method Not Allowed</title>\n<h1>Method Not Allowed</h1>\n<p>The method is not allowed for the requested URL.</p>\n",
-      "status_code": 405
-    },
-    {
-      "endpoint": "GET /api/users/8305740334/profile",
-      "description": "Get user profile",
-      "error": "Usuario no encontrado",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/messages/unread-count",
-      "description": "Unread messages count",
-      "error": "relation \"private_messages\" does not exist\nLINE 2:                     SELECT COUNT(*) FROM private_messages\n                                                 ^\n",
+      "endpoint": "GET /api/publications/1",
+      "blueprint": "user_routes",
+      "description": "Get pub",
+      "error": "'DatabaseManager' object has no attribute 'get_post_detail'",
       "status_code": 500
     },
     {
-      "endpoint": "GET /api/conversations",
-      "description": "Conversations",
-      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/security/wallet/settings",
-      "description": "Wallet security settings",
-      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
-      "status_code": 404
-    },
-    {
-      "endpoint": "GET /api/vn/services",
-      "description": "VN services",
-      "error": "Pais requerido",
+      "endpoint": "PUT /api/publications/1",
+      "blueprint": "user_routes",
+      "description": "Update pub",
+      "error": "No se pudo actualizar",
       "status_code": 400
+    },
+    {
+      "endpoint": "DELETE /api/publications/1",
+      "blueprint": "user_routes",
+      "description": "Delete pub",
+      "error": "No se pudo eliminar",
+      "status_code": 400
+    },
+    {
+      "endpoint": "PUT /api/comments/1",
+      "blueprint": "user_routes",
+      "description": "Update comment",
+      "error": "No tienes permiso para editar este comentario",
+      "status_code": 400
+    },
+    {
+      "endpoint": "POST /api/comments/1/react",
+      "blueprint": "user_routes",
+      "description": "React comment",
+      "error": "Tipo de reaccion requerido",
+      "status_code": 400
+    },
+    {
+      "endpoint": "POST /api/security/devices/remove-all",
+      "blueprint": "user_routes",
+      "description": "Remove all devices",
+      "error": "Codigo 2FA requerido",
+      "status_code": 400
+    },
+    {
+      "endpoint": "DELETE /api/stories/1",
+      "blueprint": "user_routes",
+      "description": "Delete story",
+      "error": "No se pudo eliminar la historia",
+      "status_code": 400
+    },
+    {
+      "endpoint": "GET /api/vn/services?country=US",
+      "blueprint": "vn_routes",
+      "description": "Services",
+      "error": "'int' object has no attribute 'lower'",
+      "status_code": 500
     }
   ]
 }
