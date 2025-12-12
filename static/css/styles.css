@@ -12191,6 +12191,14 @@ select:focus-visible {
     opacity: 0.6;
 }
 
+.notifications-empty .empty-icon-svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+    color: var(--text-secondary);
+}
+
 .notifications-empty h3 {
     color: var(--text-primary);
     font-size: 18px;
@@ -13394,7 +13402,10 @@ select:focus-visible {
 }
 
 .new-notif-toast-icon {
-    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-primary);
 }
 
 .new-notif-toast-text {

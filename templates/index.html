@@ -999,7 +999,7 @@
                 <div class="notifications-filter">
                     <button class="notif-filter-btn active" data-filter="all">Todas</button>
                     <button class="notif-filter-btn" data-filter="unread">No leidas</button>
-                    <button class="notif-filter-btn" data-filter="transactions">💰 Transacciones</button>
+                    <button class="notif-filter-btn" data-filter="transactions">Transacciones</button>
                     <button class="notif-filter-btn" data-filter="likes">Likes</button>
                     <button class="notif-filter-btn" data-filter="comments">Comentarios</button>
                     <button class="notif-filter-btn" data-filter="follows">Seguidores</button>
@@ -1012,7 +1012,10 @@
                     </div>
                 </div>
                 <div class="notifications-empty hidden" id="notifications-empty">
-                    <div class="empty-icon">🔔</div>
+                    <svg class="empty-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
                     <h3>Sin notificaciones</h3>
                     <p>Cuando alguien interactue contigo, aparecera aqui</p>
                 </div>
