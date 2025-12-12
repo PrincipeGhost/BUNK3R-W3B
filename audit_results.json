@@ -1,0 +1,683 @@
+{
+  "timestamp": "2025-12-12T19:56:50.575387",
+  "summary": {
+    "tested": 130,
+    "passed": 18,
+    "failed": 112,
+    "success_rate": "13.8%"
+  },
+  "errors": [
+    {
+      "endpoint": "POST /api/2fa/status",
+      "description": "2FA status",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/2fa/setup",
+      "description": "2FA setup",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/2fa/session",
+      "description": "2FA session check",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/2fa/refresh",
+      "description": "2FA refresh session",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/validate",
+      "description": "Validate user",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/dashboard/stats",
+      "description": "Dashboard stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/dashboard/activity",
+      "description": "Dashboard activity",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/dashboard/alerts",
+      "description": "Dashboard alerts",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/dashboard/charts",
+      "description": "Dashboard charts",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/users/8305740334/detail",
+      "description": "User detail",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/users/8305740334/risk-score",
+      "description": "User risk score",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/users/8305740334/related-accounts",
+      "description": "Related accounts",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/admin/users/8305740334/risk-score/calculate",
+      "description": "Calculate risk score",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/users/8305740334/risk-score/history",
+      "description": "Risk score history",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/users",
+      "description": "List users",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/users/export",
+      "description": "Export users",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/user/8305740334",
+      "description": "Get single user",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/stats",
+      "description": "Admin stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/stats/overview",
+      "description": "Stats overview",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/stats/users",
+      "description": "Stats users",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/stats/transactions",
+      "description": "Stats transactions",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/security/users",
+      "description": "Security users",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/security/user/8305740334/devices",
+      "description": "User devices",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/security/user/8305740334/activity",
+      "description": "User activity",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/security/alerts",
+      "description": "Security alerts",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/security/statistics",
+      "description": "Security statistics",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/financial/stats",
+      "description": "Financial stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/financial/period-stats",
+      "description": "Period stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/logs/admin",
+      "description": "Admin logs",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/logs/security",
+      "description": "Security logs",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/logs/errors",
+      "description": "Error logs",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/logs/logins",
+      "description": "Login logs",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/logs/config-history",
+      "description": "Config history",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/config",
+      "description": "Get config",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/analytics/users",
+      "description": "Analytics users",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/analytics/usage",
+      "description": "Analytics usage",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/analytics/conversion",
+      "description": "Analytics conversion",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/support/tickets",
+      "description": "Support tickets",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/support/templates",
+      "description": "Support templates",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/faq",
+      "description": "FAQ list",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/promotional-codes",
+      "description": "Promo codes",
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
+      "status_code": 404
+    },
+    {
+      "endpoint": "GET /api/admin/transactions",
+      "description": "Transactions",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/transactions/pending",
+      "description": "Pending transactions",
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
+      "status_code": 404
+    },
+    {
+      "endpoint": "GET /api/admin/transactions/charts",
+      "description": "Transaction charts",
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
+      "status_code": 404
+    },
+    {
+      "endpoint": "GET /api/admin/transactions/export",
+      "description": "Export transactions",
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
+      "status_code": 404
+    },
+    {
+      "endpoint": "GET /api/exchange/currencies",
+      "description": "Exchange currencies",
+      "error": "Acceso no autorizado",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/exchange/min-amount?from=btc&to=ton",
+      "description": "Exchange min amount",
+      "error": "Acceso no autorizado",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/exchange/estimate?from=btc&to=ton&amount=0.01",
+      "description": "Exchange estimate",
+      "error": "Acceso no autorizado",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/exchange/create",
+      "description": "Exchange create",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/exchange/status/test123",
+      "description": "Exchange status",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/ton/payment/create",
+      "description": "TON payment create",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/wallet/balance",
+      "description": "Wallet balance",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/wallet/address",
+      "description": "Wallet address",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/wallet/connect",
+      "description": "Wallet connect",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/b3c/calculate/buy",
+      "description": "B3C calculate buy",
+      "error": "Cantidad invalida",
+      "status_code": 400
+    },
+    {
+      "endpoint": "POST /api/b3c/calculate/sell",
+      "description": "B3C calculate sell",
+      "error": "Cantidad invalida",
+      "status_code": 400
+    },
+    {
+      "endpoint": "POST /api/b3c/buy/create",
+      "description": "B3C buy create",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/transactions",
+      "description": "B3C transactions",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/commissions",
+      "description": "B3C commissions",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/deposit/address",
+      "description": "B3C deposit address",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/deposits/history",
+      "description": "B3C deposits history",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/deposits/pending",
+      "description": "B3C deposits pending",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/scheduler/status",
+      "description": "B3C scheduler status",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/b3c/wallet-pool/stats",
+      "description": "B3C wallet pool stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/bots/init",
+      "description": "Init bots",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/bots/my",
+      "description": "My bots",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/bots/available",
+      "description": "Available bots",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/bots/purchase",
+      "description": "Purchase bot",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/bots/1/remove",
+      "description": "Remove bot",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/bots/1/toggle",
+      "description": "Toggle bot",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/bots/1/config",
+      "description": "Get bot config",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/bots/1/config",
+      "description": "Update bot config",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/trackings",
+      "description": "List trackings",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/stats",
+      "description": "Tracking stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/delay-reasons",
+      "description": "Delay reasons",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/statuses",
+      "description": "Available statuses",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/tracking",
+      "description": "Create tracking",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/tracking/TEST123456789",
+      "description": "Get tracking",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "PUT /api/tracking/TEST123456789",
+      "description": "Update tracking",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "PUT /api/tracking/TEST123456789/status",
+      "description": "Update status",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/tracking/TEST123456789/delay",
+      "description": "Add delay",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/tracking/TEST123456789/email",
+      "description": "Send email",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "DELETE /api/tracking/TEST123456789",
+      "description": "Delete tracking",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/me",
+      "description": "Get me",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/me/profile",
+      "description": "Get my profile",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/me/avatar",
+      "description": "Get my avatar",
+      "error": "<!doctype html>\n<html lang=en>\n<title>405 Method Not Allowed</title>\n<h1>Method Not Allowed</h1>\n<p>The method is not allowed for the requested URL.</p>\n",
+      "status_code": 405
+    },
+    {
+      "endpoint": "GET /api/users/8305740334/profile",
+      "description": "Get user profile",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/8305740334/posts",
+      "description": "Get user posts",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/8305740334/followers",
+      "description": "Get followers",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/8305740334/following",
+      "description": "Get following",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/users/8305740334/stats",
+      "description": "Get user stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/messages/unread-count",
+      "description": "Unread messages count",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/conversations",
+      "description": "Conversations",
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
+      "status_code": 404
+    },
+    {
+      "endpoint": "GET /api/posts",
+      "description": "Get posts",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/publications/feed",
+      "description": "Publications feed",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/publications/check-new",
+      "description": "Check new publications",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/devices/trusted",
+      "description": "Trusted devices",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/security/wallet/settings",
+      "description": "Wallet security settings",
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai",
+      "status_code": 404
+    },
+    {
+      "endpoint": "GET /api/vn/providers",
+      "description": "VN providers",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/vn/countries",
+      "description": "VN countries",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/vn/services",
+      "description": "VN services",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/vn/purchase",
+      "description": "VN purchase",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/vn/check/test123",
+      "description": "VN check",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/vn/history",
+      "description": "VN history",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/vn/active",
+      "description": "VN active",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/vn/cancel/test123",
+      "description": "VN cancel",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/vn/stats",
+      "description": "Admin VN stats",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/vn/settings",
+      "description": "Admin VN settings",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/admin/vn/settings",
+      "description": "Admin VN update settings",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/vn/inventory",
+      "description": "Admin VN inventory",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "POST /api/admin/vn/inventory",
+      "description": "Admin VN add inventory",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    },
+    {
+      "endpoint": "GET /api/admin/vn/orders",
+      "description": "Admin VN orders",
+      "error": "Datos de Telegram invalidos",
+      "status_code": 401
+    }
+  ]
+}
