@@ -3514,7 +3514,7 @@ const App = {
             const statusClass = isActive ? 'online' : 'offline';
             const statusText = isActive ? 'Activo' : 'Inactivo';
             
-            if (bot.botType === 'tracking_manager' || bot.botType === 'multi_browser') {
+            if (bot.botType === 'tracking_manager') {
                 return `
                     <div class="bot-card active-bot owner-bot clickable" data-bot-id="${bot.id}" onclick="App.openBotPanel('${this.escapeHtml(bot.botType)}')">
                         <div class="bot-avatar">${bot.icon || '🤖'}</div>
