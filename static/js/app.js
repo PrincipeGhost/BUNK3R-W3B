@@ -6378,6 +6378,10 @@ const App = {
         }
     },
     
+    connectBinanceWallet() {
+        this.showToast('La integracion con Binance estara disponible proximamente', 'info');
+    },
+    
     switchToWallet(type) {
         this.closeB3CModal('b3c-packages-modal');
         this.selectedWalletType = type;
