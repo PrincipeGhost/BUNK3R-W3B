@@ -17,7 +17,7 @@ from flask import request, jsonify, session
 logger = logging.getLogger(__name__)
 
 IS_PRODUCTION = os.environ.get('REPL_DEPLOYMENT', '') == '1'
-BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
 USER_TELEGRAM_ID = os.environ.get('USER_TELEGRAM_ID', '')
 

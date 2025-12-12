@@ -27,7 +27,7 @@ import requests
 
 BASE_URL = "http://127.0.0.1:5000"
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '8305740334')
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
 
 results = {
     'tested': 0,
@@ -38,7 +38,7 @@ results = {
 
 
 def generate_telegram_init_data(user_id=None):
-    """Genera initData simulado para autenticación Telegram."""
+    """Genera initData VÁLIDO para autenticación Telegram según documentación oficial."""
     if user_id is None:
         user_id = OWNER_TELEGRAM_ID
     
@@ -51,17 +51,28 @@ def generate_telegram_init_data(user_id=None):
     }
     
     auth_date = int(time.time())
+    user_json = json.dumps(user_data, separators=(',', ':'))
     
-    data_check_string = f"auth_date={auth_date}\nuser={json.dumps(user_data, separators=(',', ':'))}"
+    data_check_string = f"auth_date={auth_date}\nuser={user_json}"
     
     if BOT_TOKEN:
-        secret_key = hashlib.sha256(BOT_TOKEN.encode()).digest()
-        hash_value = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        secret_key = hmac.new(
+            b'WebAppData',
+            BOT_TOKEN.encode(),
+            hashlib.sha256
+        ).digest()
+        
+        hash_value = hmac.new(
+            secret_key,
+            data_check_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
     else:
-        hash_value = "test_hash_for_development"
+        print("⚠️ BOT_TOKEN no disponible - no se puede generar hash válido")
+        hash_value = "invalid_no_bot_token"
     
     init_data = urllib.parse.urlencode({
-        'user': json.dumps(user_data, separators=(',', ':')),
+        'user': user_json,
         'auth_date': str(auth_date),
         'hash': hash_value
     })
