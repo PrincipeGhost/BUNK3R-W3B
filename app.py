@@ -1275,60 +1275,7 @@ def admin_page():
 # ELIMINADO: /api/admin/user/verify POST - Migrado a admin_bp (12 Dic 2025)
 
 
-@app.route('/api/admin/bots', methods=['GET', 'POST'])
-@require_telegram_auth
-@require_owner
-def admin_manage_bots():
-    """Admin: Gestionar bots del sistema."""
-    try:
-        if not db_manager:
-            return jsonify({'success': False, 'error': 'Database not available'}), 500
-        
-        if request.method == 'GET':
-            with db_manager.get_connection() as conn:
-                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    cur.execute("""
-                        SELECT bt.*, 
-                               (SELECT COUNT(*) FROM user_bots ub WHERE ub.bot_type = bt.bot_type) as users_count
-                        FROM bot_types bt
-                        ORDER BY bt.created_at DESC
-                    """)
-                    bots = cur.fetchall()
-            
-            return jsonify({
-                'success': True,
-                'bots': [dict(b) for b in bots]
-            })
-        
-        else:
-            data = request.get_json() or {}
-            name = data.get('name')
-            bot_type = data.get('type', 'general')
-            description = data.get('description', '')
-            price = data.get('price', 0)
-            icon = data.get('icon', '🤖')
-            
-            if not name:
-                return jsonify({'success': False, 'error': 'Nombre requerido'}), 400
-            
-            with db_manager.get_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO bot_types (bot_name, bot_type, description, price, icon)
-                        VALUES (%s, %s, %s, %s, %s) RETURNING id
-                    """, (name, bot_type, description, price, icon))
-                    new_id = cur.fetchone()[0]
-                    conn.commit()
-            
-            return jsonify({
-                'success': True,
-                'botId': new_id,
-                'message': 'Bot creado correctamente'
-            })
-        
-    except Exception as e:
-        logger.error(f"Error managing bots: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# MIGRADO: /api/admin/bots GET/POST - Migrado a admin_bp (12 Dic 2025)
 
 
 @app.route('/api/admin/bots/<int:bot_id>', methods=['DELETE'])

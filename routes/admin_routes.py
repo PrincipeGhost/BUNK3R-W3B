@@ -6334,5 +6334,988 @@ def update_report(report_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================
+# BOTS ADMIN ENDPOINTS - Migrados desde app.py (12 Dic 2025)
+# ============================================================
+
+@admin_bp.route('/bots', methods=['GET', 'POST'])
+@require_telegram_auth
+@require_owner
+def admin_manage_bots():
+    """Admin: Gestionar bots del sistema."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        if request.method == 'GET':
+            with db_manager.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT bt.*, 
+                               (SELECT COUNT(*) FROM user_bots ub WHERE ub.bot_type = bt.bot_type) as users_count
+                        FROM bot_types bt
+                        ORDER BY bt.created_at DESC
+                    """)
+                    bots = cur.fetchall()
+            
+            return jsonify({
+                'success': True,
+                'bots': [dict(b) for b in bots]
+            })
+        
+        else:
+            data = request.get_json() or {}
+            name = data.get('name')
+            bot_type = data.get('type', 'general')
+            description = data.get('description', '')
+            price = data.get('price', 0)
+            icon = data.get('icon', '🤖')
+            
+            if not name:
+                return jsonify({'success': False, 'error': 'Nombre requerido'}), 400
+            
+            with db_manager.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO bot_types (bot_name, bot_type, description, price, icon)
+                        VALUES (%s, %s, %s, %s, %s) RETURNING id
+                    """, (name, bot_type, description, price, icon))
+                    new_id = cur.fetchone()[0]
+                    conn.commit()
+            
+            return jsonify({
+                'success': True,
+                'botId': new_id,
+                'message': 'Bot creado correctamente'
+            })
+        
+    except Exception as e:
+        logger.error(f"Error managing bots: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/<int:bot_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_bot(bot_id):
+    """Admin: Eliminar un bot."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM bot_types WHERE id = %s", (bot_id,))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                cur.execute("DELETE FROM bot_types WHERE id = %s", (bot_id,))
+                deleted = cur.rowcount > 0
+                conn.commit()
+                
+                if deleted:
+                    return jsonify({'success': True, 'message': 'Bot eliminado'})
+                else:
+                    return jsonify({'success': False, 'error': 'No se pudo eliminar el bot'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error deleting bot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/<int:bot_id>/toggle', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_toggle_bot(bot_id):
+    """Admin: Activar/desactivar un bot."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, is_available FROM bot_types WHERE id = %s", (bot_id,))
+                bot = cur.fetchone()
+                
+                if not bot:
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                new_status = not bot['is_available']
+                cur.execute("UPDATE bot_types SET is_available = %s WHERE id = %s", (new_status, bot_id))
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'isAvailable': new_status,
+                    'message': 'Bot activado' if new_status else 'Bot desactivado'
+                })
+        
+    except Exception as e:
+        logger.error(f"Error toggling bot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/<int:bot_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def admin_update_bot(bot_id):
+    """Admin: Actualizar un bot."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        data = request.get_json() or {}
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id FROM bot_types WHERE id = %s", (bot_id,))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                updates = []
+                params = []
+                
+                if 'name' in data:
+                    updates.append("bot_name = %s")
+                    params.append(data['name'])
+                if 'description' in data:
+                    updates.append("description = %s")
+                    params.append(data['description'])
+                if 'price' in data:
+                    updates.append("price = %s")
+                    params.append(int(data['price']))
+                if 'icon' in data:
+                    updates.append("icon = %s")
+                    params.append(data['icon'])
+                if 'isAvailable' in data:
+                    updates.append("is_available = %s")
+                    params.append(bool(data['isAvailable']))
+                
+                if updates:
+                    params.append(bot_id)
+                    cur.execute(f"UPDATE bot_types SET {', '.join(updates)} WHERE id = %s", params)
+                    conn.commit()
+                
+                return jsonify({'success': True, 'message': 'Bot actualizado'})
+        
+    except Exception as e:
+        logger.error(f"Error updating bot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/stats', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_stats():
+    """Admin: Obtener estadísticas de bots."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        bt.id,
+                        bt.bot_name,
+                        bt.bot_type,
+                        bt.icon,
+                        bt.price,
+                        bt.is_available,
+                        COUNT(ub.id) as total_users,
+                        COUNT(CASE WHEN ub.is_active THEN 1 END) as active_users,
+                        COALESCE(bt.price * COUNT(ub.id), 0) as total_revenue
+                    FROM bot_types bt
+                    LEFT JOIN user_bots ub ON ub.bot_type = bt.bot_type
+                    GROUP BY bt.id, bt.bot_name, bt.bot_type, bt.icon, bt.price, bt.is_available
+                    ORDER BY total_users DESC
+                """)
+                bot_stats = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute("SELECT COUNT(*) as total FROM bot_types")
+                total_bots = cur.fetchone()['total']
+                
+                cur.execute("SELECT COUNT(*) as total FROM bot_types WHERE is_available = true")
+                active_bots = cur.fetchone()['total']
+                
+                cur.execute("SELECT COUNT(*) as total FROM user_bots")
+                total_users_using_bots = cur.fetchone()['total']
+                
+                return jsonify({
+                    'success': True,
+                    'summary': {
+                        'totalBots': total_bots,
+                        'activeBots': active_bots,
+                        'totalUsersUsingBots': total_users_using_bots
+                    },
+                    'botStats': bot_stats
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bot stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/usage', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_usage():
+    """Admin: Obtener datos de uso de bots en el tiempo."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        days = int(request.args.get('days', 30))
+        days = min(days, 90)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+                        COUNT(*) as count
+                    FROM user_bots
+                    WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 day')
+                    GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+                    ORDER BY date
+                """, (days,))
+                usage_data = [dict(row) for row in cur.fetchall()]
+                
+                today = datetime.now().date()
+                
+                complete_data = []
+                for i in range(days, -1, -1):
+                    date_str = (today - timedelta(days=i)).strftime('%Y-%m-%d')
+                    existing = next((d for d in usage_data if d['date'] == date_str), None)
+                    if existing:
+                        complete_data.append(existing)
+                    else:
+                        complete_data.append({'date': date_str, 'count': 0})
+                
+                return jsonify({
+                    'success': True,
+                    'data': complete_data
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bots usage: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/revenue', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_revenue():
+    """Admin: Obtener ingresos por bots."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT COALESCE(SUM(bt.price), 0) as total
+                    FROM user_bots ub
+                    JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                """)
+                total_revenue = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(bt.price), 0) as total
+                    FROM user_bots ub
+                    JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    WHERE ub.created_at >= DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                month_revenue = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT COALESCE(SUM(bt.price), 0) as total
+                    FROM user_bots ub
+                    JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    WHERE ub.created_at >= CURRENT_DATE - INTERVAL '7 days'
+                """)
+                week_revenue = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT 
+                        bt.id,
+                        bt.bot_name as name,
+                        bt.icon,
+                        bt.price,
+                        COUNT(ub.id) as count,
+                        COALESCE(bt.price * COUNT(ub.id), 0) as revenue
+                    FROM bot_types bt
+                    LEFT JOIN user_bots ub ON ub.bot_type = bt.bot_type
+                    GROUP BY bt.id, bt.bot_name, bt.icon, bt.price
+                    ORDER BY revenue DESC
+                """)
+                breakdown = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'data': {
+                        'total': total_revenue,
+                        'month': month_revenue,
+                        'week': week_revenue,
+                        'breakdown': breakdown
+                    }
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bots revenue: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/purchases', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bots_purchases():
+    """Admin: Obtener historial de compras de bots."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        per_page = min(per_page, 50)
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT COUNT(*) as total FROM user_bots")
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT 
+                        ub.id,
+                        ub.user_id,
+                        ub.bot_type,
+                        ub.created_at,
+                        bt.bot_name,
+                        bt.icon,
+                        bt.price,
+                        u.username
+                    FROM user_bots ub
+                    LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    LEFT JOIN users u ON ub.user_id::bigint = u.telegram_id
+                    ORDER BY ub.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (per_page, offset))
+                purchases = [dict(row) for row in cur.fetchall()]
+                
+                return jsonify({
+                    'success': True,
+                    'data': purchases,
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bots purchases: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/bots/<int:bot_id>/logs', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_bot_logs(bot_id):
+    """Admin: Obtener logs de actividad de un bot específico."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        per_page = min(per_page, 100)
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT bot_type FROM bot_types WHERE id = %s", (bot_id,))
+                bot = cur.fetchone()
+                if not bot:
+                    return jsonify({'success': False, 'error': 'Bot no encontrado'}), 404
+                
+                bot_type = bot['bot_type']
+                
+                cur.execute("""
+                    SELECT COUNT(*) as total FROM user_bots WHERE bot_type = %s
+                """, (bot_type,))
+                total = cur.fetchone()['total'] or 0
+                
+                cur.execute("""
+                    SELECT 
+                        ub.id,
+                        ub.user_id,
+                        ub.bot_type,
+                        ub.bot_name,
+                        ub.is_active,
+                        ub.created_at,
+                        ub.config,
+                        u.username,
+                        u.first_name,
+                        bt.price,
+                        bt.icon
+                    FROM user_bots ub
+                    LEFT JOIN users u ON ub.user_id::bigint = u.telegram_id
+                    LEFT JOIN bot_types bt ON ub.bot_type = bt.bot_type
+                    WHERE ub.bot_type = %s
+                    ORDER BY ub.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (bot_type, per_page, offset))
+                logs = [dict(row) for row in cur.fetchall()]
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                cur.execute("""
+                    SELECT COUNT(*) as active_count 
+                    FROM user_bots 
+                    WHERE bot_type = %s AND is_active = TRUE
+                """, (bot_type,))
+                active_count = cur.fetchone()['active_count'] or 0
+                
+                cur.execute("""
+                    SELECT COUNT(*) as today_count 
+                    FROM user_bots 
+                    WHERE bot_type = %s AND created_at >= CURRENT_DATE
+                """, (bot_type,))
+                today_count = cur.fetchone()['today_count'] or 0
+                
+                return jsonify({
+                    'success': True,
+                    'data': logs,
+                    'total': total,
+                    'active_count': active_count,
+                    'today_count': today_count,
+                    'page': page,
+                    'per_page': per_page
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting bot logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN EXTRA ENDPOINTS - Migrados desde app.py (12 Dic 2025)
+# ============================================================
+
+@admin_bp.route('/verifications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_verifications():
+    """Admin: Obtener cola de verificaciones."""
+    try:
+        verifications = []
+        return jsonify({'success': True, 'verifications': verifications})
+        
+    except Exception as e:
+        logger.error(f"Error getting verifications: {e}")
+        return jsonify({'success': False, 'error': str(e), 'verifications': []}), 500
+
+
+@admin_bp.route('/shadow-sessions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_shadow_sessions():
+    """Admin: Obtener historial de sesiones shadow."""
+    try:
+        sessions = []
+        return jsonify({'success': True, 'sessions': sessions})
+        
+    except Exception as e:
+        logger.error(f"Error getting shadow sessions: {e}")
+        return jsonify({'success': False, 'error': str(e), 'sessions': []}), 500
+
+
+@admin_bp.route('/shadow-sessions/start', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_start_shadow_session():
+    """Admin: Iniciar sesion shadow para un usuario."""
+    try:
+        data = request.get_json() or {}
+        telegram_id = data.get('telegramId')
+        
+        if not telegram_id:
+            return jsonify({'success': False, 'error': 'Usuario requerido'}), 400
+        
+        session_url = f"/?shadow_user={telegram_id}"
+        
+        return jsonify({
+            'success': True,
+            'sessionUrl': session_url
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting shadow session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/marketplace', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_marketplace():
+    """Admin: Obtener datos del marketplace."""
+    try:
+        db_manager = get_db_manager()
+        listings = []
+        sales = []
+        
+        if db_manager:
+            with db_manager.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT l.id, l.title, l.price, l.currency, l.status,
+                               l.created_at as "createdAt", u.username as "sellerUsername"
+                        FROM marketplace_listings l
+                        LEFT JOIN users u ON l.seller_id = u.telegram_id
+                        ORDER BY l.created_at DESC
+                        LIMIT 100
+                    """)
+                    listings = [dict(l) for l in cur.fetchall()]
+                    
+                    for listing in listings:
+                        if listing.get('createdAt'):
+                            listing['createdAt'] = listing['createdAt'].isoformat()
+                
+        return jsonify({
+            'success': True,
+            'listings': listings,
+            'sales': sales
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting marketplace: {e}")
+        return jsonify({'success': False, 'error': str(e), 'listings': [], 'sales': []}), 500
+
+
+@admin_bp.route('/client-logs', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_client_logs():
+    """Admin: Obtener logs de cliente para monitoreo de depositos."""
+    try:
+        db_manager = get_db_manager()
+        action_filter = request.args.get('action', 'all')
+        limit = min(int(request.args.get('limit', 100)), 500)
+        mobile_only = request.args.get('mobile', 'false') == 'true'
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'DB no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                query = """
+                    SELECT id, user_id, session_id, log_type, action, details,
+                           platform, is_mobile, is_telegram, created_at
+                    FROM client_logs
+                    WHERE 1=1
+                """
+                params = []
+                
+                if action_filter != 'all':
+                    query += " AND action LIKE %s"
+                    params.append(f"%{action_filter}%")
+                
+                if mobile_only:
+                    query += " AND is_mobile = true"
+                
+                query += " ORDER BY created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, params)
+                logs = cur.fetchall()
+                
+                for log in logs:
+                    if log.get('created_at'):
+                        log['created_at'] = log['created_at'].isoformat()
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs,
+                    'count': len(logs)
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting client logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/logs-simple', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_logs_simple():
+    """Admin: Obtener logs del sistema simplificados."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': True, 'logs': []})
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT log_type as level, action as message, 
+                           TO_CHAR(created_at, 'HH24:MI:SS') as time,
+                           is_mobile, is_telegram, details
+                    FROM client_logs
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """)
+                logs = cur.fetchall()
+                
+                return jsonify({
+                    'success': True,
+                    'logs': logs
+                })
+        
+    except Exception as e:
+        logger.error(f"Error getting logs: {e}")
+        return jsonify({'success': True, 'logs': []})
+
+
+# ============================================================
+# B3C WITHDRAWALS ENDPOINTS - Migrados desde app.py (12 Dic 2025)
+# ============================================================
+
+@admin_bp.route('/b3c/withdrawals', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_b3c_withdrawals():
+    """Admin: Obtener lista de retiros B3C pendientes y procesados."""
+    try:
+        db_manager = get_db_manager()
+        status_filter = request.args.get('status', 'all')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                if status_filter == 'all':
+                    cur.execute("""
+                        SELECT w.*, u.username, u.first_name 
+                        FROM b3c_withdrawals w
+                        LEFT JOIN users u ON w.user_id = u.id
+                        ORDER BY w.created_at DESC
+                        LIMIT 100
+                    """)
+                else:
+                    cur.execute("""
+                        SELECT w.*, u.username, u.first_name 
+                        FROM b3c_withdrawals w
+                        LEFT JOIN users u ON w.user_id = u.id
+                        WHERE w.status = %s
+                        ORDER BY w.created_at DESC
+                        LIMIT 100
+                    """, (status_filter,))
+                
+                withdrawals = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                        COUNT(*) FILTER (WHERE status = 'completed') as processed,
+                        COALESCE(SUM(b3c_amount), 0) as total_b3c
+                    FROM b3c_withdrawals
+                """)
+                stats_row = cur.fetchone()
+        
+        result = []
+        for w in withdrawals:
+            result.append({
+                'id': w['withdrawal_id'],
+                'userId': w['user_id'],
+                'username': w.get('username', 'Unknown'),
+                'firstName': w.get('first_name', 'Unknown'),
+                'amount': float(w['b3c_amount']),
+                'destination': w['destination_wallet'],
+                'status': w['status'],
+                'txHash': w.get('tx_hash'),
+                'createdAt': w['created_at'].isoformat() if w['created_at'] else None,
+                'processedAt': w['processed_at'].isoformat() if w.get('processed_at') else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'withdrawals': result,
+            'count': len(result),
+            'stats': {
+                'totalWithdrawals': stats_row['total'] if stats_row else 0,
+                'pendingCount': stats_row['pending'] if stats_row else 0,
+                'processedCount': stats_row['processed'] if stats_row else 0,
+                'totalB3C': float(stats_row['total_b3c']) if stats_row else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting B3C withdrawals: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/b3c/withdrawals/<withdrawal_id>/process', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_process_b3c_withdrawal(withdrawal_id):
+    """Admin: Procesar un retiro B3C (marcar como completado con hash de transaccion)."""
+    try:
+        db_manager = get_db_manager()
+        data = request.get_json()
+        tx_hash = data.get('txHash', '').strip()
+        action = data.get('action', 'complete')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM b3c_withdrawals WHERE withdrawal_id = %s
+                """, (withdrawal_id,))
+                withdrawal = cur.fetchone()
+                
+                if not withdrawal:
+                    return jsonify({'success': False, 'error': 'Retiro no encontrado'}), 404
+                
+                if action == 'complete':
+                    if not tx_hash:
+                        return jsonify({'success': False, 'error': 'Se requiere el hash de transaccion'}), 400
+                    
+                    cur.execute("""
+                        UPDATE b3c_withdrawals 
+                        SET status = 'completed', tx_hash = %s, processed_at = NOW()
+                        WHERE withdrawal_id = %s
+                    """, (tx_hash, withdrawal_id))
+                    
+                elif action == 'reject':
+                    reason = data.get('reason', 'Rechazado por admin')
+                    cur.execute("""
+                        UPDATE b3c_withdrawals 
+                        SET status = 'rejected', processed_at = NOW()
+                        WHERE withdrawal_id = %s
+                    """, (withdrawal_id,))
+                    
+                    cur.execute("""
+                        INSERT INTO wallet_transactions (user_id, amount, transaction_type, description, reference_id)
+                        VALUES (%s, %s, 'credit', %s, %s)
+                    """, (withdrawal['user_id'], withdrawal['b3c_amount'], 
+                          f'Retiro rechazado: {reason}', withdrawal_id))
+                
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Retiro {action}d exitosamente',
+            'withdrawalId': withdrawal_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing B3C withdrawal: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/b3c/withdrawals/<withdrawal_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_b3c_withdrawal_detail(withdrawal_id):
+    """Admin: Obtener detalle de un retiro B3C."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT w.*, u.username, u.first_name, u.telegram_id
+                    FROM b3c_withdrawals w
+                    LEFT JOIN users u ON w.user_id = u.id
+                    WHERE w.withdrawal_id = %s
+                """, (withdrawal_id,))
+                withdrawal = cur.fetchone()
+                
+                if not withdrawal:
+                    return jsonify({'success': False, 'error': 'Retiro no encontrado'}), 404
+        
+        return jsonify({
+            'success': True,
+            'withdrawal': {
+                'id': withdrawal['withdrawal_id'],
+                'withdrawalId': withdrawal['withdrawal_id'],
+                'userId': withdrawal['user_id'],
+                'username': withdrawal.get('username', 'Unknown'),
+                'userFullName': withdrawal.get('first_name', 'Unknown'),
+                'telegramId': withdrawal.get('telegram_id'),
+                'b3cAmount': float(withdrawal['b3c_amount']),
+                'tonAmount': float(withdrawal.get('ton_amount', 0) or 0),
+                'commission': float(withdrawal.get('commission', 0) or 0),
+                'destinationWallet': withdrawal['destination_wallet'],
+                'status': withdrawal['status'],
+                'txHash': withdrawal.get('tx_hash'),
+                'rejectionReason': withdrawal.get('rejection_reason'),
+                'createdAt': withdrawal['created_at'].isoformat() if withdrawal['created_at'] else None,
+                'processedAt': withdrawal['processed_at'].isoformat() if withdrawal.get('processed_at') else None,
+                'userBalance': float(withdrawal.get('b3c_balance', 0) or 0)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting B3C withdrawal detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# P2P TRANSFERS ENDPOINTS - Migrados desde app.py (12 Dic 2025)
+# ============================================================
+
+@admin_bp.route('/transfers', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_p2p_transfers():
+    """Admin: Obtener lista de transferencias P2P."""
+    try:
+        db_manager = get_db_manager()
+        filter_type = request.args.get('filter', 'all')
+        search = request.args.get('search', '').strip()
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                base_query = """
+                    SELECT t.*, 
+                           u1.username as from_username, u1.first_name as from_name, u1.telegram_id as from_telegram_id,
+                           u2.username as to_username, u2.first_name as to_name, u2.telegram_id as to_telegram_id
+                    FROM wallet_transactions t
+                    LEFT JOIN users u1 ON t.user_id = u1.user_id
+                    LEFT JOIN users u2 ON t.recipient_id = u2.user_id
+                    WHERE t.transaction_type = 'transfer'
+                """
+                
+                params = []
+                
+                if search:
+                    base_query += " AND (u1.username ILIKE %s OR u2.username ILIKE %s)"
+                    params.extend([f'%{search}%', f'%{search}%'])
+                
+                if filter_type == 'suspicious':
+                    base_query += " AND t.is_suspicious = TRUE"
+                elif filter_type == 'today':
+                    base_query += " AND t.created_at >= CURRENT_DATE"
+                
+                base_query += " ORDER BY t.created_at DESC LIMIT 100"
+                
+                cur.execute(base_query, params)
+                transfers = cur.fetchall()
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as today,
+                        COUNT(*) FILTER (WHERE is_suspicious = TRUE) as suspicious,
+                        COALESCE(SUM(ABS(amount)), 0) as total_b3c
+                    FROM wallet_transactions
+                    WHERE transaction_type = 'transfer'
+                """)
+                stats_row = cur.fetchone()
+        
+        result = []
+        for t in transfers:
+            result.append({
+                'id': t['transaction_id'],
+                'transferId': t['transaction_id'],
+                'fromUsername': t.get('from_username', 'Unknown'),
+                'fromUserName': t.get('from_name', ''),
+                'fromTelegramId': t.get('from_telegram_id'),
+                'toUsername': t.get('to_username', 'Unknown'),
+                'toUserName': t.get('to_name', ''),
+                'toTelegramId': t.get('to_telegram_id'),
+                'amount': abs(float(t['amount'])),
+                'note': t.get('description', ''),
+                'isSuspicious': t.get('is_suspicious', False),
+                'suspiciousReason': t.get('suspicious_reason'),
+                'createdAt': t['created_at'].isoformat() if t['created_at'] else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'transfers': result,
+            'stats': {
+                'totalTransfers': stats_row['total'] if stats_row else 0,
+                'todayCount': stats_row['today'] if stats_row else 0,
+                'suspiciousCount': stats_row['suspicious'] if stats_row else 0,
+                'totalB3C': float(stats_row['total_b3c']) if stats_row else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting P2P transfers: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/transfers/<transfer_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_p2p_transfer_detail(transfer_id):
+    """Admin: Obtener detalle de una transferencia P2P."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT t.*, 
+                           u1.username as from_username, u1.first_name as from_name, u1.telegram_id as from_telegram_id,
+                           u2.username as to_username, u2.first_name as to_name, u2.telegram_id as to_telegram_id
+                    FROM wallet_transactions t
+                    LEFT JOIN users u1 ON t.user_id = u1.user_id
+                    LEFT JOIN users u2 ON t.recipient_id = u2.user_id
+                    WHERE t.transaction_id = %s AND t.transaction_type = 'transfer'
+                """, (transfer_id,))
+                transfer = cur.fetchone()
+                
+                if not transfer:
+                    return jsonify({'success': False, 'error': 'Transferencia no encontrada'}), 404
+        
+        return jsonify({
+            'success': True,
+            'transfer': {
+                'id': transfer['transaction_id'],
+                'transferId': transfer['transaction_id'],
+                'fromUsername': transfer.get('from_username', 'Unknown'),
+                'fromUserName': transfer.get('from_name', ''),
+                'fromTelegramId': transfer.get('from_telegram_id'),
+                'toUsername': transfer.get('to_username', 'Unknown'),
+                'toUserName': transfer.get('to_name', ''),
+                'toTelegramId': transfer.get('to_telegram_id'),
+                'amount': abs(float(transfer['amount'])),
+                'note': transfer.get('description', ''),
+                'isSuspicious': transfer.get('is_suspicious', False),
+                'suspiciousReason': transfer.get('suspicious_reason'),
+                'createdAt': transfer['created_at'].isoformat() if transfer['created_at'] else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting P2P transfer detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ==================== FIN DE ENDPOINTS ADMIN ====================
 
