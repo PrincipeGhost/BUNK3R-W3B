@@ -20,7 +20,7 @@ try:
 except ImportError:
     SPAIN_TZ = None
 
-from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL, CREATE_VIRTUAL_NUMBERS_SQL
+from .models import Tracking, ShippingRoute, StatusHistory, CREATE_TABLES_SQL, CREATE_ENCRYPTED_POSTS_SQL, CREATE_VIRTUAL_NUMBERS_SQL, CREATE_MULTITOKEN_WALLET_SQL
 
 logger = logging.getLogger(__name__)
 

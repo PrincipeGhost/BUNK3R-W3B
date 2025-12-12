@@ -1108,6 +1108,99 @@ CREATE INDEX IF NOT EXISTS idx_faqs_published ON faqs(is_published);
 CREATE INDEX IF NOT EXISTS idx_faqs_order ON faqs(display_order);
 """
 
+CREATE_MULTITOKEN_WALLET_SQL = """
+-- ============================================================
+-- SISTEMA DE WALLETS PERSONALES MULTI-TOKEN (Seccion 25)
+-- ============================================================
+
+-- Wallet personal permanente del usuario
+CREATE TABLE IF NOT EXISTS user_wallets (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    address VARCHAR(100) NOT NULL,
+    encrypted_mnemonic TEXT NOT NULL,
+    wallet_version VARCHAR(20) DEFAULT 'v4r2',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_wallets_user ON user_wallets(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_wallets_address ON user_wallets(address);
+
+-- Balances por token (cache sincronizado con blockchain)
+CREATE TABLE IF NOT EXISTS token_balances (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    token_address VARCHAR(100) NOT NULL,
+    token_symbol VARCHAR(20),
+    token_name VARCHAR(100),
+    token_decimals INTEGER DEFAULT 9,
+    token_icon_url TEXT,
+    balance DECIMAL(30,9) DEFAULT 0,
+    balance_usd DECIMAL(20,4) DEFAULT 0,
+    is_main_token BOOLEAN DEFAULT FALSE,
+    display_order INTEGER DEFAULT 999,
+    last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, token_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_balances_user ON token_balances(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_balances_token ON token_balances(token_address);
+CREATE INDEX IF NOT EXISTS idx_token_balances_main ON token_balances(is_main_token);
+
+-- Historial de transacciones de tokens
+CREATE TABLE IF NOT EXISTS token_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    token_address VARCHAR(100) NOT NULL,
+    token_symbol VARCHAR(20),
+    tx_type VARCHAR(20) NOT NULL,
+    amount DECIMAL(30,9) NOT NULL,
+    fee_amount DECIMAL(30,9) DEFAULT 0,
+    platform_fee DECIMAL(30,9) DEFAULT 0,
+    tx_hash VARCHAR(100),
+    from_address VARCHAR(100),
+    to_address VARCHAR(100),
+    internal_receiver_id VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'pending',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_tx_user ON token_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_tx_token ON token_transactions(token_address);
+CREATE INDEX IF NOT EXISTS idx_token_tx_type ON token_transactions(tx_type);
+CREATE INDEX IF NOT EXISTS idx_token_tx_status ON token_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_token_tx_hash ON token_transactions(tx_hash);
+CREATE INDEX IF NOT EXISTS idx_token_tx_created ON token_transactions(created_at DESC);
+
+-- Configuracion de comisiones de retiro (admin)
+CREATE TABLE IF NOT EXISTS withdrawal_fees (
+    id SERIAL PRIMARY KEY,
+    token_address VARCHAR(100) UNIQUE NOT NULL,
+    token_symbol VARCHAR(20),
+    fee_type VARCHAR(10) DEFAULT 'percent',
+    fee_value DECIMAL(10,4) DEFAULT 2.0,
+    min_withdrawal DECIMAL(30,9) DEFAULT 0,
+    max_withdrawal DECIMAL(30,9) DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_withdrawal_fees_token ON withdrawal_fees(token_address);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_fees_active ON withdrawal_fees(is_active);
+
+-- Configuraciones de tokens conocidos
+INSERT INTO withdrawal_fees (token_address, token_symbol, fee_type, fee_value, min_withdrawal, is_active) VALUES
+    ('native', 'TON', 'fixed', 0.05, 0.1, true),
+    ('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs', 'USDT', 'percent', 1.5, 1.0, true)
+ON CONFLICT (token_address) DO NOTHING;
+"""
+
 CREATE_ADVANCED_ADMIN_TABLES_SQL = """
 -- ============================================================
 -- SISTEMA DE PUNTUACION DE RIESGO
@@ -1235,4 +1328,95 @@ CREATE INDEX IF NOT EXISTS idx_related_user1 ON related_accounts(user_id_1);
 CREATE INDEX IF NOT EXISTS idx_related_user2 ON related_accounts(user_id_2);
 CREATE INDEX IF NOT EXISTS idx_related_type ON related_accounts(relation_type);
 CREATE INDEX IF NOT EXISTS idx_related_confirmed ON related_accounts(is_confirmed);
+
+-- ============================================================
+-- SISTEMA DE WALLETS PERSONALES MULTI-TOKEN (Seccion 25)
+-- ============================================================
+
+-- Wallet personal permanente del usuario
+CREATE TABLE IF NOT EXISTS user_wallets (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    address VARCHAR(100) NOT NULL,
+    encrypted_mnemonic TEXT NOT NULL,
+    wallet_version VARCHAR(20) DEFAULT 'v4r2',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_wallets_user ON user_wallets(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_wallets_address ON user_wallets(address);
+
+-- Balances por token (cache sincronizado con blockchain)
+CREATE TABLE IF NOT EXISTS token_balances (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_address VARCHAR(100) NOT NULL,
+    token_symbol VARCHAR(20),
+    token_name VARCHAR(100),
+    token_decimals INTEGER DEFAULT 9,
+    token_icon_url TEXT,
+    balance DECIMAL(30,9) DEFAULT 0,
+    balance_usd DECIMAL(20,4) DEFAULT 0,
+    is_main_token BOOLEAN DEFAULT FALSE,
+    display_order INTEGER DEFAULT 999,
+    last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, token_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_balances_user ON token_balances(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_balances_token ON token_balances(token_address);
+CREATE INDEX IF NOT EXISTS idx_token_balances_main ON token_balances(is_main_token);
+
+-- Historial de transacciones de tokens
+CREATE TABLE IF NOT EXISTS token_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_address VARCHAR(100) NOT NULL,
+    token_symbol VARCHAR(20),
+    tx_type VARCHAR(20) NOT NULL,
+    amount DECIMAL(30,9) NOT NULL,
+    fee_amount DECIMAL(30,9) DEFAULT 0,
+    platform_fee DECIMAL(30,9) DEFAULT 0,
+    tx_hash VARCHAR(100),
+    from_address VARCHAR(100),
+    to_address VARCHAR(100),
+    internal_receiver_id VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'pending',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_tx_user ON token_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_tx_token ON token_transactions(token_address);
+CREATE INDEX IF NOT EXISTS idx_token_tx_type ON token_transactions(tx_type);
+CREATE INDEX IF NOT EXISTS idx_token_tx_status ON token_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_token_tx_hash ON token_transactions(tx_hash);
+CREATE INDEX IF NOT EXISTS idx_token_tx_created ON token_transactions(created_at DESC);
+
+-- Configuracion de comisiones de retiro (admin)
+CREATE TABLE IF NOT EXISTS withdrawal_fees (
+    id SERIAL PRIMARY KEY,
+    token_address VARCHAR(100) UNIQUE NOT NULL,
+    token_symbol VARCHAR(20),
+    fee_type VARCHAR(10) DEFAULT 'percent',
+    fee_value DECIMAL(10,4) DEFAULT 2.0,
+    min_withdrawal DECIMAL(30,9) DEFAULT 0,
+    max_withdrawal DECIMAL(30,9) DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_withdrawal_fees_token ON withdrawal_fees(token_address);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_fees_active ON withdrawal_fees(is_active);
+
+-- Configuraciones de tokens conocidos
+INSERT INTO withdrawal_fees (token_address, token_symbol, fee_type, fee_value, min_withdrawal, is_active) VALUES
+    ('native', 'TON', 'fixed', 0.05, 0.1, true),
+    ('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs', 'USDT', 'percent', 1.5, 1.0, true)
+ON CONFLICT (token_address) DO NOTHING;
 """

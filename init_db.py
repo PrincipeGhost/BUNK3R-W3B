@@ -6,7 +6,7 @@ Creates all required tables for the tracking system and social features
 import os
 import sys
 import logging
-from tracking.models import CREATE_TABLES_SQL, CREATE_SOCIAL_TABLES_SQL, CREATE_ADMIN_TABLES_SQL, CREATE_ADVANCED_ADMIN_TABLES_SQL
+from tracking.models import CREATE_TABLES_SQL, CREATE_SOCIAL_TABLES_SQL, CREATE_ADMIN_TABLES_SQL, CREATE_ADVANCED_ADMIN_TABLES_SQL, CREATE_MULTITOKEN_WALLET_SQL
 from tracking.database import DatabaseManager
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +40,12 @@ def init_database():
         with db_manager.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(CREATE_ADVANCED_ADMIN_TABLES_SQL)
+                conn.commit()
+        
+        logger.info("Creating multi-token wallet tables...")
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(CREATE_MULTITOKEN_WALLET_SQL)
                 conn.commit()
         
         logger.info("Database initialized successfully!")
