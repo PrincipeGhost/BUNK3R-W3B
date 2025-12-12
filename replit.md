@@ -58,6 +58,23 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 
 ## Recent Changes (December 2025)
 
+### Balance Total Multi-Token en USD/EUR - 12 Diciembre 2025
+Nueva funcionalidad para mostrar el valor total de todos los activos del usuario (B3C, TON, USDT) calculado en USD o EUR.
+
+**Archivos creados:**
+- `tracking/price_service.py` - Servicio de precios usando CoinGecko API con cache de 120 segundos
+
+**Nuevos endpoints:**
+- `GET /api/wallet/total-balance?currency=usd|eur` - Calcula el valor total de activos
+- `GET /api/wallet/prices` - Obtiene precios actuales de criptomonedas
+
+**Funcionalidades:**
+- Obtiene precios en tiempo real de TON, USDT, BTC, ETH desde CoinGecko
+- Precio fijo de B3C: $0.10 USD
+- Toggle USD/EUR en la UI con persistencia en localStorage
+- Soporte completo para modo demo (sin autenticación de Telegram)
+- Fallback a precios por defecto cuando la API falla
+
 ### Migration to Flask Blueprints - 10 Diciembre 2025
 Migrated ~30+ endpoints from monolithic `app.py` to modular Flask Blueprints:
 
