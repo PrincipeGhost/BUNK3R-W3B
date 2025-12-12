@@ -29,9 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (!initData) {
-        console.log('[VN] Modo demo requiere autenticacion, redirigiendo al inicio');
-        window.location.href = '/';
-        return;
+        demoSessionToken = sessionStorage.getItem('demoSessionToken');
+        if (demoSessionToken) {
+            isDemoMode = true;
+            console.log('[VN] Modo demo detectado con sesión válida');
+        } else {
+            console.log('[VN] Modo demo requiere autenticacion, redirigiendo al inicio');
+            window.location.href = '/';
+            return;
+        }
     }
     
     initApp();
@@ -84,8 +90,11 @@ async function apiCall(endpoint, options = {}) {
         'Content-Type': 'application/json'
     };
     
-    if (isDemoMode && demoSessionToken) {
-        headers['X-Demo-Session'] = demoSessionToken;
+    if (isDemoMode) {
+        headers['X-Demo-Mode'] = 'true';
+        if (demoSessionToken) {
+            headers['X-Demo-Session'] = demoSessionToken;
+        }
     } else if (initData) {
         headers['X-Telegram-Init-Data'] = initData;
     }
