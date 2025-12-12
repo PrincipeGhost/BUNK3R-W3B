@@ -39,7 +39,7 @@ class PersonalWalletService:
         'B3C': {
             'address': os.environ.get('B3C_TOKEN_ADDRESS', ''),
             'symbol': 'B3C',
-            'name': 'BUNK3R Coin',
+            'name': 'BUNK3RCO1N',
             'decimals': 9,
             'icon': '/static/images/b3c-logo.png',
             'order': 1
