@@ -1204,82 +1204,7 @@ def list_interactive_browsers():
 # MIGRADO A routes/auth_routes.py: /api/demo/2fa/verify, /api/demo/2fa/logout
 
 
-@app.route('/api/admin/2fa/verify', methods=['POST'])
-def verify_admin_2fa():
-    """Verificar código 2FA para el owner que accede desde Telegram al panel admin."""
-    try:
-        init_data = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')
-        
-        if not init_data:
-            return jsonify({'error': 'Se requieren datos de Telegram', 'code': 'NO_INIT_DATA'}), 401
-        
-        validated_data = validate_telegram_webapp_data(init_data)
-        if not validated_data:
-            return jsonify({'error': 'Datos de Telegram inválidos', 'code': 'INVALID_DATA'}), 401
-        
-        user = validated_data.get('user', {})
-        user_id = user.get('id')
-        
-        if not user_id:
-            return jsonify({'error': 'Usuario no identificado'}), 401
-        
-        if not is_owner(user_id):
-            return jsonify({'error': 'Solo disponible para el administrador'}), 403
-        
-        data = request.get_json() or {}
-        code = data.get('code', '').strip()
-        
-        if not code or len(code) != 6:
-            return jsonify({
-                'success': False,
-                'error': 'Código debe ser de 6 dígitos'
-            }), 400
-        
-        if not db_manager:
-            return jsonify({'error': 'Database not available'}), 500
-        
-        secret = db_manager.get_user_totp_secret(str(user_id))
-        
-        if not secret:
-            return jsonify({
-                'success': False,
-                'error': '2FA no está configurado para esta cuenta'
-            }), 400
-        
-        totp = pyotp.TOTP(secret, interval=30)
-        is_valid = totp.verify(code, valid_window=1)
-        
-        if not is_valid:
-            totp_60 = pyotp.TOTP(secret, interval=60)
-            is_valid = totp_60.verify(code, valid_window=1)
-        
-        if is_valid:
-            import secrets as sec_module
-            admin_session_token = sec_module.token_urlsafe(32)
-            session['admin_2fa_token'] = admin_session_token
-            session['admin_2fa_user_id'] = str(user_id)
-            session['admin_2fa_created_at'] = datetime.now().isoformat()
-            session['admin_2fa_valid'] = True
-            session.permanent = True
-            
-            db_manager.update_2fa_verified_time(str(user_id))
-            
-            logger.info(f"✅ Admin 2FA verified for owner {user_id}")
-            return jsonify({
-                'success': True,
-                'sessionToken': admin_session_token,
-                'message': 'Verificación exitosa'
-            })
-        else:
-            logger.warning(f"❌ Admin 2FA failed for owner {user_id}")
-            return jsonify({
-                'success': False,
-                'error': 'Código incorrecto'
-            }), 401
-            
-    except Exception as e:
-        logger.error(f"Error verifying admin 2FA: {e}")
-        return jsonify({'success': False, 'error': 'Error interno'}), 500
+# ELIMINADO: /api/admin/2fa/verify POST - Migrado a admin_bp (admin_routes.py línea 5871)
 
 
 def ensure_user_exists(user_data, db_mgr):
@@ -2806,50 +2731,7 @@ def create_publication():
 
 
 
-@app.route('/api/admin/reports', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def get_reports():
-    """Admin: Get content reports"""
-    try:
-        status = request.args.get('status', 'pending')
-        limit = int(request.args.get('limit', 50))
-        offset = int(request.args.get('offset', 0))
-        
-        reports = db_manager.get_reports(status, limit, offset)
-        
-        return jsonify({
-            'success': True,
-            'reports': reports
-        })
-        
-    except Exception as e:
-        logger.error(f"Error getting reports: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/admin/reports/<int:report_id>', methods=['PUT'])
-@require_telegram_auth
-@require_owner
-def update_report(report_id):
-    """Admin: Update report status"""
-    try:
-        admin_id = str(request.telegram_user.get('id', 0))
-        data = request.get_json() or {}
-        
-        status = data.get('status')
-        notes = data.get('notes')
-        
-        if not status:
-            return jsonify({'success': False, 'error': 'Estado requerido'}), 400
-        
-        success = db_manager.update_report_status(report_id, status, admin_id, notes)
-        
-        return jsonify({'success': success})
-        
-    except Exception as e:
-        logger.error(f"Error updating report: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# ELIMINADO: /api/admin/reports GET/PUT - Migrado a admin_bp (admin_routes.py líneas 5959, 5985)
 
 
 # ============================================================
@@ -2951,66 +2833,7 @@ def log_config_change(config_key, old_value, new_value, changed_by_id, changed_b
         logger.error(f"Error logging config change: {e}")
 
 
-@app.route('/api/admin/config', methods=['GET'])
-@require_telegram_auth
-@require_owner
-def admin_get_config():
-    """Admin: Obtener configuración del sistema."""
-    try:
-        if not db_manager:
-            return jsonify({'success': True, 'config': {}})
-        
-        with db_manager.get_connection() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("SELECT config_key, config_value, config_type FROM system_config")
-                rows = cur.fetchall()
-                
-                config = {}
-                for row in rows:
-                    value = row['config_value']
-                    if row['config_type'] == 'number':
-                        value = float(value) if '.' in str(value) else int(value)
-                    elif row['config_type'] == 'boolean':
-                        value = value.lower() == 'true'
-                    config[row['config_key']] = value
-                
-                return jsonify({'success': True, 'config': config})
-    
-    except Exception as e:
-        logger.error(f"Error getting config: {e}")
-        return jsonify({'success': True, 'config': {}})
-
-
-@app.route('/api/admin/config', methods=['POST'])
-@require_telegram_auth
-@require_owner  
-def admin_update_config():
-    """Admin: Actualizar configuración del sistema."""
-    try:
-        data = request.get_json()
-        user_id = getattr(request, 'user_id', '0')
-        
-        if not db_manager:
-            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
-        
-        with db_manager.get_connection() as conn:
-            with conn.cursor() as cur:
-                for key, value in data.items():
-                    cur.execute("""
-                        UPDATE system_config 
-                        SET config_value = %s, updated_at = NOW(), updated_by = %s
-                        WHERE config_key = %s
-                    """, (str(value), user_id, key))
-            conn.commit()
-        
-        log_admin_action(user_id, 'Admin', 'config_update', 'system_config', None, 
-                        f"Updated config: {list(data.keys())}", {'changes': data})
-        
-        return jsonify({'success': True, 'message': 'Configuración actualizada'})
-    
-    except Exception as e:
-        logger.error(f"Error updating config: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# ELIMINADO: /api/admin/config GET/POST - Migrado a admin_bp (admin_routes.py líneas 2740, 2771)
 
 
 # ELIMINADO: /api/admin/blocked-ips GET/POST/DELETE - Migrado a admin_bp
