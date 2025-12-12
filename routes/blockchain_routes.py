@@ -2204,37 +2204,15 @@ def get_total_balance():
         if hasattr(request, 'telegram_user') and request.telegram_user:
             user_id = str(request.telegram_user.get('id', 0))
         
-        def get_demo_response():
-            """Generar respuesta con datos demo."""
-            demo_tokens = [
-                {'symbol': 'B3C', 'balance': 1250.50},
-                {'symbol': 'TON', 'balance': 15.75},
-                {'symbol': 'USDT', 'balance': 100.00}
-            ]
-            balance_result = price_service.calculate_total_balance(demo_tokens, currency)
-            return jsonify({
-                'success': True,
-                'total': balance_result['total'],
-                'currency': balance_result['currency'],
-                'breakdown': balance_result['breakdown'],
-                'prices': balance_result['prices'],
-                'last_update': balance_result['last_update'],
-                'is_demo': True
-            })
-        
-        if is_demo or not user_id:
-            return get_demo_response()
+        if is_demo and not user_id:
+            user_id = '0'
         
         service = get_personal_wallet_service()
         if not service:
-            if is_demo or not IS_PRODUCTION:
-                return get_demo_response()
             return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
         
         assets_result = service.get_user_assets(user_id)
         if not assets_result.get('success'):
-            if is_demo or not IS_PRODUCTION:
-                return get_demo_response()
             return jsonify({'success': False, 'error': 'Error al obtener activos'}), 500
         
         all_tokens = assets_result.get('main_tokens', []) + assets_result.get('other_tokens', [])
