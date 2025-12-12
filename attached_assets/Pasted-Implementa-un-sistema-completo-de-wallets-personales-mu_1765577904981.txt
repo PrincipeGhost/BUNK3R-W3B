@@ -1,0 +1,224 @@
+Implementa un sistema completo de wallets personales multi-token en la red TON para la plataforma existente.
+
+═══════════════════════════════════════════════════════════════
+CONTEXTO ACTUAL DEL PROYECTO:
+═══════════════════════════════════════════════════════════════
+- Token B3C ya implementado como Jetton en TON
+- Sistema de wallet pool existente con consolidación al hot wallet
+- Usuarios usan wallets temporales del pool para recargar
+- Flask backend + tonsdk para operaciones TON
+
+═══════════════════════════════════════════════════════════════
+ARQUITECTURA DEL NUEVO SISTEMA:
+═══════════════════════════════════════════════════════════════
+
+1. WALLET PERSONAL PERMANENTE POR USUARIO
+   - Crear wallet TON única al registrar usuario (o primera visita)
+   - Guardar: dirección pública + mnemonic encriptado (AES-256)
+   - Esta wallet es PROPIEDAD del usuario (puede retirar)
+   - NO se consolidan fondos automáticamente (quedan en wallet del usuario)
+   - Mostrar siempre la misma dirección (QR + botón copiar)
+
+2. TOKENS SOPORTADOS (en orden de prioridad UI):
+   PRINCIPALES (siempre visibles):
+   - B3C: Nuestro token (contrato: [usar el existente])
+   - USDT: EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs
+   - TON: Nativo
+   
+   DETECCIÓN AUTOMÁTICA:
+   - Detectar y mostrar CUALQUIER Jetton que depositen
+   - Consultar metadata del Jetton (nombre, símbolo, decimales)
+   - Mostrar en sección "Otros Tokens" debajo de los principales
+
+3. FLUJO DE DEPÓSITOS:
+   Usuario deposita → Sistema detecta tx entrante →
+   Identifica tipo de token (por contrato Jetton) →
+   Actualiza balance del token correspondiente →
+   NO convierte automáticamente (usuario mantiene el token original) →
+   Notifica al usuario del depósito recibido
+
+4. FLUJO DE RETIROS:
+   Usuario solicita retiro de X token →
+   Sistema calcula: monto + gas fee + comisión plataforma →
+   Descuenta TODO del balance del usuario →
+   Ejecuta transferencia desde wallet del usuario →
+   Registra transacción
+
+   COMISIONES RETIRO:
+   - Gas fee de red: Se cobra del balance del usuario
+   - Comisión plataforma: Configurable por admin (% o fijo)
+
+5. USO DE TOKENS EN PLATAFORMA:
+   - SOLO B3C sirve para: compras marketplace, bots, funciones internas
+   - USDT/TON/otros: Solo para mantener, transferir, retirar
+   - Para usar servicios: Usuario debe convertir a B3C primero
+
+6. CONSOLIDACIÓN (CASOS ESPECÍFICOS):
+   MANTENER consolidación SOLO para:
+   - Marketplace P2P (escrow para evitar estafas)
+   - Compras directas de B3C desde bots/funciones especiales
+   
+   NO consolidar:
+   - Depósitos normales a wallet personal
+   - Tokens que el usuario quiere mantener
+
+═══════════════════════════════════════════════════════════════
+UI/UX - SECCIÓN "MIS ACTIVOS":
+═══════════════════════════════════════════════════════════════
+
+VISTA PRINCIPAL:
+┌─────────────────────────────────────┐
+│ 💼 Mis Activos                      │
+├─────────────────────────────────────┤
+│ [QR CODE]                           │
+│ Tu dirección de depósito:           │
+│ UQBxx...xxx [📋 Copiar]             │
+│ Acepta: TON, USDT, B3C y más        │
+├─────────────────────────────────────┤
+│ TOKENS PRINCIPALES                  │
+│ ┌─────────────────────────────────┐ │
+│ │ 🪙 B3C         1,250.00    [→]  │ │
+│ │ 💵 USDT          50.00    [→]  │ │
+│ │ 💎 TON            2.50    [→]  │ │
+│ └─────────────────────────────────┘ │
+├─────────────────────────────────────┤
+│ OTROS TOKENS                        │
+│ ┌─────────────────────────────────┐ │
+│ │ 🐕 DOGS         100.00    [→]  │ │
+│ │ 🐹 HMSTR        500.00    [→]  │ │
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+
+AL HACER CLICK EN TOKEN [→]:
+- Ver balance detallado
+- Historial de transacciones de ese token
+- Botón "Retirar"
+- Botón "Enviar" (a otro usuario interno)
+
+═══════════════════════════════════════════════════════════════
+BASE DE DATOS:
+═══════════════════════════════════════════════════════════════
+
+-- Wallet personal del usuario
+CREATE TABLE user_wallets (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(50) UNIQUE NOT NULL,
+    address VARCHAR(100) NOT NULL,
+    encrypted_mnemonic TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Balances por token (cache, se sincroniza con blockchain)
+CREATE TABLE token_balances (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
+    token_address VARCHAR(100) NOT NULL, -- 'native' para TON
+    token_symbol VARCHAR(20),
+    token_name VARCHAR(100),
+    token_decimals INTEGER DEFAULT 9,
+    balance DECIMAL(30,9) DEFAULT 0,
+    last_synced TIMESTAMP,
+    UNIQUE(user_id, token_address)
+);
+
+-- Historial de transacciones
+CREATE TABLE token_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
+    token_address VARCHAR(100) NOT NULL,
+    tx_type VARCHAR(20), -- 'deposit', 'withdraw', 'send', 'receive'
+    amount DECIMAL(30,9),
+    fee_amount DECIMAL(30,9),
+    platform_fee DECIMAL(30,9),
+    tx_hash VARCHAR(100),
+    from_address VARCHAR(100),
+    to_address VARCHAR(100),
+    status VARCHAR(20), -- 'pending', 'completed', 'failed'
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Configuración de comisiones (admin)
+CREATE TABLE withdrawal_fees (
+    id SERIAL PRIMARY KEY,
+    token_address VARCHAR(100) UNIQUE,
+    fee_type VARCHAR(10), -- 'percent' o 'fixed'
+    fee_value DECIMAL(10,4),
+    min_withdrawal DECIMAL(30,9),
+    is_active BOOLEAN DEFAULT true
+);
+
+═══════════════════════════════════════════════════════════════
+API ENDPOINTS:
+═══════════════════════════════════════════════════════════════
+
+GET  /api/wallet/personal          - Obtener/crear wallet personal
+GET  /api/wallet/assets            - Listar todos los tokens y balances
+GET  /api/wallet/assets/{token}    - Detalle de un token específico
+GET  /api/wallet/transactions      - Historial general
+GET  /api/wallet/transactions/{token} - Historial por token
+POST /api/wallet/withdraw          - Solicitar retiro
+POST /api/wallet/send              - Enviar a usuario interno
+GET  /api/wallet/sync              - Forzar sincronización con blockchain
+
+ADMIN:
+GET  /api/admin/wallet/fees        - Ver comisiones configuradas
+POST /api/admin/wallet/fees        - Configurar comisiones
+
+═══════════════════════════════════════════════════════════════
+DETECCIÓN DE DEPÓSITOS (Background Job):
+═══════════════════════════════════════════════════════════════
+
+Cada 30 segundos:
+1. Obtener lista de wallets de usuarios activos
+2. Para cada wallet, consultar transacciones recientes
+3. Identificar transacciones nuevas (no procesadas)
+4. Para cada tx:
+   - Si es TON nativo: actualizar balance TON
+   - Si es Jetton: identificar contrato, obtener metadata, actualizar balance
+5. Registrar en token_transactions
+6. Notificar al usuario (opcional: push/toast)
+
+═══════════════════════════════════════════════════════════════
+NOTAS TÉCNICAS:
+═══════════════════════════════════════════════════════════════
+
+- Usar tonsdk para generar wallets y firmar transacciones
+- TON Center API o similar para consultar balances Jetton
+- Endpoint Jettons: GET /v2/accounts/{address}/jettons
+- Encriptar mnemonics con clave derivada de SECRET_KEY
+- Cache de balances con TTL 30 segundos
+- Rate limiting en endpoints de retiro
+
+═══════════════════════════════════════════════════════════════
+PENDIENTES PARA IMPLEMENTAR DESPUÉS:
+═══════════════════════════════════════════════════════════════
+
+[ ] Exchange interno (USDT ↔ B3C, TON ↔ B3C, etc.)
+[ ] Comisiones por conversión USDT → B3C (actualmente gratis)
+[ ] Comisiones por intercambio entre otros tokens
+[ ] Límites de retiro diarios/mensuales
+[ ] Verificación KYC para retiros grandes
+[ ] Notificaciones push de depósitos
+
+═══════════════════════════════════════════════════════════════
+COMPATIBILIDAD:
+═══════════════════════════════════════════════════════════════
+
+- Mantener sistema actual de consolidación para marketplace/escrow
+- Migrar usuarios existentes: crear wallet personal en primer login
+- Balance B3C actual se mantiene como está (es interno)
+- esta  sección es la de la wallet que ya tenemos con esto complementa, no reemplaza wallet actual┌─────────────────────────────────────┐
+│ BALANCE DISPONIBLE                  │  ← SE MANTIENE
+│ 0.00 B3C                            │
+│ ~$0.00 USD                          │
+│ [↓Depositar] [↑Retirar] [⟲Transf]   │
+├─────────────────────────────────────┤
+│ 💼 MIS ACTIVOS                      │  ← NUEVO (reemplaza Wallet TON)
+│ TOKENS PRINCIPALES                  │
+│ 🪙 B3C         1,250.00       [→]   │
+│ 💵 USDT           50.00       [→]   │
+│ 💎 TON             2.50       [→]   │
+│ ─────────────────────────           │
+│ OTROS TOKENS (detectados)          │
+│ 🐕 DOGS          100.00       [→]   │
+└─────────────────────────────────────┘El QR y dirección de depósito se mostrarán solo cuando el usuario presione "Depositar" (en un modal o vista), no siempre visibles.
