@@ -1227,6 +1227,189 @@ def admin_save_user_tags(user_id):
 
 
 # ============================================================
+# ADMIN USER LEGACY ENDPOINTS (Migrados 12 Diciembre 2025)
+# ============================================================
+
+
+@admin_bp.route('/user/<user_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_user_basic(user_id):
+    """Admin: Obtener detalle básico de un usuario (legacy endpoint)."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, first_name, last_name, telegram_id, 
+                           credits, level, is_active, is_verified, wallet_address,
+                           created_at, last_seen, bio, avatar_url,
+                           COALESCE(is_banned, false) as is_banned,
+                           two_factor_enabled, security_score
+                    FROM users WHERE id = %s OR telegram_id::text = %s
+                """, (str(user_id), str(user_id)))
+                user = cur.fetchone()
+                
+                if not user:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                cur.execute("SELECT COUNT(*) as total FROM wallet_transactions WHERE user_id = %s", (user_id,))
+                total_tx = cur.fetchone()['total'] or 0
+                
+                user_data = {
+                    'user_id': str(user['id']),
+                    'id': user['id'],
+                    'telegram_id': user.get('telegram_id'),
+                    'username': user.get('username'),
+                    'first_name': user.get('first_name'),
+                    'last_name': user.get('last_name'),
+                    'bio': user.get('bio'),
+                    'avatar_url': user.get('avatar_url'),
+                    'credits': float(user.get('credits', 0)),
+                    'level': user.get('level', 1),
+                    'is_active': user.get('is_active', True),
+                    'is_verified': user.get('is_verified', False),
+                    'is_banned': user.get('is_banned', False),
+                    'wallet_address': user.get('wallet_address'),
+                    'two_factor_enabled': user.get('two_factor_enabled', False),
+                    'security_score': user.get('security_score', 0),
+                    'created_at': str(user.get('created_at', '')),
+                    'last_seen': str(user.get('last_seen', '')),
+                    'total_transactions': total_tx,
+                    'language_code': 'es'
+                }
+        
+        return jsonify({
+            'success': True,
+            'user': user_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/user/credits', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_add_credits():
+    """Admin: Agregar creditos a un usuario."""
+    try:
+        db_manager = get_db_manager()
+        data = request.get_json() or {}
+        user_id = data.get('userId')
+        amount = data.get('amount', 0)
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'ID de usuario requerido'}), 400
+        
+        if not amount or amount == 0:
+            return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                cur.execute("""
+                    UPDATE users SET credits = credits + %s 
+                    WHERE id = %s RETURNING credits
+                """, (amount, user_id))
+                result = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'newCredits': result[0] if result else 0,
+                    'message': f'{amount} creditos agregados'
+                })
+        
+    except Exception as e:
+        logger.error(f"Error adding credits: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/user/toggle-status', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_toggle_user_status():
+    """Admin: Cambiar estado activo/inactivo de un usuario."""
+    try:
+        db_manager = get_db_manager()
+        data = request.get_json() or {}
+        user_id = data.get('userId')
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'ID de usuario requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, is_active FROM users WHERE id = %s", (user_id,))
+                user = cur.fetchone()
+                if not user:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                cur.execute("""
+                    UPDATE users SET is_active = NOT is_active 
+                    WHERE id = %s RETURNING is_active
+                """, (user_id,))
+                result = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'isActive': result[0] if result else not user[1]
+                })
+        
+    except Exception as e:
+        logger.error(f"Error toggling user status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/user/verify', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_verify_user():
+    """Admin: Cambiar estado de verificación de un usuario."""
+    try:
+        db_manager = get_db_manager()
+        data = request.get_json() or {}
+        user_id = data.get('userId')
+        is_verified = data.get('isVerified', False)
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'ID de usuario requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Database not available'}), 500
+        
+        success = db_manager.set_user_verified(user_id, is_verified)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'isVerified': is_verified,
+                'message': 'Usuario verificado' if is_verified else 'Verificación removida'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error verifying user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
 # ADMIN STATS ENDPOINTS (Migrados 9 Diciembre 2025)
 # ============================================================
 
