@@ -184,10 +184,8 @@ const App = {
         this.userInitials = 'D';
         this.userPhotoUrl = null;
         
-        const savedToken = sessionStorage.getItem('demoSessionToken');
-        if (savedToken) {
-            this.demoSessionToken = savedToken;
-        }
+        sessionStorage.removeItem('demoSessionToken');
+        this.demoSessionToken = null;
         
         await this.check2FAStatus();
     },
@@ -447,7 +445,6 @@ const App = {
             
             if (data.success && data.sessionToken) {
                 this.demoSessionToken = data.sessionToken;
-                sessionStorage.setItem('demoSessionToken', data.sessionToken);
                 
                 const demoScreen = document.getElementById('demo-2fa-screen');
                 if (demoScreen) demoScreen.classList.add('hidden');

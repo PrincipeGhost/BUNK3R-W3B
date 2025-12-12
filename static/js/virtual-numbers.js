@@ -29,16 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (!initData) {
-        const savedToken = sessionStorage.getItem('demoSessionToken');
-        if (savedToken) {
-            demoSessionToken = savedToken;
-            isDemoMode = true;
-            console.log('[VN] Modo demo detectado con sesion guardada');
-        } else {
-            console.log('[VN] No hay sesion, redirigiendo al inicio para autenticar');
-            window.location.href = '/';
-            return;
-        }
+        console.log('[VN] Modo demo requiere autenticacion, redirigiendo al inicio');
+        window.location.href = '/';
+        return;
     }
     
     initApp();

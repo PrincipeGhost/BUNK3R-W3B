@@ -4302,11 +4302,11 @@ const AdminPanel = {
     },
     
     getDemoSessionToken() {
-        return localStorage.getItem('demo_session_token') || null;
+        return this._demoSessionToken || null;
     },
     
     getAdminSessionToken() {
-        return localStorage.getItem('admin_session_token') || null;
+        return this._adminSessionToken || null;
     },
     
     isTelegramMode() {
@@ -4442,11 +4442,9 @@ const AdminPanel = {
             const token = data.sessionToken || data.session_token;
             if (data.success && token) {
                 if (isTelegram) {
-                    this.adminSessionToken = token;
-                    localStorage.setItem('admin_session_token', token);
+                    this._adminSessionToken = token;
                 } else {
-                    this.demoSessionToken = token;
-                    localStorage.setItem('demo_session_token', token);
+                    this._demoSessionToken = token;
                 }
                 document.getElementById('admin2FAModal').remove();
                 this.showToast('Verificación exitosa', 'success');
