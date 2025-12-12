@@ -1479,6 +1479,7 @@ const App = {
             this.startB3CPricePolling();
             this.loadB3CBalance();
             this.loadPersonalWalletAssets();
+            this.loadTotalBalance();
         }
         
         if (pageName === 'explore') {
@@ -4648,6 +4649,107 @@ const App = {
                 estEl.textContent = `~${Math.floor(b3c).toLocaleString()} B3C`;
             }
         });
+    },
+
+    preferredCurrency: 'usd',
+    totalBalanceData: null,
+
+    async refreshTotalBalance() {
+        const refreshBtn = document.querySelector('.neo-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.add('spinning');
+        }
+        
+        try {
+            await Promise.all([
+                this.loadTotalBalance(),
+                this.loadPersonalWalletAssets()
+            ]);
+        } finally {
+            if (refreshBtn) {
+                setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+            }
+        }
+    },
+
+    async loadTotalBalance() {
+        try {
+            const savedCurrency = localStorage.getItem('preferredCurrency');
+            if (savedCurrency && (savedCurrency === 'usd' || savedCurrency === 'eur')) {
+                this.preferredCurrency = savedCurrency;
+            }
+            
+            const response = await this.apiRequest(`/api/wallet/total-balance?currency=${this.preferredCurrency}`);
+            if (response.success) {
+                this.totalBalanceData = response;
+                this.updateTotalBalanceUI(response);
+            }
+        } catch (error) {
+            console.error('Error loading total balance:', error);
+        }
+    },
+
+    updateTotalBalanceUI(data) {
+        const totalEl = document.getElementById('wallet-total-balance');
+        const symbolEl = document.getElementById('balance-currency-symbol');
+        const labelEl = document.getElementById('balance-currency-label');
+        const tokenCountEl = document.getElementById('balance-token-count');
+        
+        if (totalEl) {
+            const total = data.total || 0;
+            totalEl.textContent = total.toLocaleString('en-US', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
+        }
+        
+        if (symbolEl) {
+            symbolEl.textContent = data.currency === 'EUR' ? '\u20AC' : '$';
+        }
+        
+        if (labelEl) {
+            labelEl.textContent = data.currency || 'USD';
+        }
+        
+        if (tokenCountEl && data.breakdown) {
+            const activeTokens = data.breakdown.filter(t => t.value > 0).length;
+            tokenCountEl.textContent = `${activeTokens} activo${activeTokens !== 1 ? 's' : ''} con valor`;
+        }
+    },
+
+    toggleBalanceCurrency() {
+        this.preferredCurrency = this.preferredCurrency === 'usd' ? 'eur' : 'usd';
+        localStorage.setItem('preferredCurrency', this.preferredCurrency);
+        
+        if (this.totalBalanceData && this.totalBalanceData.prices) {
+            const prices = this.totalBalanceData.prices;
+            let newTotal = 0;
+            const newBreakdown = [];
+            
+            if (this.totalBalanceData.breakdown) {
+                this.totalBalanceData.breakdown.forEach(item => {
+                    const symbol = item.symbol;
+                    const balance = item.balance;
+                    let price = 0;
+                    
+                    if (prices[symbol]) {
+                        price = prices[symbol][this.preferredCurrency] || 0;
+                    }
+                    
+                    const value = balance * price;
+                    newTotal += value;
+                    newBreakdown.push({ ...item, price, value });
+                });
+            }
+            
+            this.totalBalanceData.total = Math.round(newTotal * 100) / 100;
+            this.totalBalanceData.currency = this.preferredCurrency.toUpperCase();
+            this.totalBalanceData.breakdown = newBreakdown;
+            
+            this.updateTotalBalanceUI(this.totalBalanceData);
+        } else {
+            this.loadTotalBalance();
+        }
     },
 
     async refreshB3CBalance() {

@@ -2739,6 +2739,48 @@ select:focus-visible {
     margin-top: 4px;
 }
 
+.neo-balance-currency-symbol {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-right: 2px;
+}
+
+.neo-currency-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(240, 185, 11, 0.15);
+    border: 1px solid rgba(240, 185, 11, 0.3);
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+}
+
+.neo-currency-toggle:hover {
+    background: rgba(240, 185, 11, 0.25);
+    border-color: rgba(240, 185, 11, 0.5);
+}
+
+.neo-currency-toggle svg {
+    transition: transform 0.2s ease;
+}
+
+.neo-currency-toggle:hover svg {
+    transform: translateY(2px);
+}
+
+.neo-balance-tokens {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+}
+
 .neo-refresh-btn {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);

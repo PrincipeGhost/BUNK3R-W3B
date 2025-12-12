@@ -2181,3 +2181,97 @@ def get_withdrawal_fee(token_address):
     except Exception as e:
         logger.error(f"Error getting withdrawal fee: {e}")
         return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/total-balance', methods=['GET'])
+def get_total_balance():
+    """
+    Calcular el balance total de todos los activos del usuario en USD o EUR.
+    Query params:
+        - currency: 'usd' o 'eur' (default: 'usd')
+    Soporta modo demo cuando no hay autenticación de Telegram o servicio no disponible.
+    """
+    try:
+        from tracking.price_service import price_service
+        
+        currency = request.args.get('currency', 'usd').lower()
+        if currency not in ['usd', 'eur']:
+            currency = 'usd'
+        
+        is_demo = request.headers.get('X-Demo-Mode') == 'true' and not IS_PRODUCTION
+        user_id = None
+        
+        if hasattr(request, 'telegram_user') and request.telegram_user:
+            user_id = str(request.telegram_user.get('id', 0))
+        
+        def get_demo_response():
+            """Generar respuesta con datos demo."""
+            demo_tokens = [
+                {'symbol': 'B3C', 'balance': 1250.50},
+                {'symbol': 'TON', 'balance': 15.75},
+                {'symbol': 'USDT', 'balance': 100.00}
+            ]
+            balance_result = price_service.calculate_total_balance(demo_tokens, currency)
+            return jsonify({
+                'success': True,
+                'total': balance_result['total'],
+                'currency': balance_result['currency'],
+                'breakdown': balance_result['breakdown'],
+                'prices': balance_result['prices'],
+                'last_update': balance_result['last_update'],
+                'is_demo': True
+            })
+        
+        if is_demo or not user_id:
+            return get_demo_response()
+        
+        service = get_personal_wallet_service()
+        if not service:
+            if is_demo or not IS_PRODUCTION:
+                return get_demo_response()
+            return jsonify({'success': False, 'error': 'Servicio no disponible'}), 503
+        
+        assets_result = service.get_user_assets(user_id)
+        if not assets_result.get('success'):
+            if is_demo or not IS_PRODUCTION:
+                return get_demo_response()
+            return jsonify({'success': False, 'error': 'Error al obtener activos'}), 500
+        
+        all_tokens = assets_result.get('main_tokens', []) + assets_result.get('other_tokens', [])
+        token_balances = [
+            {'symbol': t.get('symbol', ''), 'balance': t.get('balance', 0)}
+            for t in all_tokens
+        ]
+        balance_result = price_service.calculate_total_balance(token_balances, currency)
+        return jsonify({
+            'success': True,
+            'total': balance_result['total'],
+            'currency': balance_result['currency'],
+            'breakdown': balance_result['breakdown'],
+            'prices': balance_result['prices'],
+            'last_update': balance_result['last_update'],
+            'is_demo': False
+        })
+        
+    except Exception as e:
+        logger.error(f"Error calculating total balance: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+
+@blockchain_bp.route('/api/wallet/prices', methods=['GET'])
+def get_crypto_prices():
+    """Obtener precios actuales de criptomonedas."""
+    try:
+        from tracking.price_service import price_service
+        
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        prices = price_service.get_prices(force_refresh=force_refresh)
+        
+        return jsonify({
+            'success': True,
+            'prices': prices
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting crypto prices: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500

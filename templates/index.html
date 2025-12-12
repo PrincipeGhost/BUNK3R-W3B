@@ -787,14 +787,20 @@
                 <div class="neo-balance-card">
                     <div class="neo-balance-main">
                         <div class="neo-balance-info">
-                            <span class="neo-balance-label">Balance disponible</span>
+                            <span class="neo-balance-label">Balance Total</span>
                             <div class="neo-balance-amount">
-                                <span class="neo-balance-value" id="wallet-balance">0.00</span>
-                                <span class="neo-balance-currency">B3C</span>
+                                <span class="neo-balance-currency-symbol" id="balance-currency-symbol">$</span>
+                                <span class="neo-balance-value" id="wallet-total-balance">0.00</span>
+                                <button class="neo-currency-toggle" id="currency-toggle-btn" onclick="App.toggleBalanceCurrency()" title="Cambiar moneda">
+                                    <span id="balance-currency-label">USD</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M6 9l6 6 6-6"/>
+                                    </svg>
+                                </button>
                             </div>
-                            <span class="neo-balance-usd" id="b3c-value-usd">~$0.00 USD</span>
+                            <span class="neo-balance-tokens" id="balance-token-count">0 activos</span>
                         </div>
-                        <button class="neo-refresh-btn" onclick="App.refreshB3CBalance()" title="Actualizar">
+                        <button class="neo-refresh-btn" onclick="App.refreshTotalBalance()" title="Actualizar">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                             </svg>
