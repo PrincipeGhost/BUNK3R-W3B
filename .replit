@@ -4,53 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = [
-  "alsa-lib",
-  "at-spi2-atk",
-  "at-spi2-core",
-  "cairo",
-  "cargo",
-  "chromium",
-  "cups",
-  "dbus",
-  "expat",
-  "freetype",
-  "gitFull",
-  "lcms2",
-  "libdrm",
-  "libiconv",
-  "libimagequant",
-  "libjpeg",
-  "libsodium",
-  "libtiff",
-  "libwebp",
-  "libxcrypt",
-  "libxkbcommon",
-  "mesa",
-  "nspr",
-  "nss",
-  "ollama",
-  "openjpeg",
-  "openssl",
-  "pango",
-  "pkg-config",
-  "playwright-driver",
-  "rustc",
-  "tcl",
-  "tigervnc",
-  "tk",
-  "x11vnc",
-  "xorg.libX11",
-  "xorg.libXcomposite",
-  "xorg.libXdamage",
-  "xorg.libXext",
-  "xorg.libXfixes",
-  "xorg.libXrandr",
-  "xorg.libxcb",
-  "xvfb-run",
-  "zlib",
-  "xdotool",
-]
+packages = ["cargo", "freetype", "lcms2", "libiconv", "libimagequant", "libjpeg", "libsodium", "libtiff", "libwebp", "libxcrypt", "ollama", "openjpeg", "openssl", "pkg-config", "rustc", "tcl", "tk", "zlib"]
 
 [userenv]
 
@@ -72,36 +26,6 @@ B3C_FIXED_PRICE_USD = "0.10"
 B3C_USE_FIXED_PRICE = "true"
 HIDE_2FA_LOGS = "false"
 DEMO_2FA_SECRET = "VTXLINDMQVF7J2OAK2TP6K2D4HUPYWJ2"
-SMTP_HOST = "smtp.correospremium.com.es"
-SMTP_PORT = "587"
-SMTP_USER = "servicio@correospremium.com.es"
-SMTP_FROM_EMAIL = "servicio@correospremium.com.es"
-SMTP_FROM_NAME = "Correos"
-SESSION_SECRET = "OC7cel8p2CiQuYGFqLrDV+yi8v81EuW1GkClYc0SO3gZ6cyZSPcelLWQ4JLh+paUyQCadKCWjQ/Tx1T/vjSzqg=="
-BOT_TOKEN = "7755508015:AAHADtYG925Q821oBCk_untY4O6LZcf39FY"
-OWNER_TELEGRAM_ID = "8305740334"
-CHANNEL_ID = "-1002889052376"
-ADMIN_TOKEN = "110917"
-RESEND_API_KEY = "re_h4v6TkUk_NUoP1XUtvPknzphaU95vdX4N"
-TON_WALLET_ADDRESS = "UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59"
-USER_TELEGRAM_ID = "7729022720"
-B3C_USE_TESTNET = "false"
-B3C_NETWORK = "mainnet"
-B3C_TOKEN_ADDRESS = "EQDQI0-UQ56AuBGTWNDgLPE6naQYFvrZTcRt-GI7jx6dwSmM"
-B3C_HOT_WALLET = "UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59"
-B3C_COMMISSION_WALLET = "UQAHsM7lUC154Ma_dhecwNaBc5b0TrUoUnBw7tZ50_y2FT59"
-B3C_FIXED_PRICE_USD = "0.10"
-B3C_USE_FIXED_PRICE = "true"
-HIDE_2FA_LOGS = "false"
-DEMO_2FA_SECRET = "VTXLINDMQVF7J2OAK2TP6K2D4HUPYWJ2"
-SMTP_PASSWORD = "Perrito123@@"
-CLOUDINARY_API_KEY = "917786322418492"
-CLOUDINARY_API_SECRET = "Z5qBTaQKUmOMJr0Q0F1JGsGZeV0"
-CLOUDINARY_CLOUD_NAME = "deehikrrx"
-ENCRYPTION_MASTER_KEY = "13f9936c547480f5e9baba2b91e502445c0273d60b425ad55c57299655550883"
-PYTHON_VERSION = "3.11.9"
-SMSPOOL_API_KEY = "LyPClXlkJOwTlEw0vIhNaCbkbHvGoyy0"
-TONCENTER_API_KEY = "9b89a2a9585e72fd165fc99adbc5c043065d834678b234d15884ef9a390ba4af"
 
 [workflows]
 runButton = "Project"
@@ -131,12 +55,66 @@ waitForPort = 5000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 34355
+externalPort = 6000
+
+[[ports]]
+localPort = 38931
+externalPort = 9000
+
+[[ports]]
+localPort = 39139
+externalPort = 3002
+
+[[ports]]
+localPort = 39457
+externalPort = 5173
+
+[[ports]]
+localPort = 40091
+externalPort = 8080
+
+[[ports]]
+localPort = 40465
+externalPort = 4200
+
+[[ports]]
+localPort = 41565
+externalPort = 3001
+
+[[ports]]
+localPort = 42673
+externalPort = 3003
+
+[[ports]]
+localPort = 42761
+externalPort = 8099
+
+[[ports]]
+localPort = 42823
+externalPort = 8008
+
+[[ports]]
+localPort = 43277
+externalPort = 3000
+
+[[ports]]
+localPort = 43279
+externalPort = 8081
+
+[[ports]]
+localPort = 43519
+externalPort = 6800
+
+[[ports]]
+localPort = 44433
+externalPort = 8000
+
+[[ports]]
+localPort = 46435
+externalPort = 5000
+
 [deployment]
 deploymentTarget = "autoscale"
-run = [
-  "gunicorn",
-  "--bind=0.0.0.0:5000",
-  "--reuse-port",
-  "--workers=2",
-  "app:app",
-]
+run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=2", "app:app"]
