@@ -34,16 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
             demoSessionToken = savedToken;
             isDemoMode = true;
             console.log('[VN] Modo demo detectado con sesion guardada');
-            initApp();
+        } else {
+            console.log('[VN] No hay sesion, redirigiendo al inicio para autenticar');
+            window.location.href = '/';
             return;
         }
-        
-        console.error('No Telegram init data available and no demo session');
-        showToast('Error de autenticacion', 'error');
-        setTimeout(() => {
-            window.location.href = '/';
-        }, 2000);
-        return;
     }
     
     initApp();
