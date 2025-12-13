@@ -1307,6 +1307,9 @@ const App = {
                 this.showPage('profile');
                 this.updateProfilePage();
                 break;
+            case 'messages':
+                this.showMessagesSection();
+                break;
         }
     },
     
@@ -1316,9 +1319,34 @@ const App = {
             'marketplace': 'Tienda',
             'notifications': 'Notificaciones',
             'wallet': 'Billetera',
-            'profile': 'Mi perfil'
+            'profile': 'Mi perfil',
+            'messages': 'Mensajes'
         };
         return labels[navType] || navType;
+    },
+    
+    showMessagesSection() {
+        this.hideAllScreens();
+        const messagesSection = document.getElementById('section-messages');
+        const chatScreen = document.getElementById('chat-screen');
+        
+        if (chatScreen) chatScreen.classList.add('hidden');
+        if (messagesSection) {
+            messagesSection.classList.remove('hidden');
+        }
+        
+        if (this.tg && this.tg.BackButton) {
+            this.tg.BackButton.show();
+        }
+        
+        this.currentSection = 'messages';
+        if (typeof StateManager !== 'undefined') {
+            StateManager.setSection('messages');
+        }
+        
+        if (typeof Chat !== 'undefined') {
+            Chat.init();
+        }
     },
     
     handleSidebarNavigation(section) {

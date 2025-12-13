@@ -659,18 +659,24 @@ def get_user_stats(user_id):
 @user_bp.route('/messages', methods=['POST'])
 @require_telegram_auth
 def send_private_message():
-    """Enviar un mensaje privado a otro usuario."""
+    """Enviar un mensaje privado a otro usuario con soporte para imagenes y respuestas."""
     try:
         db_manager = get_db_manager()
         sender_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
         receiver_id = str(data.get('receiver_id', '')).strip()
         content = str(data.get('content', '')).strip()
+        image_url = data.get('image_url')
+        is_view_once = data.get('is_view_once', False)
+        reply_to_id = data.get('reply_to_id')
         
-        if not receiver_id or not content:
-            return jsonify({'success': False, 'error': 'Receptor y contenido son requeridos'}), 400
+        if not receiver_id:
+            return jsonify({'success': False, 'error': 'Receptor es requerido'}), 400
         
-        if len(content) > 2000:
+        if not content and not image_url:
+            return jsonify({'success': False, 'error': 'Contenido o imagen son requeridos'}), 400
+        
+        if content and len(content) > 2000:
             return jsonify({'success': False, 'error': 'Mensaje muy largo (max 2000 caracteres)'}), 400
         
         if sender_id == receiver_id:
@@ -679,7 +685,7 @@ def send_private_message():
         if not db_manager:
             return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
-        sanitized_content = html.escape(content)
+        sanitized_content = html.escape(content) if content else None
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -689,10 +695,10 @@ def send_private_message():
                     return jsonify({'success': False, 'error': 'Usuario receptor no encontrado'}), 404
                 
                 cur.execute("""
-                    INSERT INTO private_messages (sender_id, receiver_id, content)
-                    VALUES (%s, %s, %s)
-                    RETURNING id, created_at
-                """, (sender_id, receiver_id, sanitized_content))
+                    INSERT INTO private_messages (sender_id, receiver_id, content, image_url, is_view_once, reply_to_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, created_at, image_url, is_view_once, reply_to_id
+                """, (sender_id, receiver_id, sanitized_content, image_url, is_view_once, reply_to_id))
                 message = cur.fetchone()
                 conn.commit()
         
@@ -705,6 +711,9 @@ def send_private_message():
                 'sender_id': sender_id,
                 'receiver_id': receiver_id,
                 'content': sanitized_content,
+                'image_url': message.get('image_url'),
+                'is_view_once': message.get('is_view_once', False),
+                'reply_to_id': message.get('reply_to_id'),
                 'created_at': message['created_at'].isoformat() if message.get('created_at') else None
             }
         })
@@ -717,7 +726,7 @@ def send_private_message():
 @user_bp.route('/messages/conversations', methods=['GET'])
 @require_telegram_auth
 def get_conversations():
-    """Obtener lista de conversaciones del usuario."""
+    """Obtener lista de conversaciones del usuario (excluyendo mensajes eliminados)."""
     try:
         db_manager = get_db_manager()
         user_id = str(request.telegram_user.get('id', 0))
@@ -728,12 +737,19 @@ def get_conversations():
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
-                    WITH conversations AS (
+                    WITH visible_messages AS (
+                        SELECT * FROM private_messages
+                        WHERE NOT (
+                            (sender_id = %s AND deleted_for_sender = true)
+                            OR (receiver_id = %s AND deleted_for_receiver = true)
+                        )
+                    ),
+                    conversations AS (
                         SELECT 
                             CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END as other_user_id,
                             MAX(created_at) as last_message_at,
                             COUNT(*) FILTER (WHERE receiver_id = %s AND is_read = false) as unread_count
-                        FROM private_messages
+                        FROM visible_messages
                         WHERE sender_id = %s OR receiver_id = %s
                         GROUP BY CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END
                     )
@@ -743,15 +759,17 @@ def get_conversations():
                         c.unread_count,
                         u.username,
                         u.avatar_url,
-                        (SELECT content FROM private_messages pm 
-                         WHERE (pm.sender_id = %s AND pm.receiver_id = c.other_user_id)
-                            OR (pm.sender_id = c.other_user_id AND pm.receiver_id = %s)
-                         ORDER BY pm.created_at DESC LIMIT 1) as last_message
+                        (SELECT COALESCE(vm.content, 
+                            CASE WHEN vm.image_url IS NOT NULL THEN '📷 Foto' ELSE '' END)
+                         FROM visible_messages vm 
+                         WHERE (vm.sender_id = %s AND vm.receiver_id = c.other_user_id)
+                            OR (vm.sender_id = c.other_user_id AND vm.receiver_id = %s)
+                         ORDER BY vm.created_at DESC LIMIT 1) as last_message
                     FROM conversations c
                     JOIN users u ON c.other_user_id = u.id
                     ORDER BY c.last_message_at DESC
                     LIMIT 50
-                """, (user_id, user_id, user_id, user_id, user_id, user_id, user_id))
+                """, (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id))
                 
                 conversations = []
                 for row in cur.fetchall():
@@ -770,7 +788,7 @@ def get_conversations():
 @user_bp.route('/messages/<other_user_id>', methods=['GET'])
 @require_telegram_auth
 def get_messages_with_user(other_user_id):
-    """Obtener mensajes con un usuario especifico."""
+    """Obtener mensajes con un usuario especifico, incluyendo reacciones."""
     try:
         db_manager = get_db_manager()
         user_id = str(request.telegram_user.get('id', 0))
@@ -791,8 +809,12 @@ def get_messages_with_user(other_user_id):
                     LEFT JOIN users r ON pm.receiver_id = r.id
                     WHERE ((pm.sender_id = %s AND pm.receiver_id = %s) 
                         OR (pm.sender_id = %s AND pm.receiver_id = %s))
+                    AND NOT (
+                        (pm.sender_id = %s AND pm.deleted_for_sender = true)
+                        OR (pm.receiver_id = %s AND pm.deleted_for_receiver = true)
+                    )
                 """
-                params = [user_id, other_user_id, other_user_id, user_id]
+                params = [user_id, other_user_id, other_user_id, user_id, user_id, user_id]
                 
                 if before_id:
                     query += " AND pm.id < %s"
@@ -803,13 +825,43 @@ def get_messages_with_user(other_user_id):
                 
                 cur.execute(query, params)
                 messages = []
+                message_ids = []
                 for row in cur.fetchall():
                     msg = dict(row)
                     if msg.get('created_at'):
                         msg['created_at'] = msg['created_at'].isoformat()
                     if msg.get('read_at'):
                         msg['read_at'] = msg['read_at'].isoformat()
+                    if msg.get('viewed_at'):
+                        msg['viewed_at'] = msg['viewed_at'].isoformat()
+                    if msg.get('deleted_at'):
+                        msg['deleted_at'] = msg['deleted_at'].isoformat()
+                    msg['reactions'] = []
                     messages.append(msg)
+                    message_ids.append(msg['id'])
+                
+                if message_ids:
+                    cur.execute("""
+                        SELECT mr.message_id, mr.user_id, mr.emoji, u.username
+                        FROM message_reactions mr
+                        LEFT JOIN users u ON mr.user_id = u.id
+                        WHERE mr.message_id = ANY(%s)
+                    """, (message_ids,))
+                    reactions = cur.fetchall()
+                    
+                    reactions_by_msg = {}
+                    for r in reactions:
+                        mid = r['message_id']
+                        if mid not in reactions_by_msg:
+                            reactions_by_msg[mid] = []
+                        reactions_by_msg[mid].append({
+                            'user_id': r['user_id'],
+                            'emoji': r['emoji'],
+                            'username': r['username']
+                        })
+                    
+                    for msg in messages:
+                        msg['reactions'] = reactions_by_msg.get(msg['id'], [])
                 
                 cur.execute("""
                     UPDATE private_messages
@@ -873,6 +925,7 @@ def get_unread_messages_count():
                 cur.execute("""
                     SELECT COUNT(*) FROM private_messages
                     WHERE receiver_id = %s AND is_read = false
+                    AND deleted_for_receiver = false
                 """, (user_id,))
                 count = cur.fetchone()[0] or 0
         
@@ -880,6 +933,220 @@ def get_unread_messages_count():
         
     except Exception as e:
         logger.error(f"Error getting unread count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/<int:message_id>/reaction', methods=['POST'])
+@require_telegram_auth
+def add_message_reaction(message_id):
+    """Agregar reaccion a un mensaje."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        emoji = data.get('emoji', '').strip()
+        
+        if not emoji or len(emoji) > 10:
+            return jsonify({'success': False, 'error': 'Emoji invalido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO message_reactions (message_id, user_id, emoji)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (message_id, user_id) 
+                    DO UPDATE SET emoji = EXCLUDED.emoji, created_at = NOW()
+                """, (message_id, user_id, emoji))
+                conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error adding reaction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/<int:message_id>', methods=['DELETE'])
+@require_telegram_auth
+def delete_message(message_id):
+    """Eliminar un mensaje (para mi o para ambos)."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        data = request.get_json() or {}
+        delete_for = data.get('delete_for', 'me')
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT sender_id, receiver_id FROM private_messages WHERE id = %s", (message_id,))
+                msg = cur.fetchone()
+                if not msg:
+                    return jsonify({'success': False, 'error': 'Mensaje no encontrado'}), 404
+                
+                sender_id, receiver_id = msg
+                
+                if user_id not in [sender_id, receiver_id]:
+                    return jsonify({'success': False, 'error': 'No autorizado'}), 403
+                
+                if delete_for == 'both' and user_id == sender_id:
+                    cur.execute("""
+                        UPDATE private_messages 
+                        SET deleted_for_sender = true, deleted_for_receiver = true, deleted_at = NOW()
+                        WHERE id = %s
+                    """, (message_id,))
+                elif user_id == sender_id:
+                    cur.execute("UPDATE private_messages SET deleted_for_sender = true WHERE id = %s", (message_id,))
+                else:
+                    cur.execute("UPDATE private_messages SET deleted_for_receiver = true WHERE id = %s", (message_id,))
+                
+                conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error deleting message: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/<int:message_id>/view-once', methods=['POST'])
+@require_telegram_auth
+def mark_view_once_viewed(message_id):
+    """Marcar imagen view-once como vista."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE private_messages 
+                    SET viewed_at = NOW()
+                    WHERE id = %s AND receiver_id = %s AND is_view_once = true AND viewed_at IS NULL
+                """, (message_id, user_id))
+                conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error marking view-once: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/typing/<other_user_id>', methods=['POST'])
+@require_telegram_auth
+def send_typing_indicator(other_user_id):
+    """Enviar indicador de escribiendo."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO typing_indicators (user_id, chat_with_user_id, started_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (user_id, chat_with_user_id) 
+                    DO UPDATE SET started_at = NOW()
+                """, (user_id, other_user_id))
+                conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error sending typing: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/typing/<other_user_id>/status', methods=['GET'])
+@require_telegram_auth
+def get_typing_status(other_user_id):
+    """Ver si el otro usuario esta escribiendo."""
+    try:
+        db_manager = get_db_manager()
+        user_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 1 FROM typing_indicators 
+                    WHERE user_id = %s AND chat_with_user_id = %s 
+                    AND started_at > NOW() - INTERVAL '5 seconds'
+                """, (other_user_id, user_id))
+                is_typing = cur.fetchone() is not None
+        
+        return jsonify({'success': True, 'is_typing': is_typing})
+        
+    except Exception as e:
+        logger.error(f"Error getting typing status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/block/<user_id>', methods=['POST'])
+@require_telegram_auth
+def block_user_for_chat(user_id):
+    """Bloquear a un usuario en el chat."""
+    try:
+        db_manager = get_db_manager()
+        blocker_id = str(request.telegram_user.get('id', 0))
+        
+        if blocker_id == user_id:
+            return jsonify({'success': False, 'error': 'No puedes bloquearte a ti mismo'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO user_blocks (blocker_id, blocked_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (blocker_id, user_id))
+                conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error blocking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/messages/unblock/<user_id>', methods=['POST'])
+@require_telegram_auth
+def unblock_user_for_chat(user_id):
+    """Desbloquear a un usuario en el chat."""
+    try:
+        db_manager = get_db_manager()
+        blocker_id = str(request.telegram_user.get('id', 0))
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM user_blocks WHERE blocker_id = %s AND blocked_id = %s", 
+                           (blocker_id, user_id))
+                conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error unblocking user: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
