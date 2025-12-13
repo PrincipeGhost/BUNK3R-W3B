@@ -749,56 +749,15 @@ const App = {
         }
         this._devPhaseLockInitialized = true;
         
-        const lockedSections = ['home', 'marketplace', 'profile'];
-        const lockedSidebarItems = ['numeros', 'cuentas', 'metodos', 'planes', 'exchange', 'foro'];
-        const unlockedSections = ['wallet', 'bots'];
-        const unlockedSidebarItems = ['bots', 'settings'];
+        const lockedSections = [];
+        const lockedSidebarItems = [];
+        const unlockedSections = ['home', 'marketplace', 'profile', 'wallet', 'bots'];
+        const unlockedSidebarItems = ['numeros', 'cuentas', 'metodos', 'planes', 'exchange', 'foro', 'bots', 'settings'];
         
-        const lockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        this.isDevMode = true;
+        document.body.classList.add('dev-mode-active');
         
-        lockedSections.forEach(section => {
-            const navItem = document.querySelector(`.bottom-nav-item[data-nav="${section}"]`);
-            if (navItem) {
-                navItem.classList.add('dev-locked');
-            }
-        });
-        
-        lockedSidebarItems.forEach(section => {
-            const sidebarItem = document.querySelector(`.sidebar-item[data-section="${section}"]`);
-            if (sidebarItem) {
-                sidebarItem.classList.add('dev-locked');
-                const lockBadge = document.createElement('span');
-                lockBadge.className = 'dev-lock-badge';
-                lockBadge.innerHTML = lockIcon;
-                sidebarItem.appendChild(lockBadge);
-            }
-        });
-        
-        const homeScreen = document.getElementById('home-screen');
-        if (homeScreen) {
-            homeScreen.classList.add('dev-locked');
-            const lockOverlay = document.createElement('div');
-            lockOverlay.className = 'dev-lock-icon';
-            lockOverlay.innerHTML = `${lockIcon}<span>Proximamente</span>`;
-            homeScreen.appendChild(lockOverlay);
-        }
-        
-        const marketplaceScreen = document.getElementById('marketplace-screen');
-        if (marketplaceScreen) {
-            marketplaceScreen.classList.add('dev-locked');
-            const lockOverlay = document.createElement('div');
-            lockOverlay.className = 'dev-lock-icon';
-            lockOverlay.innerHTML = `${lockIcon}<span>Proximamente</span>`;
-            marketplaceScreen.appendChild(lockOverlay);
-        }
-        
-        if (this.isOwner || this.isDemoMode) {
-            this.isDevMode = true;
-            document.body.classList.add('dev-mode-active');
-            this.createDevModeIndicator();
-        }
-        
-        this.devLog('Dev phase lock initialized. DevMode:', this.isDevMode);
+        this.devLog('All sections unlocked for production');
     },
     
     createDevModeIndicator() {
