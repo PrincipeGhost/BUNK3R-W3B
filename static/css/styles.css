@@ -1714,6 +1714,7 @@ select:focus-visible {
 
 /* ==================== PROFILE PAGE (INTEGRADA) - ESTILO INSTAGRAM/BINANCE ==================== */
 #profile-screen {
+    position: relative;
     padding-bottom: 70px;
     overflow-x: hidden;
 }
@@ -2059,10 +2060,10 @@ select:focus-visible {
 
 /* Action Buttons */
 .profile-page-buttons {
-    display: flex;
-    gap: 8px;
-    padding: 0 16px;
-    margin-bottom: 16px;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 30;
 }
 
 .profile-page-btn {
@@ -2106,12 +2107,14 @@ select:focus-visible {
 }
 
 .profile-page-btn.icon-only {
-    flex: 0;
-    width: 48px;
-    padding: 12px;
-    background: var(--bg-card);
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.4);
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border: none;
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
 }
 
 .profile-page-btn.icon-only:hover {
