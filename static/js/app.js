@@ -2885,7 +2885,12 @@ const App = {
                 </div>
                 <div class="detail-section">
                     <div class="tracking-header" style="margin-bottom: 0;">
-                        <span class="tracking-id" style="font-size: 14px;">${this.escapeHtml(t.trackingId)}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="tracking-id" style="font-size: 14px;">${this.escapeHtml(t.trackingId)}</span>
+                            <button type="button" id="copy-tracking-btn" data-tracking="${this.escapeHtml(t.trackingId)}" style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer; color: var(--text-secondary); font-size: 12px;" title="Copiar ID">
+                                📋
+                            </button>
+                        </div>
                         <span class="tracking-status status-${this.escapeHtml(t.status)}">
                             ${this.escapeHtml(t.statusIcon)} ${this.escapeHtml(t.statusLabel)}
                         </span>
@@ -2994,6 +2999,20 @@ const App = {
             if (btnBackDetail) {
                 btnBackDetail.addEventListener('click', () => {
                     this.goBack();
+                });
+            }
+            
+            const copyBtn = document.getElementById('copy-tracking-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    const trackingId = copyBtn.dataset.tracking;
+                    navigator.clipboard.writeText(trackingId).then(() => {
+                        this.showToast('ID copiado al portapapeles', 'success');
+                        copyBtn.textContent = '✓';
+                        setTimeout(() => { copyBtn.textContent = '📋'; }, 1500);
+                    }).catch(() => {
+                        this.showToast('Error al copiar', 'error');
+                    });
                 });
             }
             
