@@ -1,0 +1,105 @@
+AUDITORÍA DE SEGURIDAD COMPLETA (25+ Categorías)
+BLOQUE 1: Configuración y Headers
+Headers de seguridad faltantes
+Cookies inseguras
+Información en headers del servidor
+BLOQUE 2: Inyecciones
+SQL Injection (múltiples payloads)
+XSS Reflejado y Almacenado
+Command Injection
+LDAP Injection
+XML/XXE Injection
+Template Injection (SSTI)
+NoSQL Injection
+BLOQUE 3: Autenticación
+Endpoints sin autenticación
+JWT mal configurados
+Sesiones débiles
+Fuerza bruta en login (prueba controlada)
+Recuperación de contraseña insegura
+BLOQUE 4: Rate Limiting y DoS
+Falta de rate limiting
+Endpoints vulnerables a spam
+Recursos pesados sin límite
+BLOQUE 5: Exposición de Información
+Archivos sensibles (.env, .git, backups, logs, config)
+Listado de directorios
+Mensajes de error detallados
+Stack traces expuestos
+BLOQUE 6: APIs y Lógica
+IDOR (acceso a objetos de otros usuarios)
+Falta de paginación
+Respuestas con datos excesivos
+Endpoints ocultos (fuzzing)
+Rutas de admin expuestas
+BLOQUE 7: Análisis de Código
+Contraseñas hardcodeadas
+Secretos en código fuente
+Funciones peligrosas (eval, exec, os.system)
+Dependencias vulnerables (requirements.txt, package.json)
+API keys expuestas en JS/HTML
+BLOQUE 8: CORS y Orígenes
+CORS permisivo
+Referer/Origin bypass
+Clickjacking
+BLOQUE 9: Sesiones y Tokens
+Session fixation
+Tokens predecibles
+Falta de expiración
+Tokens en URL
+BLOQUE 10: Uploads y Archivos
+Subida de archivos sin validación
+Path traversal
+Archivos ejecutables permitidos
+BLOQUE 11: SSL/TLS
+Certificados inválidos
+Protocolos inseguros
+Mixed content
+BLOQUE 12: Métodos HTTP
+TRACE/OPTIONS habilitados
+PUT/DELETE sin autorización
+HTTP verb tampering
+BLOQUE 13: Websockets
+Conexiones WS sin autenticación
+Mensajes sin validación
+BLOQUE 14: Penetración de Base de Datos
+Pruebas que realizará:
+Conexión directa expuesta
+Puerto de PostgreSQL accesible públicamente
+Credenciales por defecto
+SQL Injection avanzada
+Union-based injection
+Blind SQL injection (time-based y boolean-based)
+Error-based injection
+Stacked queries
+Extracción de información
+Nombres de tablas
+Nombres de columnas
+Versión de la base de datos
+Usuario actual de BD
+Privilegios de BD
+Verificar si puede crear/eliminar tablas
+Acceso a otras bases de datos
+Permisos de superusuario
+Datos sensibles expuestos
+Contraseñas en texto plano
+Tokens sin encriptar
+Datos personales sin protección
+Backups y logs de BD
+Archivos .sql expuestos
+Dumps accesibles
+Logs con queries sensibles
+Configuración insegura
+SSL deshabilitado en conexión
+Queries sin prepared statements
+Conexiones sin límite
+ORM Injection
+Bypass de validaciones del ORM
+Raw queries peligrosas
+
+REPORTE FINAL
+Archivo reporte_auditoria.txt con TODO organizado
+Severidad: 🔴 CRÍTICO | 🟠 ALTO | 🟡 MEDIO | 🟢 BAJO
+Recomendaciones específicas para cada vulnerabilidad
+Resumen ejecutivo al inicio
+JSON adicional para análisis programático
