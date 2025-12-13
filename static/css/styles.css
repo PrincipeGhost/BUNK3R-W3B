@@ -200,7 +200,6 @@ select:focus-visible {
 .nav-tabs {
     display: flex;
     background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 57px;
     z-index: 99;
