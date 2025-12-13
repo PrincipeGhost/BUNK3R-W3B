@@ -173,7 +173,6 @@ select:focus-visible {
 .header {
     background: var(--bg-secondary);
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
     z-index: 100;
