@@ -7319,11 +7319,14 @@ const App = {
             const response = await this.apiRequest('/api/wallet/balance', { method: 'GET' });
             if (response.success) {
                 const balanceEl = document.getElementById('wallet-balance');
+                const panelBc3El = document.getElementById('panel-bc3-balance');
+                const newBalance = response.balance || 0;
+                
+                this._lastKnownBalance = newBalance;
+                this.walletBalance = newBalance;
+                
                 if (balanceEl) {
                     const oldBalance = parseFloat(balanceEl.textContent.replace(/,/g, '')) || 0;
-                    const newBalance = response.balance || 0;
-                    
-                    this._lastKnownBalance = newBalance;
                     
                     if (animate && oldBalance !== newBalance) {
                         this.animateBalanceChange(balanceEl, oldBalance, newBalance);
@@ -7334,6 +7337,10 @@ const App = {
                     if (typeof StateManager !== 'undefined') {
                         StateManager.set('wallet.balance', newBalance, { silent: true });
                     }
+                }
+                
+                if (panelBc3El) {
+                    panelBc3El.textContent = newBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
             }
         } catch (error) {
