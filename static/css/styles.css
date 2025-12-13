@@ -1678,7 +1678,7 @@ select:focus-visible {
     height: 58px;
     min-width: 280px;
     max-width: 400px;
-    background: rgba(30, 35, 42, 0.25);
+    background: rgba(30, 35, 42, 0.10);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     display: flex;
