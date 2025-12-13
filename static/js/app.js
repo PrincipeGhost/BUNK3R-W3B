@@ -1438,12 +1438,15 @@ const App = {
         
         if (pageName === 'wallet') {
             this.showWalletSkeleton();
-            this.loadTransactionHistory();
-            this.loadWalletBalance();
+            this.showCachedWalletData();
             this.startB3CPricePolling();
-            this.loadB3CBalance();
-            this.loadPersonalWalletAssets();
-            this.loadTotalBalance();
+            Promise.all([
+                this.loadTotalBalance(),
+                this.loadPersonalWalletAssets(),
+                this.loadWalletBalance(),
+                this.loadB3CBalance(),
+                this.loadTransactionHistory()
+            ]).catch(e => console.error('Wallet load error:', e));
         }
         
         if (pageName === 'explore') {
@@ -4819,10 +4822,14 @@ const App = {
         
         if (totalEl) {
             const total = data.total || 0;
-            totalEl.textContent = total.toLocaleString('en-US', { 
+            const formattedTotal = total.toLocaleString('en-US', { 
                 minimumFractionDigits: 2, 
                 maximumFractionDigits: 2 
             });
+            totalEl.textContent = formattedTotal;
+            try {
+                localStorage.setItem('wallet_total_balance', formattedTotal);
+            } catch (e) {}
         }
         
         if (symbolEl) {
@@ -4836,6 +4843,9 @@ const App = {
         if (tokenCountEl && data.breakdown) {
             const activeTokens = data.breakdown.filter(t => t.value > 0).length;
             tokenCountEl.textContent = `${activeTokens} activo${activeTokens !== 1 ? 's' : ''} con valor`;
+            try {
+                localStorage.setItem('wallet_assets_count', activeTokens.toString());
+            } catch (e) {}
         }
     },
 
@@ -7477,6 +7487,29 @@ const App = {
         };
         
         requestAnimationFrame(animate);
+    },
+
+    showCachedWalletData() {
+        try {
+            const cachedBalance = localStorage.getItem('wallet_total_balance');
+            const cachedAssets = localStorage.getItem('wallet_assets_count');
+            
+            if (cachedBalance) {
+                const totalEl = document.getElementById('wallet-total-balance');
+                if (totalEl) {
+                    totalEl.textContent = cachedBalance;
+                }
+            }
+            
+            if (cachedAssets) {
+                const countEl = document.getElementById('balance-token-count');
+                if (countEl) {
+                    countEl.textContent = `${cachedAssets} activos`;
+                }
+            }
+        } catch (e) {
+            console.error('Cache read error:', e);
+        }
     },
 
     showWalletSkeleton() {
