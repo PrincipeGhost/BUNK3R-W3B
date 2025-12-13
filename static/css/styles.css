@@ -15653,19 +15653,19 @@ body.dev-mode-active .dev-lock-badge {
 }
 
 .tracking-col-left {
-    width: 328px;
-    min-width: 328px;
+    width: 338px;
+    min-width: 338px;
 }
 
 .tracking-col-center {
-    width: 365px;
-    min-width: 365px;
+    width: 345px;
+    min-width: 345px;
     flex: 1;
 }
 
 .tracking-col-right {
-    width: 367px;
-    min-width: 367px;
+    width: 377px;
+    min-width: 377px;
 }
 
 .tracking-column-header {
@@ -15853,17 +15853,17 @@ body.dev-mode-active .dev-lock-badge {
 
 @media (max-width: 768px) {
     .tracking-col-left {
-        width: 288px;
-        min-width: 288px;
+        width: 298px;
+        min-width: 298px;
     }
     
     .tracking-col-center {
-        width: 305px;
-        min-width: 305px;
+        width: 285px;
+        min-width: 285px;
     }
     
     .tracking-col-right {
-        width: 307px;
-        min-width: 307px;
+        width: 317px;
+        min-width: 317px;
     }
 }
