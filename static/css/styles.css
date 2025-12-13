@@ -1940,11 +1940,11 @@ select:focus-visible {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-card);
+    background: transparent;
     border-radius: 16px;
     padding: 16px 24px;
     margin: 0 16px 16px 16px;
-    border: 1px solid var(--border-color);
+    border: none;
 }
 
 .profile-page-stat {
