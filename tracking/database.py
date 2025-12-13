@@ -690,7 +690,7 @@ class DatabaseManager:
                             user_telegram_id,
                             COUNT(*) as total_trackings,
                             COUNT(CASE WHEN status = 'RETENIDO' THEN 1 END) as retenidos,
-                            COUNT(CASE WHEN status = 'CONFIRMAR_PAGO' THEN 1 END) as confirmar_pago,
+                            COUNT(CASE WHEN status = 'PAGO_CONFIRMADO' THEN 1 END) as pago_confirmado,
                             COUNT(CASE WHEN status = 'EN_TRANSITO' THEN 1 END) as en_transito,
                             COUNT(CASE WHEN status = 'ENTREGADO' THEN 1 END) as entregados,
                             MAX(created_at) as last_tracking_date
@@ -708,7 +708,7 @@ class DatabaseManager:
                             'user_telegram_id': row[1],
                             'total_trackings': row[2],
                             'retenidos': row[3],
-                            'confirmar_pago': row[4],
+                            'pago_confirmado': row[4],
                             'en_transito': row[5],
                             'entregados': row[6],
                             'last_tracking_date': row[7]

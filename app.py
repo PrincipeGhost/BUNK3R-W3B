@@ -315,7 +315,7 @@ STATUS_MAP = {
     'RETENIDO': {'icon': '📦', 'label': 'Retenido', 'color': '#f39c12'},
     'EN_TRANSITO': {'icon': '🚚', 'label': 'En Camino', 'color': '#3498db'},
     'ENTREGADO': {'icon': '✅', 'label': 'Entregado', 'color': '#27ae60'},
-    'CONFIRMAR_PAGO': {'icon': '💰', 'label': 'Confirmar Pago', 'color': '#e74c3c'}
+    'PAGO_CONFIRMADO': {'icon': '💰', 'label': 'Pago Confirmado', 'color': '#e74c3c'}
 }
 
 DELAY_REASONS = [

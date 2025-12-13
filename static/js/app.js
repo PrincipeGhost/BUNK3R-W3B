@@ -2685,7 +2685,7 @@ const App = {
         document.getElementById('stat-retenido').textContent = stats.retenido || 0;
         document.getElementById('stat-transito').textContent = stats.enTransito || 0;
         document.getElementById('stat-entregado').textContent = stats.entregado || 0;
-        document.getElementById('stat-pago').textContent = stats.confirmarPago || 0;
+        document.getElementById('stat-pago').textContent = stats.pagoConfirmado || 0;
         document.getElementById('stat-total').textContent = stats.total || 0;
     },
     
@@ -3091,7 +3091,7 @@ const App = {
         const statuses = [
             { value: 'RETENIDO', icon: '📦', label: 'Retenido' },
             { value: 'EN_TRANSITO', icon: '🚚', label: 'En Camino' },
-            { value: 'CONFIRMAR_PAGO', icon: '💰', label: 'Pago Confirmado' },
+            { value: 'PAGO_CONFIRMADO', icon: '💰', label: 'Pago Confirmado' },
             { value: 'ENTREGADO', icon: '✅', label: 'Entregado' }
         ];
         

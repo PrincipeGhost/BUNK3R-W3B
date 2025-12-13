@@ -36,7 +36,15 @@ STATUS_MAP = {
     'RETENIDO': {'icon': '📦', 'label': 'Retenido', 'color': '#f39c12'},
     'EN_TRANSITO': {'icon': '🚚', 'label': 'En Camino', 'color': '#3498db'},
     'ENTREGADO': {'icon': '✅', 'label': 'Entregado', 'color': '#27ae60'},
-    'CONFIRMAR_PAGO': {'icon': '💰', 'label': 'Pago Confirmado', 'color': '#e74c3c'}
+    'PAGO_CONFIRMADO': {'icon': '💰', 'label': 'Pago Confirmado', 'color': '#e74c3c'}
+}
+
+# Descripciones automáticas para estados
+STATUS_DESCRIPTIONS = {
+    'RETENIDO': 'Paquete retenido',
+    'EN_TRANSITO': 'Paquete en camino',
+    'ENTREGADO': 'Paquete entregado',
+    'PAGO_CONFIRMADO': 'Pago confirmado'
 }
 
 DELAY_REASONS = [
@@ -300,6 +308,10 @@ def update_tracking_status(tracking_id):
         if new_status not in STATUS_MAP:
             return jsonify({'error': 'Estado invalido'}), 400
         
+        # Si no hay notas, usar la descripción automática del estado
+        if not notes:
+            notes = STATUS_DESCRIPTIONS.get(new_status, STATUS_MAP[new_status]["label"])
+        
         success = db_manager.update_tracking_status(tracking_id, new_status, notes)
         
         if success:
@@ -496,7 +508,7 @@ def get_stats():
             'retenido': 0,
             'enTransito': 0,
             'entregado': 0,
-            'confirmarPago': 0
+            'pagoConfirmado': 0
         }
         
         for t in trackings:
@@ -506,8 +518,8 @@ def get_stats():
                 stats['enTransito'] += 1
             elif t.status == 'ENTREGADO':
                 stats['entregado'] += 1
-            elif t.status == 'CONFIRMAR_PAGO':
-                stats['confirmarPago'] += 1
+            elif t.status == 'PAGO_CONFIRMADO':
+                stats['pagoConfirmado'] += 1
         
         return jsonify({
             'success': True,

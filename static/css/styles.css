@@ -313,7 +313,7 @@ select:focus-visible {
     border-left: 4px solid var(--accent-success);
 }
 
-.stat-card[data-status="CONFIRMAR_PAGO"] {
+.stat-card[data-status="PAGO_CONFIRMADO"] {
     border-left: 4px solid var(--accent-danger);
 }
 
@@ -445,7 +445,7 @@ select:focus-visible {
     color: var(--accent-success);
 }
 
-.status-CONFIRMAR_PAGO {
+.status-PAGO_CONFIRMADO {
     background: rgba(252, 129, 129, 0.2);
     color: var(--accent-danger);
 }
