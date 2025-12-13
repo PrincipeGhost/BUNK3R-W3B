@@ -7531,5 +7531,244 @@ def admin_delete_survey_question(question_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ==================== ENDPOINTS DE SOLICITUDES DE REGISTRO ====================
+
+@admin_bp.route('/applications', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_applications():
+    """Admin: Obtener lista de solicitudes de registro."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        status = request.args.get('status', '')
+        search = request.args.get('search', '')
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+        offset = (page - 1) * per_page
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                where_clauses = []
+                params = []
+                
+                if status and status in ['pending', 'approved', 'rejected']:
+                    where_clauses.append("status = %s")
+                    params.append(status)
+                
+                if search:
+                    where_clauses.append("email ILIKE %s")
+                    params.append(f"%{search}%")
+                
+                where_sql = ""
+                if where_clauses:
+                    where_sql = "WHERE " + " AND ".join(where_clauses)
+                
+                cur.execute(f"""
+                    SELECT COUNT(*) as total FROM registration_applications {where_sql}
+                """, params)
+                total = cur.fetchone()['total']
+                
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                        COUNT(*) FILTER (WHERE status = 'approved') as approved,
+                        COUNT(*) FILTER (WHERE status = 'rejected') as rejected
+                    FROM registration_applications
+                """)
+                stats = cur.fetchone()
+                
+                cur.execute(f"""
+                    SELECT id, email, status, created_at, reviewed_at, reviewed_by
+                    FROM registration_applications 
+                    {where_sql}
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s
+                """, params + [per_page, offset])
+                
+                applications = cur.fetchall()
+        
+        return jsonify({
+            'success': True,
+            'applications': [{
+                'id': app['id'],
+                'email': app['email'],
+                'status': app['status'],
+                'created_at': app['created_at'].isoformat() if app['created_at'] else None,
+                'reviewed_at': app['reviewed_at'].isoformat() if app['reviewed_at'] else None,
+                'reviewed_by': app['reviewed_by']
+            } for app in applications],
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'stats': {
+                'pending': stats['pending'] or 0,
+                'approved': stats['approved'] or 0,
+                'rejected': stats['rejected'] or 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting applications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/applications/<int:app_id>', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_application(app_id):
+    """Admin: Obtener detalle de una solicitud."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, email, responses, status, created_at, reviewed_at, reviewed_by, approval_token
+                    FROM registration_applications 
+                    WHERE id = %s
+                """, (app_id,))
+                
+                app = cur.fetchone()
+                if not app:
+                    return jsonify({'success': False, 'error': 'Solicitud no encontrada'}), 404
+                
+                cur.execute("""
+                    SELECT id, question_text, question_type, options
+                    FROM survey_questions
+                    WHERE is_active = true
+                    ORDER BY order_position
+                """)
+                questions = cur.fetchall()
+        
+        responses = app['responses'] or {}
+        formatted_responses = []
+        for q in questions:
+            q_id = str(q['id'])
+            formatted_responses.append({
+                'question': q['question_text'],
+                'answer': responses.get(q_id, responses.get(f"q_{q_id}", '-'))
+            })
+        
+        return jsonify({
+            'success': True,
+            'application': {
+                'id': app['id'],
+                'email': app['email'],
+                'status': app['status'],
+                'responses': formatted_responses,
+                'created_at': app['created_at'].isoformat() if app['created_at'] else None,
+                'reviewed_at': app['reviewed_at'].isoformat() if app['reviewed_at'] else None,
+                'reviewed_by': app['reviewed_by'],
+                'has_token': bool(app['approval_token'])
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting application detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/applications/<int:app_id>/approve', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_approve_application(app_id):
+    """Admin: Aprobar una solicitud de registro."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        import secrets
+        approval_token = secrets.token_urlsafe(32)
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT id, status, email FROM registration_applications WHERE id = %s", (app_id,))
+                app = cur.fetchone()
+                
+                if not app:
+                    return jsonify({'success': False, 'error': 'Solicitud no encontrada'}), 404
+                
+                if app['status'] != 'pending':
+                    return jsonify({'success': False, 'error': 'Esta solicitud ya fue procesada'}), 400
+                
+                cur.execute("""
+                    UPDATE registration_applications 
+                    SET status = 'approved', 
+                        reviewed_at = NOW(), 
+                        reviewed_by = %s,
+                        approval_token = %s
+                    WHERE id = %s
+                    RETURNING id, email, approval_token
+                """, (request.telegram_user.get('id', 'admin') if hasattr(request, 'telegram_user') else 'admin', 
+                      approval_token, app_id))
+                
+                updated = cur.fetchone()
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Solicitud aprobada exitosamente',
+            'application': {
+                'id': updated['id'],
+                'email': updated['email'],
+                'registration_link': f"/registro?token={updated['approval_token']}"
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error approving application: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/applications/<int:app_id>/reject', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_reject_application(app_id):
+    """Admin: Rechazar una solicitud de registro."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.get_json() or {}
+        reason = data.get('reason', '')
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT id, status FROM registration_applications WHERE id = %s", (app_id,))
+                app = cur.fetchone()
+                
+                if not app:
+                    return jsonify({'success': False, 'error': 'Solicitud no encontrada'}), 404
+                
+                if app['status'] != 'pending':
+                    return jsonify({'success': False, 'error': 'Esta solicitud ya fue procesada'}), 400
+                
+                cur.execute("""
+                    UPDATE registration_applications 
+                    SET status = 'rejected', 
+                        reviewed_at = NOW(), 
+                        reviewed_by = %s
+                    WHERE id = %s
+                """, (request.telegram_user.get('id', 'admin') if hasattr(request, 'telegram_user') else 'admin', 
+                      app_id))
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Solicitud rechazada'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error rejecting application: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ==================== FIN DE ENDPOINTS ADMIN ====================
 
