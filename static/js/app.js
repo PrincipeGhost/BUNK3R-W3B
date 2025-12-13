@@ -3091,7 +3091,7 @@ const App = {
         const statuses = [
             { value: 'RETENIDO', icon: '📦', label: 'Retenido' },
             { value: 'EN_TRANSITO', icon: '🚚', label: 'En Camino' },
-            { value: 'CONFIRMAR_PAGO', icon: '💰', label: 'Confirmar Pago' },
+            { value: 'CONFIRMAR_PAGO', icon: '💰', label: 'Pago Confirmado' },
             { value: 'ENTREGADO', icon: '✅', label: 'Entregado' }
         ];
         
