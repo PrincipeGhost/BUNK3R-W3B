@@ -219,8 +219,11 @@ def create_tracking():
             if not data.get(field):
                 return jsonify({'error': f'Campo requerido: {field}'}), 400
         
-        import uuid
-        tracking_id = f"B3C-{uuid.uuid4().hex[:8].upper()}"
+        import random
+        import string
+        characters = string.ascii_uppercase + string.digits
+        random_part = ''.join(random.choices(characters, k=21))
+        tracking_id = f"TRK{random_part}"
         
         recipient_name = input_validator.sanitize_name(data['recipientName'])
         product_name = input_validator.sanitize_name(data['productName'])
