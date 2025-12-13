@@ -7317,5 +7317,219 @@ def admin_get_p2p_transfer_detail(transfer_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ==================== SURVEY QUESTIONS CRUD ====================
+
+@admin_bp.route('/survey/questions', methods=['GET'])
+@require_telegram_auth
+@require_owner
+def admin_get_survey_questions():
+    """Admin: Obtener todas las preguntas de encuesta."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, question_text, question_type, options, 
+                           is_required, order_position, is_active
+                    FROM survey_questions
+                    ORDER BY order_position ASC, id ASC
+                """)
+                questions = cur.fetchall()
+        
+        result = []
+        for q in questions:
+            result.append({
+                'id': q['id'],
+                'questionText': q['question_text'],
+                'questionType': q['question_type'],
+                'options': q['options'] or [],
+                'isRequired': q['is_required'],
+                'orderPosition': q['order_position'],
+                'isActive': q['is_active']
+            })
+        
+        return jsonify({
+            'success': True,
+            'questions': result,
+            'total': len(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting survey questions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/survey/questions', methods=['POST'])
+@require_telegram_auth
+@require_owner
+def admin_create_survey_question():
+    """Admin: Crear una nueva pregunta de encuesta."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Datos requeridos'}), 400
+        
+        question_text = data.get('questionText', '').strip()
+        if not question_text:
+            return jsonify({'success': False, 'error': 'El texto de la pregunta es requerido'}), 400
+        
+        question_type = data.get('questionType', 'text')
+        if question_type not in ['text', 'select', 'checkbox', 'textarea']:
+            return jsonify({'success': False, 'error': 'Tipo de pregunta invalido'}), 400
+        
+        options = data.get('options', [])
+        is_required = data.get('isRequired', True)
+        order_position = data.get('orderPosition', 0)
+        is_active = data.get('isActive', True)
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO survey_questions 
+                    (question_text, question_type, options, is_required, order_position, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, question_text, question_type, options, is_required, order_position, is_active
+                """, (question_text, question_type, json.dumps(options), is_required, order_position, is_active))
+                
+                new_question = cur.fetchone()
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pregunta creada exitosamente',
+            'question': {
+                'id': new_question['id'],
+                'questionText': new_question['question_text'],
+                'questionType': new_question['question_type'],
+                'options': new_question['options'] or [],
+                'isRequired': new_question['is_required'],
+                'orderPosition': new_question['order_position'],
+                'isActive': new_question['is_active']
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating survey question: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/survey/questions/<int:question_id>', methods=['PUT'])
+@require_telegram_auth
+@require_owner
+def admin_update_survey_question(question_id):
+    """Admin: Actualizar una pregunta de encuesta."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Datos requeridos'}), 400
+        
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id FROM survey_questions WHERE id = %s", (question_id,))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Pregunta no encontrada'}), 404
+                
+                updates = []
+                params = []
+                
+                if 'questionText' in data:
+                    updates.append("question_text = %s")
+                    params.append(data['questionText'].strip())
+                
+                if 'questionType' in data:
+                    if data['questionType'] not in ['text', 'select', 'checkbox', 'textarea']:
+                        return jsonify({'success': False, 'error': 'Tipo de pregunta invalido'}), 400
+                    updates.append("question_type = %s")
+                    params.append(data['questionType'])
+                
+                if 'options' in data:
+                    updates.append("options = %s")
+                    params.append(json.dumps(data['options']))
+                
+                if 'isRequired' in data:
+                    updates.append("is_required = %s")
+                    params.append(data['isRequired'])
+                
+                if 'orderPosition' in data:
+                    updates.append("order_position = %s")
+                    params.append(data['orderPosition'])
+                
+                if 'isActive' in data:
+                    updates.append("is_active = %s")
+                    params.append(data['isActive'])
+                
+                if not updates:
+                    return jsonify({'success': False, 'error': 'No hay campos para actualizar'}), 400
+                
+                params.append(question_id)
+                cur.execute(f"""
+                    UPDATE survey_questions 
+                    SET {', '.join(updates)}
+                    WHERE id = %s
+                    RETURNING id, question_text, question_type, options, is_required, order_position, is_active
+                """, params)
+                
+                updated = cur.fetchone()
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pregunta actualizada exitosamente',
+            'question': {
+                'id': updated['id'],
+                'questionText': updated['question_text'],
+                'questionType': updated['question_type'],
+                'options': updated['options'] or [],
+                'isRequired': updated['is_required'],
+                'orderPosition': updated['order_position'],
+                'isActive': updated['is_active']
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating survey question: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/survey/questions/<int:question_id>', methods=['DELETE'])
+@require_telegram_auth
+@require_owner
+def admin_delete_survey_question(question_id):
+    """Admin: Eliminar una pregunta de encuesta."""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM survey_questions WHERE id = %s", (question_id,))
+                if not cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Pregunta no encontrada'}), 404
+                
+                cur.execute("DELETE FROM survey_questions WHERE id = %s", (question_id,))
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pregunta eliminada exitosamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting survey question: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ==================== FIN DE ENDPOINTS ADMIN ====================
 

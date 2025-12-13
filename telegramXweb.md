@@ -116,18 +116,18 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 ## FASE 2: SISTEMA DE ENCUESTAS Y SOLICITUDES
 
-**Estado:** [ ] No iniciada
+**Estado:** [!] En progreso
 
 ### Tareas:
 
 #### 2.1 Panel Admin - CRUD Encuestas
-- [ ] Endpoint GET /api/admin/survey/questions
-- [ ] Endpoint POST /api/admin/survey/questions
-- [ ] Endpoint PUT /api/admin/survey/questions/:id
-- [ ] Endpoint DELETE /api/admin/survey/questions/:id
+- [x] Endpoint GET /api/admin/survey/questions
+- [x] Endpoint POST /api/admin/survey/questions
+- [x] Endpoint PUT /api/admin/survey/questions/:id
+- [x] Endpoint DELETE /api/admin/survey/questions/:id
 - [ ] UI en panel admin para gestionar preguntas
-- Archivos modificados:
-- Probado: NO
+- Archivos modificados: routes/admin_routes.py (lineas 7323-7535)
+- Probado: SI (endpoints funcionan, requieren auth)
 
 #### 2.2 Panel Admin - Solicitudes
 - [ ] Endpoint GET /api/admin/applications
