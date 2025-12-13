@@ -1941,12 +1941,10 @@ const PublicationsManager = {
         const userId = postUserId || post?.user_id;
         const isOwner = post && userId === String(this.currentUser?.id || 0);
         
-        const options = [
-            { label: 'Copiar enlace', action: () => this.copyPostLink(postId) }
-        ];
+        const options = [];
         
         if (isOwner) {
-            options.unshift(
+            options.push(
                 { label: 'Editar', action: () => this.editPost(postId) },
                 { label: 'Eliminar', action: () => this.deletePost(postId), danger: true }
             );
