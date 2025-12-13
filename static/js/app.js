@@ -1329,10 +1329,15 @@ const App = {
         this.hideAllScreens();
         const messagesSection = document.getElementById('section-messages');
         const chatScreen = document.getElementById('chat-screen');
+        const bottomNav = document.getElementById('bottom-nav');
         
         if (chatScreen) chatScreen.classList.add('hidden');
         if (messagesSection) {
             messagesSection.classList.remove('hidden');
+        }
+        
+        if (bottomNav) {
+            bottomNav.classList.add('hidden');
         }
         
         if (this.tg && this.tg.BackButton) {
@@ -1347,6 +1352,14 @@ const App = {
         if (typeof Chat !== 'undefined') {
             Chat.init();
         }
+    },
+    
+    exitMessagesSection() {
+        const bottomNav = document.getElementById('bottom-nav');
+        if (bottomNav) {
+            bottomNav.classList.remove('hidden');
+        }
+        this.goToHome();
     },
     
     async showSection(sectionName) {
