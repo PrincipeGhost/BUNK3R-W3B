@@ -3041,13 +3041,24 @@ const App = {
     },
     
     async createTracking() {
+        if (this._creatingTracking) {
+            return;
+        }
+        
         const form = document.getElementById('create-form');
+        const submitBtn = form.querySelector('button[type="submit"]');
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         
         if (!data.recipientName || !data.productName) {
             this.showToast('Por favor completa los campos obligatorios', 'error');
             return;
+        }
+        
+        this._creatingTracking = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳</span> Creando...';
         }
         
         try {
@@ -3067,6 +3078,12 @@ const App = {
         } catch (error) {
             console.error('Error creating tracking:', error);
             this.showToast('Error al crear tracking', 'error');
+        } finally {
+            this._creatingTracking = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>➕</span> Crear Tracking';
+            }
         }
     },
     
