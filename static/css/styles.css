@@ -1780,7 +1780,7 @@ select:focus-visible {
 .profile-avatar-section {
     display: flex;
     justify-content: center;
-    margin-top: -50px;
+    margin-top: 20px;
     position: relative;
     z-index: 20;
     margin-bottom: 16px;
