@@ -1878,18 +1878,20 @@ const PublicationsManager = {
     sharePost(postId) {
         const post = this.feedPosts.find(p => p.id === postId);
         const username = post?.username;
+        const userId = post?.user_id;
+        const avatarUrl = post?.avatar_url || '';
         
-        if (!username) {
+        if (!username || !userId) {
             this.showToast('No se puede abrir el chat', 'error');
             return;
         }
         
-        const chatUrl = `https://t.me/${username}`;
-        
-        if (window.Telegram?.WebApp) {
-            window.Telegram.WebApp.openTelegramLink(chatUrl);
+        if (typeof Chat !== 'undefined' && Chat.openChatFromProfile) {
+            Chat.openChatFromProfile(userId, username, avatarUrl);
         } else {
-            window.open(chatUrl, '_blank');
+            if (typeof App !== 'undefined' && App.showSection) {
+                App.showSection('messages');
+            }
         }
     },
     
