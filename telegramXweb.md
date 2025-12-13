@@ -16,7 +16,7 @@
 - [!] = En progreso
 - [E] = Error (requiere atención)
 
-### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 1 completada
+### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 2.1 completada
 
 ---
 
@@ -125,8 +125,8 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 - [x] Endpoint POST /api/admin/survey/questions
 - [x] Endpoint PUT /api/admin/survey/questions/:id
 - [x] Endpoint DELETE /api/admin/survey/questions/:id
-- [ ] UI en panel admin para gestionar preguntas
-- Archivos modificados: routes/admin_routes.py (lineas 7323-7535)
+- [x] UI en panel admin para gestionar preguntas
+- Archivos modificados: routes/admin_routes.py (lineas 7323-7535), templates/admin.html, static/js/admin.js, static/css/admin.css
 - Probado: SI (endpoints funcionan, requieren auth)
 
 #### 2.2 Panel Admin - Solicitudes
@@ -312,6 +312,7 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 | 2025-12-13 | 1 | 1.4 Crear survey_questions | Completado | Tabla creada |
 | 2025-12-13 | 1 | 1.5 Crear email_verifications | Completado | Tabla e índices creados |
 | 2025-12-13 | 1 | 1.6 Crear decoradores web | Completado | 3 decoradores + 3 helpers |
+| 2025-12-13 | 2.1 | UI Panel Admin Encuestas | Completado | SurveyModule + ApplicationsModule |
 
 ---
 
@@ -327,3 +328,6 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 - **bot/tracking_correos/decorators.py** - Agregados: @require_web_auth, @require_admin, @require_email_verified, get_current_web_user(), create_web_session(), invalidate_web_session()
 - **Base de datos** - Nuevas columnas en users, nuevas tablas: registration_applications, survey_questions, email_verifications
+- **templates/admin.html** - Agregadas secciones section-survey y section-applications con navegación "Registro Web"
+- **static/js/admin.js** - Agregados módulos SurveyModule y ApplicationsModule
+- **static/css/admin.css** - Agregados estilos para las nuevas secciones de encuestas y solicitudes
