@@ -841,7 +841,7 @@ const PublicationsManager = {
     
     renderPost(post) {
         const mediaHtml = this.renderPostMedia(post);
-        const captionHtml = this.renderCaption(post.caption);
+        const captionHtml = this.renderCaption(post.decrypted_caption || post.caption);
         const timeAgo = this.formatTimeAgo(post.created_at);
         const safeAvatarUrl = escapeAttribute(post.avatar_url || this.DEFAULT_AVATAR);
         const likesText = post.reactions_count === 1 ? '1 me gusta' : `${parseInt(post.reactions_count) || 0} me gusta`;
