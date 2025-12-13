@@ -1949,6 +1949,26 @@ select:focus-visible {
     border: none;
 }
 
+.profile-settings-inline-btn {
+    width: 28px;
+    height: 28px;
+    padding: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.profile-settings-inline-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
 .profile-page-stat {
     display: flex;
     flex-direction: column;

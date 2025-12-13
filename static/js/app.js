@@ -1907,7 +1907,7 @@ const App = {
             walletCard.addEventListener('click', () => this.showPage('wallet'));
         }
         
-        const settingsBtn = document.getElementById('profile-settings-btn');
+        const settingsBtn = document.getElementById('profile-settings-btn-inline');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => this.showSettingsScreen());
         }
