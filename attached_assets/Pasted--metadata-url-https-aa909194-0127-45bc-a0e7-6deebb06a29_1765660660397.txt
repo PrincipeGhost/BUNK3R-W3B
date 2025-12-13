@@ -1,0 +1,194 @@
+{
+  "metadata": {
+    "url": "https://aa909194-0127-45bc-a0e7-6deebb06a296-00-3d3v8xkykfz5.riker.replit.dev/",
+    "date": "2025-12-13T21:12:59.986Z",
+    "version": "2.0",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+  },
+  "summary": {
+    "critical": 0,
+    "high": 18,
+    "medium": 2,
+    "low": 1,
+    "info": 0,
+    "total": 21
+  },
+  "vulnerabilities": {
+    "critical": [],
+    "high": [
+      {
+        "test": "Header de Seguridad Faltante",
+        "desc": "No tiene header: strict-transport-security",
+        "fix": "Agregar header strict-transport-security en el servidor. Fuerza HTTPS",
+        "extracted": null
+      },
+      {
+        "test": "Script Externo sin SRI",
+        "desc": "Script: https://telegram.org/js/telegram-web-app.js...",
+        "fix": "Agregar atributo integrity con hash SRI para verificar integridad",
+        "extracted": null
+      },
+      {
+        "test": "Script Externo sin SRI",
+        "desc": "Script: https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/dist/tonconnect-ui.min.js...",
+        "fix": "Agregar atributo integrity con hash SRI para verificar integridad",
+        "extracted": null
+      },
+      {
+        "test": "Script Externo sin SRI",
+        "desc": "Script: https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js...",
+        "fix": "Agregar atributo integrity con hash SRI para verificar integridad",
+        "extracted": null
+      },
+      {
+        "test": "Script Externo sin SRI",
+        "desc": "Script: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js...",
+        "fix": "Agregar atributo integrity con hash SRI para verificar integridad",
+        "extracted": null
+      },
+      {
+        "test": "Script Externo sin SRI",
+        "desc": "Script: https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js...",
+        "fix": "Agregar atributo integrity con hash SRI para verificar integridad",
+        "extracted": null
+      },
+      {
+        "test": "Comentario HTML con Info Sensible",
+        "desc": "<!-- PANTALLA DE WALLET INCORRECTA -->...",
+        "fix": "Remover comentarios sensibles en produccion",
+        "extracted": null
+      },
+      {
+        "test": "Comentario HTML con Info Sensible",
+        "desc": "<!-- PAGINA B3C TOKEN -->...",
+        "fix": "Remover comentarios sensibles en produccion",
+        "extracted": null
+      },
+      {
+        "test": "Comentario HTML con Info Sensible",
+        "desc": "<!-- Seccion Mis Activos - Multi-Token Wallet -->...",
+        "fix": "Remover comentarios sensibles en produccion",
+        "extracted": null
+      },
+      {
+        "test": "Comentario HTML con Info Sensible",
+        "desc": "<!-- User Info Section -->...",
+        "fix": "Remover comentarios sensibles en produccion",
+        "extracted": null
+      },
+      {
+        "test": "Comentario HTML con Info Sensible",
+        "desc": "<!-- Stats Rapidas -->...",
+        "fix": "Remover comentarios sensibles en produccion",
+        "extracted": null
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-token contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-token",
+          "value": "B3C"
+        }
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-token contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-token",
+          "value": "USDT"
+        }
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-token contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-token",
+          "value": "TON"
+        }
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-nav contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-nav",
+          "value": "wallet"
+        }
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-token contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-token",
+          "value": "TON"
+        }
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-token contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-token",
+          "value": "B3C"
+        }
+      },
+      {
+        "test": "Data Attribute Sensible",
+        "desc": "data-token contiene informacion sensible",
+        "fix": "No almacenar datos sensibles en data attributes",
+        "extracted": {
+          "attribute": "data-token",
+          "value": "USDT"
+        }
+      }
+    ],
+    "medium": [
+      {
+        "test": "Event Handler Inline",
+        "desc": "86 elementos con onclick inline",
+        "fix": "Usar addEventListener en lugar de handlers inline (mejor para CSP)",
+        "extracted": null
+      },
+      {
+        "test": "Event Handler Inline",
+        "desc": "6 elementos con onerror inline",
+        "fix": "Usar addEventListener en lugar de handlers inline (mejor para CSP)",
+        "extracted": null
+      }
+    ],
+    "low": [
+      {
+        "test": "Informacion del Servidor Expuesta",
+        "desc": "Header Server: Werkzeug/3.0.1 Python/3.12.11",
+        "fix": "Remover o ocultar header Server",
+        "extracted": null
+      }
+    ],
+    "info": []
+  },
+  "extractedData": {
+    "tokens": [],
+    "passwords": [],
+    "apiKeys": [],
+    "cookies": [],
+    "storage": [
+      {
+        "type": "localStorage",
+        "key": "bunk3r_device_id",
+        "value": "TW96aWxsYS81LjAgKFdpbmRvd3MgTlQg"
+      },
+      {
+        "type": "sessionStorage",
+        "key": "__telegram__initParams",
+        "value": "{}"
+      }
+    ],
+    "globals": [],
+    "endpoints": [],
+    "secrets": []
+  }
+}
