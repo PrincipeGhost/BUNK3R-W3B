@@ -204,6 +204,16 @@ select:focus-visible {
     z-index: 99;
 }
 
+.nav-tabs-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    border-top: 1px solid var(--border-color);
+    z-index: 100;
+}
+
 .nav-tab {
     flex: 1;
     display: flex;
