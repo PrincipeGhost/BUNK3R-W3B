@@ -15784,6 +15784,10 @@ body.dev-mode-active .dev-lock-badge {
     font-size: 13px;
 }
 
+.tracking-col-left .total-stat .total-value {
+    font-size: 16px;
+}
+
 .tracking-col-left .bc3-balance-stat {
     margin-top: 8px;
     background: linear-gradient(135deg, rgba(240, 185, 11, 0.1) 0%, rgba(240, 185, 11, 0.05) 100%);
@@ -15793,6 +15797,7 @@ body.dev-mode-active .dev-lock-badge {
 .tracking-col-left .bc3-balance-stat .bc3-value {
     color: #F0B90B;
     font-weight: 700;
+    font-size: 16px;
 }
 
 /* Trackings list in center column */
