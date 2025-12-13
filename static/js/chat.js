@@ -62,21 +62,22 @@ const Chat = {
 
         if (this.conversations.length === 0) {
             container.innerHTML = `
-                <div class="messages-empty">
-                    <div class="messages-empty-icon">
+                <div class="sidebar-empty">
+                    <div class="sidebar-empty-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
                         </svg>
                     </div>
                     <h3>Sin mensajes</h3>
-                    <p>Cuando inicies una conversación, aparecerá aquí</p>
+                    <p>Inicia una conversacion</p>
                 </div>
             `;
             return;
         }
 
+        const currentUserId = this.currentChatUser?.id;
         container.innerHTML = this.conversations.map(conv => `
-            <button class="conversation-item ${conv.unread_count > 0 ? 'unread' : ''}" 
+            <button class="conversation-item ${conv.unread_count > 0 ? 'unread' : ''} ${String(conv.other_user_id) === String(currentUserId) ? 'active' : ''}" 
                     onclick="Chat.openChat('${conv.other_user_id}', '${this.escapeHtml(conv.username || '')}', '${conv.avatar_url || ''}')">
                 <div class="conversation-avatar">
                     ${conv.avatar_url 
@@ -113,25 +114,42 @@ const Chat = {
         this.replyingTo = null;
         this.selectedImage = null;
 
-        const messagesSection = document.getElementById('section-messages');
-        const chatScreen = document.getElementById('chat-screen');
+        const chatPanel = document.getElementById('chat-panel');
+        const chatPlaceholder = document.getElementById('chat-placeholder');
+        const chatSidebar = document.getElementById('chat-sidebar');
         
-        if (messagesSection) messagesSection.classList.add('hidden');
-        if (chatScreen) {
-            chatScreen.classList.remove('hidden');
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        const activeConv = document.querySelector(`.conversation-item[onclick*="'${userId}'"]`);
+        if (activeConv) activeConv.classList.add('active');
+        
+        if (chatPlaceholder) chatPlaceholder.style.display = 'none';
+        if (chatPanel) {
+            chatPanel.classList.add('active');
             this.renderChatHeader();
             await this.loadMessages();
             this.scrollToBottom();
             document.getElementById('chat-textarea')?.focus();
         }
+        
+        if (window.innerWidth <= 768 && chatSidebar) {
+            chatSidebar.classList.add('hidden');
+        }
     },
 
     closeChat() {
-        const messagesSection = document.getElementById('section-messages');
-        const chatScreen = document.getElementById('chat-screen');
+        const chatPanel = document.getElementById('chat-panel');
+        const chatPlaceholder = document.getElementById('chat-placeholder');
+        const chatSidebar = document.getElementById('chat-sidebar');
         
-        if (chatScreen) chatScreen.classList.add('hidden');
-        if (messagesSection) messagesSection.classList.remove('hidden');
+        if (chatPanel) chatPanel.classList.remove('active');
+        if (chatPlaceholder) chatPlaceholder.style.display = 'flex';
+        if (chatSidebar) chatSidebar.classList.remove('hidden');
+        
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('active');
+        });
         
         this.currentChatUser = null;
         this.loadConversations();
