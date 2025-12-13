@@ -15847,15 +15847,31 @@ body.dev-mode-active .dev-lock-badge {
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: 60px;
     background: var(--bg-primary);
     z-index: 100;
     padding: 16px;
+    padding-bottom: 100px;
     overflow-y: auto;
 }
 
 .tracking-detail-overlay .detail-header {
     margin-bottom: 16px;
+}
+
+.tracking-detail-overlay .tracking-detail {
+    margin-bottom: 20px;
+}
+
+.tracking-detail-overlay .detail-actions {
+    padding: 16px;
+    gap: 8px;
+}
+
+.tracking-detail-overlay .detail-actions .btn {
+    font-size: 11px;
+    padding: 10px 8px;
+    white-space: nowrap;
 }
 
 /* Responsive adjustments */
