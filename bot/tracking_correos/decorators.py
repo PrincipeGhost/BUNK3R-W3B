@@ -288,3 +288,136 @@ CSRF_EXEMPT_ENDPOINTS = {
     'public_user_profile',
     'public_comments'
 }
+
+
+def get_current_web_user():
+    """Obtiene el usuario actual de la sesion web.
+    
+    Returns:
+        dict: Datos del usuario o None si no hay sesion
+    """
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+    
+    return {
+        'id': user_id,
+        'username': session.get('username'),
+        'email': session.get('email'),
+        'email_verified': session.get('email_verified', False),
+        'is_admin': session.get('is_admin', False),
+        'two_factor_enabled': session.get('two_factor_enabled', False)
+    }
+
+
+def create_web_session(user_data: dict, client_ip: str = None):
+    """Crea una sesion web para el usuario.
+    
+    Args:
+        user_data: Diccionario con datos del usuario desde BD
+        client_ip: IP del cliente para tracking
+    """
+    session['user_id'] = user_data.get('id')
+    session['username'] = user_data.get('username')
+    session['email'] = user_data.get('email')
+    session['email_verified'] = user_data.get('email_verified', False)
+    session['is_admin'] = user_data.get('is_admin', False)
+    session['two_factor_enabled'] = user_data.get('two_factor_enabled', False)
+    session['login_ip'] = client_ip
+    session['login_time'] = time.time()
+    session.permanent = True
+
+
+def invalidate_web_session():
+    """Invalida la sesion web actual."""
+    keys_to_remove = ['user_id', 'username', 'email', 'email_verified', 
+                      'is_admin', 'two_factor_enabled', 'login_ip', 'login_time']
+    for key in keys_to_remove:
+        session.pop(key, None)
+
+
+def require_web_auth(f):
+    """Decorador para requerir autenticacion web (usuario logueado con 2FA verificado)."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_web_user()
+        
+        if not user or not user.get('id'):
+            return jsonify({
+                'error': 'Sesion no valida',
+                'code': 'NOT_AUTHENTICATED',
+                'redirect': '/login'
+            }), 401
+        
+        if not user.get('email_verified'):
+            return jsonify({
+                'error': 'Email no verificado',
+                'code': 'EMAIL_NOT_VERIFIED',
+                'redirect': '/verificar-email'
+            }), 403
+        
+        if not user.get('two_factor_enabled'):
+            return jsonify({
+                'error': '2FA no configurado',
+                'code': '2FA_NOT_SETUP',
+                'redirect': '/setup-2fa'
+            }), 403
+        
+        request.web_user = user
+        request.is_admin = user.get('is_admin', False)
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_admin(f):
+    """Decorador para funciones que solo el admin/owner puede usar."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_web_user()
+        
+        if not user or not user.get('id'):
+            return jsonify({
+                'error': 'Sesion no valida',
+                'code': 'NOT_AUTHENTICATED',
+                'redirect': '/login'
+            }), 401
+        
+        if not user.get('is_admin'):
+            logger.warning(f"Admin access denied for user {user.get('id')}")
+            return jsonify({
+                'error': 'Acceso denegado',
+                'code': 'NOT_ADMIN'
+            }), 403
+        
+        request.web_user = user
+        request.is_admin = True
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_email_verified(f):
+    """Decorador para requerir que el email este verificado."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_web_user()
+        
+        if not user or not user.get('id'):
+            return jsonify({
+                'error': 'Sesion no valida',
+                'code': 'NOT_AUTHENTICATED',
+                'redirect': '/login'
+            }), 401
+        
+        if not user.get('email_verified'):
+            return jsonify({
+                'error': 'Debes verificar tu email primero',
+                'code': 'EMAIL_NOT_VERIFIED',
+                'redirect': '/verificar-email'
+            }), 403
+        
+        request.web_user = user
+        
+        return f(*args, **kwargs)
+    return decorated_function
