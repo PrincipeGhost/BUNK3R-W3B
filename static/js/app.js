@@ -2878,6 +2878,11 @@ const App = {
             const detailContainer = document.getElementById('tracking-detail');
             
             detailContainer.innerHTML = `
+                <div class="detail-back-header" style="margin-bottom: 16px;">
+                    <button type="button" class="btn-back" id="btn-back-detail" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); cursor: pointer;">
+                        <span>←</span> Volver
+                    </button>
+                </div>
                 <div class="detail-section">
                     <div class="tracking-header" style="margin-bottom: 0;">
                         <span class="tracking-id" style="font-size: 14px;">${this.escapeHtml(t.trackingId)}</span>
@@ -2984,6 +2989,13 @@ const App = {
                     </button>
                 </div>
             `;
+            
+            const btnBackDetail = document.getElementById('btn-back-detail');
+            if (btnBackDetail) {
+                btnBackDetail.addEventListener('click', () => {
+                    this.goBack();
+                });
+            }
             
             this.switchSection('detail');
             
