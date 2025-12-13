@@ -15658,14 +15658,14 @@ body.dev-mode-active .dev-lock-badge {
 }
 
 .tracking-col-center {
-    width: 285px;
-    min-width: 285px;
+    width: 260px;
+    min-width: 260px;
     flex: 1;
 }
 
 .tracking-col-right {
-    width: 437px;
-    min-width: 437px;
+    width: 462px;
+    min-width: 462px;
 }
 
 .tracking-column-header {
