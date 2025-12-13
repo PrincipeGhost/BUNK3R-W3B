@@ -1349,6 +1349,10 @@ const App = {
         }
     },
     
+    async showSection(sectionName) {
+        this.handleBottomNav(sectionName);
+    },
+    
     handleSidebarNavigation(section) {
         switch (section) {
             case 'numeros':
@@ -1383,7 +1387,7 @@ const App = {
     
     hideAllScreens() {
         this.cleanupCurrentScreen();
-        document.querySelectorAll('.page-screen, #home-screen, #tracking-module').forEach(screen => {
+        document.querySelectorAll('.page-screen, #home-screen, #tracking-module, #section-messages, #chat-screen').forEach(screen => {
             screen.classList.add('hidden');
         });
     },
