@@ -930,8 +930,6 @@ const PublicationsManager = {
                         Publicar
                     </button>
                 </div>
-                
-                ${post.is_encrypted ? '<span class="encryption-badge">🔒</span>' : ''}
             </article>
         `;
     },
