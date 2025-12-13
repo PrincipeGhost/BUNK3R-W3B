@@ -1513,6 +1513,126 @@ def virtual_numbers_page():
     return render_template('virtual_numbers.html')
 
 
+# ============================================================
+# ENDPOINTS PUBLICOS PARA SOLICITUD DE REGISTRO
+# ============================================================
+
+@app.route('/solicitud')
+def solicitud_page():
+    """Render public application form page"""
+    return render_template('solicitud.html')
+
+
+@app.route('/api/public/survey/questions', methods=['GET'])
+def public_get_survey_questions():
+    """Public: Get active survey questions for application form."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, question_text, question_type, options, is_required
+                    FROM survey_questions
+                    WHERE is_active = true
+                    ORDER BY order_position, id
+                """)
+                questions = cur.fetchall()
+        
+        return jsonify({
+            'success': True,
+            'questions': [{
+                'id': q['id'],
+                'questionText': q['question_text'],
+                'questionType': q['question_type'],
+                'options': q['options'] or [],
+                'isRequired': q['is_required']
+            } for q in questions]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting public survey questions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/public/apply', methods=['POST'])
+def public_submit_application():
+    """Public: Submit a registration application."""
+    try:
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Datos invalidos'}), 400
+        
+        email = data.get('email', '').strip().lower()
+        responses = data.get('responses', {})
+        
+        if not email:
+            return jsonify({'success': False, 'error': 'El correo electronico es requerido'}), 400
+        
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return jsonify({'success': False, 'error': 'Correo electronico invalido'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id FROM registration_applications 
+                    WHERE email = %s AND status IN ('pending', 'approved')
+                """, (email,))
+                existing = cur.fetchone()
+                
+                if existing:
+                    return jsonify({'success': False, 'error': 'Ya existe una solicitud con este correo'}), 400
+                
+                cur.execute("""
+                    SELECT id, question_text, is_required 
+                    FROM survey_questions 
+                    WHERE is_active = true
+                """)
+                questions = cur.fetchall()
+                
+                for q in questions:
+                    if q['is_required']:
+                        answer = responses.get(str(q['id']), '')
+                        if isinstance(answer, list):
+                            if len(answer) == 0:
+                                return jsonify({
+                                    'success': False, 
+                                    'error': f'El campo "{q["question_text"]}" es requerido'
+                                }), 400
+                        elif not answer or not str(answer).strip():
+                            return jsonify({
+                                'success': False, 
+                                'error': f'El campo "{q["question_text"]}" es requerido'
+                            }), 400
+                
+                cur.execute("""
+                    INSERT INTO registration_applications (email, responses, status, created_at)
+                    VALUES (%s, %s, 'pending', NOW())
+                    RETURNING id
+                """, (email, json.dumps(responses)))
+                
+                new_app = cur.fetchone()
+                conn.commit()
+        
+        logger.info(f"New registration application submitted: {email}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Solicitud enviada correctamente',
+            'application_id': new_app['id']
+        })
+        
+    except Exception as e:
+        logger.error(f"Error submitting application: {e}")
+        return jsonify({'success': False, 'error': 'Error al procesar la solicitud'}), 500
+
+
 def log_admin_action(admin_id, admin_name, action_type, target_type=None, target_id=None, description=None, metadata=None):
     """Helper function to log admin actions."""
     try:

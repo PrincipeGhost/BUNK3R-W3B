@@ -16,7 +16,7 @@
 - [!] = En progreso
 - [E] = Error (requiere atención)
 
-### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 2.2 completada
+### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 2 completada
 
 ---
 
@@ -116,7 +116,7 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 ## FASE 2: SISTEMA DE ENCUESTAS Y SOLICITUDES
 
-**Estado:** [!] En progreso
+**Estado:** [x] COMPLETADA - 2025-12-13
 
 ### Tareas:
 
@@ -139,13 +139,13 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 - Probado: SI
 
 #### 2.3 Página pública de solicitud
-- [ ] Ruta /solicitud (página pública)
-- [ ] Formulario que carga preguntas de survey_questions
-- [ ] Endpoint POST /api/public/apply
-- [ ] Validación de campos requeridos
-- [ ] Mensaje de confirmación al enviar
-- Archivos modificados:
-- Probado: NO
+- [x] Ruta /solicitud (página pública)
+- [x] Formulario que carga preguntas de survey_questions
+- [x] Endpoint POST /api/public/apply
+- [x] Validación de campos requeridos
+- [x] Mensaje de confirmación al enviar
+- Archivos modificados: app.py (lineas 1519-1636), templates/solicitud.html
+- Probado: SI
 
 ---
 
@@ -314,6 +314,7 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 | 2025-12-13 | 1 | 1.6 Crear decoradores web | Completado | 3 decoradores + 3 helpers |
 | 2025-12-13 | 2.1 | UI Panel Admin Encuestas | Completado | SurveyModule + ApplicationsModule |
 | 2025-12-13 | 2.2 | Panel Admin Solicitudes | Completado | 4 endpoints + UI completa |
+| 2025-12-13 | 2.3 | Pagina publica solicitud | Completado | /solicitud + 2 endpoints publicos |
 
 ---
 

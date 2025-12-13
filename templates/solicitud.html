@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Acceso - BUNK3R</title>
+    <style>
+        :root {
+            --bg-primary: #0B0E11;
+            --bg-secondary: #12161C;
+            --bg-elevated: #1E2329;
+            --accent-primary: #F0B90B;
+            --accent-secondary: #FCD535;
+            --text-primary: #EAECEF;
+            --text-secondary: #848E9C;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-success: #0ECB81;
+            --accent-danger: #F6465D;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--bg-primary);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .form-group label .required {
+            color: var(--accent-danger);
+            margin-left: 4px;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.1);
+        }
+        
+        .form-control::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        select.form-control {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23848E9C' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-primary);
+            cursor: pointer;
+        }
+        
+        .checkbox-item span {
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 10px;
+            color: var(--bg-primary);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(240, 185, 11, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: var(--bg-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .loading-state .spinner {
+            margin: 0 auto 16px;
+            width: 32px;
+            height: 32px;
+            border-color: var(--accent-primary);
+            border-top-color: transparent;
+        }
+        
+        .success-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(14, 203, 129, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .success-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--accent-success);
+        }
+        
+        .success-state h2 {
+            margin-bottom: 12px;
+            color: var(--accent-success);
+        }
+        
+        .success-state p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .error-message {
+            background: rgba(246, 70, 93, 0.1);
+            border: 1px solid rgba(246, 70, 93, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--accent-danger);
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .no-questions {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">B3</div>
+            <h1>Solicitud de Acceso</h1>
+            <p>Completa el formulario para solicitar acceso a BUNK3R</p>
+        </div>
+        
+        <div class="card">
+            <div id="loadingState" class="loading-state">
+                <div class="spinner"></div>
+                <p>Cargando formulario...</p>
+            </div>
+            
+            <div id="formContainer" style="display: none;">
+                <div id="errorMessage" class="error-message"></div>
+                
+                <form id="applicationForm">
+                    <div class="form-group">
+                        <label>
+                            Correo electronico
+                            <span class="required">*</span>
+                        </label>
+                        <input type="email" name="email" class="form-control" placeholder="tu@correo.com" required>
+                    </div>
+                    
+                    <div id="surveyQuestions"></div>
+                    
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        Enviar Solicitud
+                    </button>
+                </form>
+            </div>
+            
+            <div id="successState" class="success-state" style="display: none;">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h2>Solicitud Enviada</h2>
+                <p>Tu solicitud ha sido recibida correctamente. Recibiras un correo electronico cuando sea revisada por nuestro equipo.</p>
+            </div>
+            
+            <div id="noQuestions" class="no-questions" style="display: none;">
+                <p>El formulario de solicitud no esta disponible en este momento. Por favor, intenta mas tarde.</p>
+            </div>
+        </div>
+        
+        <p class="footer-note">Las solicitudes son revisadas manualmente</p>
+    </div>
+    
+    <script>
+        const App = {
+            questions: [],
+            
+            async init() {
+                await this.loadQuestions();
+                this.bindEvents();
+            },
+            
+            async loadQuestions() {
+                try {
+                    const response = await fetch('/api/public/survey/questions');
+                    const data = await response.json();
+                    
+                    document.getElementById('loadingState').style.display = 'none';
+                    
+                    if (data.success && data.questions && data.questions.length > 0) {
+                        this.questions = data.questions;
+                        this.renderQuestions();
+                        document.getElementById('formContainer').style.display = 'block';
+                    } else {
+                        document.getElementById('noQuestions').style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error loading questions:', error);
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('noQuestions').style.display = 'block';
+                }
+            },
+            
+            renderQuestions() {
+                const container = document.getElementById('surveyQuestions');
+                
+                container.innerHTML = this.questions.map(q => {
+                    const required = q.isRequired ? '<span class="required">*</span>' : '';
+                    const requiredAttr = q.isRequired ? 'required' : '';
+                    
+                    if (q.questionType === 'text') {
+                        return `
+                            <div class="form-group">
+                                <label>${this.escapeHtml(q.questionText)}${required}</label>
+                                <input type="text" name="q_${q.id}" class="form-control" ${requiredAttr}>
+                            </div>
+                        `;
+                    } else if (q.questionType === 'textarea') {
+                        return `
+                            <div class="form-group">
+                                <label>${this.escapeHtml(q.questionText)}${required}</label>
+                                <textarea name="q_${q.id}" class="form-control" ${requiredAttr}></textarea>
+                            </div>
+                        `;
+                    } else if (q.questionType === 'select') {
+                        const options = (q.options || []).map(opt => 
+                            `<option value="${this.escapeHtml(opt)}">${this.escapeHtml(opt)}</option>`
+                        ).join('');
+                        return `
+                            <div class="form-group">
+                                <label>${this.escapeHtml(q.questionText)}${required}</label>
+                                <select name="q_${q.id}" class="form-control" ${requiredAttr}>
+                                    <option value="">Seleccionar...</option>
+                                    ${options}
+                                </select>
+                            </div>
+                        `;
+                    } else if (q.questionType === 'checkbox') {
+                        const checkboxes = (q.options || []).map((opt, idx) => `
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="q_${q.id}" value="${this.escapeHtml(opt)}">
+                                <span>${this.escapeHtml(opt)}</span>
+                            </label>
+                        `).join('');
+                        return `
+                            <div class="form-group">
+                                <label>${this.escapeHtml(q.questionText)}${required}</label>
+                                <div class="checkbox-group">${checkboxes}</div>
+                            </div>
+                        `;
+                    }
+                    return '';
+                }).join('');
+            },
+            
+            bindEvents() {
+                document.getElementById('applicationForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.submitApplication();
+                });
+            },
+            
+            async submitApplication() {
+                const form = document.getElementById('applicationForm');
+                const submitBtn = document.getElementById('submitBtn');
+                const errorDiv = document.getElementById('errorMessage');
+                
+                errorDiv.classList.remove('show');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="spinner"></div> Enviando...';
+                
+                try {
+                    const formData = new FormData(form);
+                    const email = formData.get('email');
+                    
+                    const responses = {};
+                    this.questions.forEach(q => {
+                        const key = `q_${q.id}`;
+                        if (q.questionType === 'checkbox') {
+                            const checked = form.querySelectorAll(`input[name="${key}"]:checked`);
+                            responses[q.id] = Array.from(checked).map(c => c.value);
+                        } else {
+                            responses[q.id] = formData.get(key) || '';
+                        }
+                    });
+                    
+                    const response = await fetch('/api/public/apply', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, responses })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.getElementById('formContainer').style.display = 'none';
+                        document.getElementById('successState').style.display = 'block';
+                    } else {
+                        errorDiv.textContent = data.error || 'Error al enviar la solicitud';
+                        errorDiv.classList.add('show');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = 'Enviar Solicitud';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    errorDiv.textContent = 'Error de conexion. Intenta de nuevo.';
+                    errorDiv.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Enviar Solicitud';
+                }
+            },
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>
