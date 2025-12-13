@@ -1878,52 +1878,21 @@ const PublicationsManager = {
     },
     
     sharePost(postId) {
-        const shareUrl = `${window.location.origin}/post/${postId}`;
+        const post = this.feedPosts.find(p => p.id === postId);
+        const username = post?.username;
         
-        const options = [
-            { 
-                label: 'Compartir en Telegram', 
-                action: async () => {
-                    if (window.Telegram?.WebApp) {
-                        window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('Mira esta publicación en BUNK3R')}`);
-                    } else {
-                        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('Mira esta publicación en BUNK3R')}`, '_blank');
-                    }
-                    await this.incrementShareCount(postId);
-                }
-            },
-            { 
-                label: 'Copiar enlace', 
-                action: async () => {
-                    try {
-                        await navigator.clipboard.writeText(shareUrl);
-                        this.showToast('Enlace copiado', 'success');
-                        await this.incrementShareCount(postId);
-                    } catch (e) {
-                        this.showToast('No se pudo copiar', 'error');
-                    }
-                }
-            },
-            {
-                label: 'Repostear en mi perfil',
-                action: async () => {
-                    try {
-                        const response = await this.apiRequest(`/api/publications/${postId}/share`, {
-                            method: 'POST',
-                            body: JSON.stringify({ type: 'repost' })
-                        });
-                        if (response.success) {
-                            this.showToast('Publicación reposteada', 'success');
-                            this.loadFeed();
-                        }
-                    } catch (error) {
-                        console.error('Repost error:', error);
-                    }
-                }
-            }
-        ];
+        if (!username) {
+            this.showToast('No se puede abrir el chat', 'error');
+            return;
+        }
         
-        this.showActionSheet(options);
+        const chatUrl = `https://t.me/${username}`;
+        
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.openTelegramLink(chatUrl);
+        } else {
+            window.open(chatUrl, '_blank');
+        }
     },
     
     async incrementShareCount(postId) {
