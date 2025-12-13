@@ -1531,14 +1531,19 @@ const App = {
             'home': 'home',
             'explore': 'explore',
             'notifications': 'notifications',
-            'profile': 'profile'
+            'profile': 'profile',
+            'marketplace': 'marketplace',
+            'wallet': 'wallet',
+            'messages': 'messages'
         };
         
         document.querySelectorAll('.bottom-nav-item').forEach(item => {
             item.classList.remove('active');
+            item.removeAttribute('aria-current');
             const navId = item.dataset.nav || item.id?.replace('nav-', '');
             if (navMap[pageName] === navId) {
                 item.classList.add('active');
+                item.setAttribute('aria-current', 'page');
             }
         });
     },
