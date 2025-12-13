@@ -1731,18 +1731,8 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="initial-status">Estado Inicial</label>
-                            <select id="initial-status" name="status">
-                                <option value="RETENIDO">📦 Retenido</option>
-                                <option value="EN_TRANSITO">🚚 En Camino</option>
-                                <option value="CONFIRMAR_PAGO">💰 Confirmar Pago</option>
-                                <option value="ENTREGADO">✅ Entregado</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="estimated-delivery">Fecha Estimada de Entrega</label>
-                            <input type="date" id="estimated-delivery" name="estimatedDelivery">
+                            <label for="entry-datetime">Fecha y Hora de Ingreso del Paquete</label>
+                            <input type="datetime-local" id="entry-datetime" name="entryDatetime">
                         </div>
                         
                         <button type="submit" class="btn btn-primary btn-full">

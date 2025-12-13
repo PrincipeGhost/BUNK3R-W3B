@@ -234,19 +234,27 @@ def create_tracking():
         user = request.telegram_user
         
         now = datetime.now()
-        date_time = data.get('dateTime') or now.strftime('%d/%m/%Y %H:%M')
+        entry_datetime = data.get('entryDatetime', '')
+        if entry_datetime:
+            try:
+                parsed_dt = datetime.fromisoformat(entry_datetime.replace('T', ' '))
+                date_time = parsed_dt.strftime('%d/%m/%Y %H:%M')
+            except:
+                date_time = now.strftime('%d/%m/%Y %H:%M')
+        else:
+            date_time = now.strftime('%d/%m/%Y %H:%M')
         
         tracking = Tracking(
             tracking_id=tracking_id,
             recipient_name=recipient_name,
             product_name=product_name,
             product_price=input_validator.sanitize_text(data.get('productPrice', '0'), 20),
-            status=data.get('status', 'RETENIDO') if data.get('status') in STATUS_MAP else 'RETENIDO',
+            status='RETENIDO',
             delivery_address=input_validator.sanitize_text(data.get('deliveryAddress', ''), 500),
             sender_address=input_validator.sanitize_text(data.get('senderAddress', ''), 500),
             date_time=date_time,
             package_weight=input_validator.sanitize_text(data.get('packageWeight', '0.5 kg'), 20),
-            estimated_delivery_date=input_validator.sanitize_text(data.get('estimatedDelivery', ''), 50),
+            estimated_delivery_date=input_validator.sanitize_text(entry_datetime, 50),
             recipient_postal_code=input_validator.sanitize_text(data.get('recipientPostalCode', ''), 20),
             recipient_province=input_validator.sanitize_text(data.get('recipientProvince', ''), 100),
             recipient_country=input_validator.sanitize_text(data.get('recipientCountry', ''), 100),
@@ -358,7 +366,7 @@ def update_tracking(tracking_id):
                     'deliveryAddress': 'delivery_address',
                     'senderAddress': 'sender_address',
                     'packageWeight': 'package_weight',
-                    'estimatedDelivery': 'estimated_delivery_date',
+                    'entryDatetime': 'estimated_delivery_date',
                     'recipientPostalCode': 'recipient_postal_code',
                     'recipientProvince': 'recipient_province',
                     'recipientCountry': 'recipient_country',
