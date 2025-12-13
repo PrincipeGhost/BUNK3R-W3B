@@ -2689,6 +2689,69 @@ const App = {
         document.getElementById('stat-total').textContent = stats.total || 0;
     },
     
+    async refreshTrackingsAndStats() {
+        try {
+            const [statsResponse, trackingsResponse] = await Promise.all([
+                this.apiRequest('/api/stats'),
+                this.apiRequest('/api/trackings')
+            ]);
+            
+            if (statsResponse.success) {
+                this.updateStats(statsResponse.stats);
+            }
+            
+            if (trackingsResponse.success) {
+                this.trackings = trackingsResponse.trackings;
+                this.renderTrackingsList(trackingsResponse.trackings);
+            }
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+        }
+    },
+    
+    updateStatsOptimistically(action, oldStatus = null, newStatus = null) {
+        const statRetenido = document.getElementById('stat-retenido');
+        const statTransito = document.getElementById('stat-transito');
+        const statEntregado = document.getElementById('stat-entregado');
+        const statPago = document.getElementById('stat-pago');
+        const statTotal = document.getElementById('stat-total');
+        
+        const getCount = (el) => parseInt(el?.textContent || '0', 10);
+        const setCount = (el, val) => { if (el) el.textContent = Math.max(0, val); };
+        
+        const statusToElement = {
+            'RETENIDO': statRetenido,
+            'EN_TRANSITO': statTransito,
+            'ENTREGADO': statEntregado,
+            'PAGO_CONFIRMADO': statPago
+        };
+        
+        if (action === 'create') {
+            setCount(statRetenido, getCount(statRetenido) + 1);
+            setCount(statTotal, getCount(statTotal) + 1);
+        } else if (action === 'delete' && oldStatus) {
+            const el = statusToElement[oldStatus];
+            if (el) setCount(el, getCount(el) - 1);
+            setCount(statTotal, getCount(statTotal) - 1);
+        } else if (action === 'changeStatus' && oldStatus && newStatus) {
+            const oldEl = statusToElement[oldStatus];
+            const newEl = statusToElement[newStatus];
+            if (oldEl) setCount(oldEl, getCount(oldEl) - 1);
+            if (newEl) setCount(newEl, getCount(newEl) + 1);
+        }
+    },
+    
+    removeTrackingFromUI(trackingId) {
+        const card = document.querySelector(`.tracking-card[data-id="${trackingId}"]`);
+        if (card) {
+            card.style.transition = 'opacity 0.3s, transform 0.3s';
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(-20px)';
+            setTimeout(() => card.remove(), 300);
+        }
+        this.trackings = this.trackings.filter(t => t.trackingId !== trackingId);
+    },
+    
     switchSection(sectionId) {
         if (sectionId === 'wallet' && !this.deviceTrusted && !this.isDeviceTrusted) {
             this.devLog('Acceso a wallet bloqueado - dispositivo no confiable');
@@ -3079,8 +3142,9 @@ const App = {
             if (response.success) {
                 this.showToast('Tracking creado correctamente', 'success');
                 form.reset();
-                await this.loadInitialData();
+                this.updateStatsOptimistically('create');
                 this.switchSection('dashboard');
+                this.refreshTrackingsAndStats();
             } else {
                 this.showToast(response.error || 'Error al crear tracking', 'error');
             }
@@ -3123,6 +3187,15 @@ const App = {
     },
     
     async changeStatus(trackingId, newStatus) {
+        const tracking = this.findTrackingById(trackingId);
+        const oldStatus = tracking?.status;
+        
+        this.closeModal();
+        
+        if (oldStatus && oldStatus !== newStatus) {
+            this.updateStatsOptimistically('changeStatus', oldStatus, newStatus);
+        }
+        
         try {
             const response = await this.apiRequest(`/api/tracking/${encodeURIComponent(trackingId)}/status`, {
                 method: 'PUT',
@@ -3131,14 +3204,20 @@ const App = {
             
             if (response.success) {
                 this.showToast('Estado actualizado', 'success');
-                this.closeModal();
-                await this.showTrackingDetail(trackingId);
+                this.showTrackingDetail(trackingId);
+                this.refreshTrackingsAndStats();
             } else {
                 this.showToast(response.error || 'Error al actualizar', 'error');
+                if (oldStatus && oldStatus !== newStatus) {
+                    this.updateStatsOptimistically('changeStatus', newStatus, oldStatus);
+                }
             }
         } catch (error) {
             console.error('Error updating status:', error);
             this.showToast('Error al actualizar estado', 'error');
+            if (oldStatus && oldStatus !== newStatus) {
+                this.updateStatsOptimistically('changeStatus', newStatus, oldStatus);
+            }
         }
     },
     
@@ -3390,22 +3469,31 @@ const App = {
     },
     
     async deleteTracking(trackingId) {
+        const tracking = this.findTrackingById(trackingId);
+        const oldStatus = tracking?.status;
+        
+        this.closeModal();
+        
+        if (oldStatus) {
+            this.updateStatsOptimistically('delete', oldStatus);
+        }
+        this.removeTrackingFromUI(trackingId);
+        this.switchSection('dashboard');
+        this.showToast('Tracking eliminado', 'success');
+        
         try {
             const response = await this.apiRequest(`/api/tracking/${encodeURIComponent(trackingId)}`, {
                 method: 'DELETE'
             });
             
-            if (response.success) {
-                this.showToast('Tracking eliminado', 'success');
-                this.closeModal();
-                await this.loadInitialData();
-                this.switchSection('dashboard');
-            } else {
-                this.showToast(response.error || 'Error al eliminar', 'error');
+            if (!response.success) {
+                this.showToast(response.error || 'Error al eliminar en servidor', 'error');
+                this.refreshTrackingsAndStats();
             }
         } catch (error) {
             console.error('Error deleting tracking:', error);
-            this.showToast('Error al eliminar tracking', 'error');
+            this.showToast('Error al eliminar en servidor', 'error');
+            this.refreshTrackingsAndStats();
         }
     },
     
