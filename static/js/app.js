@@ -2975,12 +2975,21 @@ const App = {
                 ` : ''}
                 
                 <div class="detail-actions">
-                    <button class="btn btn-primary" onclick="App.showChangeStatusModal('${t.trackingId}')">
-                        🔄 Cambiar Estado
+                    ${t.status === 'RETENIDO' ? `
+                    <button class="btn btn-primary" onclick="App.changeStatus('${t.trackingId}', 'PAGO_CONFIRMADO')">
+                        💰 Confirmar Pago
                     </button>
+                    ` : ''}
+                    ${t.status === 'PAGO_CONFIRMADO' ? `
+                    <button class="btn btn-primary" onclick="App.changeStatus('${t.trackingId}', 'EN_TRANSITO')">
+                        🚚 Confirmar Envío
+                    </button>
+                    ` : ''}
+                    ${t.status === 'EN_TRANSITO' ? `
                     <button class="btn btn-warning" onclick="App.showDelayModal('${t.trackingId}')">
                         ⏰ Agregar Retraso
                     </button>
+                    ` : ''}
                     <button class="btn btn-secondary" onclick="App.showEditModal('${t.trackingId}')">
                         ✏️ Editar
                     </button>
