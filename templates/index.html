@@ -1091,7 +1091,6 @@
                             <span class="profile-at-username" id="profile-at-username">@usuario</span>
                             <span class="profile-user-badge" id="profile-user-badge">Miembro</span>
                         </div>
-                        <p class="profile-bio-text" id="profile-bio-text">Sin biografia</p>
                         <div class="profile-links" id="profile-links">
                             <a href="#" class="profile-link hidden" id="profile-link-website">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -2471,11 +2470,6 @@
                     </div>
                     <button class="edit-avatar-btn" onclick="document.getElementById('avatar-input').click()">Cambiar foto</button>
                     <input type="file" id="avatar-input" accept="image/*" hidden onchange="App.handleAvatarSelect(event)">
-                </div>
-                <div class="edit-profile-field">
-                    <label for="edit-profile-bio">Bio</label>
-                    <textarea id="edit-profile-bio" class="edit-profile-textarea" placeholder="Escribe algo sobre ti..." rows="3" maxlength="150"></textarea>
-                    <span class="edit-field-hint"><span id="bio-char-count">0</span>/150</span>
                 </div>
             </div>
         </div>
