@@ -6977,3 +6977,115 @@ textarea.form-control {
     background: rgba(255, 107, 107, 0.15);
     color: #ff6b6b;
 }
+
+
+/* Application Detail Modal */
+.application-detail-modal {
+    max-width: 600px;
+}
+
+.app-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.app-detail-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.app-detail-info {
+    margin-bottom: 20px;
+}
+
+.app-detail-info .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-detail-info .info-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.app-detail-info .info-value {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.app-detail-responses {
+    margin-bottom: 20px;
+}
+
+.app-detail-responses h4 {
+    color: var(--text-primary);
+    margin: 0 0 15px;
+    font-size: 15px;
+}
+
+.response-item {
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.response-question {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.response-answer {
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.app-detail-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #00e676, #00c853);
+    color: #0B0E11;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff6b6b, #ff5252);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+

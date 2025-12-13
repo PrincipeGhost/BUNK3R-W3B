@@ -8456,17 +8456,119 @@ const ApplicationsModule = {
     },
     
     async viewApplication(id) {
-        AdminPanel.showToast('Cargando detalle...', 'info');
+        try {
+            const response = await fetch(`/api/admin/applications/${id}`, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                const app = data.application;
+                const statusLabels = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
+                
+                let responsesHtml = '';
+                if (app.responses && app.responses.length > 0) {
+                    responsesHtml = app.responses.map(r => `
+                        <div class="response-item">
+                            <div class="response-question">${AdminPanel.escapeHtml(r.question)}</div>
+                            <div class="response-answer">${AdminPanel.escapeHtml(r.answer || '-')}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    responsesHtml = '<p class="empty-text">No hay respuestas registradas</p>';
+                }
+                
+                const modalContent = `
+                    <div class="application-detail-modal">
+                        <div class="app-detail-header">
+                            <h3>Solicitud #${app.id}</h3>
+                            <span class="status-badge ${app.status}">${statusLabels[app.status] || app.status}</span>
+                        </div>
+                        <div class="app-detail-info">
+                            <div class="info-row">
+                                <span class="info-label">Email:</span>
+                                <span class="info-value">${AdminPanel.escapeHtml(app.email || '-')}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Fecha solicitud:</span>
+                                <span class="info-value">${AdminPanel.formatDate(app.created_at)}</span>
+                            </div>
+                            ${app.reviewed_at ? `
+                                <div class="info-row">
+                                    <span class="info-label">Revisada:</span>
+                                    <span class="info-value">${AdminPanel.formatDate(app.reviewed_at)}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="app-detail-responses">
+                            <h4>Respuestas de la encuesta</h4>
+                            ${responsesHtml}
+                        </div>
+                        ${app.status === 'pending' ? `
+                            <div class="app-detail-actions">
+                                <button class="btn-success" onclick="ApplicationsModule.approveApplication(${app.id}); AdminPanel.closeModal();">Aprobar</button>
+                                <button class="btn-danger" onclick="ApplicationsModule.rejectApplication(${app.id}); AdminPanel.closeModal();">Rechazar</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                AdminPanel.showModal('Detalle de Solicitud', modalContent);
+            } else {
+                AdminPanel.showToast(data.error || 'Error al cargar detalle', 'error');
+            }
+        } catch (error) {
+            console.error('Error viewing application:', error);
+            AdminPanel.showToast('Error de conexion', 'error');
+        }
     },
     
     async approveApplication(id) {
-        if (!confirm('Aprobar esta solicitud?')) return;
-        AdminPanel.showToast('Funcionalidad en desarrollo', 'info');
+        if (!confirm('Aprobar esta solicitud? Se generara un link de registro para el usuario.')) return;
+        
+        try {
+            const response = await fetch(`/api/admin/applications/${id}/approve`, {
+                method: 'POST',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showToast('Solicitud aprobada', 'success');
+                if (data.application && data.application.registration_link) {
+                    const fullLink = window.location.origin + data.application.registration_link;
+                    alert(`Link de registro para enviar al usuario:\n\n${fullLink}`);
+                }
+                this.loadApplications();
+            } else {
+                AdminPanel.showToast(data.error || 'Error al aprobar', 'error');
+            }
+        } catch (error) {
+            console.error('Error approving application:', error);
+            AdminPanel.showToast('Error de conexion', 'error');
+        }
     },
     
     async rejectApplication(id) {
         if (!confirm('Rechazar esta solicitud?')) return;
-        AdminPanel.showToast('Funcionalidad en desarrollo', 'info');
+        
+        try {
+            const response = await fetch(`/api/admin/applications/${id}/reject`, {
+                method: 'POST',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                AdminPanel.showToast('Solicitud rechazada', 'success');
+                this.loadApplications();
+            } else {
+                AdminPanel.showToast(data.error || 'Error al rechazar', 'error');
+            }
+        } catch (error) {
+            console.error('Error rejecting application:', error);
+            AdminPanel.showToast('Error de conexion', 'error');
+        }
     }
 };
 

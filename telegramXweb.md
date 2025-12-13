@@ -16,7 +16,7 @@
 - [!] = En progreso
 - [E] = Error (requiere atención)
 
-### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 2.1 completada
+### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 2.2 completada
 
 ---
 
@@ -130,13 +130,13 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 - Probado: SI (endpoints funcionan, requieren auth)
 
 #### 2.2 Panel Admin - Solicitudes
-- [ ] Endpoint GET /api/admin/applications
-- [ ] Endpoint GET /api/admin/applications/:id
-- [ ] Endpoint POST /api/admin/applications/:id/approve
-- [ ] Endpoint POST /api/admin/applications/:id/reject
-- [ ] UI con lista de solicitudes y botones aprobar/rechazar
-- Archivos modificados:
-- Probado: NO
+- [x] Endpoint GET /api/admin/applications
+- [x] Endpoint GET /api/admin/applications/:id
+- [x] Endpoint POST /api/admin/applications/:id/approve
+- [x] Endpoint POST /api/admin/applications/:id/reject
+- [x] UI con lista de solicitudes y botones aprobar/rechazar
+- Archivos modificados: routes/admin_routes.py (lineas 7537-7773), static/js/admin.js (ApplicationsModule actualizado), static/css/admin.css
+- Probado: SI
 
 #### 2.3 Página pública de solicitud
 - [ ] Ruta /solicitud (página pública)
@@ -313,6 +313,7 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 | 2025-12-13 | 1 | 1.5 Crear email_verifications | Completado | Tabla e índices creados |
 | 2025-12-13 | 1 | 1.6 Crear decoradores web | Completado | 3 decoradores + 3 helpers |
 | 2025-12-13 | 2.1 | UI Panel Admin Encuestas | Completado | SurveyModule + ApplicationsModule |
+| 2025-12-13 | 2.2 | Panel Admin Solicitudes | Completado | 4 endpoints + UI completa |
 
 ---
 
