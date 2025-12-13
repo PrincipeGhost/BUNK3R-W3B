@@ -3014,7 +3014,7 @@ const App = {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         
-        if (!data.trackingId || !data.recipientName || !data.productName) {
+        if (!data.recipientName || !data.productName) {
             this.showToast('Por favor completa los campos obligatorios', 'error');
             return;
         }

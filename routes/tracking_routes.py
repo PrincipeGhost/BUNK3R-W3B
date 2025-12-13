@@ -214,14 +214,13 @@ def create_tracking():
         
         data = request.get_json()
         
-        required_fields = ['trackingId', 'recipientName', 'productName']
+        required_fields = ['recipientName', 'productName']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Campo requerido: {field}'}), 400
         
-        is_valid, tracking_id = input_validator.validate_tracking_id(data['trackingId'])
-        if not is_valid:
-            return jsonify({'error': tracking_id}), 400
+        import uuid
+        tracking_id = f"B3C-{uuid.uuid4().hex[:8].upper()}"
         
         recipient_name = input_validator.sanitize_name(data['recipientName'])
         product_name = input_validator.sanitize_name(data['productName'])
