@@ -1,0 +1,901 @@
+================================================================================
+REPORTE DE AUDITORÍA DE SEGURIDAD - WEB CONSOLE
+================================================================================
+
+Objetivo: http://localhost:5000
+Fecha: 2025-12-13T20:45:13.515030
+Total de pruebas: 100
+Bloques auditados: 20
+
+--------------------------------------------------------------------------------
+RESUMEN EJECUTIVO
+--------------------------------------------------------------------------------
+
+🔴 CRÍTICO: 4
+🟠 ALTO:    28
+🟡 MEDIO:   86
+🟢 BAJO:    44
+🔵 INFO:    1
+
+TOTAL DE HALLAZGOS: 163
+
+⚠️  SE ENCONTRARON VULNERABILIDADES CRÍTICAS
+    Se recomienda acción inmediata
+
+================================================================================
+HALLAZGOS DETALLADOS
+================================================================================
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 2
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] credentials
+   Descripción: Credenciales en código en static/js/app.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+🔴 [CRITICAL] credentials
+   Descripción: Credenciales en código en static/novnc/tests/test.rfb.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 7
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] password_var
+   Descripción: Password hardcodeado en static/novnc/tests/test.rfb.js
+   Evidencia: password
+   ✅ Recomendación: Mover secretos al backend, nunca en código JS
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 13
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] postmessage_no_origin_check
+   Descripción: postMessage sin validar origen en static/novnc/tests/playback.js
+   ✅ Recomendación: Siempre validar event.origin en listeners de message
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 1
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/utils.js
+   Detalles: Encontradas 7 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/admin-utils.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/admin.js
+   Detalles: Encontradas 202 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/virtual-numbers.js
+   Detalles: Encontradas 19 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/publications.js
+   Detalles: Encontradas 28 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/chat.js
+   Detalles: Encontradas 16 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/js/app.js
+   Detalles: Encontradas 100 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟠 [HIGH] innerhtml
+   Descripción: innerHTML sin sanitizar - riesgo XSS en static/novnc/app/ui.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 2
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] global_config
+   Descripción: Configuración global expuesta en static/js/admin.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+🟠 [HIGH] global_config
+   Descripción: Configuración global expuesta en static/js/app.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+🟠 [HIGH] api_url
+   Descripción: URL de API expuesta en static/novnc/app/localization.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+🟠 [HIGH] global_config
+   Descripción: Configuración global expuesta en static/novnc/app/webutil.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+🟠 [HIGH] global_config
+   Descripción: Configuración global expuesta en static/novnc/core/util/browser.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+🟠 [HIGH] global_config
+   Descripción: Configuración global expuesta en static/novnc/tests/test.webutil.js
+   ✅ Recomendación: Mover datos sensibles al backend
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 3
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] store_token
+   Descripción: Token guardado en storage en static/js/app.js
+   ✅ Recomendación: No almacenar datos sensibles en storage del navegador
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 6
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] missing_strict-transport-security
+   Descripción: Falta header: Strict-Transport-Security
+   Detalles: Forzar HTTPS
+   ✅ Recomendación: Agregar header Strict-Transport-Security en todas las respuestas
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 9
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] html_comment_sensitive
+   Descripción: Comentario HTML sensible en templates/index.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+🟠 [HIGH] data_attribute_sensitive
+   Descripción: Data attribute sensible en templates/index.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+🟠 [HIGH] html_comment_sensitive
+   Descripción: Comentario HTML sensible en static/novnc/vnc.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+🟠 [HIGH] autocomplete_password
+   Descripción: Password sin autocomplete=off en static/novnc/vnc.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 13
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] postmessage_wildcard
+   Descripción: postMessage con target '*' en static/novnc/tests/playback.js
+   ✅ Recomendación: Especificar origen exacto en postMessage
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 15
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] cdn_no_sri
+   Descripción: CDN sin Subresource Integrity: https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/dist/tonconnect-ui.min.js
+   ✅ Recomendación: Agregar atributo integrity con hash SRI
+
+🟠 [HIGH] cdn_no_sri
+   Descripción: CDN sin Subresource Integrity: https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js
+   ✅ Recomendación: Agregar atributo integrity con hash SRI
+
+🟠 [HIGH] cdn_no_sri
+   Descripción: CDN sin Subresource Integrity: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js
+   ✅ Recomendación: Agregar atributo integrity con hash SRI
+
+🟠 [HIGH] cdn_no_sri
+   Descripción: CDN sin Subresource Integrity: https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js
+   ✅ Recomendación: Agregar atributo integrity con hash SRI
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 17
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] dangerous_id
+   Descripción: ID peligroso 'top' puede causar DOM clobbering en templates/admin.html
+   ✅ Recomendación: Cambiar el ID 'top' por otro nombre
+
+🟠 [HIGH] dangerous_id
+   Descripción: ID peligroso 'top' puede causar DOM clobbering en static/novnc/vnc_lite.html
+   ✅ Recomendación: Cambiar el ID 'top' por otro nombre
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 19
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] debug_endpoint
+   Descripción: Endpoint de debug/config accesible: /api/health
+   ✅ Recomendación: Bloquear endpoints de debug en producción
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 1
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/js/utils.js
+   Detalles: Encontradas 6 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/utils.js
+   Detalles: Encontradas 4 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/admin-utils.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/js/admin.js
+   Detalles: Encontradas 29 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/admin.js
+   Detalles: Encontradas 132 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/js/virtual-numbers.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/virtual-numbers.js
+   Detalles: Encontradas 12 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/js/publications.js
+   Detalles: Encontradas 7 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/publications.js
+   Detalles: Encontradas 22 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/js/chat.js
+   Detalles: Encontradas 15 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/chat.js
+   Detalles: Encontradas 5 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/js/app.js
+   Detalles: Encontradas 51 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/js/app.js
+   Detalles: Encontradas 103 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] document_write
+   Descripción: document.write - riesgo XSS en static/novnc/app/error-handler.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/app/localization.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/app/ui.js
+   Detalles: Encontradas 17 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/app/webutil.js
+   Detalles: Encontradas 6 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/deflator.js
+   Detalles: Encontradas 3 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/display.js
+   Detalles: Encontradas 5 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/inflator.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/ra2.js
+   Detalles: Encontradas 4 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/ra2.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/rfb.js
+   Detalles: Encontradas 23 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/rfb.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/websock.js
+   Detalles: Encontradas 3 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/crypto/aes.js
+   Detalles: Encontradas 8 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/crypto/rsa.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/decoders/h264.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/decoders/hextile.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/decoders/jpeg.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/decoders/tight.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/decoders/zrle.js
+   Detalles: Encontradas 3 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/input/domkeytable.js
+   Detalles: Encontradas 8 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/input/fixedkeys.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] throw_with_info
+   Descripción: Throw con concatenación de info en static/novnc/core/input/gesturehandler.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/util/browser.js
+   Detalles: Encontradas 1 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/core/util/cursor.js
+   Detalles: Encontradas 14 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/assertions.js
+   Detalles: Encontradas 4 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/novnc/tests/assertions.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/playback.js
+   Detalles: Encontradas 2 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.browser.js
+   Detalles: Encontradas 17 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.clipboard.js
+   Detalles: Encontradas 4 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.display.js
+   Detalles: Encontradas 19 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.gesturehandler.js
+   Detalles: Encontradas 132 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.h264.js
+   Detalles: Encontradas 5 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.keyboard.js
+   Detalles: Encontradas 89 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.localization.js
+   Detalles: Encontradas 4 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.rfb.js
+   Detalles: Encontradas 754 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.util.js
+   Detalles: Encontradas 7 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.websock.js
+   Detalles: Encontradas 13 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/tests/test.webutil.js
+   Detalles: Encontradas 13 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] console_error
+   Descripción: Console output (puede exponer datos) en static/novnc/utils/genkeysymdef.js
+   Detalles: Encontradas 6 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] undefined_access
+   Descripción: Acceso profundo a objetos sin validación en static/novnc/vendor/pako/lib/zlib/deflate.js
+   Detalles: Encontradas 9 ocurrencias
+   ✅ Recomendación: Revisar y corregir el código para evitar exposición de información
+
+🟡 [MEDIUM] empty_catch
+   Descripción: Catch vacío en static/js/chat.js
+   ✅ Recomendación: Manejar errores apropiadamente
+
+🟡 [MEDIUM] empty_catch
+   Descripción: Catch vacío en static/js/app.js
+   ✅ Recomendación: Manejar errores apropiadamente
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 3
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] json_to_storage
+   Descripción: Objetos JSON almacenados en storage en static/js/app.js
+   ✅ Recomendación: Verificar qué datos se serializan
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 6
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] missing_cross-origin-opener-policy
+   Descripción: Falta header: Cross-Origin-Opener-Policy
+   Detalles: Aislamiento de origen
+   ✅ Recomendación: Agregar header Cross-Origin-Opener-Policy en todas las respuestas
+
+🟡 [MEDIUM] missing_cross-origin-embedder-policy
+   Descripción: Falta header: Cross-Origin-Embedder-Policy
+   Detalles: Política de embebido
+   ✅ Recomendación: Agregar header Cross-Origin-Embedder-Policy en todas las respuestas
+
+🟡 [MEDIUM] missing_cross-origin-resource-policy
+   Descripción: Falta header: Cross-Origin-Resource-Policy
+   Detalles: Política de recursos
+   ✅ Recomendación: Agregar header Cross-Origin-Resource-Policy en todas las respuestas
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 7
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] admin_route_exposed
+   Descripción: Ruta de admin expuesta en static/js/admin.js
+   ✅ Recomendación: No exponer rutas administrativas en código frontend
+
+🟡 [MEDIUM] admin_route_exposed
+   Descripción: Ruta de admin expuesta en static/js/app.js
+   ✅ Recomendación: No exponer rutas administrativas en código frontend
+
+🟡 [MEDIUM] admin_route_exposed
+   Descripción: Ruta de admin expuesta en static/js/app.js
+   ✅ Recomendación: No exponer rutas administrativas en código frontend
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 9
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] onclick_inline
+   Descripción: Onclick con código largo en templates/admin.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+🟡 [MEDIUM] inline_script
+   Descripción: Script inline largo en templates/index.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+🟡 [MEDIUM] onclick_inline
+   Descripción: Onclick con código largo en templates/index.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+🟡 [MEDIUM] inline_script
+   Descripción: Script inline largo en static/novnc/vnc.html
+   ✅ Recomendación: Revisar y limpiar el código HTML
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 15
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/admin.html: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/admin.html: https://cdn.jsdelivr.net/npm/chart.js
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/virtual_numbers.html: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/virtual_numbers.html: https://telegram.org/js/telegram-web-app.js
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/index.html: https://telegram.org/js/telegram-web-app.js
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/index.html: https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/index.html: https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/index.html: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/
+   ✅ Recomendación: Agregar integrity hash
+
+🟡 [MEDIUM] external_no_sri
+   Descripción: Script externo sin SRI en templates/index.html: https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1
+   ✅ Recomendación: Agregar integrity hash
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 16
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] json_parse_unsafe
+   Descripción: JSON.parse (verificar origen) en static/js/app.js
+   ✅ Recomendación: Validar y sanitizar objetos antes de merge
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 18
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] inline_onclick
+   Descripción: Handler inline 'onclick' en templates/admin.html
+   Detalles: Encontrados 35 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+🟡 [MEDIUM] inline_onchange
+   Descripción: Handler inline 'onchange' en templates/admin.html
+   Detalles: Encontrados 4 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+🟡 [MEDIUM] inline_onclick
+   Descripción: Handler inline 'onclick' en templates/virtual_numbers.html
+   Detalles: Encontrados 5 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+🟡 [MEDIUM] inline_onchange
+   Descripción: Handler inline 'onchange' en templates/virtual_numbers.html
+   Detalles: Encontrados 4 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+🟡 [MEDIUM] inline_onclick
+   Descripción: Handler inline 'onclick' en templates/index.html
+   Detalles: Encontrados 85 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+🟡 [MEDIUM] inline_onerror
+   Descripción: Handler inline 'onerror' en templates/index.html
+   Detalles: Encontrados 6 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+🟡 [MEDIUM] inline_onchange
+   Descripción: Handler inline 'onchange' en templates/index.html
+   Detalles: Encontrados 1 handlers inline
+   ✅ Recomendación: Usar addEventListener en lugar de handlers inline
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 19
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] endpoint_accessible
+   Descripción: Endpoint accesible: /api/b3c/price (Status: 200)
+   ✅ Recomendación: Verificar que requiere autenticación apropiada
+
+🟡 [MEDIUM] endpoint_accessible
+   Descripción: Endpoint accesible: /admin (Status: 200)
+   ✅ Recomendación: Verificar que requiere autenticación apropiada
+
+🟡 [MEDIUM] endpoint_accessible
+   Descripción: Endpoint accesible: /api/b3c/balance (Status: 200)
+   ✅ Recomendación: Verificar que requiere autenticación apropiada
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 1
+────────────────────────────────────────────────────────────
+
+🟢 [LOW] console_in_catch
+   Descripción: Console en catch en static/js/admin.js
+   ✅ Recomendación: Evitar exponer errores en producción
+
+🟢 [LOW] console_in_catch
+   Descripción: Console en catch en static/js/virtual-numbers.js
+   ✅ Recomendación: Evitar exponer errores en producción
+
+🟢 [LOW] console_in_catch
+   Descripción: Console en catch en static/js/publications.js
+   ✅ Recomendación: Evitar exponer errores en producción
+
+🟢 [LOW] console_in_catch
+   Descripción: Console en catch en static/js/chat.js
+   ✅ Recomendación: Evitar exponer errores en producción
+
+🟢 [LOW] console_in_catch
+   Descripción: Console en catch en static/js/app.js
+   ✅ Recomendación: Evitar exponer errores en producción
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 6
+────────────────────────────────────────────────────────────
+
+🟢 [LOW] info_disclosure
+   Descripción: Header 'Server' expone información: Werkzeug/3.0.1 Python/3.12.11
+   ✅ Recomendación: Remover o ocultar header Server
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 12
+────────────────────────────────────────────────────────────
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/js/shared-utils.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/js/admin.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/js/virtual-numbers.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/js/publications.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/js/chat.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/js/app.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_read
+   Descripción: Lectura de clipboard en static/novnc/core/clipboard.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/novnc/core/clipboard.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_read
+   Descripción: Lectura de clipboard en static/novnc/tests/test.browser.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/novnc/tests/test.browser.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_read
+   Descripción: Lectura de clipboard en static/novnc/tests/test.clipboard.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+🟢 [LOW] clipboard_write
+   Descripción: Escritura de clipboard en static/novnc/tests/test.clipboard.js
+   ✅ Recomendación: Verificar que el usuario da consentimiento explícito
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 20
+────────────────────────────────────────────────────────────
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/js/utils.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/js/shared-utils.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/js/admin.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/js/publications.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] canvas_fingerprint
+   Descripción: Canvas fingerprinting en static/js/app.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] screen_info
+   Descripción: Screen info leaking en static/js/app.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/js/app.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/js/app.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/app/localization.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/novnc/app/webutil.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] canvas_fingerprint
+   Descripción: Canvas fingerprinting en static/novnc/core/display.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/core/display.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] canvas_fingerprint
+   Descripción: Canvas fingerprinting en static/novnc/core/rfb.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/novnc/core/rfb.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/novnc/core/decoders/h264.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/novnc/core/input/gesturehandler.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/core/util/browser.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] canvas_fingerprint
+   Descripción: Canvas fingerprinting en static/novnc/core/util/cursor.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] canvas_fingerprint
+   Descripción: Canvas fingerprinting en static/novnc/tests/assertions.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/tests/test.browser.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] canvas_fingerprint
+   Descripción: Canvas fingerprinting en static/novnc/tests/test.display.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/tests/test.helper.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/tests/test.keyboard.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/novnc/tests/test.keyboard.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] navigator_info
+   Descripción: Navigator info leaking en static/novnc/tests/test.localization.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+🟢 [LOW] timing_attack
+   Descripción: Posible timing attack en static/novnc/tests/test.rfb.js
+   ✅ Recomendación: Considerar implicaciones de privacidad
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 13
+────────────────────────────────────────────────────────────
+
+🔵 [INFO] postmessage_used
+   Descripción: postMessage usado en static/novnc/tests/playback.js
+
+
+================================================================================
+RECOMENDACIONES GENERALES PARA CONSOLA WEB
+================================================================================
+
+   1. No exponer datos sensibles en localStorage/sessionStorage
+   2. Usar cookies HttpOnly, Secure y SameSite
+   3. Implementar Content-Security-Policy estricto
+   4. Remover console.log y debug code en producción
+   5. No hardcodear API keys en código JavaScript
+   6. Validar origen en postMessage handlers
+   7. Usar Subresource Integrity (SRI) para CDNs
+   8. Deshabilitar source maps en producción
+   9. Sanitizar todo HTML antes de insertarlo en DOM
+   10. Implementar rate limiting en todos los endpoints
+
+================================================================================
+FIN DEL REPORTE
+================================================================================

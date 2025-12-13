@@ -1,0 +1,1648 @@
+{
+  "metadata": {
+    "target": "http://localhost:5000",
+    "date": "2025-12-13T20:45:13.515030",
+    "total_tests": 100,
+    "blocks": 20,
+    "type": "Console Security Audit"
+  },
+  "summary": {
+    "critical": 4,
+    "high": 28,
+    "medium": 86,
+    "low": 44,
+    "info": 1
+  },
+  "findings": [
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/js/utils.js",
+      "details": "Encontradas 6 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.539503"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/utils.js",
+      "details": "Encontradas 4 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.540002"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/utils.js",
+      "details": "Encontradas 7 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.540759"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/admin-utils.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.542057"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/admin-utils.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.542214"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/js/admin.js",
+      "details": "Encontradas 29 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.562513"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/admin.js",
+      "details": "Encontradas 132 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.563505"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/admin.js",
+      "details": "Encontradas 202 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.569057"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/js/virtual-numbers.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.571125"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/virtual-numbers.js",
+      "details": "Encontradas 12 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.571261"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/virtual-numbers.js",
+      "details": "Encontradas 19 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.571737"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/js/publications.js",
+      "details": "Encontradas 7 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.578414"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/publications.js",
+      "details": "Encontradas 22 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.578709"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/publications.js",
+      "details": "Encontradas 28 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.580257"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/js/chat.js",
+      "details": "Encontradas 15 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.583054"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/chat.js",
+      "details": "Encontradas 5 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.583240"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/chat.js",
+      "details": "Encontradas 16 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.584018"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/js/app.js",
+      "details": "Encontradas 51 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.606022"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/js/app.js",
+      "details": "Encontradas 103 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.607071"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/js/app.js",
+      "details": "Encontradas 100 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.613120"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "document_write",
+      "severity": "medium",
+      "description": "document.write - riesgo XSS en static/novnc/app/error-handler.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.615448"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/app/localization.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.616364"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/app/ui.js",
+      "details": "Encontradas 17 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.621778"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "innerhtml",
+      "severity": "high",
+      "description": "innerHTML sin sanitizar - riesgo XSS en static/novnc/app/ui.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.623111"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/app/webutil.js",
+      "details": "Encontradas 6 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.624091"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/deflator.js",
+      "details": "Encontradas 3 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.626497"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/display.js",
+      "details": "Encontradas 5 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.628743"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/inflator.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.631245"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/ra2.js",
+      "details": "Encontradas 4 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.633573"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/ra2.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.634643"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/rfb.js",
+      "details": "Encontradas 23 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.644509"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/rfb.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.645025"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/websock.js",
+      "details": "Encontradas 3 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.649143"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/crypto/aes.js",
+      "details": "Encontradas 8 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.650349"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/crypto/rsa.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.655978"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/decoders/h264.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.657406"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/decoders/hextile.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.658330"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/decoders/jpeg.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.659150"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/decoders/tight.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.661410"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/decoders/zrle.js",
+      "details": "Encontradas 3 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.663276"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/input/domkeytable.js",
+      "details": "Encontradas 8 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.664745"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/input/fixedkeys.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.665589"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "throw_with_info",
+      "severity": "medium",
+      "description": "Throw con concatenación de info en static/novnc/core/input/gesturehandler.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.667196"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/util/browser.js",
+      "details": "Encontradas 1 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.679722"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/core/util/cursor.js",
+      "details": "Encontradas 14 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.680948"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/assertions.js",
+      "details": "Encontradas 4 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.684192"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/novnc/tests/assertions.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.684263"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/playback.js",
+      "details": "Encontradas 2 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.686502"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.browser.js",
+      "details": "Encontradas 17 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.688090"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.clipboard.js",
+      "details": "Encontradas 4 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.688974"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.display.js",
+      "details": "Encontradas 19 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.691621"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.gesturehandler.js",
+      "details": "Encontradas 132 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.694112"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.h264.js",
+      "details": "Encontradas 5 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.696640"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.keyboard.js",
+      "details": "Encontradas 89 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.702482"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.localization.js",
+      "details": "Encontradas 4 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.704396"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.rfb.js",
+      "details": "Encontradas 754 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.718299"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.util.js",
+      "details": "Encontradas 7 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.726690"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.websock.js",
+      "details": "Encontradas 13 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.728510"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/tests/test.webutil.js",
+      "details": "Encontradas 13 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.730164"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_error",
+      "severity": "medium",
+      "description": "Console output (puede exponer datos) en static/novnc/utils/genkeysymdef.js",
+      "details": "Encontradas 6 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.732458"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "undefined_access",
+      "severity": "medium",
+      "description": "Acceso profundo a objetos sin validación en static/novnc/vendor/pako/lib/zlib/deflate.js",
+      "details": "Encontradas 9 ocurrencias",
+      "recommendation": "Revisar y corregir el código para evitar exposición de información",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.736676"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_in_catch",
+      "severity": "low",
+      "description": "Console en catch en static/js/admin.js",
+      "details": "",
+      "recommendation": "Evitar exponer errores en producción",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.749587"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_in_catch",
+      "severity": "low",
+      "description": "Console en catch en static/js/virtual-numbers.js",
+      "details": "",
+      "recommendation": "Evitar exponer errores en producción",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.750241"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_in_catch",
+      "severity": "low",
+      "description": "Console en catch en static/js/publications.js",
+      "details": "",
+      "recommendation": "Evitar exponer errores en producción",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.751233"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "empty_catch",
+      "severity": "medium",
+      "description": "Catch vacío en static/js/chat.js",
+      "details": "",
+      "recommendation": "Manejar errores apropiadamente",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.751828"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_in_catch",
+      "severity": "low",
+      "description": "Console en catch en static/js/chat.js",
+      "details": "",
+      "recommendation": "Evitar exponer errores en producción",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.751903"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "empty_catch",
+      "severity": "medium",
+      "description": "Catch vacío en static/js/app.js",
+      "details": "",
+      "recommendation": "Manejar errores apropiadamente",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.752749"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "console_in_catch",
+      "severity": "low",
+      "description": "Console en catch en static/js/app.js",
+      "details": "",
+      "recommendation": "Evitar exponer errores en producción",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.752833"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "global_config",
+      "severity": "high",
+      "description": "Configuración global expuesta en static/js/admin.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.821105"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "global_config",
+      "severity": "high",
+      "description": "Configuración global expuesta en static/js/app.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:13.936974"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "credentials",
+      "severity": "critical",
+      "description": "Credenciales en código en static/js/app.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.002157"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "api_url",
+      "severity": "high",
+      "description": "URL de API expuesta en static/novnc/app/localization.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.003959"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "global_config",
+      "severity": "high",
+      "description": "Configuración global expuesta en static/novnc/app/webutil.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.019004"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "global_config",
+      "severity": "high",
+      "description": "Configuración global expuesta en static/novnc/core/util/browser.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.111800"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "credentials",
+      "severity": "critical",
+      "description": "Credenciales en código en static/novnc/tests/test.rfb.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.210313"
+    },
+    {
+      "block": "Bloque 2",
+      "test": "global_config",
+      "severity": "high",
+      "description": "Configuración global expuesta en static/novnc/tests/test.webutil.js",
+      "details": "",
+      "recommendation": "Mover datos sensibles al backend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.228033"
+    },
+    {
+      "block": "Bloque 3",
+      "test": "store_token",
+      "severity": "high",
+      "description": "Token guardado en storage en static/js/app.js",
+      "details": "",
+      "recommendation": "No almacenar datos sensibles en storage del navegador",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.447835"
+    },
+    {
+      "block": "Bloque 3",
+      "test": "json_to_storage",
+      "severity": "medium",
+      "description": "Objetos JSON almacenados en storage en static/js/app.js",
+      "details": "",
+      "recommendation": "Verificar qué datos se serializan",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:14.912013"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "missing_strict-transport-security",
+      "severity": "high",
+      "description": "Falta header: Strict-Transport-Security",
+      "details": "Forzar HTTPS",
+      "recommendation": "Agregar header Strict-Transport-Security en todas las respuestas",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.170474"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "missing_cross-origin-opener-policy",
+      "severity": "medium",
+      "description": "Falta header: Cross-Origin-Opener-Policy",
+      "details": "Aislamiento de origen",
+      "recommendation": "Agregar header Cross-Origin-Opener-Policy en todas las respuestas",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.170566"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "missing_cross-origin-embedder-policy",
+      "severity": "medium",
+      "description": "Falta header: Cross-Origin-Embedder-Policy",
+      "details": "Política de embebido",
+      "recommendation": "Agregar header Cross-Origin-Embedder-Policy en todas las respuestas",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.170628"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "missing_cross-origin-resource-policy",
+      "severity": "medium",
+      "description": "Falta header: Cross-Origin-Resource-Policy",
+      "details": "Política de recursos",
+      "recommendation": "Agregar header Cross-Origin-Resource-Policy en todas las respuestas",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.170687"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "info_disclosure",
+      "severity": "low",
+      "description": "Header 'Server' expone información: Werkzeug/3.0.1 Python/3.12.11",
+      "details": "",
+      "recommendation": "Remover o ocultar header Server",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.170730"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_var",
+      "severity": "critical",
+      "description": "Password hardcodeado en static/novnc/tests/test.rfb.js",
+      "details": "",
+      "recommendation": "Mover secretos al backend, nunca en código JS",
+      "evidence": "password",
+      "timestamp": "2025-12-13T20:45:15.560183"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "admin_route_exposed",
+      "severity": "medium",
+      "description": "Ruta de admin expuesta en static/js/admin.js",
+      "details": "",
+      "recommendation": "No exponer rutas administrativas en código frontend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.651739"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "admin_route_exposed",
+      "severity": "medium",
+      "description": "Ruta de admin expuesta en static/js/app.js",
+      "details": "",
+      "recommendation": "No exponer rutas administrativas en código frontend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.675941"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "admin_route_exposed",
+      "severity": "medium",
+      "description": "Ruta de admin expuesta en static/js/app.js",
+      "details": "",
+      "recommendation": "No exponer rutas administrativas en código frontend",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.676469"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "onclick_inline",
+      "severity": "medium",
+      "description": "Onclick con código largo en templates/admin.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.883820"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "html_comment_sensitive",
+      "severity": "high",
+      "description": "Comentario HTML sensible en templates/index.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.889384"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "data_attribute_sensitive",
+      "severity": "high",
+      "description": "Data attribute sensible en templates/index.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.890819"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "inline_script",
+      "severity": "medium",
+      "description": "Script inline largo en templates/index.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.891075"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "onclick_inline",
+      "severity": "medium",
+      "description": "Onclick con código largo en templates/index.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.895759"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "html_comment_sensitive",
+      "severity": "high",
+      "description": "Comentario HTML sensible en static/novnc/vnc.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.897206"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "inline_script",
+      "severity": "medium",
+      "description": "Script inline largo en static/novnc/vnc.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.897513"
+    },
+    {
+      "block": "Bloque 9",
+      "test": "autocomplete_password",
+      "severity": "high",
+      "description": "Password sin autocomplete=off en static/novnc/vnc.html",
+      "details": "",
+      "recommendation": "Revisar y limpiar el código HTML",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:15.898412"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/js/shared-utils.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.166540"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/js/admin.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.191093"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/js/virtual-numbers.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.220826"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/js/publications.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.231298"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/js/chat.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.243886"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/js/app.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.281075"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_read",
+      "severity": "low",
+      "description": "Lectura de clipboard en static/novnc/core/clipboard.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.317241"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/novnc/core/clipboard.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.317357"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_read",
+      "severity": "low",
+      "description": "Lectura de clipboard en static/novnc/tests/test.browser.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.393665"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/novnc/tests/test.browser.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.393786"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_read",
+      "severity": "low",
+      "description": "Lectura de clipboard en static/novnc/tests/test.clipboard.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.394993"
+    },
+    {
+      "block": "Bloque 12",
+      "test": "clipboard_write",
+      "severity": "low",
+      "description": "Escritura de clipboard en static/novnc/tests/test.clipboard.js",
+      "details": "",
+      "recommendation": "Verificar que el usuario da consentimiento explícito",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.395095"
+    },
+    {
+      "block": "Bloque 13",
+      "test": "postmessage_used",
+      "severity": "info",
+      "description": "postMessage usado en static/novnc/tests/playback.js",
+      "details": "",
+      "recommendation": "",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.554750"
+    },
+    {
+      "block": "Bloque 13",
+      "test": "postmessage_no_origin_check",
+      "severity": "critical",
+      "description": "postMessage sin validar origen en static/novnc/tests/playback.js",
+      "details": "",
+      "recommendation": "Siempre validar event.origin en listeners de message",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.555407"
+    },
+    {
+      "block": "Bloque 13",
+      "test": "postmessage_wildcard",
+      "severity": "high",
+      "description": "postMessage con target '*' en static/novnc/tests/playback.js",
+      "details": "",
+      "recommendation": "Especificar origen exacto en postMessage",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.555483"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "cdn_no_sri",
+      "severity": "high",
+      "description": "CDN sin Subresource Integrity: https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/dist/tonconnect-ui.min.js",
+      "details": "",
+      "recommendation": "Agregar atributo integrity con hash SRI",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.735161"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "cdn_no_sri",
+      "severity": "high",
+      "description": "CDN sin Subresource Integrity: https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js",
+      "details": "",
+      "recommendation": "Agregar atributo integrity con hash SRI",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.735435"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "cdn_no_sri",
+      "severity": "high",
+      "description": "CDN sin Subresource Integrity: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js",
+      "details": "",
+      "recommendation": "Agregar atributo integrity con hash SRI",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.735660"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "cdn_no_sri",
+      "severity": "high",
+      "description": "CDN sin Subresource Integrity: https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js",
+      "details": "",
+      "recommendation": "Agregar atributo integrity con hash SRI",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.735913"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/admin.html: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.742681"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/admin.html: https://cdn.jsdelivr.net/npm/chart.js",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.742800"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/virtual_numbers.html: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.743314"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/virtual_numbers.html: https://telegram.org/js/telegram-web-app.js",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.743393"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/index.html: https://telegram.org/js/telegram-web-app.js",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.744587"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/index.html: https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.3.0/",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.744723"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/index.html: https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.744864"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/index.html: https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.744984"
+    },
+    {
+      "block": "Bloque 15",
+      "test": "external_no_sri",
+      "severity": "medium",
+      "description": "Script externo sin SRI en templates/index.html: https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1",
+      "details": "",
+      "recommendation": "Agregar integrity hash",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.745171"
+    },
+    {
+      "block": "Bloque 16",
+      "test": "json_parse_unsafe",
+      "severity": "medium",
+      "description": "JSON.parse (verificar origen) en static/js/app.js",
+      "details": "",
+      "recommendation": "Validar y sanitizar objetos antes de merge",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:16.855826"
+    },
+    {
+      "block": "Bloque 17",
+      "test": "dangerous_id",
+      "severity": "high",
+      "description": "ID peligroso 'top' puede causar DOM clobbering en templates/admin.html",
+      "details": "",
+      "recommendation": "Cambiar el ID 'top' por otro nombre",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.014103"
+    },
+    {
+      "block": "Bloque 17",
+      "test": "dangerous_id",
+      "severity": "high",
+      "description": "ID peligroso 'top' puede causar DOM clobbering en static/novnc/vnc_lite.html",
+      "details": "",
+      "recommendation": "Cambiar el ID 'top' por otro nombre",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.067540"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onclick",
+      "severity": "medium",
+      "description": "Handler inline 'onclick' en templates/admin.html",
+      "details": "Encontrados 35 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.087932"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onchange",
+      "severity": "medium",
+      "description": "Handler inline 'onchange' en templates/admin.html",
+      "details": "Encontrados 4 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.107903"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onclick",
+      "severity": "medium",
+      "description": "Handler inline 'onclick' en templates/virtual_numbers.html",
+      "details": "Encontrados 5 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.111802"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onchange",
+      "severity": "medium",
+      "description": "Handler inline 'onchange' en templates/virtual_numbers.html",
+      "details": "Encontrados 4 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.115239"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onclick",
+      "severity": "medium",
+      "description": "Handler inline 'onclick' en templates/index.html",
+      "details": "Encontrados 85 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.118114"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onerror",
+      "severity": "medium",
+      "description": "Handler inline 'onerror' en templates/index.html",
+      "details": "Encontrados 6 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.123468"
+    },
+    {
+      "block": "Bloque 18",
+      "test": "inline_onchange",
+      "severity": "medium",
+      "description": "Handler inline 'onchange' en templates/index.html",
+      "details": "Encontrados 1 handlers inline",
+      "recommendation": "Usar addEventListener en lugar de handlers inline",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.133888"
+    },
+    {
+      "block": "Bloque 19",
+      "test": "endpoint_accessible",
+      "severity": "medium",
+      "description": "Endpoint accesible: /api/b3c/price (Status: 200)",
+      "details": "",
+      "recommendation": "Verificar que requiere autenticación apropiada",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.592583"
+    },
+    {
+      "block": "Bloque 19",
+      "test": "endpoint_accessible",
+      "severity": "medium",
+      "description": "Endpoint accesible: /admin (Status: 200)",
+      "details": "",
+      "recommendation": "Verificar que requiere autenticación apropiada",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:17.622903"
+    },
+    {
+      "block": "Bloque 19",
+      "test": "endpoint_accessible",
+      "severity": "medium",
+      "description": "Endpoint accesible: /api/b3c/balance (Status: 200)",
+      "details": "",
+      "recommendation": "Verificar que requiere autenticación apropiada",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.094717"
+    },
+    {
+      "block": "Bloque 19",
+      "test": "debug_endpoint",
+      "severity": "high",
+      "description": "Endpoint de debug/config accesible: /api/health",
+      "details": "",
+      "recommendation": "Bloquear endpoints de debug en producción",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.367272"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/js/utils.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.426008"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/js/shared-utils.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.427428"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/js/admin.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.494799"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/js/publications.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.514929"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "canvas_fingerprint",
+      "severity": "low",
+      "description": "Canvas fingerprinting en static/js/app.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.525776"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "screen_info",
+      "severity": "low",
+      "description": "Screen info leaking en static/js/app.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.552795"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/js/app.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.552981"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/js/app.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.553055"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/app/localization.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.561497"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/novnc/app/webutil.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.577290"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "canvas_fingerprint",
+      "severity": "low",
+      "description": "Canvas fingerprinting en static/novnc/core/display.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.581277"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/core/display.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.582497"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "canvas_fingerprint",
+      "severity": "low",
+      "description": "Canvas fingerprinting en static/novnc/core/rfb.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.588118"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/novnc/core/rfb.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.597172"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/novnc/core/decoders/h264.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.611944"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/novnc/core/input/gesturehandler.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.624456"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/core/util/browser.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.639947"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "canvas_fingerprint",
+      "severity": "low",
+      "description": "Canvas fingerprinting en static/novnc/core/util/cursor.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.640923"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "canvas_fingerprint",
+      "severity": "low",
+      "description": "Canvas fingerprinting en static/novnc/tests/assertions.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.647528"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/tests/test.browser.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.654927"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "canvas_fingerprint",
+      "severity": "low",
+      "description": "Canvas fingerprinting en static/novnc/tests/test.display.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.658706"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/tests/test.helper.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.668975"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/tests/test.keyboard.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.677157"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/novnc/tests/test.keyboard.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.677939"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "navigator_info",
+      "severity": "low",
+      "description": "Navigator info leaking en static/novnc/tests/test.localization.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.679118"
+    },
+    {
+      "block": "Bloque 20",
+      "test": "timing_attack",
+      "severity": "low",
+      "description": "Posible timing attack en static/novnc/tests/test.rfb.js",
+      "details": "",
+      "recommendation": "Considerar implicaciones de privacidad",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:45:18.720144"
+    }
+  ]
+}
