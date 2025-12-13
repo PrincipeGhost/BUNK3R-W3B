@@ -1,0 +1,50 @@
+PLAN COMPLETO - MIGRACIÓN DE TELEGRAM A WEB TRADICIONAL
+FASE 1: Base y Limpieza
+Limpiar usuarios existentes de la base de datos
+Modificar tabla users para agregar campos necesarios:
+email (correo electrónico)
+password_hash (contraseña encriptada)
+email_verified (si verificó su correo)
+registration_approved (si fue aprobado por admin)
+application_id (referencia a su solicitud)
+telegram_linked (si vinculó Telegram)
+linked_telegram_id (ID de Telegram vinculado)
+Crear tabla registration_applications (solicitudes de registro/encuesta)
+Crear tabla survey_questions (preguntas de encuesta configurables)
+Remover decoradores de autenticación de Telegram y crear nuevos para web
+FASE 2: Sistema de Encuestas y Solicitudes
+Panel Admin - Sección para crear/editar preguntas de encuesta
+Panel Admin - Sección para ver solicitudes pendientes
+Panel Admin - Aprobar/Rechazar solicitudes
+Página pública de "Solicitud de Acceso" con el formulario de encuesta
+Notificar al usuario cuando es aprobado/rechazado
+FASE 3: Registro y Verificación de Email
+Configurar integración de Gmail para envío de correos
+Página de registro (solo accesible si fue aprobado)
+Usuario (sin @, se agrega automáticamente)
+Correo
+Contraseña + Repetir
+Envío de código de verificación por correo
+Página para ingresar código de verificación
+Flujo de configuración obligatoria de 2FA (escanear QR)
+FASE 4: Login y Sesiones
+Página de login (solo pide usuario)
+Validación de usuario existente
+Si existe → Pedir código 2FA
+Si no existe → "Acceso denegado"
+Manejo de sesiones seguras
+FASE 5: Perfil de Usuario
+Subida de foto de perfil propia
+Edición de información personal
+Cambio de contraseña
+Sección para vincular Telegram (opcional)
+FASE 6: Vinculación de Telegram
+En perfil, opción "Vincular Telegram"
+Usuario abre el bot y envía un comando
+Bot pide código 2FA
+Si es válido → Se vincula el Telegram
+A partir de ahí recibe notificaciones por Telegram
+FASE 7: Limpieza Final
+Remover código muerto relacionado con autenticación Telegram
+Actualizar todas las rutas y vistas
+Pruebas completas del flujo
