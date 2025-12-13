@@ -1,0 +1,936 @@
+================================================================================
+REPORTE DE AUDITORÍA DE SEGURIDAD WEB
+================================================================================
+
+Objetivo: http://localhost:5000
+Fecha: 2025-12-13T20:29:32.220049
+Total de pruebas: 58
+Bloques auditados: 14
+
+--------------------------------------------------------------------------------
+RESUMEN EJECUTIVO
+--------------------------------------------------------------------------------
+
+🔴 CRÍTICO: 46
+🟠 ALTO:    118
+🟡 MEDIO:   10
+🟢 BAJO:    2
+🔵 INFO:    0
+
+TOTAL DE HALLAZGOS: 176
+
+⚠️  SE ENCONTRARON VULNERABILIDADES CRÍTICAS
+    Se recomienda acción inmediata
+
+================================================================================
+HALLAZGOS DETALLADOS
+================================================================================
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 3
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] Sin Autenticación
+   Descripción: Endpoint /admin accesible sin autenticación
+   ✅ Recomendación: Implementar middleware de autenticación
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 6
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] Admin Expuesto
+   Descripción: Panel admin accesible: /admin
+   ✅ Recomendación: Proteger panel admin con autenticación fuerte y IP whitelist
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 7
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en app.py
+   Evidencia: ['token']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/psycopg2/errorcodes.py
+   Evidencia: ['PASSWORD']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/psycopg2/__init__.py
+   Evidencia: ['password']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] aws_key
+   Descripción: AWS credentials en código en .pythonlibs/lib/python3.12/site-packages/PIL/ImageFont.py
+   Evidencia: ['AKIAAQAAAAAABAAHAM0A']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/tbtools.py
+   Evidencia: ['SECRET']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/jinja2/lexer.py
+   Evidencia: ['token']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/cryptography/hazmat/_oid.py
+   Evidencia: ['PASSWORD']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] private_key
+   Descripción: Clave privada en código en .pythonlibs/lib/python3.12/site-packages/cryptography/hazmat/primitives/serialization/ssh.py
+   Evidencia: ['OPENSSH ']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] aws_key
+   Descripción: AWS credentials en código en .pythonlibs/lib/python3.12/site-packages/flask_session/dynamodb/dynamodb.py
+   Evidencia: ['aws_secret_access_key']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] private_key
+   Descripción: Clave privada en código en .pythonlibs/lib/python3.12/site-packages/jwcrypto/tests.py
+   Evidencia: ['RSA ', '']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en Auditorias/Auditoria web/web_security_audit.py
+   Evidencia: ['token']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] aws_key
+   Descripción: AWS credentials en código en Auditorias/Auditoria web/web_security_audit.py
+   Evidencia: ['aws_secret_access_key']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en static/js/app.js
+   Evidencia: ['Token', 'Token']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en static/novnc/tests/test.rfb.js
+   Evidencia: ['password', 'password']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/recorder/assets/index-Y-X2TGJv.js
+   Evidencia: ['token']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🔴 [CRITICAL] password_hardcoded
+   Descripción: Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/defaultSettingsView-w0zYjHsW.js
+   Evidencia: ['token']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 14
+────────────────────────────────────────────────────────────
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .cache/replit/env/latest.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/cs.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/de.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/el.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/es.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/fr.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/hu.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/it.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/ja.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/ko.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/nl.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/pl.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/pt_BR.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/ru.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/sv.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/tr.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/zh_CN.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/app/locale/zh_TW.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en static/novnc/tests/test.rfb.js
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .local/state/replit/agent/filesystem/filesystem_state.json
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/psycopg2/__init__.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/cryptography/hazmat/_oid.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/client.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/cluster.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/connection.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/asyncio/client.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/asyncio/cluster.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+🔴 [CRITICAL] Credenciales DB
+   Descripción: Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/asyncio/connection.py
+   ✅ Recomendación: Usar variables de entorno para credenciales
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 1
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] Headers Seguridad
+   Descripción: Falta header: Strict-Transport-Security
+   Detalles: Fuerza HTTPS (HSTS)
+   ✅ Recomendación: Agregar header Strict-Transport-Security en las respuestas HTTP
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 4
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] Sin Rate Limiting
+   Descripción: No se detecta rate limiting en endpoint principal
+   Detalles: 20 requests exitosos consecutivos
+   ✅ Recomendación: Implementar rate limiting (ej: Flask-Limiter)
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 7
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en seed_data.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en app.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/typing_extensions.py
+   Evidencia: ['eval', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/typing_extensions.py
+   Evidencia: ['']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/six.py
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/cpp.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/lex.py
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/yacc.py
+   Evidencia: ['eval', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/psycopg2/extras.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/psycopg2/_json.py
+   Evidencia: ['execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/psycopg2/_range.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/Image.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/ImageGrab.py
+   Evidencia: ['subprocess.call', 'subprocess.call']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/ImageMath.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/ImageShow.py
+   Evidencia: ['os.system', 'subprocess.call']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/packaging/markers.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/packaging/tags.py
+   Evidencia: ['system', 'system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/packaging/licenses/__init__.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/click/_termui_impl.py
+   Evidencia: ['subprocess.call', 'subprocess.call']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cachelib/file.py
+   Evidencia: ['system', 'system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/_reloader.py
+   Evidencia: ['subprocess.call']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/__init__.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/console.py
+   Evidencia: ['exec', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/tbtools.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/routing/rules.py
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/requests/help.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/jinja2/debug.py
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/jinja2/environment.py
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/jinja2/nodes.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/gunicorn/workers/workertmp.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cffi/recompiler.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cffi/setuptools_ext.py
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/flask/cli.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/flask/config.py
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/flask/sansio/scaffold.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/tonsdk/provider/_tonlibjson/_utils.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/redis/cluster.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/redis/commands/core.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/arrayprint.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_arrayprint.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_dtype.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_multiarray.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_records.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_scalarmath.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_simd.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_umath.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_umath_accuracy.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/auxfuncs.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/capi_maps.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/crackfortran.py
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/_backends/_distutils.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_array_from_pyobj.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_callback.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_f2py2e.py
+   Evidencia: ['system', 'system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_regression.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_return_real.py
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_semicolon_split.py
+   Evidencia: ['system', 'system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/testing/_private/utils.py
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/tests/test_public_api.py
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en routes/vn_routes.py
+   Evidencia: ['execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en routes/admin_routes.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en routes/blockchain_routes.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en routes/tracking_routes.py
+   Evidencia: ['', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en routes/user_routes.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/b3c_service.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/database.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/deposit_scheduler.py
+   Evidencia: ['execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/personal_wallet_service.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/security.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/smspool_service.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] sql_raw
+   Descripción: SQL query sin parametrizar en bot/tracking_correos/wallet_pool_service.py
+   Evidencia: ['execute', 'execute']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en Auditorias/Auditoria web/web_security_audit.py
+   Evidencia: ['os.system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .cache/ms-playwright/chromium-1194/chrome-linux/resources/accessibility/reading_mode_gdocs_helper/gdocs_script.js
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en static/novnc/core/util/browser.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en static/novnc/utils/genkeysymdef.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en static/novnc/vendor/pako/lib/zlib/inflate.js
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cloudinary/static/cloudinary/js/jquery.cloudinary.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/zipBundleImpl.js
+   Evidencia: ['exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/cli/program.js
+   Evidencia: ['system']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/elementHandle.js
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/frame.js
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/locator.js
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/page.js
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/generated/clockSource.js
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/generated/injectedScriptSource.js
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/generated/utilityScriptSource.js
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/server/frames.js
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/utilsBundleImpl/index.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/recorder/assets/codeMirrorModule-RJCXzfmE.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/recorder/assets/index-Y-X2TGJv.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/codeMirrorModule-eyVcHN77.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/defaultSettingsView-w0zYjHsW.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/xtermModule-CsJ4vdCR.js
+   Evidencia: ['exec', 'exec']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/types/protocol.d.ts
+   Evidencia: ['eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] eval_exec
+   Descripción: Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/types/types.d.ts
+   Evidencia: ['eval', 'eval']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟠 [HIGH] Dependencia Vulnerable
+   Descripción: Flask versión antigua con vulnerabilidades conocidas
+   ✅ Recomendación: Actualizar a la última versión estable
+
+🟠 [HIGH] Dependencia Vulnerable
+   Descripción: Requests vulnerable a CRLF injection
+   ✅ Recomendación: Actualizar a la última versión estable
+
+🟠 [HIGH] Dependencia Vulnerable
+   Descripción: Pillow con múltiples vulnerabilidades de imágenes
+   ✅ Recomendación: Actualizar a la última versión estable
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 11
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] Sin HTTPS
+   Descripción: El sitio no usa HTTPS
+   ✅ Recomendación: Implementar HTTPS con certificado válido
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 14
+────────────────────────────────────────────────────────────
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en seed_data.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en .pythonlibs/lib/python3.12/site-packages/psycopg2/extras.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en .pythonlibs/lib/python3.12/site-packages/psycopg2/_json.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en .pythonlibs/lib/python3.12/site-packages/psycopg2/_range.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en .pythonlibs/lib/python3.12/site-packages/PIL/GdImageFile.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en routes/vn_routes.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en routes/admin_routes.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en routes/blockchain_routes.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en routes/tracking_routes.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en routes/user_routes.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/b3c_service.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/database.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/deposit_scheduler.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/personal_wallet_service.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/security.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/smspool_service.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+🟠 [HIGH] ORM Inseguro
+   Descripción: Query insegura en bot/tracking_correos/wallet_pool_service.py
+   ✅ Recomendación: Usar parámetros en lugar de concatenación
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 6
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] Endpoint Oculto
+   Descripción: Endpoint descubierto: /admin
+   Detalles: Status: 200
+   ✅ Recomendación: Proteger o remover endpoints internos
+
+🟡 [MEDIUM] Endpoint Oculto
+   Descripción: Endpoint descubierto: /console
+   Detalles: Status: 200
+   ✅ Recomendación: Proteger o remover endpoints internos
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 7
+────────────────────────────────────────────────────────────
+
+🟡 [MEDIUM] debug_mode
+   Descripción: Debug mode habilitado en app.py
+   Evidencia: ['debug=True']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] debug_mode
+   Descripción: Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/yacc.py
+   Evidencia: ['debug   = True']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] debug_mode
+   Descripción: Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/flask/app.py
+   Evidencia: ['debug=True']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] debug_mode
+   Descripción: Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/flask/config.py
+   Evidencia: ['DEBUG = True']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] debug_mode
+   Descripción: Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/numpy/tests/test_public_api.py
+   Evidencia: ['DEBUG=True']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] cors_any
+   Descripción: CORS permite cualquier origen en Auditorias/Auditoria web/web_security_audit.py
+   Evidencia: ['Access-Control-Allow-Origin.*\\*|"origin":\\s*"\\*']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] cors_any
+   Descripción: CORS permite cualquier origen en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/server/chromium/crNetworkManager.js
+   Evidencia: ['Access-Control-Allow-Origin", value: requestHeaders["Origin"] || "*']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+🟡 [MEDIUM] cors_any
+   Descripción: CORS permite cualquier origen en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/sw.bundle.js
+   Evidencia: ['Access-Control-Allow-Origin"),l.set("Access-Control-Allow-Origin","*']
+   ✅ Recomendación: Remover datos sensibles del código fuente
+
+
+────────────────────────────────────────────────────────────
+📁 Bloque 1
+────────────────────────────────────────────────────────────
+
+🟢 [LOW] Headers Seguridad
+   Descripción: Falta header: X-Permitted-Cross-Domain-Policies
+   Detalles: Políticas cross-domain
+   ✅ Recomendación: Agregar header X-Permitted-Cross-Domain-Policies en las respuestas HTTP
+
+🟢 [LOW] Info Expuesta
+   Descripción: Header 'Server' expone información del servidor
+   Evidencia: Server: Werkzeug/3.0.1 Python/3.12.11
+   ✅ Recomendación: Remover o ocultar header Server
+
+
+================================================================================
+RECOMENDACIONES GENERALES
+================================================================================
+
+   1. Implementar headers de seguridad en todas las respuestas HTTP
+   2. Usar prepared statements para todas las consultas SQL
+   3. Sanitizar y validar toda entrada del usuario
+   4. Implementar rate limiting en endpoints sensibles
+   5. Configurar CORS restrictivo solo para orígenes conocidos
+   6. Usar HTTPS en toda la aplicación
+   7. Almacenar secretos en variables de entorno, no en código
+   8. Implementar autenticación y autorización robusta
+   9. Mantener dependencias actualizadas
+   10. Deshabilitar debug mode en producción
+
+================================================================================
+FIN DEL REPORTE
+================================================================================

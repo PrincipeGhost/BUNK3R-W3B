@@ -1,0 +1,1777 @@
+{
+  "metadata": {
+    "target": "http://localhost:5000",
+    "date": "2025-12-13T20:29:32.220049",
+    "total_tests": 58,
+    "blocks": 14
+  },
+  "summary": {
+    "critical": 46,
+    "high": 118,
+    "medium": 10,
+    "low": 2,
+    "info": 0
+  },
+  "findings": [
+    {
+      "block": "Bloque 1",
+      "test": "Headers Seguridad",
+      "severity": "high",
+      "description": "Falta header: Strict-Transport-Security",
+      "details": "Fuerza HTTPS (HSTS)",
+      "recommendation": "Agregar header Strict-Transport-Security en las respuestas HTTP",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:32.251517"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "Headers Seguridad",
+      "severity": "low",
+      "description": "Falta header: X-Permitted-Cross-Domain-Policies",
+      "details": "Políticas cross-domain",
+      "recommendation": "Agregar header X-Permitted-Cross-Domain-Policies en las respuestas HTTP",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:32.251587"
+    },
+    {
+      "block": "Bloque 1",
+      "test": "Info Expuesta",
+      "severity": "low",
+      "description": "Header 'Server' expone información del servidor",
+      "details": "",
+      "recommendation": "Remover o ocultar header Server",
+      "evidence": "Server: Werkzeug/3.0.1 Python/3.12.11",
+      "timestamp": "2025-12-13T20:29:32.251637"
+    },
+    {
+      "block": "Bloque 3",
+      "test": "Sin Autenticación",
+      "severity": "critical",
+      "description": "Endpoint /admin accesible sin autenticación",
+      "details": "",
+      "recommendation": "Implementar middleware de autenticación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:34.479020"
+    },
+    {
+      "block": "Bloque 4",
+      "test": "Sin Rate Limiting",
+      "severity": "high",
+      "description": "No se detecta rate limiting en endpoint principal",
+      "details": "20 requests exitosos consecutivos",
+      "recommendation": "Implementar rate limiting (ej: Flask-Limiter)",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:34.886125"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "Endpoint Oculto",
+      "severity": "medium",
+      "description": "Endpoint descubierto: /admin",
+      "details": "Status: 200",
+      "recommendation": "Proteger o remover endpoints internos",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:35.588556"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "Endpoint Oculto",
+      "severity": "medium",
+      "description": "Endpoint descubierto: /console",
+      "details": "Status: 200",
+      "recommendation": "Proteger o remover endpoints internos",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:35.660485"
+    },
+    {
+      "block": "Bloque 6",
+      "test": "Admin Expuesto",
+      "severity": "critical",
+      "description": "Panel admin accesible: /admin",
+      "details": "",
+      "recommendation": "Proteger panel admin con autenticación fuerte y IP whitelist",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:35.713038"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en seed_data.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:35.747187"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en app.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['token']",
+      "timestamp": "2025-12-13T20:29:35.759283"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en app.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:35.764240"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "debug_mode",
+      "severity": "medium",
+      "description": "Debug mode habilitado en app.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['debug=True']",
+      "timestamp": "2025-12-13T20:29:35.767598"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/typing_extensions.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'exec']",
+      "timestamp": "2025-12-13T20:29:35.946025"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/typing_extensions.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['']",
+      "timestamp": "2025-12-13T20:29:35.975891"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/six.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:36.000784"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/cpp.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:36.269502"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/lex.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:36.284052"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/yacc.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'exec']",
+      "timestamp": "2025-12-13T20:29:36.299617"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "debug_mode",
+      "severity": "medium",
+      "description": "Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/pycparser/ply/yacc.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['debug   = True']",
+      "timestamp": "2025-12-13T20:29:36.308097"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/psycopg2/errorcodes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['PASSWORD']",
+      "timestamp": "2025-12-13T20:29:36.321190"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/psycopg2/extras.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:36.335027"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/psycopg2/_json.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute']",
+      "timestamp": "2025-12-13T20:29:36.340404"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/psycopg2/__init__.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['password']",
+      "timestamp": "2025-12-13T20:29:36.344022"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en .pythonlibs/lib/python3.12/site-packages/psycopg2/_range.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:36.352715"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/Image.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:36.443264"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "aws_key",
+      "severity": "critical",
+      "description": "AWS credentials en código en .pythonlibs/lib/python3.12/site-packages/PIL/ImageFont.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['AKIAAQAAAAAABAAHAM0A']",
+      "timestamp": "2025-12-13T20:29:36.517331"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/ImageGrab.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['subprocess.call', 'subprocess.call']",
+      "timestamp": "2025-12-13T20:29:36.518719"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/ImageMath.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:36.521382"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/PIL/ImageShow.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['os.system', 'subprocess.call']",
+      "timestamp": "2025-12-13T20:29:36.539502"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/packaging/markers.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:36.698257"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/packaging/tags.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system', 'system']",
+      "timestamp": "2025-12-13T20:29:36.719083"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/packaging/licenses/__init__.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:36.727093"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/click/_termui_impl.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['subprocess.call', 'subprocess.call']",
+      "timestamp": "2025-12-13T20:29:36.871829"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cachelib/file.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system', 'system']",
+      "timestamp": "2025-12-13T20:29:37.011260"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/_reloader.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['subprocess.call']",
+      "timestamp": "2025-12-13T20:29:37.035414"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/__init__.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:37.138467"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/console.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'eval']",
+      "timestamp": "2025-12-13T20:29:37.141212"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/tbtools.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['SECRET']",
+      "timestamp": "2025-12-13T20:29:37.145193"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/debug/tbtools.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:37.145536"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/werkzeug/routing/rules.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:37.173130"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/requests/help.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:37.224726"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/jinja2/debug.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:37.325775"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/jinja2/environment.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:37.337779"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/jinja2/lexer.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['token']",
+      "timestamp": "2025-12-13T20:29:37.380060"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/jinja2/nodes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:37.398532"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/gunicorn/workers/workertmp.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:37.503583"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cffi/recompiler.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:37.629286"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cffi/setuptools_ext.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:37.639814"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "debug_mode",
+      "severity": "medium",
+      "description": "Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/flask/app.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['debug=True']",
+      "timestamp": "2025-12-13T20:29:37.739452"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/flask/cli.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:37.748538"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/flask/config.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:37.754480"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "debug_mode",
+      "severity": "medium",
+      "description": "Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/flask/config.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['DEBUG = True']",
+      "timestamp": "2025-12-13T20:29:37.755499"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/flask/sansio/scaffold.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:37.798481"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/cryptography/hazmat/_oid.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['PASSWORD']",
+      "timestamp": "2025-12-13T20:29:37.810917"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "private_key",
+      "severity": "critical",
+      "description": "Clave privada en código en .pythonlibs/lib/python3.12/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['OPENSSH ']",
+      "timestamp": "2025-12-13T20:29:37.883344"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/tonsdk/provider/_tonlibjson/_utils.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:37.964941"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "aws_key",
+      "severity": "critical",
+      "description": "AWS credentials en código en .pythonlibs/lib/python3.12/site-packages/flask_session/dynamodb/dynamodb.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['aws_secret_access_key']",
+      "timestamp": "2025-12-13T20:29:37.995906"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/redis/cluster.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:38.638379"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/redis/commands/core.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:38.854835"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/arrayprint.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:39.086055"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_arrayprint.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.292532"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_dtype.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:39.368756"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_multiarray.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.490719"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_records.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.637251"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_scalarmath.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.676415"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_simd.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.707506"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_umath.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.786280"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/_core/tests/test_umath_accuracy.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.809875"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/auxfuncs.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.862557"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/capi_maps.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.871203"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/crackfortran.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:39.915830"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/_backends/_distutils.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:39.980906"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_array_from_pyobj.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:39.985997"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_callback.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:39.990267"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_f2py2e.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system', 'system']",
+      "timestamp": "2025-12-13T20:29:40.003277"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_regression.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:40.012759"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_return_real.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:40.018832"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/f2py/tests/test_semicolon_split.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system', 'system']",
+      "timestamp": "2025-12-13T20:29:40.020161"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/testing/_private/utils.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:41.081867"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/numpy/tests/test_public_api.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:41.120579"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "debug_mode",
+      "severity": "medium",
+      "description": "Debug mode habilitado en .pythonlibs/lib/python3.12/site-packages/numpy/tests/test_public_api.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['DEBUG=True']",
+      "timestamp": "2025-12-13T20:29:41.122804"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "private_key",
+      "severity": "critical",
+      "description": "Clave privada en código en .pythonlibs/lib/python3.12/site-packages/jwcrypto/tests.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['RSA ', '']",
+      "timestamp": "2025-12-13T20:29:41.233797"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en routes/vn_routes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute']",
+      "timestamp": "2025-12-13T20:29:41.280815"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en routes/admin_routes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.331241"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en routes/blockchain_routes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.377964"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en routes/tracking_routes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.389723"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en routes/user_routes.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.415205"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/b3c_service.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.435581"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/database.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.472263"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/deposit_scheduler.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute']",
+      "timestamp": "2025-12-13T20:29:41.492565"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/personal_wallet_service.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.517981"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/security.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.528777"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/smspool_service.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.539659"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "sql_raw",
+      "severity": "high",
+      "description": "SQL query sin parametrizar en bot/tracking_correos/wallet_pool_service.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['execute', 'execute']",
+      "timestamp": "2025-12-13T20:29:41.556507"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en Auditorias/Auditoria web/web_security_audit.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['token']",
+      "timestamp": "2025-12-13T20:29:41.577282"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en Auditorias/Auditoria web/web_security_audit.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['os.system']",
+      "timestamp": "2025-12-13T20:29:41.578875"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "cors_any",
+      "severity": "medium",
+      "description": "CORS permite cualquier origen en Auditorias/Auditoria web/web_security_audit.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['Access-Control-Allow-Origin.*\\\\*|\"origin\":\\\\s*\"\\\\*']",
+      "timestamp": "2025-12-13T20:29:41.587913"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "aws_key",
+      "severity": "critical",
+      "description": "AWS credentials en código en Auditorias/Auditoria web/web_security_audit.py",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['aws_secret_access_key']",
+      "timestamp": "2025-12-13T20:29:41.588549"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .cache/ms-playwright/chromium-1194/chrome-linux/resources/accessibility/reading_mode_gdocs_helper/gdocs_script.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:41.687395"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en static/js/app.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['Token', 'Token']",
+      "timestamp": "2025-12-13T20:29:41.880518"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en static/novnc/core/util/browser.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:42.087079"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en static/novnc/tests/test.rfb.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['password', 'password']",
+      "timestamp": "2025-12-13T20:29:42.166654"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en static/novnc/utils/genkeysymdef.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:42.235256"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en static/novnc/vendor/pako/lib/zlib/inflate.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:42.261420"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/cloudinary/static/cloudinary/js/jquery.cloudinary.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:42.335441"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/zipBundleImpl.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec']",
+      "timestamp": "2025-12-13T20:29:42.439489"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/cli/program.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['system']",
+      "timestamp": "2025-12-13T20:29:42.450294"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/elementHandle.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:42.501101"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/frame.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:42.524085"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/locator.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:42.536406"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/client/page.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:42.552408"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/generated/clockSource.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:42.580550"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/generated/injectedScriptSource.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:42.619624"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/generated/utilityScriptSource.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:42.673461"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/server/frames.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:42.820081"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "cors_any",
+      "severity": "medium",
+      "description": "CORS permite cualquier origen en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/server/chromium/crNetworkManager.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['Access-Control-Allow-Origin\", value: requestHeaders[\"Origin\"] || \"*']",
+      "timestamp": "2025-12-13T20:29:42.960500"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/utilsBundleImpl/index.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:43.349794"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/recorder/assets/codeMirrorModule-RJCXzfmE.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:43.446180"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/recorder/assets/index-Y-X2TGJv.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['token']",
+      "timestamp": "2025-12-13T20:29:43.524934"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/recorder/assets/index-Y-X2TGJv.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:43.535284"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "cors_any",
+      "severity": "medium",
+      "description": "CORS permite cualquier origen en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/sw.bundle.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['Access-Control-Allow-Origin\"),l.set(\"Access-Control-Allow-Origin\",\"*']",
+      "timestamp": "2025-12-13T20:29:43.605933"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/codeMirrorModule-eyVcHN77.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:43.647971"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "password_hardcoded",
+      "severity": "critical",
+      "description": "Contraseña/secreto hardcodeado en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/defaultSettingsView-w0zYjHsW.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['token']",
+      "timestamp": "2025-12-13T20:29:43.723873"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/defaultSettingsView-w0zYjHsW.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:43.736031"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/lib/vite/traceViewer/assets/xtermModule-CsJ4vdCR.js",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['exec', 'exec']",
+      "timestamp": "2025-12-13T20:29:43.846154"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/types/protocol.d.ts",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval']",
+      "timestamp": "2025-12-13T20:29:44.198646"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "eval_exec",
+      "severity": "high",
+      "description": "Función peligrosa detectada en .pythonlibs/lib/python3.12/site-packages/playwright/driver/package/types/types.d.ts",
+      "details": "",
+      "recommendation": "Remover datos sensibles del código fuente",
+      "evidence": "['eval', 'eval']",
+      "timestamp": "2025-12-13T20:29:44.406721"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "Dependencia Vulnerable",
+      "severity": "high",
+      "description": "Flask versión antigua con vulnerabilidades conocidas",
+      "details": "",
+      "recommendation": "Actualizar a la última versión estable",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:45.525095"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "Dependencia Vulnerable",
+      "severity": "high",
+      "description": "Requests vulnerable a CRLF injection",
+      "details": "",
+      "recommendation": "Actualizar a la última versión estable",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:45.525208"
+    },
+    {
+      "block": "Bloque 7",
+      "test": "Dependencia Vulnerable",
+      "severity": "high",
+      "description": "Pillow con múltiples vulnerabilidades de imágenes",
+      "details": "",
+      "recommendation": "Actualizar a la última versión estable",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:45.525315"
+    },
+    {
+      "block": "Bloque 11",
+      "test": "Sin HTTPS",
+      "severity": "high",
+      "description": "El sitio no usa HTTPS",
+      "details": "",
+      "recommendation": "Implementar HTTPS con certificado válido",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:45.719292"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .cache/replit/env/latest.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:46.959603"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/cs.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.184587"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/de.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.185947"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/el.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.187364"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/es.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.188937"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/fr.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.190352"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/hu.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.191788"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/it.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.193399"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/ja.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.195013"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/ko.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.196622"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/nl.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.198157"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/pl.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.199811"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/pt_BR.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.201422"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/ru.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.202891"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/sv.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.204432"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/tr.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.205987"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/zh_CN.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.207291"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/app/locale/zh_TW.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.208226"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en static/novnc/tests/test.rfb.js",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.289708"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .local/state/replit/agent/filesystem/filesystem_state.json",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:47.515880"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/psycopg2/__init__.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:48.183522"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/cryptography/hazmat/_oid.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:48.884218"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/client.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:50.374576"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/cluster.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:50.383780"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/connection.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:50.393317"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/asyncio/client.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:50.428844"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/asyncio/cluster.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:50.435148"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "Credenciales DB",
+      "severity": "critical",
+      "description": "Credenciales de BD en .pythonlibs/lib/python3.12/site-packages/redis/asyncio/connection.py",
+      "details": "",
+      "recommendation": "Usar variables de entorno para credenciales",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:50.440601"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en seed_data.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:51.666706"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en .pythonlibs/lib/python3.12/site-packages/psycopg2/extras.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:51.885635"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en .pythonlibs/lib/python3.12/site-packages/psycopg2/_json.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:51.887028"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en .pythonlibs/lib/python3.12/site-packages/psycopg2/_range.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:51.888488"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en .pythonlibs/lib/python3.12/site-packages/PIL/GdImageFile.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:51.893529"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en routes/vn_routes.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.664403"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en routes/admin_routes.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.666186"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en routes/blockchain_routes.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.668642"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en routes/tracking_routes.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.669424"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en routes/user_routes.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.670199"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/b3c_service.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.674443"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/database.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.676272"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/deposit_scheduler.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.678532"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/personal_wallet_service.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.681421"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/security.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.682374"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/smspool_service.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.683464"
+    },
+    {
+      "block": "Bloque 14",
+      "test": "ORM Inseguro",
+      "severity": "high",
+      "description": "Query insegura en bot/tracking_correos/wallet_pool_service.py",
+      "details": "",
+      "recommendation": "Usar parámetros en lugar de concatenación",
+      "evidence": "",
+      "timestamp": "2025-12-13T20:29:52.684920"
+    }
+  ]
+}
