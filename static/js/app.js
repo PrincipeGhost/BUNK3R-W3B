@@ -2594,6 +2594,7 @@ const App = {
         const profileAvatar = document.getElementById('profile-avatar');
         const profileAvatarImg = document.getElementById('profile-avatar-img');
         const profileAvatarInitial = document.getElementById('profile-avatar-initial');
+        const addStoryAvatar = document.getElementById('add-story-avatar');
         
         const avatarElements = [sidebarAvatar, bottomNavAvatar];
         
@@ -2606,6 +2607,12 @@ const App = {
                     el.textContent = '';
                 }
             });
+            
+            if (addStoryAvatar) {
+                addStoryAvatar.style.backgroundImage = `url(${this.userPhotoUrl})`;
+                addStoryAvatar.style.backgroundSize = 'cover';
+                addStoryAvatar.style.backgroundPosition = 'center';
+            }
             
             if (headerAvatar) {
                 const existingImg = headerAvatar.querySelector('img');
@@ -2634,6 +2641,10 @@ const App = {
                     el.textContent = this.userInitials;
                 }
             });
+            
+            if (addStoryAvatar) {
+                addStoryAvatar.style.backgroundImage = 'none';
+            }
             
             if (headerAvatar) {
                 const existingImg = headerAvatar.querySelector('img');
