@@ -58,6 +58,39 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 
 ## Recent Changes (December 2025)
 
+### Sistema de Chat Privado Estilo Instagram - 13 Diciembre 2025
+Sistema completo de mensajes privados con funcionalidades avanzadas estilo Instagram.
+
+**Archivos creados:**
+- `static/css/chat.css` - Estilos del chat con tema BUNK3R
+- `static/js/chat.js` - Lógica completa del chat
+
+**Tablas de base de datos:**
+- `private_messages` expandida: image_url, is_view_once, viewed_at, reply_to_id, deleted_for_sender/receiver
+- `message_reactions` - Reacciones emoji en mensajes
+- `typing_indicators` - Indicador "escribiendo..."
+
+**Endpoints de mensajes (routes/user_routes.py):**
+- POST `/api/messages` - Enviar mensaje (soporta imágenes, respuestas, view-once)
+- GET `/api/messages/conversations` - Lista de conversaciones
+- GET `/api/messages/<user_id>` - Mensajes con usuario (incluye reacciones)
+- POST `/api/messages/<id>/reaction` - Agregar reacción
+- DELETE `/api/messages/<id>` - Eliminar mensaje
+- POST `/api/messages/<id>/view-once` - Marcar foto vista
+- POST/GET `/api/messages/typing/<user_id>` - Indicador escribiendo
+- POST `/api/messages/block/<user_id>` - Bloquear usuario
+- GET `/api/messages/unread-count` - Conteo no leídos
+
+**Funcionalidades:**
+- Burbujas de chat doradas (enviados) y gris oscuro (recibidos)
+- Selector de emojis por categorías
+- Reacciones rápidas en mensajes
+- Fotos "Ver una vez" estilo Instagram
+- Responder a mensajes específicos
+- Indicador de escritura en tiempo real
+- Badge de mensajes no leídos en navegación
+- Polling automático para nuevos mensajes
+
 ### Balance Total Multi-Token en USD/EUR - 12 Diciembre 2025
 Nueva funcionalidad para mostrar el valor total de todos los activos del usuario (B3C, TON, USDT) calculado en USD o EUR.
 
