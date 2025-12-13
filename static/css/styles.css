@@ -15626,3 +15626,244 @@ body.dev-mode-active .dev-lock-badge {
 .deposit-warning-text strong {
     color: #f59e0b;
 }
+
+/* ========================================
+   TRACKING 3-COLUMN LAYOUT
+   ======================================== */
+
+.tracking-3col-layout {
+    display: flex;
+    gap: 16px;
+    max-width: none !important;
+    padding: 16px;
+    padding-bottom: 20px;
+    overflow-x: auto;
+}
+
+.tracking-column {
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+}
+
+.tracking-col-left {
+    width: 320px;
+    min-width: 320px;
+}
+
+.tracking-col-center {
+    width: 380px;
+    min-width: 380px;
+    flex: 1;
+}
+
+.tracking-col-right {
+    width: 360px;
+    min-width: 360px;
+}
+
+.tracking-column-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tracking-column-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Search bar in center column */
+.tracking-search-bar {
+    margin-bottom: 12px;
+}
+
+.tracking-search-input-wrapper {
+    display: flex;
+    gap: 8px;
+}
+
+.tracking-search-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.tracking-search-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.tracking-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.tracking-search-btn {
+    padding: 10px 14px;
+    background: var(--accent-primary);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.tracking-search-btn:hover {
+    background: var(--accent-primary-hover);
+}
+
+/* Filter chips */
+.tracking-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.tracking-filter-chip {
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.tracking-filter-chip:hover {
+    background: rgba(240, 185, 11, 0.1);
+    border-color: var(--accent-primary);
+}
+
+.tracking-filter-chip.active {
+    background: rgba(240, 185, 11, 0.15);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* Override stats grid for left column */
+.tracking-col-left .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.tracking-col-left .stat-card {
+    padding: 12px;
+}
+
+.tracking-col-left .stat-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.tracking-col-left .stat-value {
+    font-size: 22px;
+}
+
+.tracking-col-left .stat-label {
+    font-size: 10px;
+}
+
+.tracking-col-left .total-stat {
+    padding: 12px;
+    font-size: 13px;
+}
+
+/* Trackings list in center column */
+.tracking-col-center .trackings-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Form adjustments for right column */
+.tracking-col-right .tracking-form {
+    padding: 0;
+}
+
+.tracking-col-right .form-title {
+    display: none;
+}
+
+.tracking-col-right .form-group {
+    margin-bottom: 12px;
+}
+
+.tracking-col-right .form-group label {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.tracking-col-right .form-group input,
+.tracking-col-right .form-group textarea,
+.tracking-col-right .form-group select {
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.tracking-col-right .form-divider {
+    margin: 14px 0;
+    font-size: 11px;
+}
+
+.tracking-col-right .btn-full {
+    padding: 10px;
+    font-size: 13px;
+}
+
+/* Detail overlay */
+.tracking-detail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 100;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.tracking-detail-overlay .detail-header {
+    margin-bottom: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .tracking-3col-layout {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 768px) {
+    .tracking-col-left {
+        width: 280px;
+        min-width: 280px;
+    }
+    
+    .tracking-col-center {
+        width: 320px;
+        min-width: 320px;
+    }
+    
+    .tracking-col-right {
+        width: 300px;
+        min-width: 300px;
+    }
+}

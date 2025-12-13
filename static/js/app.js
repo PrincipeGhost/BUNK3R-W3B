@@ -1159,18 +1159,23 @@ const App = {
         document.querySelectorAll('.stat-card').forEach(card => {
             card.addEventListener('click', () => {
                 const status = card.dataset.status;
-                document.getElementById('status-filter').value = status;
-                this.switchSection('trackings');
+                this.currentStatusFilter = status;
+                document.querySelectorAll('.tracking-filter-chip').forEach(c => {
+                    c.classList.toggle('active', c.dataset.filter === status);
+                });
                 this.filterTrackings(status);
             });
         });
         
-        const statusFilter = document.getElementById('status-filter');
-        if (statusFilter) {
-            statusFilter.addEventListener('change', (e) => {
-                this.filterTrackings(e.target.value);
+        document.querySelectorAll('.tracking-filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.tracking-filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const status = chip.dataset.filter;
+                this.currentStatusFilter = status;
+                this.filterTrackings(status);
             });
-        }
+        });
         
         const createForm = document.getElementById('create-form');
         if (createForm) {
@@ -2668,6 +2673,8 @@ const App = {
             
             this._initialDataLoaded = true;
             
+            this.loadTrackings();
+            
         } catch (error) {
             console.error('Error loading initial data:', error);
             this.showToast('Error al cargar datos', 'error');
@@ -2693,8 +2700,29 @@ const App = {
             this.previousSection = this.currentSection;
         }
         
-        document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        const trackingColumns = ['dashboard', 'trackings', 'create'];
+        if (trackingColumns.includes(sectionId)) {
+            this.currentSection = sectionId;
+            return;
+        }
+        
+        if (sectionId === 'detail') {
+            const detailSection = document.getElementById('section-detail');
+            if (detailSection) {
+                detailSection.classList.remove('hidden');
+                detailSection.classList.add('active');
+            }
+            this.tg?.BackButton?.show();
+            this.currentSection = sectionId;
+            return;
+        }
+        
+        document.querySelectorAll('.section').forEach(s => {
+            if (!s.classList.contains('tracking-column')) {
+                s.classList.add('hidden');
+                s.classList.remove('active');
+            }
+        });
         
         const section = document.getElementById(`section-${sectionId}`);
         if (section) {
@@ -2707,20 +2735,7 @@ const App = {
         });
         
         this.currentSection = sectionId;
-        
-        if (sectionId === 'detail') {
-            this.tg?.BackButton?.show();
-        } else {
-            this.tg?.BackButton?.hide();
-        }
-        
-        if (sectionId === 'trackings') {
-            this.loadTrackings();
-        }
-        
-        if (sectionId === 'dashboard') {
-            this.loadInitialData();
-        }
+        this.tg?.BackButton?.hide();
         
         if (sectionId === 'profile' && !this._securityDataLoaded) {
             Promise.all([
@@ -2734,8 +2749,12 @@ const App = {
     },
     
     goBack() {
-        const backTo = this.previousSection || 'trackings';
-        this.switchSection(backTo);
+        const detailSection = document.getElementById('section-detail');
+        if (detailSection) {
+            detailSection.classList.add('hidden');
+            detailSection.classList.remove('active');
+        }
+        this.tg?.BackButton?.hide();
     },
     
     async loadTrackings(status = '') {
@@ -2758,20 +2777,19 @@ const App = {
     },
     
     async searchTrackings(query) {
-        const resultsContainer = document.getElementById('search-results');
+        const resultsContainer = document.getElementById('trackings-list');
         
         if (!query || query.length < 2) {
-            resultsContainer.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">🔍</div>
-                    <p>Escribe al menos 2 caracteres para buscar</p>
-                </div>
-            `;
+            this.loadTrackings(this.currentStatusFilter || '');
             return;
         }
         
         try {
-            const response = await this.apiRequest(`/api/trackings?search=${encodeURIComponent(query)}`);
+            let url = `/api/trackings?search=${encodeURIComponent(query)}`;
+            if (this.currentStatusFilter) {
+                url += `&status=${this.currentStatusFilter}`;
+            }
+            const response = await this.apiRequest(url);
             
             if (response.success) {
                 if (response.trackings.length === 0) {
@@ -2782,7 +2800,7 @@ const App = {
                         </div>
                     `;
                 } else {
-                    this.renderTrackingsList(response.trackings, 'search-results');
+                    this.renderTrackingsList(response.trackings, 'trackings-list');
                 }
             }
         } catch (error) {

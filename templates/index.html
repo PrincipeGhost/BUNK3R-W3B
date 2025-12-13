@@ -1596,8 +1596,11 @@
                     </div>
                 </header>
 
-            <main class="main-content">
-                <section id="section-dashboard" class="section active">
+            <main class="main-content tracking-3col-layout">
+                <section id="section-dashboard" class="section tracking-column tracking-col-left active">
+                    <div class="tracking-column-header">
+                        <h3 class="tracking-column-title">📊 Panel</h3>
+                    </div>
                     <div class="stats-grid">
                         <div class="stat-card" data-status="RETENIDO">
                             <div class="stat-icon">📦</div>
@@ -1626,23 +1629,32 @@
                     </div>
                 </section>
 
-                <section id="section-trackings" class="section hidden">
-                    <div class="filter-bar">
-                        <select id="status-filter" class="filter-select">
-                            <option value="">Todos los estados</option>
-                            <option value="RETENIDO">📦 Retenidos</option>
-                            <option value="EN_TRANSITO">🚚 En Camino</option>
-                            <option value="ENTREGADO">✅ Entregados</option>
-                            <option value="CONFIRMAR_PAGO">💰 Confirmar Pago</option>
-                        </select>
+                <section id="section-trackings" class="section tracking-column tracking-col-center active">
+                    <div class="tracking-column-header">
+                        <h3 class="tracking-column-title">📦 Historial</h3>
+                    </div>
+                    <div class="tracking-search-bar">
+                        <div class="tracking-search-input-wrapper">
+                            <input type="text" id="search-input" class="tracking-search-input" placeholder="Buscar por ID, cliente o producto..." autocomplete="off">
+                            <button type="button" id="search-btn" class="tracking-search-btn">🔍</button>
+                        </div>
+                    </div>
+                    <div class="tracking-filter-chips">
+                        <button class="tracking-filter-chip active" data-filter="">Todos</button>
+                        <button class="tracking-filter-chip" data-filter="RETENIDO">📦 Retenidos</button>
+                        <button class="tracking-filter-chip" data-filter="EN_TRANSITO">🚚 En Camino</button>
+                        <button class="tracking-filter-chip" data-filter="ENTREGADO">✅ Entregados</button>
+                        <button class="tracking-filter-chip" data-filter="CONFIRMAR_PAGO">💰 Confirmar Pago</button>
                     </div>
                     <div id="trackings-list" class="trackings-list">
                     </div>
                 </section>
 
-                <section id="section-create" class="section hidden">
+                <section id="section-create" class="section tracking-column tracking-col-right active">
+                    <div class="tracking-column-header">
+                        <h3 class="tracking-column-title">➕ Crear</h3>
+                    </div>
                     <form id="create-form" class="tracking-form">
-                        <h2 class="form-title">Crear Nuevo Tracking</h2>
                         
                         <div class="form-group">
                             <label for="tracking-id">ID de Tracking *</label>
@@ -1740,24 +1752,7 @@
                     </form>
                 </section>
 
-                <section id="section-search" class="section hidden">
-                    <div class="search-container">
-                        <div class="search-box">
-                            <input type="text" id="search-input" placeholder="Buscar por ID, cliente o producto..." autocomplete="off">
-                            <button type="button" id="search-btn" class="btn btn-primary">
-                                <span>🔍</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="search-results" class="trackings-list">
-                        <div class="empty-state">
-                            <div class="empty-icon">🔍</div>
-                            <p>Escribe para buscar trackings</p>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="section-detail" class="section hidden">
+                <section id="section-detail" class="section tracking-detail-overlay hidden">
                     <div class="detail-header">
                         <button type="button" class="btn-back" id="btn-back">
                             <span>←</span> Volver
@@ -1766,25 +1761,6 @@
                     <div id="tracking-detail" class="tracking-detail">
                     </div>
                 </section>
-
-                <nav class="nav-tabs nav-tabs-bottom">
-                    <button class="nav-tab active" data-section="dashboard">
-                        <span class="tab-icon">📊</span>
-                        <span class="tab-text">Panel</span>
-                    </button>
-                    <button class="nav-tab" data-section="trackings">
-                        <span class="tab-icon">📦</span>
-                        <span class="tab-text">Trackings</span>
-                    </button>
-                    <button class="nav-tab" data-section="create">
-                        <span class="tab-icon">➕</span>
-                        <span class="tab-text">Crear</span>
-                    </button>
-                    <button class="nav-tab" data-section="search">
-                        <span class="tab-icon">🔍</span>
-                        <span class="tab-text">Buscar</span>
-                    </button>
-                </nav>
             </main>
             </div>
             <!-- FIN TRACKING MODULE -->
