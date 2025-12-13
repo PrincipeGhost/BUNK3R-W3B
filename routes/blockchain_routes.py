@@ -24,9 +24,9 @@ import psycopg2.extensions
 
 from flask import Blueprint, jsonify, request
 
-from tracking.decorators import require_telegram_user, require_telegram_auth, require_owner
-from tracking.utils import rate_limit, sanitize_error
-from tracking.services import get_db_manager, IS_PRODUCTION
+from bot.tracking_correos.decorators import require_telegram_user, require_telegram_auth, require_owner
+from bot.tracking_correos.utils import rate_limit, sanitize_error
+from bot.tracking_correos.services import get_db_manager, IS_PRODUCTION
 
 logger = logging.getLogger(__name__)
 
@@ -421,7 +421,7 @@ def get_wallet_address():
 def get_b3c_price():
     """Obtener precio actual del token B3C."""
     try:
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         price_data = b3c.get_b3c_price()
         return jsonify(price_data)
@@ -444,7 +444,7 @@ def calculate_b3c_buy():
         if ton_amount < 0.1:
             return jsonify({'success': False, 'error': 'Minimo 0.1 TON'}), 400
         
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         result = b3c.calculate_b3c_from_ton(ton_amount)
         return jsonify(result)
@@ -465,7 +465,7 @@ def calculate_b3c_sell():
         if b3c_amount <= 0:
             return jsonify({'success': False, 'error': 'Cantidad invalida'}), 400
         
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         result = b3c.calculate_ton_from_b3c(b3c_amount)
         return jsonify(result)
@@ -518,7 +518,7 @@ def get_b3c_balance():
                     
                     b3c_balance = total_purchased - total_withdrawn
         
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         price_data = b3c.get_b3c_price()
         
@@ -546,7 +546,7 @@ def get_b3c_balance():
 def get_b3c_config():
     """Obtener configuracion del servicio B3C."""
     try:
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         return jsonify({
             'success': True,
@@ -562,7 +562,7 @@ def get_b3c_config():
 def get_b3c_network_status():
     """Verificar estado de la red TON."""
     try:
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         return jsonify(b3c.get_network_status())
     except Exception as e:
@@ -575,7 +575,7 @@ def get_b3c_network_status():
 def get_testnet_setup_guide():
     """Obtener guia de configuracion para testnet."""
     try:
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c = get_b3c_service()
         return jsonify({
             'success': True,
@@ -622,8 +622,8 @@ def create_b3c_purchase():
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         purchase_id = str(uuid.uuid4())[:8].upper()
         
-        from tracking.b3c_service import get_b3c_service
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         
         b3c = get_b3c_service()
         calculation = b3c.calculate_b3c_from_ton(ton_amount)
@@ -691,7 +691,7 @@ def verify_b3c_purchase(purchase_id):
         if not db_manager:
             return jsonify({'success': True, 'status': 'confirmed', 'message': 'Demo mode'})
         
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         
         with db_manager.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -940,7 +940,7 @@ def sell_b3c():
                         'error': f'Saldo insuficiente. Tienes {current_balance:.2f} B3C'
                     }), 400
                 
-                from tracking.b3c_service import get_b3c_service
+                from bot.tracking_correos.b3c_service import get_b3c_service
                 b3c = get_b3c_service()
                 calculation = b3c.calculate_ton_from_b3c(b3c_amount)
                 
@@ -1118,7 +1118,7 @@ def get_deposit_address():
         user_id = str(request.telegram_user.get('id', 0)) if hasattr(request, 'telegram_user') else '0'
         purchase_id = str(uuid.uuid4())[:8].upper()
         
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         
         db_manager = get_db_manager()
         if not db_manager:
@@ -1253,7 +1253,7 @@ def get_scheduler_status():
         if user_id != owner_id:
             return jsonify({'success': False, 'error': 'No autorizado'}), 403
         
-        from tracking.deposit_scheduler import get_deposit_scheduler
+        from bot.tracking_correos.deposit_scheduler import get_deposit_scheduler
         db_manager = get_db_manager()
         deposit_scheduler = get_deposit_scheduler(db_manager) if db_manager else None
         
@@ -1290,7 +1290,7 @@ def get_wallet_pool_stats():
         if not db_manager:
             return jsonify({'success': True, 'stats': {'available': 0, 'total': 0}})
         
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         wallet_pool = get_wallet_pool_service(db_manager)
         
         return jsonify(wallet_pool.get_pool_stats())
@@ -1315,7 +1315,7 @@ def fill_wallet_pool():
         if not db_manager:
             return jsonify({'success': False, 'error': 'BD no disponible'}), 500
         
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         wallet_pool = get_wallet_pool_service(db_manager)
         
         data = request.get_json() or {}
@@ -1350,7 +1350,7 @@ def consolidate_wallets():
         if not db_manager:
             return jsonify({'success': False, 'error': 'BD no disponible'}), 500
         
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         wallet_pool = get_wallet_pool_service(db_manager)
         
         consolidated = wallet_pool.consolidate_confirmed_deposits()
@@ -1383,7 +1383,7 @@ def admin_force_verify_purchase(purchase_id):
         if not db_manager:
             return jsonify({'success': False, 'error': 'BD no disponible'}), 500
         
-        from tracking.wallet_pool_service import get_wallet_pool_service
+        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
         wallet_pool = get_wallet_pool_service(db_manager)
         
         with db_manager.get_connection() as conn:
@@ -1466,7 +1466,7 @@ def check_b3c_deposits():
         if not db_manager:
             return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
-        from tracking.b3c_service import get_b3c_service
+        from bot.tracking_correos.b3c_service import get_b3c_service
         b3c_service = get_b3c_service()
         
         with db_manager.get_connection() as conn:
@@ -2046,7 +2046,7 @@ def get_wallet_transactions():
 # ==========================================
 # Personal Wallet Endpoints - Multi-Token
 # ==========================================
-from tracking.personal_wallet_service import PersonalWalletService
+from bot.tracking_correos.personal_wallet_service import PersonalWalletService
 
 
 def get_personal_wallet_service():
@@ -2192,7 +2192,7 @@ def get_total_balance():
     Soporta modo demo cuando no hay autenticación de Telegram o servicio no disponible.
     """
     try:
-        from tracking.price_service import price_service
+        from bot.tracking_correos.price_service import price_service
         
         currency = request.args.get('currency', 'usd').lower()
         if currency not in ['usd', 'eur']:
@@ -2240,7 +2240,7 @@ def get_total_balance():
 def get_crypto_prices():
     """Obtener precios actuales de criptomonedas."""
     try:
-        from tracking.price_service import price_service
+        from bot.tracking_correos.price_service import price_service
         
         force_refresh = request.args.get('refresh', 'false').lower() == 'true'
         prices = price_service.get_prices(force_refresh=force_refresh)

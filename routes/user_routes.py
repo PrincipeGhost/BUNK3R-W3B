@@ -22,9 +22,9 @@ import time
 from werkzeug.utils import secure_filename
 import psycopg2.extras
 
-from tracking.decorators import require_telegram_auth, require_telegram_user
-from tracking.services import get_db_manager, get_security_manager
-from tracking.utils import rate_limit
+from bot.tracking_correos.decorators import require_telegram_auth, require_telegram_user
+from bot.tracking_correos.services import get_db_manager, get_security_manager
+from bot.tracking_correos.utils import rate_limit
 import re
 
 logger = logging.getLogger(__name__)
@@ -1920,7 +1920,7 @@ def add_trusted_device():
 def remove_trusted_device():
     """Eliminar un dispositivo de confianza."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
@@ -1952,7 +1952,7 @@ def remove_trusted_device():
 def validate_wallet_security():
     """Validar que la wallet conectada es la registrada del usuario."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
@@ -1984,7 +1984,7 @@ def validate_wallet_security():
 def get_primary_wallet():
     """Obtener la wallet primaria registrada del usuario."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         
@@ -2009,7 +2009,7 @@ def get_primary_wallet():
 def register_backup_wallet():
     """Registrar una wallet de respaldo para emergencias."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
@@ -2036,7 +2036,7 @@ def register_backup_wallet():
 def check_primary_wallet():
     """Verificar si el usuario ya tiene wallet primaria registrada."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         
@@ -2061,7 +2061,7 @@ def check_primary_wallet():
 def register_primary_wallet_endpoint():
     """Registrar wallet como primaria (solo si no tiene una)."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
@@ -2088,7 +2088,7 @@ def register_primary_wallet_endpoint():
 def debit_wallet():
     """Realizar un debito de BUNK3RCO1N."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         db_manager = get_db_manager()
         user_id = str(request.telegram_user.get('id', 0))
@@ -2167,7 +2167,7 @@ def debit_wallet():
 def get_security_status():
     """Obtener estado de seguridad completo del usuario."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         
@@ -2196,7 +2196,7 @@ def get_security_status():
 def get_security_devices():
     """Obtener lista de dispositivos de confianza con info completa."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         
@@ -2222,7 +2222,7 @@ def get_security_devices():
 def check_device_trust():
     """Verificar si el dispositivo actual es de confianza."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
@@ -2254,7 +2254,7 @@ def check_device_trust():
 def add_security_device():
     """Agregar un dispositivo de confianza (requiere wallet + 2FA)."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         data = request.get_json() or {}
@@ -2299,7 +2299,7 @@ def add_security_device():
 def remove_security_device():
     """Eliminar un dispositivo de confianza (requiere 2FA)."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         import pyotp
         
         db_manager = get_db_manager()
@@ -2340,7 +2340,7 @@ def remove_security_device():
 def remove_all_devices():
     """Cerrar sesion en todos los dispositivos excepto el actual."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         import pyotp
         
         db_manager = get_db_manager()
@@ -2378,7 +2378,7 @@ def remove_all_devices():
 def get_security_activity():
     """Obtener historial de actividad de seguridad."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         limit = request.args.get('limit', 20, type=int)
@@ -2404,7 +2404,7 @@ def get_security_activity():
 def check_user_lockout():
     """Verificar si el usuario esta bloqueado."""
     try:
-        from tracking.services import get_security_manager
+        from bot.tracking_correos.services import get_security_manager
         
         user_id = str(request.telegram_user.get('id', 0))
         
@@ -2450,7 +2450,7 @@ def create_story():
         file_data = file.read()
         
         try:
-            from tracking.cloudinary_service import cloudinary_service
+            from bot.tracking_correos.cloudinary_service import cloudinary_service
             upload_result = cloudinary_service.upload_story_media(
                 file_data=file_data,
                 content_type=file.content_type

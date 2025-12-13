@@ -33,14 +33,14 @@ import qrcode
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tracking.database import DatabaseManager
-from tracking.models import Tracking
-from tracking.email_service import EmailService, prepare_tracking_email_data, send_tracking_email
-from tracking.security import SecurityManager
-from tracking.encryption import encryption_manager
-from tracking.cloudinary_service import cloudinary_service
-from tracking.smspool_service import SMSPoolService, VirtualNumbersManager
-from tracking.telegram_service import telegram_service
+from bot.tracking_correos.database import DatabaseManager
+from bot.tracking_correos.models import Tracking
+from bot.tracking_correos.email_service import EmailService, prepare_tracking_email_data, send_tracking_email
+from bot.tracking_correos.security import SecurityManager
+from bot.tracking_correos.encryption import encryption_manager
+from bot.tracking_correos.cloudinary_service import cloudinary_service
+from bot.tracking_correos.smspool_service import SMSPoolService, VirtualNumbersManager
+from bot.tracking_correos.telegram_service import telegram_service
 
 from logging.handlers import RotatingFileHandler
 from flask import g
@@ -286,7 +286,7 @@ def invalidate_demo_session():
     session.pop('demo_2fa_created_at', None)
     session.pop('demo_2fa_valid', None)
 
-from tracking import services as shared_services
+from bot.tracking_correos import services as shared_services
 
 try:
     db_manager = DatabaseManager()
@@ -1602,7 +1602,7 @@ def init_deposit_scheduler():
     global deposit_scheduler
     if db_manager:
         try:
-            from tracking.deposit_scheduler import start_deposit_scheduler
+            from bot.tracking_correos.deposit_scheduler import start_deposit_scheduler
             deposit_scheduler = start_deposit_scheduler(db_manager)
             logger.info("Deposit scheduler started successfully")
         except Exception as e:

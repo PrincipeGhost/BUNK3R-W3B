@@ -95,7 +95,7 @@ def is_allowed_user(user_id: int) -> bool:
     return is_owner(user_id) or is_test_user(user_id)
 
 
-from tracking.demo_sessions import (
+from bot.tracking_correos.demo_sessions import (
     verify_demo_session,
     create_demo_session,
     invalidate_demo_session

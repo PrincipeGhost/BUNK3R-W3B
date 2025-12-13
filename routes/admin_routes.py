@@ -28,8 +28,8 @@ import json
 import io
 import psycopg2.extras
 
-from tracking.decorators import require_telegram_auth, require_owner
-from tracking.services import get_db_manager, get_security_manager
+from bot.tracking_correos.decorators import require_telegram_auth, require_owner
+from bot.tracking_correos.services import get_db_manager, get_security_manager
 
 logger = logging.getLogger(__name__)
 
@@ -5046,7 +5046,7 @@ def admin_unlock_user():
 # TELEGRAM SETTINGS ENDPOINTS (Migrados 12 Diciembre 2025)
 # ============================================================
 
-from tracking.telegram_service import telegram_service
+from bot.tracking_correos.telegram_service import telegram_service
 
 
 @admin_bp.route('/telegram/settings', methods=['GET'])
@@ -5804,7 +5804,7 @@ def admin_hot_wallet():
         balance = 0
         if hot_wallet_address:
             try:
-                from tracking.wallet_pool_service import get_wallet_pool_service
+                from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
                 db_manager = get_db_manager()
                 wallet_svc = get_wallet_pool_service(db_manager)
                 if wallet_svc:
@@ -5901,7 +5901,7 @@ def admin_fill_wallet_pool():
         count = min(int(data.get('count', 10)), 50)
         
         try:
-            from tracking.wallet_pool_service import get_wallet_pool_service
+            from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
             db_manager = get_db_manager()
             wallet_svc = get_wallet_pool_service(db_manager)
             if wallet_svc:
@@ -5934,7 +5934,7 @@ def admin_consolidate_wallets():
     """Admin: Consolidar fondos de wallets de deposito al hot wallet."""
     try:
         try:
-            from tracking.wallet_pool_service import get_wallet_pool_service
+            from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
             db_manager = get_db_manager()
             wallet_svc = get_wallet_pool_service(db_manager)
             if wallet_svc:
@@ -6118,7 +6118,7 @@ def admin_pool_config():
                     conn.commit()
                     
                     try:
-                        from tracking.wallet_pool_service import get_wallet_pool_service
+                        from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
                         wallet_svc = get_wallet_pool_service(db_manager)
                         if wallet_svc:
                             wallet_svc.reload_config()
@@ -6147,7 +6147,7 @@ def admin_consolidate_single_wallet(wallet_id):
             return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
         
         try:
-            from tracking.wallet_pool_service import get_wallet_pool_service
+            from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
             wallet_svc = get_wallet_pool_service(db_manager)
             if wallet_svc:
                 with db_manager.get_connection() as conn:
@@ -6197,7 +6197,7 @@ def verify_admin_2fa():
     """Verificar codigo 2FA para el owner que accede desde Telegram al panel admin."""
     try:
         from flask import session
-        from tracking.decorators import validate_telegram_webapp_data, is_owner
+        from bot.tracking_correos.decorators import validate_telegram_webapp_data, is_owner
         import pyotp
         
         init_data = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')

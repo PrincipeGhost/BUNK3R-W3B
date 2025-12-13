@@ -26,9 +26,9 @@ import psycopg2.extras
 
 from flask import Blueprint, jsonify, request
 
-from tracking.decorators import require_telegram_auth, require_telegram_user, require_owner, is_owner
-from tracking.services import get_db_manager, get_vn_manager
-from tracking.utils import rate_limit
+from bot.tracking_correos.decorators import require_telegram_auth, require_telegram_user, require_owner, is_owner
+from bot.tracking_correos.services import get_db_manager, get_vn_manager
+from bot.tracking_correos.utils import rate_limit
 
 logger = logging.getLogger(__name__)
 

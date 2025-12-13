@@ -22,7 +22,7 @@ from flask import Blueprint, jsonify, request, session
 import pyotp
 import qrcode
 
-from tracking.decorators import (
+from bot.tracking_correos.decorators import (
     require_telegram_auth,
     require_telegram_user,
     require_owner,
@@ -30,9 +30,9 @@ from tracking.decorators import (
     is_owner,
     is_test_user
 )
-from tracking.utils import rate_limit
-from tracking.services import get_db_manager, IS_PRODUCTION
-from tracking.demo_sessions import get_demo_session_token, invalidate_demo_session
+from bot.tracking_correos.utils import rate_limit
+from bot.tracking_correos.services import get_db_manager, IS_PRODUCTION
+from bot.tracking_correos.demo_sessions import get_demo_session_token, invalidate_demo_session
 
 logger = logging.getLogger(__name__)
 

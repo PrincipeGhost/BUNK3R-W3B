@@ -6,8 +6,8 @@ Creates all required tables for the tracking system and social features
 import os
 import sys
 import logging
-from tracking.models import CREATE_TABLES_SQL, CREATE_SOCIAL_TABLES_SQL, CREATE_ADMIN_TABLES_SQL, CREATE_ADVANCED_ADMIN_TABLES_SQL, CREATE_MULTITOKEN_WALLET_SQL
-from tracking.database import DatabaseManager
+from bot.tracking_correos.models import CREATE_TABLES_SQL, CREATE_SOCIAL_TABLES_SQL, CREATE_ADMIN_TABLES_SQL, CREATE_ADVANCED_ADMIN_TABLES_SQL, CREATE_MULTITOKEN_WALLET_SQL
+from bot.tracking_correos.database import DatabaseManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -22,11 +22,11 @@ from flask import Blueprint, jsonify, request
 from datetime import datetime
 import logging
 
-from tracking.decorators import require_telegram_auth, require_owner
-from tracking.services import get_db_manager
-from tracking.utils import InputValidator
-from tracking.email_service import EmailService
-from tracking.models import Tracking
+from bot.tracking_correos.decorators import require_telegram_auth, require_owner
+from bot.tracking_correos.services import get_db_manager
+from bot.tracking_correos.utils import InputValidator
+from bot.tracking_correos.email_service import EmailService
+from bot.tracking_correos.models import Tracking
 
 logger = logging.getLogger(__name__)
 

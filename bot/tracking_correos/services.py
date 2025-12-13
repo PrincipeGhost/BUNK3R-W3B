@@ -18,7 +18,7 @@ def get_db_manager():
     """Obtiene la instancia del DatabaseManager."""
     global _db_manager
     if _db_manager is None:
-        from tracking.database import DatabaseManager
+        from bot.tracking_correos.database import DatabaseManager
         _db_manager = DatabaseManager()
     return _db_manager
 

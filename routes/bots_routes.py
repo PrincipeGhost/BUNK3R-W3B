@@ -21,8 +21,8 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
-from tracking.decorators import require_telegram_auth, require_telegram_user, is_owner
-from tracking.services import get_db_manager
+from bot.tracking_correos.decorators import require_telegram_auth, require_telegram_user, is_owner
+from bot.tracking_correos.services import get_db_manager
 
 logger = logging.getLogger(__name__)
 

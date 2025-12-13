@@ -42,7 +42,7 @@ class DepositScheduler:
     def wallet_pool(self):
         """Lazy-load wallet pool service."""
         if self._wallet_pool is None:
-            from tracking.wallet_pool_service import get_wallet_pool_service
+            from bot.tracking_correos.wallet_pool_service import get_wallet_pool_service
             self._wallet_pool = get_wallet_pool_service(self.db)
         return self._wallet_pool
     
