@@ -6752,3 +6752,228 @@ textarea.form-control {
         grid-template-columns: 1fr;
     }
 }
+
+/* Survey Section Styles */
+.survey-info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(240, 185, 11, 0.1);
+    border: 1px solid rgba(240, 185, 11, 0.2);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.survey-info-card .info-icon {
+    color: var(--accent-primary);
+    flex-shrink: 0;
+}
+
+.survey-info-card .info-content p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.survey-questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.survey-question-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.survey-question-item:hover {
+    border-color: var(--accent-primary);
+}
+
+.survey-question-item.inactive {
+    opacity: 0.6;
+}
+
+.question-drag-handle {
+    color: var(--text-muted);
+    cursor: grab;
+    padding: 4px;
+}
+
+.question-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.question-text {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.question-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.question-meta span {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.question-type {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.question-required {
+    background: rgba(240, 185, 11, 0.15);
+    color: var(--accent-primary);
+}
+
+.question-inactive {
+    background: rgba(255, 107, 107, 0.15);
+    color: #ff6b6b;
+}
+
+.question-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.survey-editor {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 450px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.survey-editor .editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.survey-editor .editor-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.survey-editor .editor-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.survey-editor .editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Applications Section Styles */
+.applications-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.app-stat-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.app-stat-card.approved {
+    border-color: rgba(0, 230, 118, 0.3);
+}
+
+.app-stat-card.rejected {
+    border-color: rgba(255, 107, 107, 0.3);
+}
+
+.app-stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    margin-bottom: 4px;
+}
+
+.app-stat-card.approved .app-stat-value {
+    color: #00e676;
+}
+
+.app-stat-card.rejected .app-stat-value {
+    color: #ff6b6b;
+}
+
+.app-stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.applications-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.applications-filters .form-select,
+.applications-filters .form-control {
+    flex: 1;
+}
+
+.action-btn.approve-btn {
+    color: #00e676;
+}
+
+.action-btn.approve-btn:hover {
+    background: rgba(0, 230, 118, 0.1);
+}
+
+.action-btn.reject-btn {
+    color: #ff6b6b;
+}
+
+.action-btn.reject-btn:hover {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.status-badge.pending {
+    background: rgba(240, 185, 11, 0.15);
+    color: var(--accent-primary);
+}
+
+.status-badge.approved {
+    background: rgba(0, 230, 118, 0.15);
+    color: #00e676;
+}
+
+.status-badge.rejected {
+    background: rgba(255, 107, 107, 0.15);
+    color: #ff6b6b;
+}

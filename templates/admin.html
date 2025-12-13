@@ -73,6 +73,26 @@
                 </div>
                 
                 <div class="nav-section">
+                    <div class="nav-section-title">Registro Web</div>
+                    <a href="#survey" class="nav-item" data-section="survey">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                        </svg>
+                        <span>Encuesta Registro</span>
+                    </a>
+                    <a href="#applications" class="nav-item" data-section="applications">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            <path d="M9 14l2 2 4-4"></path>
+                        </svg>
+                        <span>Solicitudes</span>
+                        <span class="nav-badge" id="applicationsCount">0</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
                     <div class="nav-section-title">Finanzas</div>
                     <a href="#transactions" class="nav-item" data-section="transactions">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2959,6 +2979,168 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </section>
+                
+                <!-- SURVEY SECTION - Preguntas de Registro -->
+                <section class="admin-section" id="section-survey">
+                    <div class="section-header">
+                        <h2>Encuesta de Registro</h2>
+                        <div class="header-actions">
+                            <button class="btn-primary" id="addSurveyQuestionBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Nueva Pregunta
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="survey-info-card">
+                        <div class="info-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <p>Estas preguntas se mostrarán a los nuevos solicitantes antes de registrarse. Puedes reorganizarlas arrastrando y soltando.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="survey-questions-list" id="surveyQuestionsList">
+                        <div class="loading-placeholder">Cargando preguntas...</div>
+                    </div>
+                    
+                    <div class="survey-editor" id="surveyEditor" style="display: none;">
+                        <div class="editor-header">
+                            <h3 id="surveyEditorTitle">Nueva Pregunta</h3>
+                            <button class="btn-icon" id="closeSurveyEditor">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="editor-body">
+                            <input type="hidden" id="surveyEditId">
+                            <div class="form-group">
+                                <label for="surveyQuestionText">Pregunta</label>
+                                <input type="text" id="surveyQuestionText" class="form-control" placeholder="Escribe la pregunta...">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="surveyQuestionType">Tipo de respuesta</label>
+                                    <select id="surveyQuestionType" class="form-select">
+                                        <option value="text">Texto libre</option>
+                                        <option value="select">Seleccion unica</option>
+                                        <option value="checkbox">Seleccion multiple</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="surveyQuestionOrder">Orden</label>
+                                    <input type="number" id="surveyQuestionOrder" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group" id="surveyOptionsGroup" style="display: none;">
+                                <label>Opciones (una por linea)</label>
+                                <textarea id="surveyQuestionOptions" class="form-control" rows="4" placeholder="Opcion 1&#10;Opcion 2&#10;Opcion 3"></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="surveyQuestionRequired" checked>
+                                        <span>Obligatoria</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="surveyQuestionActive" checked>
+                                        <span>Activa</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="editor-footer">
+                            <button class="btn-secondary" id="cancelSurveyEdit">Cancelar</button>
+                            <button class="btn-primary" id="saveSurveyQuestionBtn">Guardar Pregunta</button>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- APPLICATIONS SECTION - Solicitudes de Registro -->
+                <section class="admin-section" id="section-applications">
+                    <div class="section-header">
+                        <h2>Solicitudes de Registro</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" id="refreshApplicationsBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="applications-stats">
+                        <div class="app-stat-card">
+                            <span class="app-stat-value" id="pendingApplications">0</span>
+                            <span class="app-stat-label">Pendientes</span>
+                        </div>
+                        <div class="app-stat-card approved">
+                            <span class="app-stat-value" id="approvedApplications">0</span>
+                            <span class="app-stat-label">Aprobadas</span>
+                        </div>
+                        <div class="app-stat-card rejected">
+                            <span class="app-stat-value" id="rejectedApplications">0</span>
+                            <span class="app-stat-label">Rechazadas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="applications-filters">
+                        <select id="applicationStatusFilter" class="form-select">
+                            <option value="">Todos los estados</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="approved">Aprobadas</option>
+                            <option value="rejected">Rechazadas</option>
+                        </select>
+                        <input type="text" id="applicationSearch" class="form-control" placeholder="Buscar por email...">
+                    </div>
+                    
+                    <div class="data-table-container">
+                        <table class="data-table" id="applicationsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Email</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="applicationsTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="5">Cargando solicitudes...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="pagination" id="applicationsPagination">
+                        <button class="pagination-btn" id="applicationsPrevBtn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span class="pagination-info" id="applicationsPageInfo">Pagina 1</span>
+                        <button class="pagination-btn" id="applicationsNextBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
                     </div>
                 </section>
                 

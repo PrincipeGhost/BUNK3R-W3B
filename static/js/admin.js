@@ -171,6 +171,12 @@ const AdminPanel = {
             case 'marketplace':
                 MarketplaceModule.init();
                 break;
+            case 'survey':
+                SurveyModule.init();
+                break;
+            case 'applications':
+                ApplicationsModule.init();
+                break;
         }
     },
     
@@ -8128,8 +8134,358 @@ const MarketplaceModule = {
     }
 };
 
+const SurveyModule = {
+    questions: [],
+    editingId: null,
+    
+    init() {
+        this.bindEvents();
+        this.loadQuestions();
+    },
+    
+    bindEvents() {
+        document.getElementById('addSurveyQuestionBtn')?.addEventListener('click', () => this.showEditor());
+        document.getElementById('closeSurveyEditor')?.addEventListener('click', () => this.hideEditor());
+        document.getElementById('cancelSurveyEdit')?.addEventListener('click', () => this.hideEditor());
+        document.getElementById('saveSurveyQuestionBtn')?.addEventListener('click', () => this.saveQuestion());
+        
+        document.getElementById('surveyQuestionType')?.addEventListener('change', (e) => {
+            const optionsGroup = document.getElementById('surveyOptionsGroup');
+            if (optionsGroup) {
+                optionsGroup.style.display = (e.target.value === 'select' || e.target.value === 'checkbox') ? 'block' : 'none';
+            }
+        });
+    },
+    
+    async loadQuestions() {
+        const container = document.getElementById('surveyQuestionsList');
+        if (!container) return;
+        
+        container.innerHTML = '<div class="loading-placeholder">Cargando preguntas...</div>';
+        
+        try {
+            const response = await fetch('/api/admin/survey/questions', {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.questions = data.questions || [];
+                this.renderQuestions();
+            } else {
+                container.innerHTML = '<div class="empty-state">Error al cargar preguntas</div>';
+            }
+        } catch (error) {
+            console.error('Error loading survey questions:', error);
+            container.innerHTML = '<div class="empty-state">Error de conexion</div>';
+        }
+    },
+    
+    renderQuestions() {
+        const container = document.getElementById('surveyQuestionsList');
+        if (!container) return;
+        
+        if (!this.questions || this.questions.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No hay preguntas configuradas</p>
+                    <p class="empty-hint">Agrega preguntas para el formulario de solicitud</p>
+                </div>`;
+            return;
+        }
+        
+        const typeLabels = { text: 'Texto', select: 'Seleccion', checkbox: 'Multiple' };
+        
+        container.innerHTML = this.questions.map(q => `
+            <div class="survey-question-item ${q.is_active ? '' : 'inactive'}" data-id="${q.id}">
+                <div class="question-drag-handle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="16" y2="6"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                        <line x1="8" y1="18" x2="16" y2="18"></line>
+                    </svg>
+                </div>
+                <div class="question-content">
+                    <div class="question-text">${AdminPanel.escapeHtml(q.question_text)}</div>
+                    <div class="question-meta">
+                        <span class="question-type">${typeLabels[q.question_type] || q.question_type}</span>
+                        ${q.is_required ? '<span class="question-required">Obligatoria</span>' : ''}
+                        ${!q.is_active ? '<span class="question-inactive">Inactiva</span>' : ''}
+                    </div>
+                </div>
+                <div class="question-actions">
+                    <button class="btn-icon edit-btn" onclick="SurveyModule.editQuestion(${q.id})" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn-icon delete-btn" onclick="SurveyModule.deleteQuestion(${q.id})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    showEditor(question = null) {
+        this.editingId = question?.id || null;
+        
+        document.getElementById('surveyEditorTitle').textContent = question ? 'Editar Pregunta' : 'Nueva Pregunta';
+        document.getElementById('surveyEditId').value = question?.id || '';
+        document.getElementById('surveyQuestionText').value = question?.question_text || '';
+        document.getElementById('surveyQuestionType').value = question?.question_type || 'text';
+        document.getElementById('surveyQuestionOrder').value = question?.order_position || 0;
+        document.getElementById('surveyQuestionRequired').checked = question?.is_required !== false;
+        document.getElementById('surveyQuestionActive').checked = question?.is_active !== false;
+        
+        const options = question?.options || [];
+        document.getElementById('surveyQuestionOptions').value = Array.isArray(options) ? options.join('\n') : '';
+        
+        const optionsGroup = document.getElementById('surveyOptionsGroup');
+        const questionType = question?.question_type || 'text';
+        optionsGroup.style.display = (questionType === 'select' || questionType === 'checkbox') ? 'block' : 'none';
+        
+        document.getElementById('surveyEditor').style.display = 'block';
+    },
+    
+    hideEditor() {
+        document.getElementById('surveyEditor').style.display = 'none';
+        this.editingId = null;
+    },
+    
+    editQuestion(id) {
+        const question = this.questions.find(q => q.id === id);
+        if (question) {
+            this.showEditor(question);
+        }
+    },
+    
+    async saveQuestion() {
+        const questionText = document.getElementById('surveyQuestionText').value.trim();
+        if (!questionText) {
+            AdminPanel.showToast('La pregunta es obligatoria', 'error');
+            return;
+        }
+        
+        const questionType = document.getElementById('surveyQuestionType').value;
+        const optionsText = document.getElementById('surveyQuestionOptions').value.trim();
+        const options = optionsText ? optionsText.split('\n').map(o => o.trim()).filter(o => o) : [];
+        
+        if ((questionType === 'select' || questionType === 'checkbox') && options.length < 2) {
+            AdminPanel.showToast('Debes agregar al menos 2 opciones', 'error');
+            return;
+        }
+        
+        const data = {
+            question_text: questionText,
+            question_type: questionType,
+            options: options,
+            is_required: document.getElementById('surveyQuestionRequired').checked,
+            order_position: parseInt(document.getElementById('surveyQuestionOrder').value) || 0,
+            is_active: document.getElementById('surveyQuestionActive').checked
+        };
+        
+        try {
+            const url = this.editingId 
+                ? `/api/admin/survey/questions/${this.editingId}`
+                : '/api/admin/survey/questions';
+            const method = this.editingId ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...AdminPanel.getAuthHeaders()
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                AdminPanel.showToast(this.editingId ? 'Pregunta actualizada' : 'Pregunta creada', 'success');
+                this.hideEditor();
+                this.loadQuestions();
+            } else {
+                AdminPanel.showToast(result.error || 'Error al guardar', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving question:', error);
+            AdminPanel.showToast('Error de conexion', 'error');
+        }
+    },
+    
+    async deleteQuestion(id) {
+        if (!confirm('Estas seguro de eliminar esta pregunta?')) return;
+        
+        try {
+            const response = await fetch(`/api/admin/survey/questions/${id}`, {
+                method: 'DELETE',
+                headers: AdminPanel.getAuthHeaders()
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                AdminPanel.showToast('Pregunta eliminada', 'success');
+                this.loadQuestions();
+            } else {
+                AdminPanel.showToast(result.error || 'Error al eliminar', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting question:', error);
+            AdminPanel.showToast('Error de conexion', 'error');
+        }
+    }
+};
+
+const ApplicationsModule = {
+    page: 1,
+    perPage: 20,
+    
+    init() {
+        this.bindEvents();
+        this.loadApplications();
+    },
+    
+    bindEvents() {
+        document.getElementById('refreshApplicationsBtn')?.addEventListener('click', () => this.loadApplications());
+        document.getElementById('applicationStatusFilter')?.addEventListener('change', () => {
+            this.page = 1;
+            this.loadApplications();
+        });
+        document.getElementById('applicationSearch')?.addEventListener('input', AdminPanel.debounce(() => {
+            this.page = 1;
+            this.loadApplications();
+        }, 300));
+        document.getElementById('applicationsPrevBtn')?.addEventListener('click', () => {
+            if (this.page > 1) {
+                this.page--;
+                this.loadApplications();
+            }
+        });
+        document.getElementById('applicationsNextBtn')?.addEventListener('click', () => {
+            this.page++;
+            this.loadApplications();
+        });
+    },
+    
+    async loadApplications() {
+        const tbody = document.getElementById('applicationsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando solicitudes...</td></tr>';
+        
+        const status = document.getElementById('applicationStatusFilter')?.value || '';
+        const search = document.getElementById('applicationSearch')?.value || '';
+        
+        try {
+            const response = await fetch(`/api/admin/applications?status=${status}&search=${encodeURIComponent(search)}&page=${this.page}&per_page=${this.perPage}`, {
+                headers: AdminPanel.getAuthHeaders()
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderApplications(data.applications || [], data.total || 0);
+                this.updateStats(data.stats || {});
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Error al cargar solicitudes</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading applications:', error);
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Error de conexion</td></tr>';
+        }
+    },
+    
+    renderApplications(applications, total) {
+        const tbody = document.getElementById('applicationsTableBody');
+        if (!tbody) return;
+        
+        if (!applications || applications.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No hay solicitudes</td></tr>';
+            return;
+        }
+        
+        const statusLabels = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
+        
+        tbody.innerHTML = applications.map(app => `
+            <tr>
+                <td>${app.id}</td>
+                <td>${AdminPanel.escapeHtml(app.email || '-')}</td>
+                <td>${AdminPanel.formatDate(app.created_at)}</td>
+                <td><span class="status-badge ${app.status}">${statusLabels[app.status] || app.status}</span></td>
+                <td class="actions-cell">
+                    <button class="action-btn view-btn" onclick="ApplicationsModule.viewApplication(${app.id})" title="Ver detalle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                    ${app.status === 'pending' ? `
+                        <button class="action-btn approve-btn" onclick="ApplicationsModule.approveApplication(${app.id})" title="Aprobar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </button>
+                        <button class="action-btn reject-btn" onclick="ApplicationsModule.rejectApplication(${app.id})" title="Rechazar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `).join('');
+        
+        const totalPages = Math.ceil(total / this.perPage) || 1;
+        document.getElementById('applicationsPageInfo').textContent = `Pagina ${this.page} de ${totalPages}`;
+        document.getElementById('applicationsPrevBtn').disabled = this.page <= 1;
+        document.getElementById('applicationsNextBtn').disabled = this.page >= totalPages;
+    },
+    
+    updateStats(stats) {
+        document.getElementById('pendingApplications').textContent = stats.pending || 0;
+        document.getElementById('approvedApplications').textContent = stats.approved || 0;
+        document.getElementById('rejectedApplications').textContent = stats.rejected || 0;
+        document.getElementById('applicationsCount').textContent = stats.pending || 0;
+    },
+    
+    async viewApplication(id) {
+        AdminPanel.showToast('Cargando detalle...', 'info');
+    },
+    
+    async approveApplication(id) {
+        if (!confirm('Aprobar esta solicitud?')) return;
+        AdminPanel.showToast('Funcionalidad en desarrollo', 'info');
+    },
+    
+    async rejectApplication(id) {
+        if (!confirm('Rechazar esta solicitud?')) return;
+        AdminPanel.showToast('Funcionalidad en desarrollo', 'info');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     AdminPanel.init();
+    
+    const surveyNav = document.querySelector('[data-section="survey"]');
+    if (surveyNav) {
+        surveyNav.addEventListener('click', () => {
+            setTimeout(() => SurveyModule.init(), 100);
+        });
+    }
+    
+    const applicationsNav = document.querySelector('[data-section="applications"]');
+    if (applicationsNav) {
+        applicationsNav.addEventListener('click', () => {
+            setTimeout(() => ApplicationsModule.init(), 100);
+        });
+    }
     
     const supportNav = document.querySelector('[data-section="support"]');
     if (supportNav) {
