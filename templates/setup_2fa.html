@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar 2FA - BUNK3R</title>
+    <style>
+        :root {
+            --bg-primary: #0B0E11;
+            --bg-secondary: #12161C;
+            --bg-elevated: #1E2329;
+            --accent-primary: #F0B90B;
+            --accent-secondary: #FCD535;
+            --text-primary: #EAECEF;
+            --text-secondary: #848E9C;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-success: #0ECB81;
+            --accent-danger: #F6465D;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 450px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--bg-primary);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .step {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 2px solid var(--border-color);
+        }
+        
+        .step.active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+        
+        .step.completed {
+            background: var(--accent-success);
+            color: white;
+            border-color: var(--accent-success);
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .qr-container {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+        
+        .qr-container img {
+            display: block;
+            width: 180px;
+            height: 180px;
+        }
+        
+        .secret-code {
+            background: var(--bg-elevated);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: var(--accent-primary);
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+        
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--accent-primary);
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .copy-btn:hover {
+            color: var(--accent-secondary);
+        }
+        
+        .instructions {
+            background: var(--bg-elevated);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .instructions h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        
+        .app-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .app-badge {
+            background: var(--bg-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .code-input {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .code-input input {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+        
+        .code-input input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.1);
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 10px;
+            color: var(--bg-primary);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(240, 185, 11, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: var(--bg-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .loading-state .spinner {
+            margin: 0 auto 16px;
+            width: 32px;
+            height: 32px;
+            border-color: var(--accent-primary);
+            border-top-color: transparent;
+        }
+        
+        .error-message {
+            background: rgba(246, 70, 93, 0.1);
+            border: 1px solid rgba(246, 70, 93, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--accent-danger);
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(14, 203, 129, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+        
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--accent-success);
+        }
+        
+        .success-state h2 {
+            margin-bottom: 12px;
+            color: var(--accent-success);
+            font-size: 22px;
+        }
+        
+        .success-state p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .error-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(246, 70, 93, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .error-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--accent-danger);
+        }
+        
+        .error-state h2 {
+            margin-bottom: 12px;
+            color: var(--accent-danger);
+        }
+        
+        .error-state p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">B3</div>
+            <h1>Configura tu 2FA</h1>
+            <p>Protege tu cuenta con autenticacion de dos factores</p>
+        </div>
+        
+        <div class="card">
+            <div id="loadingState" class="loading-state">
+                <div class="spinner"></div>
+                <p>Generando codigo de seguridad...</p>
+            </div>
+            
+            <div id="errorState" class="error-state" style="display: none;">
+                <div class="error-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+                <h2>Error</h2>
+                <p id="errorText">No se pudo cargar la configuracion de 2FA.</p>
+            </div>
+            
+            <div id="setupContainer" style="display: none;">
+                <div class="step-indicator">
+                    <div class="step active">1</div>
+                    <div class="step">2</div>
+                </div>
+                
+                <div class="qr-section">
+                    <div class="qr-container">
+                        <img id="qrCode" src="" alt="QR Code">
+                    </div>
+                    <div class="secret-code" id="secretCode"></div>
+                    <button class="copy-btn" onclick="copySecret()">Copiar codigo</button>
+                </div>
+                
+                <div class="instructions">
+                    <h3>Como configurar:</h3>
+                    <ol>
+                        <li>Descarga una app de autenticacion</li>
+                        <li>Escanea el codigo QR o ingresa el codigo manualmente</li>
+                        <li>Ingresa el codigo de 6 digitos que genera la app</li>
+                    </ol>
+                    <div class="app-badges">
+                        <span class="app-badge">Google Authenticator</span>
+                        <span class="app-badge">Authy</span>
+                        <span class="app-badge">Microsoft Authenticator</span>
+                    </div>
+                </div>
+                
+                <div id="formError" class="error-message"></div>
+                
+                <form id="verifyForm">
+                    <div class="form-group">
+                        <label>Ingresa el codigo de 6 digitos</label>
+                        <div class="code-input">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="0">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="1">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="2">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="3">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="4">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="5">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        Verificar y Activar
+                    </button>
+                </form>
+            </div>
+            
+            <div id="successState" class="success-state" style="display: none;">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <h2>Cuenta Activada</h2>
+                <p>Tu autenticacion de dos factores ha sido configurada exitosamente. Tu cuenta esta lista para usar.</p>
+                <button class="btn-primary" onclick="window.location.href='/login'">
+                    Iniciar Sesion
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const App = {
+            secret: null,
+            
+            async init() {
+                await this.loadSetup();
+                this.bindEvents();
+            },
+            
+            async loadSetup() {
+                try {
+                    const response = await fetch('/api/auth/setup-2fa');
+                    const data = await response.json();
+                    
+                    document.getElementById('loadingState').style.display = 'none';
+                    
+                    if (data.success) {
+                        this.secret = data.secret;
+                        document.getElementById('qrCode').src = data.qr_code;
+                        document.getElementById('secretCode').textContent = data.secret;
+                        document.getElementById('setupContainer').style.display = 'block';
+                    } else if (data.code === 'NOT_AUTHENTICATED') {
+                        window.location.href = '/login';
+                    } else {
+                        this.showError(data.error || 'Error al cargar la configuracion.');
+                    }
+                } catch (error) {
+                    console.error('Error loading 2FA setup:', error);
+                    this.showError('Error de conexion. Intenta recargar la pagina.');
+                }
+            },
+            
+            showError(message) {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorText').textContent = message;
+                document.getElementById('errorState').style.display = 'block';
+            },
+            
+            bindEvents() {
+                const inputs = document.querySelectorAll('.code-input input');
+                
+                inputs.forEach((input, index) => {
+                    input.addEventListener('input', (e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        e.target.value = value;
+                        
+                        if (value && index < 5) {
+                            inputs[index + 1].focus();
+                        }
+                        
+                        if (this.getCode().length === 6) {
+                            this.submitVerification();
+                        }
+                    });
+                    
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                            inputs[index - 1].focus();
+                        }
+                    });
+                    
+                    input.addEventListener('paste', (e) => {
+                        e.preventDefault();
+                        const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                        pastedData.split('').forEach((char, i) => {
+                            if (inputs[i]) {
+                                inputs[i].value = char;
+                            }
+                        });
+                        if (pastedData.length === 6) {
+                            this.submitVerification();
+                        }
+                    });
+                });
+                
+                document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.submitVerification();
+                });
+            },
+            
+            getCode() {
+                const inputs = document.querySelectorAll('.code-input input');
+                return Array.from(inputs).map(i => i.value).join('');
+            },
+            
+            async submitVerification() {
+                const code = this.getCode();
+                if (code.length !== 6) return;
+                
+                const submitBtn = document.getElementById('submitBtn');
+                const errorDiv = document.getElementById('formError');
+                
+                errorDiv.classList.remove('show');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="spinner"></div> Verificando...';
+                
+                try {
+                    const response = await fetch('/api/auth/verify-2fa-setup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: code })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.getElementById('setupContainer').style.display = 'none';
+                        document.getElementById('successState').style.display = 'block';
+                    } else {
+                        errorDiv.textContent = data.error || 'Codigo incorrecto. Intenta de nuevo.';
+                        errorDiv.classList.add('show');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = 'Verificar y Activar';
+                        
+                        const inputs = document.querySelectorAll('.code-input input');
+                        inputs.forEach(i => i.value = '');
+                        inputs[0].focus();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    errorDiv.textContent = 'Error de conexion. Intenta de nuevo.';
+                    errorDiv.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Verificar y Activar';
+                }
+            }
+        };
+        
+        function copySecret() {
+            const secret = document.getElementById('secretCode').textContent;
+            navigator.clipboard.writeText(secret).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copiado!';
+                setTimeout(() => btn.textContent = 'Copiar codigo', 2000);
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>

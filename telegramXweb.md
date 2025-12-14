@@ -151,41 +151,39 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 ## FASE 3: REGISTRO Y VERIFICACIÓN DE EMAIL
 
-**Estado:** [ ] No iniciada
+**Estado:** [x] COMPLETADA - 2025-12-14
 
 ### Tareas:
 
 #### 3.1 Configurar servicio de email
-- [ ] Integrar Gmail de Replit
-- [ ] Crear función send_verification_email()
-- [ ] Template de email para verificación
-- Archivos modificados:
-- Probado: NO
+- [x] OMITIDO - Usuario decidió no usar verificación por email
+- Nota: Se simplificó el flujo eliminando verificación por código de email
+- Archivos modificados: N/A
+- Probado: N/A
 
 #### 3.2 Página de registro
-- [ ] Ruta /registro (solo con token de aprobación válido)
-- [ ] Formulario: usuario, email, contraseña, repetir contraseña
-- [ ] Validaciones (usuario único, email coincide con solicitud, passwords match)
-- [ ] Endpoint POST /api/auth/register
-- Archivos modificados:
-- Probado: NO
+- [x] Ruta /registro (solo con token de aprobación válido)
+- [x] Formulario: usuario, contraseña, repetir contraseña
+- [x] Validaciones (usuario único, email coincide con solicitud, passwords match)
+- [x] Endpoint GET /api/auth/verify-token
+- [x] Endpoint POST /api/auth/register
+- Archivos modificados: app.py (lineas 1640-1800), templates/registro.html
+- Probado: SI (2025-12-14)
 
 #### 3.3 Verificación de email
-- [ ] Enviar código de 6 dígitos al correo
-- [ ] Página /verificar-email
-- [ ] Endpoint POST /api/auth/verify-email
-- [ ] Marcar email_verified = true
-- Archivos modificados:
-- Probado: NO
+- [x] OMITIDO - Usuario decidió no usar verificación por email
+- Nota: email_verified se marca como TRUE automáticamente al registrar
+- Archivos modificados: N/A
+- Probado: N/A
 
 #### 3.4 Configuración obligatoria de 2FA
-- [ ] Después de verificar email, redirigir a /setup-2fa
-- [ ] Generar secreto TOTP
-- [ ] Mostrar QR code
-- [ ] Validar primer código 2FA
-- [ ] Activar cuenta completamente
-- Archivos modificados:
-- Probado: NO
+- [x] Después de registro, redirigir a /setup-2fa
+- [x] Generar secreto TOTP
+- [x] Mostrar QR code
+- [x] Validar primer código 2FA
+- [x] Activar cuenta completamente
+- Archivos modificados: app.py (lineas 1802-1930), templates/setup_2fa.html
+- Probado: SI (2025-12-14)
 
 ---
 

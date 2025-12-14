@@ -49,3 +49,5 @@ numpy
 websockify
 requests
 urllib3
+pillow
+qrcode

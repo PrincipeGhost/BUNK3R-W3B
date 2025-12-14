@@ -28,6 +28,7 @@ from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
 import psycopg2.extensions
+from psycopg2.extras import RealDictCursor
 import pyotp
 import qrcode
 
@@ -1631,6 +1632,307 @@ def public_submit_application():
     except Exception as e:
         logger.error(f"Error submitting application: {e}")
         return jsonify({'success': False, 'error': 'Error al procesar la solicitud'}), 500
+
+
+# ============================================================
+# ENDPOINTS DE REGISTRO WEB Y 2FA
+# ============================================================
+
+@app.route('/registro')
+def registro_page():
+    """Render registration page - requires valid approval token"""
+    return render_template('registro.html')
+
+
+@app.route('/setup-2fa')
+def setup_2fa_page():
+    """Render 2FA setup page"""
+    return render_template('setup_2fa.html')
+
+
+@app.route('/api/auth/verify-token', methods=['GET'])
+def verify_registration_token():
+    """Verify if a registration token is valid."""
+    try:
+        token = request.args.get('token', '').strip()
+        
+        if not token:
+            return jsonify({'success': False, 'valid': False, 'error': 'Token no proporcionado'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, email, status 
+                    FROM registration_applications 
+                    WHERE approval_token = %s
+                """, (token,))
+                app_record = cur.fetchone()
+                
+                if not app_record:
+                    return jsonify({'success': True, 'valid': False, 'error': 'Token invalido o expirado'})
+                
+                if app_record['status'] != 'approved':
+                    return jsonify({'success': True, 'valid': False, 'error': 'Esta solicitud no esta aprobada'})
+                
+                cur.execute("SELECT id FROM users WHERE email = %s", (app_record['email'],))
+                existing_user = cur.fetchone()
+                
+                if existing_user:
+                    return jsonify({'success': True, 'valid': False, 'error': 'Este enlace ya fue utilizado'})
+        
+        return jsonify({
+            'success': True,
+            'valid': True,
+            'email': app_record['email']
+        })
+        
+    except Exception as e:
+        logger.error(f"Error verifying token: {e}")
+        return jsonify({'success': False, 'error': 'Error al verificar el token'}), 500
+
+
+@app.route('/api/auth/register', methods=['POST'])
+def register_user():
+    """Register a new user with approved token."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Datos invalidos'}), 400
+        
+        token = data.get('token', '').strip()
+        username = data.get('username', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not token or not username or not password:
+            return jsonify({'success': False, 'error': 'Todos los campos son requeridos'}), 400
+        
+        if len(username) < 3 or len(username) > 30:
+            return jsonify({'success': False, 'error': 'Usuario debe tener entre 3 y 30 caracteres'}), 400
+        
+        import re
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return jsonify({'success': False, 'error': 'Usuario solo puede contener letras, numeros y guion bajo'}), 400
+        
+        if len(password) < 8:
+            return jsonify({'success': False, 'error': 'Contrasena debe tener al menos 8 caracteres'}), 400
+        
+        if not re.search(r'[A-Z]', password):
+            return jsonify({'success': False, 'error': 'Contrasena debe tener al menos una mayuscula'}), 400
+        
+        if not re.search(r'[0-9]', password):
+            return jsonify({'success': False, 'error': 'Contrasena debe tener al menos un numero'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        from werkzeug.security import generate_password_hash
+        import pyotp
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, email, status 
+                    FROM registration_applications 
+                    WHERE approval_token = %s
+                """, (token,))
+                app_record = cur.fetchone()
+                
+                if not app_record or app_record['status'] != 'approved':
+                    return jsonify({'success': False, 'error': 'Token invalido o no aprobado'}), 400
+                
+                cur.execute("SELECT id FROM users WHERE LOWER(username) = %s", (username,))
+                if cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Este nombre de usuario ya esta en uso'}), 400
+                
+                cur.execute("SELECT id FROM users WHERE email = %s", (app_record['email'],))
+                if cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Ya existe una cuenta con este correo'}), 400
+                
+                password_hash = generate_password_hash(password)
+                totp_secret = pyotp.random_base32()
+                
+                cur.execute("""
+                    INSERT INTO users (
+                        id, username, password, email, password_hash, 
+                        email_verified, registration_approved, application_id,
+                        totp_secret, two_factor_enabled,
+                        is_active, created_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s,
+                        TRUE, TRUE, %s,
+                        %s, FALSE,
+                        TRUE, NOW()
+                    )
+                    RETURNING id
+                """, (
+                    username, username, password_hash, app_record['email'], password_hash,
+                    app_record['id'],
+                    totp_secret
+                ))
+                
+                new_user = cur.fetchone()
+                
+                cur.execute("""
+                    UPDATE registration_applications 
+                    SET status = 'registered'
+                    WHERE id = %s
+                """, (app_record['id'],))
+                
+                conn.commit()
+                
+                session['pending_2fa_user_id'] = new_user['id']
+                session['pending_2fa_username'] = username
+        
+        logger.info(f"New user registered: {username} ({app_record['email']})")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Cuenta creada exitosamente',
+            'redirect': '/setup-2fa'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error registering user: {e}")
+        return jsonify({'success': False, 'error': 'Error al crear la cuenta'}), 500
+
+
+@app.route('/api/auth/setup-2fa', methods=['GET'])
+def get_2fa_setup():
+    """Get 2FA setup data (QR code and secret)."""
+    try:
+        user_id = session.get('pending_2fa_user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False, 
+                'error': 'Sesion no valida',
+                'code': 'NOT_AUTHENTICATED'
+            }), 401
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        import pyotp
+        import base64
+        from io import BytesIO
+        
+        try:
+            import qrcode
+        except ImportError:
+            return jsonify({'success': False, 'error': 'Modulo QR no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, totp_secret, two_factor_enabled 
+                    FROM users WHERE id = %s
+                """, (user_id,))
+                user = cur.fetchone()
+                
+                if not user:
+                    session.pop('pending_2fa_user_id', None)
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                if user['two_factor_enabled']:
+                    return jsonify({'success': False, 'error': '2FA ya esta configurado'}), 400
+                
+                secret = user['totp_secret']
+                if not secret:
+                    secret = pyotp.random_base32()
+                    cur.execute("UPDATE users SET totp_secret = %s WHERE id = %s", (secret, user_id))
+                    conn.commit()
+        
+        totp = pyotp.TOTP(secret)
+        provisioning_uri = totp.provisioning_uri(
+            name=user['username'],
+            issuer_name='BUNK3R'
+        )
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(provisioning_uri)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color='black', back_color='white')
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        return jsonify({
+            'success': True,
+            'secret': secret,
+            'qr_code': f'data:image/png;base64,{qr_base64}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting 2FA setup: {e}")
+        return jsonify({'success': False, 'error': 'Error al generar 2FA'}), 500
+
+
+@app.route('/api/auth/verify-2fa-setup', methods=['POST'])
+def verify_2fa_setup():
+    """Verify 2FA code during initial setup."""
+    try:
+        user_id = session.get('pending_2fa_user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False, 
+                'error': 'Sesion no valida',
+                'code': 'NOT_AUTHENTICATED'
+            }), 401
+        
+        data = request.get_json()
+        code = data.get('code', '').strip() if data else ''
+        
+        if not code or len(code) != 6:
+            return jsonify({'success': False, 'error': 'Codigo invalido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        import pyotp
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, totp_secret, two_factor_enabled 
+                    FROM users WHERE id = %s
+                """, (user_id,))
+                user = cur.fetchone()
+                
+                if not user:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                if not user['totp_secret']:
+                    return jsonify({'success': False, 'error': 'Secreto 2FA no configurado'}), 400
+                
+                totp = pyotp.TOTP(user['totp_secret'])
+                if not totp.verify(code, valid_window=1):
+                    return jsonify({'success': False, 'error': 'Codigo incorrecto'}), 400
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET two_factor_enabled = TRUE, last_2fa_verified_at = NOW()
+                    WHERE id = %s
+                """, (user_id,))
+                conn.commit()
+        
+        session.pop('pending_2fa_user_id', None)
+        session.pop('pending_2fa_username', None)
+        
+        logger.info(f"2FA setup completed for user: {user['username']}")
+        
+        return jsonify({
+            'success': True,
+            'message': '2FA configurado exitosamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error verifying 2FA setup: {e}")
+        return jsonify({'success': False, 'error': 'Error al verificar codigo'}), 500
 
 
 def log_admin_action(admin_id, admin_name, action_type, target_type=None, target_id=None, description=None, metadata=None):
