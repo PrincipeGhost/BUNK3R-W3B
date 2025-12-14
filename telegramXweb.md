@@ -292,7 +292,8 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 - [x] Eliminar download_telegram_photo (no se usaba)
 - [x] Limpiar decoradores viejos duplicados (require_telegram_auth, require_telegram_user, require_owner, is_owner, is_test_user, is_allowed_user, verify_origin_referer, csrf_protect - todos importados desde decorators.py)
 - [x] Limpiar imports no usados (hmac, hashlib, parse_qs, unquote)
-- Archivos modificados: app.py (~250 lineas eliminadas)
+- [x] Eliminar funciones duplicadas de demo_sessions (verify_demo_session, invalidate_demo_session, get_demo_session_token - ahora importadas desde bot/tracking_correos/demo_sessions.py)
+- Archivos modificados: app.py (~300 lineas eliminadas en total)
 - Probado: SI (2025-12-14)
 
 #### 7.2 Actualizar rutas
