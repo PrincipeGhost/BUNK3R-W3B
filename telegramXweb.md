@@ -16,7 +16,7 @@
 - [!] = En progreso
 - [E] = Error (requiere atención)
 
-### ÚLTIMA ACTUALIZACIÓN: 2025-12-13 - Fase 2 completada
+### ÚLTIMA ACTUALIZACIÓN: 2025-12-14 - Fase 4 completada
 
 ---
 
@@ -189,31 +189,31 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 ## FASE 4: LOGIN Y SESIONES
 
-**Estado:** [ ] No iniciada
+**Estado:** [x] COMPLETADA - 2025-12-14
 
 ### Tareas:
 
 #### 4.1 Página de login
-- [ ] Ruta /login
-- [ ] Formulario paso 1: solo usuario
-- [ ] Formulario paso 2: código 2FA (si usuario existe)
-- [ ] Mensaje "Acceso denegado" si no existe (sin detalles)
-- Archivos modificados:
-- Probado: NO
+- [x] Ruta /login
+- [x] Formulario paso 1: solo usuario
+- [x] Formulario paso 2: código 2FA (si usuario existe)
+- [x] Mensaje "Acceso denegado" si no existe (sin detalles)
+- Archivos modificados: app.py (linea 1656-1659), templates/login.html
+- Probado: SI (2025-12-14)
 
 #### 4.2 Endpoints de login
-- [ ] POST /api/auth/login/step1 - Verificar si usuario existe
-- [ ] POST /api/auth/login/step2 - Verificar código 2FA
-- [ ] Crear sesión segura con Flask-Session
-- Archivos modificados:
-- Probado: NO
+- [x] POST /api/auth/login/step1 - Verificar si usuario existe
+- [x] POST /api/auth/login/step2 - Verificar código 2FA
+- [x] Crear sesión segura con Flask-Session
+- Archivos modificados: app.py (lineas 1951-2059)
+- Probado: SI (2025-12-14)
 
 #### 4.3 Logout
-- [ ] Endpoint POST /api/auth/logout
-- [ ] Invalidar sesión
-- [ ] Redirigir a /login
-- Archivos modificados:
-- Probado: NO
+- [x] Endpoint POST /api/auth/logout
+- [x] Invalidar sesión
+- [x] Redirigir a /login
+- Archivos modificados: app.py (lineas 2062-2082)
+- Probado: SI (2025-12-14)
 
 ---
 
@@ -313,6 +313,10 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 | 2025-12-13 | 2.1 | UI Panel Admin Encuestas | Completado | SurveyModule + ApplicationsModule |
 | 2025-12-13 | 2.2 | Panel Admin Solicitudes | Completado | 4 endpoints + UI completa |
 | 2025-12-13 | 2.3 | Pagina publica solicitud | Completado | /solicitud + 2 endpoints publicos |
+| 2025-12-14 | 3 | Registro y 2FA | Completado | /registro, /setup-2fa, 4 endpoints |
+| 2025-12-14 | 4.1 | Pagina de login | Completado | /login con flujo de 2 pasos |
+| 2025-12-14 | 4.2 | Endpoints de login | Completado | step1, step2 + sesiones |
+| 2025-12-14 | 4.3 | Logout | Completado | Endpoint + invalidacion de sesion |
 
 ---
 
@@ -327,7 +331,11 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 ## ARCHIVOS MODIFICADOS (RESUMEN)
 
 - **bot/tracking_correos/decorators.py** - Agregados: @require_web_auth, @require_admin, @require_email_verified, get_current_web_user(), create_web_session(), invalidate_web_session()
-- **Base de datos** - Nuevas columnas en users, nuevas tablas: registration_applications, survey_questions, email_verifications
+- **Base de datos** - Nuevas columnas en users (last_login_at), nuevas tablas: registration_applications, survey_questions, email_verifications
 - **templates/admin.html** - Agregadas secciones section-survey y section-applications con navegación "Registro Web"
+- **templates/login.html** - Nueva página de login con flujo de 2 pasos (usuario → 2FA)
+- **templates/registro.html** - Página de registro con token de aprobación
+- **templates/setup_2fa.html** - Página de configuración de 2FA con QR code
 - **static/js/admin.js** - Agregados módulos SurveyModule y ApplicationsModule
 - **static/css/admin.css** - Agregados estilos para las nuevas secciones de encuestas y solicitudes
+- **app.py** - Rutas /login, /registro, /setup-2fa + endpoints de autenticación (login/step1, step2, logout, register, verify-token, setup-2fa, verify-2fa-setup)

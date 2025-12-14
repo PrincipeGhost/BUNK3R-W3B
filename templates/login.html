@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesion - BUNK3R</title>
+    <style>
+        :root {
+            --bg-primary: #0B0E11;
+            --bg-secondary: #12161C;
+            --bg-elevated: #1E2329;
+            --accent-primary: #F0B90B;
+            --accent-secondary: #FCD535;
+            --text-primary: #EAECEF;
+            --text-secondary: #848E9C;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-success: #0ECB81;
+            --accent-danger: #F6465D;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 450px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--bg-primary);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .step {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .step.active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+        
+        .step.completed {
+            background: var(--accent-success);
+            color: white;
+            border-color: var(--accent-success);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.1);
+        }
+        
+        .form-control::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        .code-input {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .code-input input {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+        
+        .code-input input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.1);
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 10px;
+            color: var(--bg-primary);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(240, 185, 11, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            width: 100%;
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 12px;
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: var(--bg-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: rgba(246, 70, 93, 0.1);
+            border: 1px solid rgba(246, 70, 93, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--accent-danger);
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .user-info {
+            background: var(--bg-elevated);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--bg-primary);
+        }
+        
+        .user-details {
+            flex: 1;
+        }
+        
+        .user-details .username {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+        
+        .user-details .hint {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            text-align: center;
+        }
+        
+        .form-step {
+            display: none;
+        }
+        
+        .form-step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .apply-link {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .apply-link p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .apply-link a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .apply-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">B3</div>
+            <h1>Iniciar Sesion</h1>
+            <p>Ingresa a tu cuenta de BUNK3R</p>
+        </div>
+        
+        <div class="card">
+            <div class="step-indicator">
+                <div class="step active" id="stepIndicator1">1</div>
+                <div class="step" id="stepIndicator2">2</div>
+            </div>
+            
+            <div id="formError" class="error-message"></div>
+            
+            <div id="step1" class="form-step active">
+                <form id="step1Form">
+                    <div class="form-group">
+                        <label>Nombre de usuario</label>
+                        <input type="text" id="username" class="form-control" 
+                               placeholder="tu_usuario" required autocomplete="username">
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="step1Btn">
+                        Continuar
+                    </button>
+                </form>
+            </div>
+            
+            <div id="step2" class="form-step">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div class="user-details">
+                        <div class="username" id="displayUsername"></div>
+                        <div class="hint">Ingresa tu codigo 2FA</div>
+                    </div>
+                </div>
+                
+                <form id="step2Form">
+                    <div class="form-group">
+                        <label>Codigo de autenticacion</label>
+                        <div class="code-input">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="0">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="1">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="2">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="3">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="4">
+                            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="5">
+                        </div>
+                        <p class="form-hint">Ingresa el codigo de 6 digitos de tu app autenticadora</p>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="step2Btn">
+                        Iniciar Sesion
+                    </button>
+                    
+                    <button type="button" class="btn-secondary" onclick="App.goBack()">
+                        Cambiar usuario
+                    </button>
+                </form>
+            </div>
+            
+            <div class="apply-link">
+                <p>No tienes cuenta? <a href="/solicitud">Solicitar acceso</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const App = {
+            currentStep: 1,
+            username: null,
+            
+            init() {
+                this.bindEvents();
+                document.getElementById('username').focus();
+            },
+            
+            bindEvents() {
+                document.getElementById('step1Form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.verifyUsername();
+                });
+                
+                document.getElementById('step2Form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.submitLogin();
+                });
+                
+                const inputs = document.querySelectorAll('.code-input input');
+                inputs.forEach((input, index) => {
+                    input.addEventListener('input', (e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        e.target.value = value;
+                        
+                        if (value && index < 5) {
+                            inputs[index + 1].focus();
+                        }
+                        
+                        if (this.getCode().length === 6) {
+                            this.submitLogin();
+                        }
+                    });
+                    
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                            inputs[index - 1].focus();
+                        }
+                    });
+                    
+                    input.addEventListener('paste', (e) => {
+                        e.preventDefault();
+                        const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                        pastedData.split('').forEach((char, i) => {
+                            if (inputs[i]) {
+                                inputs[i].value = char;
+                            }
+                        });
+                        if (pastedData.length === 6) {
+                            this.submitLogin();
+                        }
+                    });
+                });
+            },
+            
+            getCode() {
+                const inputs = document.querySelectorAll('.code-input input');
+                return Array.from(inputs).map(i => i.value).join('');
+            },
+            
+            showError(message) {
+                const errorDiv = document.getElementById('formError');
+                errorDiv.textContent = message;
+                errorDiv.classList.add('show');
+            },
+            
+            hideError() {
+                document.getElementById('formError').classList.remove('show');
+            },
+            
+            async verifyUsername() {
+                const username = document.getElementById('username').value.trim();
+                if (!username) return;
+                
+                this.hideError();
+                const btn = document.getElementById('step1Btn');
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner"></div> Verificando...';
+                
+                try {
+                    const response = await fetch('/api/auth/login/step1', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: username })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.valid) {
+                        this.username = username;
+                        this.goToStep2();
+                    } else {
+                        this.showError('Acceso denegado');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.showError('Error de conexion. Intenta de nuevo.');
+                }
+                
+                btn.disabled = false;
+                btn.innerHTML = 'Continuar';
+            },
+            
+            goToStep2() {
+                document.getElementById('stepIndicator1').classList.remove('active');
+                document.getElementById('stepIndicator1').classList.add('completed');
+                document.getElementById('stepIndicator2').classList.add('active');
+                
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+                
+                document.getElementById('displayUsername').textContent = this.username;
+                document.getElementById('userAvatar').textContent = this.username.charAt(0).toUpperCase();
+                
+                this.currentStep = 2;
+                this.hideError();
+                
+                document.querySelector('.code-input input').focus();
+            },
+            
+            goBack() {
+                document.getElementById('stepIndicator1').classList.add('active');
+                document.getElementById('stepIndicator1').classList.remove('completed');
+                document.getElementById('stepIndicator2').classList.remove('active');
+                
+                document.getElementById('step2').classList.remove('active');
+                document.getElementById('step1').classList.add('active');
+                
+                const inputs = document.querySelectorAll('.code-input input');
+                inputs.forEach(i => i.value = '');
+                
+                this.currentStep = 1;
+                this.username = null;
+                this.hideError();
+                
+                document.getElementById('username').focus();
+            },
+            
+            async submitLogin() {
+                const code = this.getCode();
+                if (code.length !== 6) return;
+                
+                this.hideError();
+                const btn = document.getElementById('step2Btn');
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner"></div> Iniciando...';
+                
+                try {
+                    const response = await fetch('/api/auth/login/step2', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: this.username,
+                            code: code
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        window.location.href = data.redirect || '/';
+                    } else {
+                        this.showError(data.error || 'Codigo incorrecto');
+                        const inputs = document.querySelectorAll('.code-input input');
+                        inputs.forEach(i => i.value = '');
+                        inputs[0].focus();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.showError('Error de conexion. Intenta de nuevo.');
+                }
+                
+                btn.disabled = false;
+                btn.innerHTML = 'Iniciar Sesion';
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>

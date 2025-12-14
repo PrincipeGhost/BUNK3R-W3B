@@ -1650,6 +1650,12 @@ def setup_2fa_page():
     return render_template('setup_2fa.html')
 
 
+@app.route('/login')
+def login_page():
+    """Render login page"""
+    return render_template('login.html')
+
+
 @app.route('/api/auth/verify-token', methods=['GET'])
 def verify_registration_token():
     """Verify if a registration token is valid."""
@@ -1933,6 +1939,146 @@ def verify_2fa_setup():
     except Exception as e:
         logger.error(f"Error verifying 2FA setup: {e}")
         return jsonify({'success': False, 'error': 'Error al verificar codigo'}), 500
+
+
+# ============================================================
+# ENDPOINTS DE LOGIN Y LOGOUT
+# ============================================================
+
+@app.route('/api/auth/login/step1', methods=['POST'])
+def login_step1():
+    """Step 1 of login: verify username exists and is approved."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Datos invalidos'}), 400
+        
+        username = data.get('username', '').strip().lower()
+        
+        if not username:
+            return jsonify({'success': False, 'error': 'Usuario requerido'}), 400
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, email_verified, registration_approved, two_factor_enabled
+                    FROM users 
+                    WHERE LOWER(username) = %s
+                """, (username,))
+                user = cur.fetchone()
+                
+                if not user:
+                    return jsonify({'success': True, 'valid': False})
+                
+                if not user['registration_approved']:
+                    return jsonify({'success': True, 'valid': False})
+                
+                if not user['two_factor_enabled']:
+                    return jsonify({'success': True, 'valid': False})
+        
+        return jsonify({'success': True, 'valid': True})
+        
+    except Exception as e:
+        logger.error(f"Error in login step 1: {e}")
+        return jsonify({'success': False, 'error': 'Error al verificar usuario'}), 500
+
+
+@app.route('/api/auth/login/step2', methods=['POST'])
+def login_step2():
+    """Step 2 of login: verify 2FA code and create session."""
+    generic_error = {'success': False, 'error': 'Acceso denegado'}
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify(generic_error), 401
+        
+        username = data.get('username', '').strip().lower()
+        code = data.get('code', '').strip()
+        
+        if not username or not code:
+            return jsonify(generic_error), 401
+        
+        if len(code) != 6 or not code.isdigit():
+            return jsonify(generic_error), 401
+        
+        if not db_manager:
+            return jsonify({'success': False, 'error': 'Base de datos no disponible'}), 500
+        
+        import pyotp
+        from bot.tracking_correos.decorators import create_web_session
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, email, totp_secret, email_verified, 
+                           registration_approved, two_factor_enabled, is_admin
+                    FROM users 
+                    WHERE LOWER(username) = %s
+                """, (username,))
+                user = cur.fetchone()
+                
+                if not user or not user['registration_approved'] or not user['two_factor_enabled']:
+                    return jsonify(generic_error), 401
+                
+                if not user['totp_secret']:
+                    return jsonify(generic_error), 401
+                
+                totp = pyotp.TOTP(user['totp_secret'])
+                if not totp.verify(code, valid_window=1):
+                    logger.warning(f"Failed login attempt for user: {username}")
+                    return jsonify(generic_error), 401
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET last_2fa_verified_at = NOW(), last_login_at = NOW()
+                    WHERE id = %s
+                """, (user['id'],))
+                conn.commit()
+        
+        session.pop('pending_2fa_user_id', None)
+        session.pop('pending_2fa_username', None)
+        
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        create_web_session(user, client_ip)
+        
+        logger.info(f"User logged in: {username} from {client_ip}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Login exitoso',
+            'redirect': '/'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in login step 2: {e}")
+        return jsonify({'success': False, 'error': 'Error al iniciar sesion'}), 500
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """Logout and invalidate session."""
+    try:
+        from bot.tracking_correos.decorators import invalidate_web_session, get_current_web_user
+        
+        user = get_current_web_user()
+        if user:
+            logger.info(f"User logged out: {user.get('username')}")
+        
+        invalidate_web_session()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Sesion cerrada',
+            'redirect': '/login'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in logout: {e}")
+        return jsonify({'success': False, 'error': 'Error al cerrar sesion'}), 500
 
 
 def log_admin_action(admin_id, admin_name, action_type, target_type=None, target_id=None, description=None, metadata=None):
