@@ -22,10 +22,12 @@ import time
 from werkzeug.utils import secure_filename
 import psycopg2.extras
 
-from bot.tracking_correos.decorators import require_telegram_auth, require_telegram_user
+from bot.tracking_correos.decorators import require_telegram_auth, require_telegram_user, require_web_auth, get_current_web_user
 from bot.tracking_correos.services import get_db_manager, get_security_manager
+from bot.tracking_correos.cloudinary_service import cloudinary_service
 from bot.tracking_correos.utils import rate_limit
 import re
+import bcrypt
 
 logger = logging.getLogger(__name__)
 
@@ -3356,3 +3358,236 @@ def get_public_faqs():
     except Exception as e:
         logger.error(f"Error getting public FAQs: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# WEB USER PROFILE ENDPOINTS (Fase 5 - 14 Diciembre 2025)
+# ============================================================
+
+
+@user_bp.route('/user/web/profile', methods=['GET'])
+@require_web_auth
+def get_web_user_profile():
+    """Get current web user's profile."""
+    try:
+        user = request.web_user
+        db_manager = get_db_manager()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, username, email, first_name, last_name, bio, 
+                           avatar_url, created_at, email_verified, two_factor_enabled,
+                           telegram_linked, level, credits
+                    FROM users WHERE id = %s
+                """, (user['id'],))
+                profile = cur.fetchone()
+                
+                if not profile:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'profile': {
+                        'id': profile['id'],
+                        'username': profile['username'],
+                        'email': profile['email'],
+                        'first_name': profile['first_name'] or '',
+                        'last_name': profile['last_name'] or '',
+                        'bio': profile['bio'] or '',
+                        'avatar_url': profile['avatar_url'] or '',
+                        'created_at': profile['created_at'].isoformat() if profile['created_at'] else None,
+                        'email_verified': profile['email_verified'],
+                        'two_factor_enabled': profile['two_factor_enabled'],
+                        'telegram_linked': profile['telegram_linked'] or False,
+                        'level': profile['level'] or 1,
+                        'credits': profile['credits'] or 0
+                    }
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting web user profile: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener perfil'}), 500
+
+
+@user_bp.route('/user/web/profile', methods=['PUT'])
+@require_web_auth
+def update_web_user_profile():
+    """Update current web user's profile information."""
+    try:
+        user = request.web_user
+        data = request.get_json() or {}
+        db_manager = get_db_manager()
+        
+        allowed_fields = ['first_name', 'last_name', 'bio']
+        updates = {}
+        
+        for field in allowed_fields:
+            if field in data:
+                value = data[field]
+                if isinstance(value, str):
+                    value = html.escape(value.strip())[:500]
+                updates[field] = value
+        
+        if not updates:
+            return jsonify({'success': False, 'error': 'No hay campos para actualizar'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                set_clause = ', '.join([f"{k} = %s" for k in updates.keys()])
+                values = list(updates.values()) + [user['id']]
+                
+                cur.execute(f"""
+                    UPDATE users 
+                    SET {set_clause}, updated_at = NOW()
+                    WHERE id = %s
+                """, values)
+                conn.commit()
+        
+        logger.info(f"Profile updated for user {user['id']}: {list(updates.keys())}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Perfil actualizado correctamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating web user profile: {e}")
+        return jsonify({'success': False, 'error': 'Error al actualizar perfil'}), 500
+
+
+@user_bp.route('/user/web/avatar', methods=['POST'])
+@require_web_auth
+def upload_web_user_avatar():
+    """Upload avatar for current web user."""
+    try:
+        user = request.web_user
+        db_manager = get_db_manager()
+        
+        if 'avatar' not in request.files:
+            return jsonify({'success': False, 'error': 'No se envio ninguna imagen'}), 400
+        
+        file = request.files['avatar']
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se selecciono ningún archivo'}), 400
+        
+        content_type = file.content_type or 'image/jpeg'
+        file_data = file.read()
+        
+        if not cloudinary_service.is_configured():
+            return jsonify({'success': False, 'error': 'Servicio de imagenes no disponible'}), 503
+        
+        result = cloudinary_service.upload_avatar(file_data, content_type, user['id'])
+        
+        if not result['success']:
+            return jsonify({'success': False, 'error': result.get('error', 'Error al subir imagen')}), 400
+        
+        avatar_url = result['url']
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET avatar_url = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, (avatar_url, user['id']))
+                conn.commit()
+        
+        logger.info(f"Avatar updated for user {user['id']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Foto de perfil actualizada',
+            'avatar_url': avatar_url
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading avatar: {e}")
+        return jsonify({'success': False, 'error': 'Error al subir imagen'}), 500
+
+
+@user_bp.route('/user/web/avatar', methods=['DELETE'])
+@require_web_auth
+def delete_web_user_avatar():
+    """Delete avatar for current web user."""
+    try:
+        user = request.web_user
+        db_manager = get_db_manager()
+        
+        cloudinary_service.delete_avatar(user['id'])
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET avatar_url = NULL, updated_at = NOW()
+                    WHERE id = %s
+                """, (user['id'],))
+                conn.commit()
+        
+        logger.info(f"Avatar deleted for user {user['id']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Foto de perfil eliminada'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting avatar: {e}")
+        return jsonify({'success': False, 'error': 'Error al eliminar imagen'}), 500
+
+
+@user_bp.route('/user/web/change-password', methods=['POST'])
+@require_web_auth
+def change_web_user_password():
+    """Change password for current web user."""
+    try:
+        user = request.web_user
+        data = request.get_json() or {}
+        db_manager = get_db_manager()
+        
+        current_password = data.get('current_password', '').strip()
+        new_password = data.get('new_password', '').strip()
+        confirm_password = data.get('confirm_password', '').strip()
+        
+        if not current_password or not new_password or not confirm_password:
+            return jsonify({'success': False, 'error': 'Todos los campos son requeridos'}), 400
+        
+        if new_password != confirm_password:
+            return jsonify({'success': False, 'error': 'Las contraseñas nuevas no coinciden'}), 400
+        
+        if len(new_password) < 8:
+            return jsonify({'success': False, 'error': 'La contraseña debe tener al menos 8 caracteres'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT password_hash FROM users WHERE id = %s", (user['id'],))
+                result = cur.fetchone()
+                
+                if not result or not result['password_hash']:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                if not bcrypt.checkpw(current_password.encode('utf-8'), result['password_hash'].encode('utf-8')):
+                    logger.warning(f"Wrong current password for user {user['id']}")
+                    return jsonify({'success': False, 'error': 'Contraseña actual incorrecta'}), 401
+                
+                new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET password_hash = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, (new_hash, user['id']))
+                conn.commit()
+        
+        logger.info(f"Password changed for user {user['id']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Contraseña actualizada correctamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error changing password: {e}")
+        return jsonify({'success': False, 'error': 'Error al cambiar contraseña'}), 500

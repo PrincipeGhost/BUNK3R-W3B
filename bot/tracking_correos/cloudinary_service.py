@@ -208,6 +208,58 @@ class CloudinaryService:
             content_type,
             folder="encrypted_stories"
         )
+    
+    def upload_avatar(self, file_data: bytes, content_type: str, user_id: str) -> Dict:
+        """
+        Upload a user avatar (not encrypted, public profile image)
+        Applies automatic transformations for consistent sizing
+        """
+        if not self.configured:
+            return {'success': False, 'error': 'Cloudinary not configured'}
+        
+        if content_type not in self.ALLOWED_IMAGE_TYPES:
+            return {'success': False, 'error': 'Tipo de imagen no permitido'}
+        
+        if len(file_data) > 5 * 1024 * 1024:
+            return {'success': False, 'error': 'Imagen muy grande (max 5MB)'}
+        
+        try:
+            file_buffer = io.BytesIO(file_data)
+            
+            upload_result = cloudinary.uploader.upload(
+                file_buffer,
+                folder="avatars",
+                public_id=f"user_{user_id}",
+                overwrite=True,
+                resource_type="image",
+                transformation=[
+                    {"width": 256, "height": 256, "crop": "fill", "gravity": "face"},
+                    {"quality": "auto:good"},
+                    {"fetch_format": "auto"}
+                ]
+            )
+            
+            return {
+                'success': True,
+                'url': upload_result['secure_url'],
+                'public_id': upload_result['public_id']
+            }
+            
+        except Exception as e:
+            logger.error(f"Avatar upload error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def delete_avatar(self, user_id: str) -> bool:
+        """Delete a user's avatar from Cloudinary"""
+        if not self.configured:
+            return False
+        
+        try:
+            result = cloudinary.uploader.destroy(f"avatars/user_{user_id}", resource_type="image")
+            return result.get('result') == 'ok'
+        except Exception as e:
+            logger.error(f"Avatar delete error: {e}")
+            return False
 
 
 cloudinary_service = CloudinaryService()

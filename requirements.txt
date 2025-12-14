@@ -51,3 +51,4 @@ requests
 urllib3
 pillow
 qrcode
+bcrypt

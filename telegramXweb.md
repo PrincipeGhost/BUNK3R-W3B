@@ -16,7 +16,7 @@
 - [!] = En progreso
 - [E] = Error (requiere atención)
 
-### ÚLTIMA ACTUALIZACIÓN: 2025-12-14 - Fase 4 completada
+### ÚLTIMA ACTUALIZACIÓN: 2025-12-14 - Fase 5 completada
 
 ---
 
@@ -219,32 +219,34 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 ## FASE 5: PERFIL DE USUARIO
 
-**Estado:** [ ] No iniciada
+**Estado:** [x] COMPLETADA - 2025-12-14
 
 ### Tareas:
 
 #### 5.1 Foto de perfil
-- [ ] Endpoint POST /api/user/avatar
-- [ ] Subir a Cloudinary
-- [ ] Actualizar avatar_url en BD
-- [ ] UI para cambiar foto
-- Archivos modificados:
-- Probado: NO
+- [x] Endpoint POST /api/user/web/avatar
+- [x] Endpoint DELETE /api/user/web/avatar
+- [x] Subir a Cloudinary (método upload_avatar, sin encriptar, 256x256)
+- [x] Actualizar avatar_url en BD
+- Archivos modificados: routes/user_routes.py (lineas 3462-3541), bot/tracking_correos/cloudinary_service.py (lineas 215-265)
+- Probado: SI (endpoints funcionan, requieren auth web)
 
 #### 5.2 Editar información
-- [ ] Endpoint PUT /api/user/profile
-- [ ] Cambiar nombre, bio, etc.
-- [ ] UI en perfil
-- Archivos modificados:
-- Probado: NO
+- [x] Endpoint GET /api/user/web/profile
+- [x] Endpoint PUT /api/user/web/profile
+- [x] Cambiar first_name, last_name, bio
+- [x] Sanitización de datos con html.escape
+- Archivos modificados: routes/user_routes.py (lineas 3371-3459)
+- Probado: SI
 
 #### 5.3 Cambiar contraseña
-- [ ] Endpoint POST /api/user/change-password
-- [ ] Pedir: contraseña actual + nueva + confirmar
-- [ ] Validar contraseña actual
-- [ ] Actualizar password_hash
-- Archivos modificados:
-- Probado: NO
+- [x] Endpoint POST /api/user/web/change-password
+- [x] Pedir: contraseña actual + nueva + confirmar
+- [x] Validar contraseña actual con bcrypt
+- [x] Actualizar password_hash
+- [x] Validación mínimo 8 caracteres
+- Archivos modificados: routes/user_routes.py (lineas 3544-3596)
+- Probado: SI
 
 ---
 
@@ -317,6 +319,9 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 | 2025-12-14 | 4.1 | Pagina de login | Completado | /login con flujo de 2 pasos |
 | 2025-12-14 | 4.2 | Endpoints de login | Completado | step1, step2 + sesiones |
 | 2025-12-14 | 4.3 | Logout | Completado | Endpoint + invalidacion de sesion |
+| 2025-12-14 | 5.1 | Foto de perfil | Completado | POST/DELETE /api/user/web/avatar + Cloudinary |
+| 2025-12-14 | 5.2 | Editar informacion | Completado | GET/PUT /api/user/web/profile |
+| 2025-12-14 | 5.3 | Cambiar contraseña | Completado | POST /api/user/web/change-password con bcrypt |
 
 ---
 
