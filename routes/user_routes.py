@@ -3591,3 +3591,206 @@ def change_web_user_password():
     except Exception as e:
         logger.error(f"Error changing password: {e}")
         return jsonify({'success': False, 'error': 'Error al cambiar contraseña'}), 500
+
+
+# ============================================================
+# TELEGRAM LINKING ENDPOINTS (Fase 6 - 14 Diciembre 2025)
+# ============================================================
+
+import pyotp
+import secrets
+
+@user_bp.route('/user/web/telegram/status', methods=['GET'])
+@require_web_auth
+def get_telegram_link_status():
+    """Get Telegram linking status for current user."""
+    try:
+        user = request.web_user
+        db_manager = get_db_manager()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT telegram_linked, linked_telegram_id
+                    FROM users WHERE id = %s
+                """, (user['id'],))
+                result = cur.fetchone()
+                
+                if not result:
+                    return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+                
+                bot_username = os.environ.get('TELEGRAM_BOT_USERNAME', 'BUNK3R_bot')
+                
+                return jsonify({
+                    'success': True,
+                    'telegram_linked': result['telegram_linked'] or False,
+                    'linked_telegram_id': result['linked_telegram_id'],
+                    'bot_username': bot_username
+                })
+                
+    except Exception as e:
+        logger.error(f"Error getting telegram link status: {e}")
+        return jsonify({'success': False, 'error': 'Error al obtener estado'}), 500
+
+
+@user_bp.route('/user/web/telegram/generate-link-code', methods=['POST'])
+@require_web_auth
+def generate_telegram_link_code():
+    """Generate a temporary linking code for Telegram."""
+    try:
+        user = request.web_user
+        db_manager = get_db_manager()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT telegram_linked FROM users WHERE id = %s
+                """, (user['id'],))
+                result = cur.fetchone()
+                
+                if result and result['telegram_linked']:
+                    return jsonify({'success': False, 'error': 'Ya tienes Telegram vinculado'}), 400
+                
+                link_code = secrets.token_urlsafe(16)
+                
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS telegram_link_codes (
+                        id SERIAL PRIMARY KEY,
+                        user_id VARCHAR(255) NOT NULL,
+                        code VARCHAR(255) UNIQUE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TIMESTAMP NOT NULL,
+                        used BOOLEAN DEFAULT FALSE
+                    )
+                """)
+                
+                cur.execute("""
+                    DELETE FROM telegram_link_codes 
+                    WHERE user_id = %s OR expires_at < NOW()
+                """, (user['id'],))
+                
+                cur.execute("""
+                    INSERT INTO telegram_link_codes (user_id, code, expires_at)
+                    VALUES (%s, %s, NOW() + INTERVAL '10 minutes')
+                    RETURNING code
+                """, (user['id'], link_code))
+                conn.commit()
+                
+                bot_username = os.environ.get('TELEGRAM_BOT_USERNAME', 'BUNK3R_bot')
+                
+                return jsonify({
+                    'success': True,
+                    'link_code': link_code,
+                    'expires_in': 600,
+                    'bot_username': bot_username,
+                    'instructions': f'Envia este codigo al bot @{bot_username} con el comando /vincular {link_code}'
+                })
+                
+    except Exception as e:
+        logger.error(f"Error generating telegram link code: {e}")
+        return jsonify({'success': False, 'error': 'Error al generar codigo'}), 500
+
+
+@user_bp.route('/user/web/telegram/unlink', methods=['POST'])
+@require_web_auth
+def unlink_telegram():
+    """Unlink Telegram from the current user's account."""
+    try:
+        user = request.web_user
+        db_manager = get_db_manager()
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET telegram_linked = FALSE, linked_telegram_id = NULL, updated_at = NOW()
+                    WHERE id = %s
+                """, (user['id'],))
+                conn.commit()
+        
+        logger.info(f"Telegram unlinked for user {user['id']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Telegram desvinculado correctamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error unlinking telegram: {e}")
+        return jsonify({'success': False, 'error': 'Error al desvincular Telegram'}), 500
+
+
+@user_bp.route('/telegram/link', methods=['POST'])
+def process_telegram_link():
+    """Process Telegram linking request from bot (verifies 2FA and links account)."""
+    try:
+        data = request.get_json() or {}
+        db_manager = get_db_manager()
+        
+        link_code = data.get('link_code', '').strip()
+        telegram_id = data.get('telegram_id')
+        totp_code = data.get('totp_code', '').strip()
+        bot_token = data.get('bot_token', '').strip()
+        
+        expected_token = os.environ.get('BOT_TOKEN', '')
+        if bot_token != expected_token:
+            logger.warning("Invalid bot token in telegram link request")
+            return jsonify({'success': False, 'error': 'No autorizado'}), 401
+        
+        if not link_code or not telegram_id or not totp_code:
+            return jsonify({'success': False, 'error': 'Datos incompletos'}), 400
+        
+        with db_manager.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT user_id FROM telegram_link_codes
+                    WHERE code = %s AND used = FALSE AND expires_at > NOW()
+                """, (link_code,))
+                code_row = cur.fetchone()
+                
+                if not code_row:
+                    return jsonify({'success': False, 'error': 'Codigo invalido o expirado'}), 400
+                
+                user_id = code_row['user_id']
+                
+                cur.execute("""
+                    SELECT two_factor_secret FROM users WHERE id = %s
+                """, (user_id,))
+                user_row = cur.fetchone()
+                
+                if not user_row or not user_row['two_factor_secret']:
+                    return jsonify({'success': False, 'error': 'Usuario no tiene 2FA configurado'}), 400
+                
+                totp = pyotp.TOTP(user_row['two_factor_secret'])
+                if not totp.verify(totp_code, valid_window=1):
+                    logger.warning(f"Invalid 2FA code for telegram link - user {user_id}")
+                    return jsonify({'success': False, 'error': 'Codigo 2FA invalido'}), 401
+                
+                cur.execute("""
+                    SELECT id FROM users WHERE linked_telegram_id = %s AND id != %s
+                """, (telegram_id, user_id))
+                if cur.fetchone():
+                    return jsonify({'success': False, 'error': 'Este Telegram ya esta vinculado a otra cuenta'}), 400
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET telegram_linked = TRUE, linked_telegram_id = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, (telegram_id, user_id))
+                
+                cur.execute("""
+                    UPDATE telegram_link_codes SET used = TRUE WHERE code = %s
+                """, (link_code,))
+                
+                conn.commit()
+        
+        logger.info(f"Telegram {telegram_id} linked to user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Telegram vinculado correctamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing telegram link: {e}")
+        return jsonify({'success': False, 'error': 'Error al vincular Telegram'}), 500

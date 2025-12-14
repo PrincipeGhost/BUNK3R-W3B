@@ -1395,6 +1395,75 @@
                         </div>
                     </div>
 
+                    <!-- Seccion Vincular Telegram (Fase 6) -->
+                    <div class="settings-section" id="telegram-link-section">
+                        <h3 class="settings-section-title">Vincular Telegram</h3>
+                        <div class="telegram-link-card" id="telegram-link-card">
+                            <div class="telegram-link-status" id="telegram-link-status">
+                                <div class="telegram-status-icon" id="telegram-status-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21.5 12c0-5.25-4.25-9.5-9.5-9.5S2.5 6.75 2.5 12s4.25 9.5 9.5 9.5"/>
+                                        <path d="M8.5 9l3 3 5-5"/>
+                                        <circle cx="18" cy="18" r="3"/>
+                                    </svg>
+                                </div>
+                                <div class="telegram-status-info">
+                                    <span class="telegram-status-title" id="telegram-status-title">Estado de Telegram</span>
+                                    <span class="telegram-status-value" id="telegram-status-value">Verificando...</span>
+                                </div>
+                            </div>
+                            <div class="telegram-link-content" id="telegram-link-content">
+                                <p class="telegram-link-desc">Vincula tu cuenta de Telegram para recibir notificaciones y acceder desde la app.</p>
+                                <div class="telegram-link-instructions" id="telegram-link-instructions" style="display: none;">
+                                    <div class="telegram-link-code-box">
+                                        <span class="telegram-link-label">Tu codigo de vinculacion:</span>
+                                        <div class="telegram-code-display">
+                                            <code id="telegram-link-code">------</code>
+                                            <button class="copy-code-btn" id="copy-link-code-btn" title="Copiar codigo">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="telegram-link-steps">
+                                        <p>1. Abre Telegram y busca <strong id="bot-username-display">@BUNK3R_bot</strong></p>
+                                        <p>2. Envia el comando: <code>/vincular [tu codigo]</code></p>
+                                        <p>3. El bot te pedira tu codigo 2FA para confirmar</p>
+                                    </div>
+                                    <p class="telegram-link-expiry">El codigo expira en <span id="link-code-timer">10:00</span></p>
+                                </div>
+                                <div class="telegram-linked-info" id="telegram-linked-info" style="display: none;">
+                                    <div class="telegram-linked-badge">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                            <polyline points="22 4 12 14.01 9 11.01"/>
+                                        </svg>
+                                        <span>Telegram vinculado correctamente</span>
+                                    </div>
+                                    <p class="telegram-linked-id">ID: <code id="linked-telegram-id">-</code></p>
+                                </div>
+                            </div>
+                            <div class="telegram-link-actions" id="telegram-link-actions">
+                                <button class="telegram-generate-btn" id="telegram-generate-code-btn">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    Generar Codigo de Vinculacion
+                                </button>
+                                <button class="telegram-unlink-btn" id="telegram-unlink-btn" style="display: none;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 6L6 18M6 6l12 12"/>
+                                    </svg>
+                                    Desvincular Telegram
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Seccion de Aplicacion -->
                     <div class="settings-section">
                         <h3 class="settings-section-title">Aplicacion</h3>

@@ -1563,6 +1563,7 @@ const App = {
         
         this.loadSettingsSecurityStatus();
         this.loadSettingsDevices();
+        this.initTelegramLinking();
     },
     
     async initExplore() {
@@ -9881,6 +9882,205 @@ const App = {
         } catch (error) {
             console.error('Error saving notification preferences:', error);
             this.showToast('Error al guardar', 'error');
+        }
+    },
+
+    // ============================================================
+    // TELEGRAM LINKING (Fase 6 - 14 Diciembre 2025)
+    // ============================================================
+    
+    telegramLinkCodeTimer: null,
+    telegramLinkExpiresAt: null,
+
+    async initTelegramLinking() {
+        const generateBtn = document.getElementById('telegram-generate-code-btn');
+        const unlinkBtn = document.getElementById('telegram-unlink-btn');
+        const copyBtn = document.getElementById('copy-link-code-btn');
+
+        if (generateBtn) {
+            generateBtn.addEventListener('click', () => this.generateTelegramLinkCode());
+        }
+        if (unlinkBtn) {
+            unlinkBtn.addEventListener('click', () => this.unlinkTelegram());
+        }
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => this.copyTelegramLinkCode());
+        }
+
+        await this.loadTelegramLinkStatus();
+    },
+
+    async loadTelegramLinkStatus() {
+        try {
+            const response = await this.apiRequest('/api/user/web/telegram/status');
+            
+            if (response.success) {
+                this.updateTelegramLinkUI(response);
+            }
+        } catch (error) {
+            console.error('Error loading telegram link status:', error);
+            const statusValue = document.getElementById('telegram-status-value');
+            if (statusValue) statusValue.textContent = 'Error al cargar';
+        }
+    },
+
+    updateTelegramLinkUI(data) {
+        const statusIcon = document.getElementById('telegram-status-icon');
+        const statusValue = document.getElementById('telegram-status-value');
+        const generateBtn = document.getElementById('telegram-generate-code-btn');
+        const unlinkBtn = document.getElementById('telegram-unlink-btn');
+        const instructions = document.getElementById('telegram-link-instructions');
+        const linkedInfo = document.getElementById('telegram-linked-info');
+        const linkedTelegramId = document.getElementById('linked-telegram-id');
+        const botUsernameDisplay = document.getElementById('bot-username-display');
+
+        if (botUsernameDisplay && data.bot_username) {
+            botUsernameDisplay.textContent = '@' + data.bot_username;
+        }
+
+        if (data.telegram_linked) {
+            if (statusIcon) statusIcon.classList.add('linked');
+            if (statusValue) {
+                statusValue.textContent = 'Vinculado';
+                statusValue.classList.add('linked');
+            }
+            
+            if (generateBtn) generateBtn.style.display = 'none';
+            if (unlinkBtn) unlinkBtn.style.display = 'flex';
+            if (instructions) instructions.style.display = 'none';
+            if (linkedInfo) linkedInfo.style.display = 'block';
+            if (linkedTelegramId) linkedTelegramId.textContent = data.linked_telegram_id || '-';
+        } else {
+            if (statusIcon) statusIcon.classList.remove('linked');
+            if (statusValue) {
+                statusValue.textContent = 'No vinculado';
+                statusValue.classList.remove('linked');
+            }
+            
+            if (generateBtn) generateBtn.style.display = 'flex';
+            if (unlinkBtn) unlinkBtn.style.display = 'none';
+            if (linkedInfo) linkedInfo.style.display = 'none';
+        }
+    },
+
+    async generateTelegramLinkCode() {
+        const generateBtn = document.getElementById('telegram-generate-code-btn');
+        if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="spinner-small"></span> Generando...';
+        }
+
+        try {
+            const response = await this.apiRequest('/api/user/web/telegram/generate-link-code', {
+                method: 'POST'
+            });
+
+            if (response.success) {
+                const codeDisplay = document.getElementById('telegram-link-code');
+                const instructions = document.getElementById('telegram-link-instructions');
+                const botUsernameDisplay = document.getElementById('bot-username-display');
+
+                if (codeDisplay) codeDisplay.textContent = response.link_code;
+                if (instructions) instructions.style.display = 'block';
+                if (botUsernameDisplay && response.bot_username) {
+                    botUsernameDisplay.textContent = '@' + response.bot_username;
+                }
+
+                this.telegramLinkExpiresAt = Date.now() + (response.expires_in * 1000);
+                this.startTelegramLinkTimer();
+
+                this.showToast('Codigo generado - Expira en 10 minutos', 'success');
+            } else {
+                this.showToast(response.error || 'Error al generar codigo', 'error');
+            }
+        } catch (error) {
+            console.error('Error generating telegram link code:', error);
+            this.showToast('Error al generar codigo', 'error');
+        } finally {
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg> Generar Codigo de Vinculacion`;
+            }
+        }
+    },
+
+    startTelegramLinkTimer() {
+        if (this.telegramLinkCodeTimer) {
+            clearInterval(this.telegramLinkCodeTimer);
+        }
+
+        const timerDisplay = document.getElementById('link-code-timer');
+        
+        const updateTimer = () => {
+            const remaining = Math.max(0, this.telegramLinkExpiresAt - Date.now());
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            if (timerDisplay) {
+                timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            if (remaining <= 0) {
+                clearInterval(this.telegramLinkCodeTimer);
+                this.telegramLinkCodeTimer = null;
+                const instructions = document.getElementById('telegram-link-instructions');
+                if (instructions) instructions.style.display = 'none';
+                this.showToast('El codigo ha expirado', 'warning');
+            }
+        };
+
+        updateTimer();
+        this.telegramLinkCodeTimer = setInterval(updateTimer, 1000);
+        this.registerInterval(this.telegramLinkCodeTimer);
+    },
+
+    copyTelegramLinkCode() {
+        const code = document.getElementById('telegram-link-code')?.textContent;
+        if (code && code !== '------') {
+            navigator.clipboard.writeText(code).then(() => {
+                this.showToast('Codigo copiado', 'success');
+            }).catch(() => {
+                this.showToast('Error al copiar', 'error');
+            });
+        }
+    },
+
+    async unlinkTelegram() {
+        if (!confirm('Estas seguro de que quieres desvincular tu cuenta de Telegram?')) {
+            return;
+        }
+
+        const unlinkBtn = document.getElementById('telegram-unlink-btn');
+        if (unlinkBtn) {
+            unlinkBtn.disabled = true;
+            unlinkBtn.innerHTML = '<span class="spinner-small"></span> Desvinculando...';
+        }
+
+        try {
+            const response = await this.apiRequest('/api/user/web/telegram/unlink', {
+                method: 'POST'
+            });
+
+            if (response.success) {
+                this.showToast('Telegram desvinculado', 'success');
+                await this.loadTelegramLinkStatus();
+            } else {
+                this.showToast(response.error || 'Error al desvincular', 'error');
+            }
+        } catch (error) {
+            console.error('Error unlinking telegram:', error);
+            this.showToast('Error al desvincular Telegram', 'error');
+        } finally {
+            if (unlinkBtn) {
+                unlinkBtn.disabled = false;
+                unlinkBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg> Desvincular Telegram`;
+            }
         }
     }
 };
