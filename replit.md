@@ -58,6 +58,74 @@ The application features a Flask (Python) backend, a PostgreSQL database, and a 
 
 ## Recent Changes (December 2025)
 
+### Migracion a Autenticacion Web Tradicional - 14 Diciembre 2025
+Sistema completo de autenticacion web independiente de Telegram con registro controlado por admin.
+
+**Flujo de autenticacion:**
+1. Usuario solicita acceso via /solicitud (encuesta publica)
+2. Admin aprueba/rechaza solicitud desde panel admin
+3. Si aprobado, usuario recibe link de registro con token
+4. Usuario crea cuenta (usuario + contraseña) via /registro
+5. Configuracion obligatoria de 2FA via /setup-2fa
+6. Login con usuario + codigo 2FA via /login
+
+**Nuevas tablas de base de datos:**
+- `registration_applications` - Solicitudes pendientes de aprobacion
+- `survey_questions` - Preguntas configurables para la encuesta
+- `email_verifications` - Codigos de verificacion (opcional)
+- Columnas agregadas a `users`: email, password_hash, email_verified, registration_approved, application_id, telegram_linked, linked_telegram_id
+
+**Nuevos endpoints publicos (app.py):**
+- GET `/solicitud` - Pagina de solicitud de registro
+- GET `/api/public/survey/questions` - Obtener preguntas de encuesta
+- POST `/api/public/apply` - Enviar solicitud de registro
+
+**Nuevos endpoints de autenticacion (app.py):**
+- GET `/login` - Pagina de login
+- GET `/registro` - Pagina de registro (requiere token)
+- GET `/setup-2fa` - Pagina de configuracion 2FA
+- GET `/api/auth/verify-token` - Verificar token de aprobacion
+- POST `/api/auth/register` - Registrar nuevo usuario
+- POST `/api/auth/setup-2fa` - Iniciar configuracion 2FA
+- POST `/api/auth/verify-2fa-setup` - Verificar primer codigo 2FA
+- POST `/api/auth/login/step1` - Verificar usuario existe
+- POST `/api/auth/login/step2` - Verificar codigo 2FA y crear sesion
+- POST `/api/auth/logout` - Cerrar sesion
+
+**Endpoints admin para encuestas y solicitudes (routes/admin_routes.py):**
+- CRUD `/api/admin/survey/questions` - Gestion de preguntas
+- GET/POST `/api/admin/applications` - Listar y gestionar solicitudes
+- POST `/api/admin/applications/:id/approve` - Aprobar con generacion de token
+- POST `/api/admin/applications/:id/reject` - Rechazar solicitud
+
+**Endpoints de perfil web (routes/user_routes.py):**
+- GET/PUT `/api/user/web/profile` - Obtener/editar perfil
+- POST `/api/user/web/avatar` - Subir foto de perfil a Cloudinary
+- DELETE `/api/user/web/avatar` - Eliminar foto de perfil
+- POST `/api/user/web/change-password` - Cambiar contraseña
+- GET `/api/user/web/telegram/status` - Estado de vinculacion Telegram
+- POST `/api/user/web/telegram/generate-link-code` - Generar codigo de vinculacion
+- POST `/api/user/web/telegram/unlink` - Desvincular Telegram
+
+**Nuevos decoradores (bot/tracking_correos/decorators.py):**
+- `@require_web_auth` - Requiere sesion web valida con 2FA
+- `@require_admin` - Requiere usuario admin
+- `@require_email_verified` - Requiere email verificado
+- Helpers: `get_current_web_user()`, `create_web_session()`, `invalidate_web_session()`
+
+**Archivos creados:**
+- `templates/login.html` - Pagina de login con flujo de 2 pasos
+- `templates/registro.html` - Pagina de registro con token
+- `templates/setup_2fa.html` - Configuracion de 2FA con QR
+- `templates/solicitud.html` - Formulario publico de solicitud
+- `bot/telegram_link_bot.py` - Bot para vincular cuentas Telegram
+
+**Limpieza de codigo (Fase 7):**
+- Eliminada funcion `download_telegram_photo` (no usada)
+- Eliminadas ~250 lineas de codigo duplicado en app.py
+- Decoradores ahora importados desde `bot/tracking_correos/decorators.py`
+- Imports no usados limpiados (hmac, hashlib, parse_qs, unquote)
+
 ### Sistema de Chat Privado Estilo Instagram - 13 Diciembre 2025
 Sistema completo de mensajes privados con funcionalidades avanzadas estilo Instagram.
 

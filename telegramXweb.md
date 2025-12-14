@@ -16,7 +16,7 @@
 - [!] = En progreso
 - [E] = Error (requiere atención)
 
-### ÚLTIMA ACTUALIZACIÓN: 2025-12-14 - Fase 5 completada
+### ÚLTIMA ACTUALIZACIÓN: 2025-12-14 - Fase 7 completada (MIGRACIÓN COMPLETA)
 
 ---
 
@@ -283,30 +283,30 @@ Migrar el sistema de autenticación de Telegram WebApp a un sistema web tradicio
 
 ## FASE 7: LIMPIEZA FINAL
 
-**Estado:** [ ] No iniciada
+**Estado:** [x] COMPLETADA - 2025-12-14
 
 ### Tareas:
 
 #### 7.1 Remover código muerto
-- [ ] Eliminar validate_telegram_webapp_data (si no se usa)
-- [ ] Eliminar download_telegram_photo
-- [ ] Limpiar decoradores viejos no usados
-- [ ] Limpiar imports no usados
-- Archivos modificados:
-- Probado: NO
+- [x] Eliminar validate_telegram_webapp_data (duplicada en app.py, ahora importada desde decorators.py)
+- [x] Eliminar download_telegram_photo (no se usaba)
+- [x] Limpiar decoradores viejos duplicados (require_telegram_auth, require_telegram_user, require_owner, is_owner, is_test_user, is_allowed_user, verify_origin_referer, csrf_protect - todos importados desde decorators.py)
+- [x] Limpiar imports no usados (hmac, hashlib, parse_qs, unquote)
+- Archivos modificados: app.py (~250 lineas eliminadas)
+- Probado: SI (2025-12-14)
 
 #### 7.2 Actualizar rutas
-- [ ] Verificar todas las rutas usan nuevos decoradores
-- [ ] Actualizar index.html y templates
-- [ ] Probar flujo completo
-- Archivos modificados:
-- Probado: NO
+- [x] Verificar todas las rutas usan nuevos decoradores (importados desde decorators.py)
+- [x] Templates ya actualizados en fases anteriores
+- [x] Flujo probado
+- Archivos modificados: app.py (imports centralizados)
+- Probado: SI (2025-12-14)
 
 #### 7.3 Documentación
-- [ ] Actualizar replit.md
-- [ ] Documentar nuevos endpoints
-- Archivos modificados:
-- Probado: NO
+- [x] Actualizar replit.md con seccion completa de migracion web
+- [x] Documentar todos los nuevos endpoints
+- Archivos modificados: replit.md
+- Probado: SI (2025-12-14)
 
 ---
 

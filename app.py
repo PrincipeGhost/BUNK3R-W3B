@@ -5,8 +5,6 @@ Backend Flask con validación de Telegram Web Apps
 
 import os
 import sys
-import hmac
-import hashlib
 import json
 import logging
 import uuid
@@ -19,7 +17,7 @@ import threading
 import requests
 from datetime import datetime, timedelta
 from functools import wraps
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import urlparse
 from collections import defaultdict
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, Response, session
@@ -42,6 +40,28 @@ from bot.tracking_correos.encryption import encryption_manager
 from bot.tracking_correos.cloudinary_service import cloudinary_service
 from bot.tracking_correos.smspool_service import SMSPoolService, VirtualNumbersManager
 from bot.tracking_correos.telegram_service import telegram_service
+from bot.tracking_correos.decorators import (
+    validate_telegram_webapp_data,
+    is_owner,
+    is_test_user,
+    is_allowed_user,
+    require_telegram_auth,
+    require_telegram_user,
+    require_owner,
+    verify_origin_referer,
+    csrf_protect,
+    require_web_auth,
+    require_admin,
+    require_email_verified,
+    get_current_web_user,
+    create_web_session,
+    invalidate_web_session
+)
+from bot.tracking_correos.demo_sessions import (
+    verify_demo_session,
+    invalidate_demo_session,
+    get_demo_session_token
+)
 
 from logging.handlers import RotatingFileHandler
 from flask import g
@@ -171,35 +191,6 @@ logger.info("Blueprints registered: auth, blockchain, admin, user, tracking, bot
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def download_telegram_photo(photo_url: str) -> str:
-    """Descarga la foto de Telegram y la convierte a base64 con validación SSRF."""
-    try:
-        if 'input_validator' in globals():
-            is_valid, error = input_validator.validate_url(photo_url)
-            if not is_valid:
-                logger.warning(f"Invalid Telegram photo URL blocked: {error}")
-                return None
-        
-        import requests
-        response = requests.get(photo_url, timeout=10, allow_redirects=False)
-        if response.status_code == 200:
-            content_type = response.headers.get('content-type', 'image/jpeg')
-            if 'image' in content_type:
-                if 'input_validator' in globals():
-                    is_valid_content, detected_type = input_validator.validate_file_content(
-                        response.content[:1024], 'image'
-                    )
-                    if not is_valid_content:
-                        logger.warning(f"Invalid file content in Telegram photo: {detected_type}")
-                        return None
-                
-                image_data = base64.b64encode(response.content).decode('utf-8')
-                return f"data:{content_type};base64,{image_data}"
-        return None
-    except Exception as e:
-        logger.error(f"Error downloading Telegram photo: {e}")
-        return None
-
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
 CHANNEL_ID = os.environ.get('CHANNEL_ID', '')
 OWNER_TELEGRAM_ID = os.environ.get('OWNER_TELEGRAM_ID', '')
@@ -230,62 +221,6 @@ def verify_demo_2fa_code(code: str) -> bool:
     """Verifica el código 2FA para modo demo."""
     totp = pyotp.TOTP(DEMO_2FA_SECRET, interval=60)
     return totp.verify(code, valid_window=1)
-
-def get_demo_session_token(client_ip: str) -> str:
-    """Genera un token de sesión para el modo demo usando Flask-Session persistente."""
-    import secrets
-    token = secrets.token_urlsafe(32)
-    session['demo_2fa_token'] = token
-    session['demo_2fa_ip'] = client_ip
-    session['demo_2fa_created_at'] = datetime.now().isoformat()
-    session['demo_2fa_valid'] = True
-    session.permanent = True
-    return token
-
-def verify_demo_session(token: str = None, client_ip: str = None) -> bool:
-    """Verifica si la sesión demo es válida usando Flask-Session persistente.
-    
-    La validación funciona de dos formas:
-    1. Si hay una sesión Flask válida, se valida directamente desde la cookie
-    2. Si se proporciona un token, se compara con el almacenado en la sesión
-    
-    Args:
-        token: Token opcional desde header X-Demo-Session (para compatibilidad)
-        client_ip: IP del cliente para validación de seguridad
-    """
-    stored_token = session.get('demo_2fa_token')
-    if not stored_token:
-        return False
-    
-    if not session.get('demo_2fa_valid', False):
-        return False
-    
-    if token and token != stored_token:
-        return False
-    
-    stored_ip = session.get('demo_2fa_ip')
-    if stored_ip and client_ip:
-        primary_stored_ip = stored_ip.split(',')[0].strip()
-        primary_client_ip = client_ip.split(',')[0].strip()
-        if primary_stored_ip != primary_client_ip:
-            logger.warning(f"Demo session IP mismatch: stored={primary_stored_ip}, current={primary_client_ip}")
-            return False
-    
-    created_at_str = session.get('demo_2fa_created_at')
-    if created_at_str:
-        created_at = datetime.fromisoformat(created_at_str)
-        if (datetime.now() - created_at).total_seconds() > 7200:
-            invalidate_demo_session()
-            return False
-    
-    return True
-
-def invalidate_demo_session():
-    """Invalida la sesión 2FA demo actual."""
-    session.pop('demo_2fa_token', None)
-    session.pop('demo_2fa_ip', None)
-    session.pop('demo_2fa_created_at', None)
-    session.pop('demo_2fa_valid', None)
 
 from bot.tracking_correos import services as shared_services
 
@@ -653,250 +588,6 @@ def rate_limit(action: str = 'default', use_ip: bool = False):
             return response
         return decorated_function
     return decorator
-
-
-def verify_origin_referer() -> tuple:
-    """
-    Verifica Origin/Referer para protección CSRF.
-    Returns: (is_valid: bool, error_message: str or None)
-    """
-    if not IS_PRODUCTION:
-        return True, None
-    
-    origin = request.headers.get('Origin', '')
-    referer = request.headers.get('Referer', '')
-    host = request.host_url.rstrip('/')
-    
-    allowed_origins = {
-        host,
-        'https://web.telegram.org',
-        'https://telegram.org'
-    }
-    
-    if origin:
-        origin_base = origin.rstrip('/')
-        if origin_base not in allowed_origins and not origin_base.endswith('.telegram.org'):
-            return False, f"Origin no permitido: {origin}"
-    
-    if referer:
-        referer_host = urlparse(referer).netloc
-        host_only = request.host.split(':')[0]
-        if referer_host not in [host_only, 'web.telegram.org', 'telegram.org'] and not referer_host.endswith('.telegram.org'):
-            return False, f"Referer no permitido: {referer_host}"
-    
-    return True, None
-
-
-def csrf_protect(f):
-    """
-    Decorador para protección CSRF en endpoints POST/PUT/DELETE.
-    Verifica Origin/Referer y requiere autenticación válida.
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
-            is_valid, error = verify_origin_referer()
-            if not is_valid:
-                client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-                logger.warning(f"CSRF: Blocked request from IP {client_ip}: {error}")
-                return jsonify({
-                    'error': 'Solicitud no autorizada',
-                    'code': 'CSRF_FAILED'
-                }), 403
-        
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-def validate_telegram_webapp_data(init_data: str):
-    """Valida los datos de Telegram Web App segun la documentacion oficial."""
-    if not init_data or not BOT_TOKEN:
-        return None
-    
-    try:
-        parsed_data = dict(parse_qs(init_data))
-        parsed_data = {k: v[0] if len(v) == 1 else v for k, v in parsed_data.items()}
-        
-        if 'hash' not in parsed_data:
-            logger.warning("No hash in init_data")
-            return None
-        
-        received_hash = parsed_data.pop('hash')
-        
-        data_check_string = '\n'.join(
-            f"{k}={v}" for k, v in sorted(parsed_data.items())
-        )
-        
-        secret_key = hmac.new(
-            b'WebAppData',
-            BOT_TOKEN.encode(),
-            hashlib.sha256
-        ).digest()
-        
-        calculated_hash = hmac.new(
-            secret_key,
-            data_check_string.encode(),
-            hashlib.sha256
-        ).hexdigest()
-        
-        if calculated_hash != received_hash:
-            logger.warning("Hash mismatch in Telegram validation")
-            return None
-        
-        if 'user' in parsed_data:
-            user_str = parsed_data['user']
-            if isinstance(user_str, str):
-                user_data = json.loads(unquote(user_str))
-                parsed_data['user'] = user_data
-        
-        return parsed_data
-        
-    except Exception as e:
-        logger.error(f"Error validating Telegram data: {e}")
-        return None
-
-
-def is_owner(user_id: int) -> bool:
-    """Verifica si el usuario es el owner."""
-    try:
-        owner_id = int(OWNER_TELEGRAM_ID) if OWNER_TELEGRAM_ID else 0
-        return user_id == owner_id
-    except (ValueError, TypeError) as e:
-        logger.debug(f"Error checking owner: {e}")
-        return False
-
-def is_test_user(user_id: int) -> bool:
-    """Verifica si el usuario es el usuario de prueba."""
-    try:
-        test_user_id = int(USER_TELEGRAM_ID) if USER_TELEGRAM_ID else 0
-        return user_id == test_user_id
-    except (ValueError, TypeError) as e:
-        logger.debug(f"Error checking test user: {e}")
-        return False
-
-def is_allowed_user(user_id: int) -> bool:
-    """Verifica si el usuario tiene permiso de acceso (owner o usuario de prueba)."""
-    return is_owner(user_id) or is_test_user(user_id)
-
-
-def require_telegram_auth(f):
-    """Decorador para requerir autenticación de Telegram o modo demo con 2FA."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        demo_header_present = request.headers.get('X-Demo-Mode') == 'true'
-        
-        if demo_header_present and IS_PRODUCTION:
-            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            logger.warning(f"SECURITY: Demo mode attempt blocked in production from IP: {client_ip}")
-            return jsonify({'error': 'Modo demo no disponible', 'code': 'DEMO_DISABLED'}), 403
-        
-        if demo_header_present and not IS_PRODUCTION:
-            demo_session_token = request.headers.get('X-Demo-Session')
-            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            
-            if not verify_demo_session(demo_session_token, client_ip):
-                return jsonify({
-                    'error': 'Se requiere autenticación para modo demo',
-                    'code': 'DEMO_2FA_REQUIRED',
-                    'requiresDemo2FA': True
-                }), 401
-            
-            request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
-            request.telegram_data = {}
-            request.is_owner = True
-            request.is_demo = True
-            return f(*args, **kwargs)
-        
-        init_data = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')
-        
-        if not init_data:
-            return jsonify({'error': 'Acceso no autorizado', 'code': 'NO_INIT_DATA'}), 401
-        
-        validated_data = validate_telegram_webapp_data(init_data)
-        
-        if not validated_data:
-            return jsonify({'error': 'Datos de Telegram inválidos', 'code': 'INVALID_DATA'}), 401
-        
-        user = validated_data.get('user', {})
-        user_id = user.get('id')
-        
-        if not user_id:
-            return jsonify({'error': 'Usuario no identificado', 'code': 'NO_USER'}), 401
-        
-        if not is_allowed_user(user_id):
-            return jsonify({'error': 'Acceso no autorizado', 'code': 'NOT_ALLOWED'}), 403
-        
-        request.telegram_user = user
-        request.telegram_data = validated_data
-        request.is_owner = is_owner(user_id)
-        request.is_test_user = is_test_user(user_id)
-        request.is_demo = False
-        
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-def require_owner(f):
-    """Decorador para funciones que solo el owner puede usar."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not getattr(request, 'is_owner', False):
-            return jsonify({'error': 'Función solo disponible para el owner'}), 403
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-def require_telegram_user(f):
-    """Decorador para funciones que cualquier usuario autenticado de Telegram puede usar."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        demo_header_present = request.headers.get('X-Demo-Mode') == 'true'
-        
-        if demo_header_present and IS_PRODUCTION:
-            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            logger.warning(f"SECURITY: Demo mode attempt blocked in production from IP: {client_ip}")
-            return jsonify({'error': 'Modo demo no disponible', 'code': 'DEMO_DISABLED'}), 403
-        
-        if demo_header_present and not IS_PRODUCTION:
-            demo_session_token = request.headers.get('X-Demo-Session')
-            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            
-            if not verify_demo_session(demo_session_token, client_ip):
-                return jsonify({
-                    'error': 'Se requiere autenticación para modo demo',
-                    'code': 'DEMO_2FA_REQUIRED',
-                    'requiresDemo2FA': True
-                }), 401
-            
-            request.telegram_user = {'id': 0, 'first_name': 'Demo', 'username': 'demo_user'}
-            request.telegram_data = {}
-            request.is_owner = True
-            request.is_demo = True
-            return f(*args, **kwargs)
-        
-        init_data = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')
-        
-        if not init_data:
-            return jsonify({'error': 'Acceso no autorizado', 'code': 'NO_INIT_DATA'}), 401
-        
-        validated_data = validate_telegram_webapp_data(init_data)
-        
-        if not validated_data:
-            return jsonify({'error': 'Datos de Telegram inválidos', 'code': 'INVALID_DATA'}), 401
-        
-        user = validated_data.get('user', {})
-        user_id = user.get('id')
-        
-        if not user_id:
-            return jsonify({'error': 'Usuario no identificado', 'code': 'NO_USER'}), 401
-        
-        request.telegram_user = user
-        request.telegram_data = validated_data
-        request.is_owner = is_owner(user_id)
-        request.is_demo = False
-        
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 CSRF_EXEMPT_ENDPOINTS = {
